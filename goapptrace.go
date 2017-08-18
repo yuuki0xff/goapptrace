@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/kesselborn/go-getopt"
+	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/info"
 	"os"
 )
@@ -170,6 +171,12 @@ func realMain() int {
 	fmt.Printf("options:\n%#v", options)
 	fmt.Printf("arguments: %#v\n", arguments)
 	fmt.Printf("passThrough: %#v\n", passThrough)
+
+	conf := config.NewConfig("")
+	if err := conf.Load(); err != nil {
+		fmt.Println(err)
+		return 1
+	}
 
 	return 0
 }
