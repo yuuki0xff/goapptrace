@@ -64,31 +64,31 @@ func realMain() int {
 					"on": {
 						"insert tracing codes to targets",
 						getopt.Definitions{
-							{"targets", "target names", getopt.IsArg | getopt.Required, ""},
+							{"targets", "target names", getopt.IsArg | getopt.Optional, ""},
 						},
 					},
 					"off": {
 						"remove tracing codes from targets",
 						getopt.Definitions{
-							{"targets", "target names", getopt.IsArg | getopt.Required, ""},
+							{"targets", "target names", getopt.IsArg | getopt.Optional, ""},
 						},
 					},
 					"status": {
 						"show status of tracer",
 						getopt.Definitions{
-							{"target", "a target name", getopt.IsArg | getopt.Required, ""},
+							{"target", "a target name", getopt.IsArg | getopt.Optional, ""},
 						},
 					},
 					"start": {
 						"start tracing of running processes. it must be added tracing codes before processes started",
 						getopt.Definitions{
-							{"targets", "target names", getopt.IsArg | getopt.Required, ""},
+							{"targets", "target names", getopt.IsArg | getopt.Optional, ""},
 						},
 					},
 					"stop": {
 						"stop tracing of running processes",
 						getopt.Definitions{
-							{"targets", "target names", getopt.IsArg | getopt.Required, ""},
+							{"targets", "target names", getopt.IsArg | getopt.Optional, ""},
 						},
 					},
 				},
@@ -104,13 +104,13 @@ func realMain() int {
 					"build": {
 						"build with tracing codes",
 						getopt.Definitions{
-							{"targets", "target names", getopt.IsArg, ""},
+							{"targets", "target names", getopt.IsArg | getopt.Optional, ""},
 						},
 					},
 					"run": {
 						"start processes, and start tracing",
 						getopt.Definitions{
-							{"targets", "target names", getopt.IsArg, ""},
+							{"targets", "target names", getopt.IsArg | getopt.Optional, ""},
 						},
 					},
 				},
@@ -126,13 +126,13 @@ func realMain() int {
 					"ls": {
 						"show log names and histories",
 						getopt.Definitions{
-							{"target", "a target name", getopt.IsArg, ""},
+							{"target", "a target name", getopt.IsArg | getopt.Optional, ""},
 						},
 					},
 					"show": {
 						"show logs on web browser",
 						getopt.Definitions{
-							{"target", "a target name", getopt.IsArg, ""},
+							{"target", "a target name", getopt.IsArg | getopt.Optional, ""},
 						},
 					},
 				},
