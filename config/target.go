@@ -32,6 +32,14 @@ func (tt *Targets) Add(t *Target) error {
 	return nil
 }
 
+func (tt *Targets) Get(name TargetName) (*Target, error) {
+	t, exists := tt.targets[name]
+	if !exists {
+		return nil, errors.New(fmt.Sprintf(`"%s" is not found`, name))
+	}
+	return t, nil
+}
+
 func (tt *Targets) Delete(name TargetName) error {
 	if _, exists := tt.targets[name]; !exists {
 		return errors.New(fmt.Sprintf(`"%s" is not found`, name))

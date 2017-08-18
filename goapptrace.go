@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/kesselborn/go-getopt"
+	"github.com/yuuki0xff/goapptrace/cmd"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/info"
 	"os"
@@ -177,10 +178,27 @@ func realMain() int {
 		fmt.Println(err)
 		return 1
 	}
+
+	fn, exists := cmd.Get(scope, subCommand)
+	fmt.Println(fn, exists)
+	if !exists {
+		fmt.Printf("%s: Unsupported operation\n", info.APP_NAME)
+		return 2
+	}
+	exit_code, err := fn(cmd.CommandArgs{
+		Options:   options,
+		Arguments: arguments,
+		Config:    conf,
+	})
+	if err != nil {
+		fmt.Println(err)
+		return 3
+	}
+
 	if err := conf.Save(); err != nil {
 		fmt.Println(err)
 		return 2
 	}
 
-	return 0
+	return exit_code
 }
