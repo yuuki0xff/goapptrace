@@ -8,7 +8,7 @@ import (
 type TargetName string
 
 type Targets struct {
-	targets map[TargetName]*Target
+	Targets map[TargetName]*Target
 }
 
 type Target struct {
@@ -20,20 +20,20 @@ type Target struct {
 
 func NewTargets() *Targets {
 	return &Targets{
-		targets: make(map[TargetName]*Target),
+		Targets: make(map[TargetName]*Target),
 	}
 }
 
 func (tt *Targets) Add(t *Target) error {
-	if _, exists := tt.targets[t.Name]; exists {
+	if _, exists := tt.Targets[t.Name]; exists {
 		return errors.New(fmt.Sprintf(`"%s" is already exists`, t.Name))
 	}
-	tt.targets[t.Name] = t
+	tt.Targets[t.Name] = t
 	return nil
 }
 
 func (tt *Targets) Get(name TargetName) (*Target, error) {
-	t, exists := tt.targets[name]
+	t, exists := tt.Targets[name]
 	if !exists {
 		return nil, errors.New(fmt.Sprintf(`"%s" is not found`, name))
 	}
@@ -41,15 +41,15 @@ func (tt *Targets) Get(name TargetName) (*Target, error) {
 }
 
 func (tt *Targets) Delete(name TargetName) error {
-	if _, exists := tt.targets[name]; !exists {
+	if _, exists := tt.Targets[name]; !exists {
 		return errors.New(fmt.Sprintf(`"%s" is not found`, name))
 	}
-	delete(tt.targets, name)
+	delete(tt.Targets, name)
 	return nil
 }
 
 func (tt *Targets) Walk(fn func(*Target) error) error {
-	for _, t := range tt.targets {
+	for _, t := range tt.Targets {
 		if err := fn(t); err != nil {
 			return err
 		}
