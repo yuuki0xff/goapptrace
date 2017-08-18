@@ -1,4 +1,7 @@
 package config
+// Directory Layout
+//   $dir/log/name.jsonl.gz  - gzip compressed log file
+//   $dir/targets.json        - includes target, trace, build
 
 type Config struct {
 	// TODO
