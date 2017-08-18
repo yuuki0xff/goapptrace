@@ -180,7 +180,6 @@ func realMain() int {
 	}
 
 	fn, exists := cmd.Get(scope, subCommand)
-	fmt.Println(fn, exists)
 	if !exists {
 		fmt.Printf("%s: Unsupported operation\n", info.APP_NAME)
 		return 2
