@@ -177,6 +177,10 @@ func realMain() int {
 		fmt.Println(err)
 		return 1
 	}
+	if err := conf.Save(); err != nil {
+		fmt.Println(err)
+		return 2
+	}
 
 	return 0
 }
