@@ -16,6 +16,7 @@ func realMain() int {
 		Global: getopt.Options{
 			Description: "function calls tracer for golang",
 			Definitions: getopt.Definitions{
+				{"config|c", "set a config dir path instead of '.goapptrace/'", getopt.Optional, ""},
 				{"scope", "", getopt.IsSubCommand, ""},
 			},
 		},
