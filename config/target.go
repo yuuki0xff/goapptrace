@@ -56,3 +56,11 @@ func (tt *Targets) Walk(fn func(*Target) error) error {
 	}
 	return nil
 }
+
+func (tt *Targets) Names() []string {
+	names := make([]string, 0, len(tt.Targets))
+	for name := range tt.Targets {
+		names = append(names, string(name))
+	}
+	return names
+}
