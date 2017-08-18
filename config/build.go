@@ -7,7 +7,7 @@ type BuildProcess struct {
 }
 
 func (bp *BuildProcess) Run() error {
-	cmd := exec.Command(bp.Args[0], bp.Args[1:])
+	cmd := exec.Command(bp.Args[0], bp.Args[1:]...)
 	if err := cmd.Run(); err != nil {
 		return err
 	}
