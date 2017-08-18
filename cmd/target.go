@@ -10,7 +10,7 @@ func target_ls(args CommandArgs) (int, error) {
 
 	if err := args.Config.Targets.Walk(func(t *config.Target) error {
 		for i := range t.Files {
-			fmt.Printf("%s  %s", t.Name, t.Files[i])
+			fmt.Printf("%s  %s\n", t.Name, t.Files[i])
 		}
 		return nil
 	}); err != nil {
