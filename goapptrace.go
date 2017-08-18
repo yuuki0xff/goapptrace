@@ -31,18 +31,22 @@ func realMain() int {
 				getopt.SubCommands{
 					"ls": {
 						"show tracing targets",
-						getopt.Definitions{},
+						getopt.Definitions{
+							{"name", "target name", getopt.Optional | getopt.IsArg, ""},
+						},
 					},
 					"add": {
 						"add tracing targets",
 						getopt.Definitions{
+							{"name", "target name", getopt.IsArg | getopt.Required, ""},
 							{"targets", "dirs or files", getopt.IsArg | getopt.Required, ""},
 						},
 					},
 					"remove": {
 						"remove from tracing targets",
 						getopt.Definitions{
-							{"targets", "dirs or files", getopt.IsArg | getopt.Required, ""},
+							{"name", "target name", getopt.IsArg | getopt.Required, ""},
+							{"targets", "dirs or files", getopt.IsArg | getopt.Optional, ""},
 						},
 					},
 					"set-build": {
