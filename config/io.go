@@ -45,14 +45,14 @@ func (c *Config) Load() error {
 
 func (c *Config) Save() error {
 	if _, err := os.Stat(c.dir); os.IsNotExist(err) {
-		os.MkdirAll(c.dir, 0660)
+		os.MkdirAll(c.dir, os.ModePerm)
 	}
 
 	js, err := json.Marshal(c.Targets)
 	if err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(c.targetsPath(), js, 0660); err != nil {
+	if err := ioutil.WriteFile(c.targetsPath(), js, os.ModePerm^0111); err != nil {
 		return err
 	}
 	return nil
