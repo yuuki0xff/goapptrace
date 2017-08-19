@@ -30,6 +30,7 @@ var procBuildCmd = &cobra.Command{
 	Use:   "build",
 	Short: "Build with tracing codes",
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
+		conf.WantSave()
 		return runProcBuild(conf, args)
 	}),
 }

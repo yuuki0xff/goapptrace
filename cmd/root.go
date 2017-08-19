@@ -78,7 +78,10 @@ func wrap(fn Handler) CobraHandler {
 		if err != nil {
 			return err
 		}
-		return fn(c, cmd, args)
+		if err := fn(c, cmd, args); err != nil {
+			return err
+		}
+		return c.SaveIfWant()
 	}
 }
 

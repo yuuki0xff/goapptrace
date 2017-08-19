@@ -14,8 +14,9 @@ import (
 
 type Config struct {
 	// TODO
-	dir     string
-	Targets Targets
+	dir      string
+	Targets  Targets
+	wantSave bool
 }
 
 func NewConfig(dir string) *Config {
@@ -43,6 +44,10 @@ func (c *Config) Load() error {
 	return nil
 }
 
+func (c *Config) WantSave() {
+	c.wantSave = true
+}
+
 func (c *Config) Save() error {
 	if _, err := os.Stat(c.dir); os.IsNotExist(err) {
 		os.MkdirAll(c.dir, os.ModePerm)
@@ -54,6 +59,13 @@ func (c *Config) Save() error {
 	}
 	if err := ioutil.WriteFile(c.targetsPath(), js, os.ModePerm^0111); err != nil {
 		return err
+	}
+	return nil
+}
+
+func (c *Config) SaveIfWant() error {
+	if c.wantSave {
+		return c.Save()
 	}
 	return nil
 }

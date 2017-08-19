@@ -30,6 +30,7 @@ var procRunCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Start processes, and start tracing",
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
+		conf.WantSave()
 		return runProcRun(conf, args[0], args[1:])
 	}),
 }

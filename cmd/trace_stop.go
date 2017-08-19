@@ -30,6 +30,7 @@ var traceStopCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "Stop tracing of running processes",
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
+		conf.WantSave()
 		return runTraceStop(conf, args)
 	}),
 }

@@ -30,6 +30,7 @@ var traceOffCmd = &cobra.Command{
 	Use:   "off",
 	Short: "Remove tracing codes from targets",
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
+		conf.WantSave()
 		return runTraceOff(conf, args)
 	}),
 }

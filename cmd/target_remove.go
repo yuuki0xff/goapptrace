@@ -30,6 +30,7 @@ var targetRemoveCmd = &cobra.Command{
 	Use:   "remove",
 	Short: "Remove tracing targets",
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
+		conf.WantSave()
 		return runTargetRemove(conf, args)
 	}),
 }

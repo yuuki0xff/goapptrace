@@ -33,6 +33,7 @@ var traceStartCmd = &cobra.Command{
 It must be added tracing codes before processes started.
 `,
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
+		conf.WantSave()
 		return runTraceStart(conf, args)
 	}),
 }

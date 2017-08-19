@@ -30,6 +30,7 @@ var targetSetBuildCmd = &cobra.Command{
 	Use:   "set-build",
 	Short: "Set the custom build processes instead of 'go build'",
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
+		conf.WantSave()
 		return runTargetSetBuild(conf, args[0], args[1:])
 	}),
 }

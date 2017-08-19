@@ -30,6 +30,7 @@ var traceOnCmd = &cobra.Command{
 	Use:   "on",
 	Short: "Insert tracing codes into targets",
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
+		conf.WantSave()
 		return runTraceOn(conf, args)
 	}),
 }
