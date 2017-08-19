@@ -24,8 +24,11 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/yuuki0xff/goapptrace/config"
+	"io"
 )
 
 var cfgDir string
@@ -64,4 +67,35 @@ func init() {
 // initConfig reads in ENV variables if set.
 func initConfig() {
 	viper.AutomaticEnv() // read in environment variables that match
+}
+
+type CobraHandler func(cmd *cobra.Command, args []string) error
+type Handler func(conf *config.Config, cmd *cobra.Command, args []string) error
+
+func wrap(fn Handler) CobraHandler {
+	return func(cmd *cobra.Command, args []string) error {
+		c, err := getConfig()
+		if err != nil {
+			return err
+		}
+		return fn(c, cmd, args)
+	}
+}
+
+func getConfig() (*config.Config, error) {
+	c := config.NewConfig(cfgDir)
+	err := c.Load()
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+func defaultTable(w io.Writer) *tablewriter.Table {
+	table := tablewriter.NewWriter(w)
+	table.SetBorder(false)
+	table.SetColumnSeparator(" ")
+	table.SetCenterSeparator(" ")
+	table.SetRowSeparator("-")
+	return table
 }

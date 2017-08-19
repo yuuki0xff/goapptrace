@@ -21,18 +21,27 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
+	"github.com/yuuki0xff/goapptrace/config"
 )
 
 // targetRemoveCmd represents the remove command
 var targetRemoveCmd = &cobra.Command{
 	Use:   "remove",
 	Short: "Remove tracing targets",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("remove called")
-	},
+	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
+		return runTargetRemove(conf, args)
+	}),
+}
+
+func runTargetRemove(conf *config.Config, targets []string) error {
+	for _, t := range targets {
+		name := config.TargetName(t)
+		if err := conf.Targets.Delete(name); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func init() {

@@ -21,18 +21,26 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
+	"github.com/yuuki0xff/goapptrace/config"
 )
 
 // targetSetBuildCmd represents the setBuild command
 var targetSetBuildCmd = &cobra.Command{
 	Use:   "set-build",
 	Short: "Set the custom build processes instead of 'go build'",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("set-build called")
-	},
+	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
+		return runTargetSetBuild(conf, args[0], args[1:])
+	}),
+}
+
+func runTargetSetBuild(conf *config.Config, name string, cmds []string) error {
+	t, err := conf.Targets.Get(config.TargetName(name))
+	if err != nil {
+		return err
+	}
+	t.Build.Args = cmds
+	return nil
 }
 
 func init() {

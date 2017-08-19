@@ -21,18 +21,22 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
+	"github.com/yuuki0xff/goapptrace/config"
 )
 
 // procBuildCmd represents the build command
 var procBuildCmd = &cobra.Command{
 	Use:   "build",
 	Short: "Build with tracing codes",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("build called")
-	},
+	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
+		return runProcBuild(conf, args)
+	}),
+}
+
+func runProcBuild(conf *config.Config, targets []string) error {
+	// TODO
+	return nil
 }
 
 func init() {

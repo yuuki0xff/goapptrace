@@ -21,18 +21,34 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
+	"github.com/yuuki0xff/goapptrace/config"
 )
 
 // traceOnCmd represents the on command
 var traceOnCmd = &cobra.Command{
 	Use:   "on",
 	Short: "Insert tracing codes into targets",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("on called")
-	},
+	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
+		return runTraceOn(conf, args)
+	}),
+}
+
+func runTraceOn(conf *config.Config, targets []string) error {
+	conf.Targets.Walk(nil, func(t *config.Target) error {
+		return t.WalkTraces(targets, func(fname string, trace *config.Trace, created bool) error {
+			// TODO: add tracing code
+
+			if created {
+				trace.HasTracingCode = true // TODO: currently always true
+				trace.IsTracing = true
+			} else {
+				trace.HasTracingCode = true
+			}
+			return nil
+		})
+	})
+	return nil
 }
 
 func init() {

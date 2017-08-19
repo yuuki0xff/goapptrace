@@ -21,18 +21,30 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
+	"github.com/yuuki0xff/goapptrace/config"
 )
 
 // traceOffCmd represents the off command
 var traceOffCmd = &cobra.Command{
 	Use:   "off",
 	Short: "Remove tracing codes from targets",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("off called")
-	},
+	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
+		return runTraceOff(conf, args)
+	}),
+}
+
+func runTraceOff(conf *config.Config, targets []string) error {
+	conf.Targets.Walk(nil, func(t *config.Target) error {
+		return t.WalkTraces(targets, func(fname string, trace *config.Trace, created bool) error {
+			// TODO: add tracing code
+
+			trace.HasTracingCode = false
+			trace.IsTracing = false
+			return nil
+		})
+	})
+	return nil
 }
 
 func init() {

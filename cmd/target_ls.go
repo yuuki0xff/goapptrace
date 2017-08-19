@@ -21,18 +21,38 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
+	"github.com/yuuki0xff/goapptrace/config"
+	"io"
 )
 
 // targetLsCmd represents the ls command
 var targetLsCmd = &cobra.Command{
 	Use:   "ls",
 	Short: "Show tracing targets",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("ls called")
-	},
+	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
+		return runTargetLs(conf, cmd.OutOrStdout())
+	}),
+}
+
+func runTargetLs(conf *config.Config, out io.Writer) error {
+	table := defaultTable(out)
+	table.SetHeader([]string{
+		"name",
+		"files/dirs",
+	})
+	if err := conf.Targets.Walk(nil, func(t *config.Target) error {
+		for _, file := range t.Files {
+			table.Append([]string{
+				string(t.Name), file,
+			})
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	table.Render()
+	return nil
 }
 
 func init() {

@@ -21,18 +21,28 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
+	"github.com/yuuki0xff/goapptrace/config"
 )
 
 // traceStopCmd represents the stop command
 var traceStopCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "Stop tracing of running processes",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("stop called")
-	},
+	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
+		return runTraceStop(conf, args)
+	}),
+}
+
+func runTraceStop(conf *config.Config, targets []string) error {
+	return conf.Targets.Walk(targets, func(t *config.Target) error {
+		return t.WalkTraces(nil, func(fname string, trace *config.Trace, created bool) error {
+			// TODO: stop tracing
+
+			trace.IsTracing = false
+			return nil
+		})
+	})
 }
 
 func init() {

@@ -21,18 +21,24 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
+	"github.com/yuuki0xff/goapptrace/config"
 )
 
 // procRunCmd represents the run command
 var procRunCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Start processes, and start tracing",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("run called")
-	},
+	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
+		return runProcRun(conf, args[0], args[1:])
+	}),
+}
+
+func runProcRun(conf *config.Config, name string, files []string) error {
+	return conf.Targets.Add(&config.Target{
+		Name:  config.TargetName(name),
+		Files: files,
+	})
 }
 
 func init() {

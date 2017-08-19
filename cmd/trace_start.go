@@ -21,9 +21,8 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
+	"github.com/yuuki0xff/goapptrace/config"
 )
 
 // traceStartCmd represents the start command
@@ -33,10 +32,21 @@ var traceStartCmd = &cobra.Command{
 	Long: `Manage the tracing targets.
 It must be added tracing codes before processes started.
 `,
+	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
+		return runTraceStart(conf, args)
+	}),
+}
 
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("start called")
-	},
+func runTraceStart(conf *config.Config, targets []string) error {
+	return conf.Targets.Walk(targets, func(t *config.Target) error {
+		return t.WalkTraces(nil, func(fname string, trace *config.Trace, created bool) error {
+			if trace.HasTracingCode {
+				// TODO: start tracing
+				trace.IsTracing = true
+			}
+			return nil
+		})
+	})
 }
 
 func init() {

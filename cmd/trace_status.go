@@ -21,18 +21,42 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
+	"github.com/yuuki0xff/goapptrace/config"
+	"io"
+	"strconv"
 )
 
 // traceStatusCmd represents the status command
 var traceStatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show status of tracer",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("status called")
-	},
+	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
+		return runTraceStatus(conf, cmd.OutOrStdout())
+	}),
+}
+
+func runTraceStatus(conf *config.Config, out io.Writer) error {
+	table := defaultTable(out)
+	table.SetHeader([]string{
+		"target",
+		"files/dirs",
+		"has tracing code",
+		"tracing",
+	})
+	conf.Targets.Walk(nil, func(t *config.Target) error {
+		return t.WalkTraces(nil, func(fname string, trace *config.Trace, created bool) error {
+			table.Append([]string{
+				string(t.Name),
+				fname,
+				strconv.FormatBool(trace.HasTracingCode),
+				strconv.FormatBool(trace.IsTracing),
+			})
+			return nil
+		})
+	})
+	table.Render()
+	return nil
 }
 
 func init() {

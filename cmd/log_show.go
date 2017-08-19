@@ -21,18 +21,22 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
+	"github.com/yuuki0xff/goapptrace/config"
 )
 
 // logShowCmd represents the show command
 var logShowCmd = &cobra.Command{
 	Use:   "show",
 	Short: "Show logs on web browser",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("show called")
-	},
+	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
+		return runLogShow(conf, args)
+	}),
+}
+
+func runLogShow(conf *config.Config, targets []string) error {
+	// TODO
+	return nil
 }
 
 func init() {

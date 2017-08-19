@@ -48,10 +48,21 @@ func (tt *Targets) Delete(name TargetName) error {
 	return nil
 }
 
-func (tt *Targets) Walk(fn func(*Target) error) error {
-	for _, t := range tt.Targets {
-		if err := fn(t); err != nil {
-			return err
+func (tt *Targets) Walk(names []string, fn func(*Target) error) error {
+	if names == nil || len(names) == 0 {
+		// iterate all targets
+		for _, t := range tt.Targets {
+			if err := fn(t); err != nil {
+				return err
+			}
+		}
+	} else {
+		// iterate on names array
+		for _, name := range names {
+			t := tt.Targets[TargetName(name)]
+			if err := fn(t); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -63,4 +74,28 @@ func (tt *Targets) Names() []string {
 		names = append(names, string(name))
 	}
 	return names
+}
+
+func (t *Target) WalkTraces(files []string, fn func(fname string, trace *Trace, created bool) error) error {
+	if files == nil || len(files) == 0 {
+		files = t.Files
+	}
+
+	if t.Trace == nil {
+		t.Trace = map[string]*Trace{}
+	}
+
+	for _, fname := range files {
+		_, exists := t.Trace[fname]
+		if !exists {
+			t.Trace[fname] = &Trace{
+				IsTracing: true,
+			}
+		}
+
+		if err := fn(fname, t.Trace[fname], !exists); err != nil {
+			return err
+		}
+	}
+	return nil
 }

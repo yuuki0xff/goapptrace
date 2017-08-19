@@ -21,18 +21,22 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
+	"github.com/yuuki0xff/goapptrace/config"
 )
 
 // targetAddCmd represents the add command
 var targetAddCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Add to tracing targets",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("add called")
-	},
+	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
+		return runTargetAdd(conf, args)
+	}),
+}
+
+func runTargetAdd(conf *config.Config, targets []string) error {
+	// TODO
+	return nil
 }
 
 func init() {
