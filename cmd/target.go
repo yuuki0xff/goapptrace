@@ -1,49 +1,56 @@
+// Copyright © 2017 yuuki0xff <yuuki0xff@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
 package cmd
 
 import (
 	"fmt"
-	"github.com/yuuki0xff/goapptrace/config"
+
+	"github.com/spf13/cobra"
 )
 
-func target_ls(args CommandArgs) (int, error) {
-	fmt.Println("ls")
+// targetCmd represents the target command
+var targetCmd = &cobra.Command{
+	Use:   "target",
+	Short: "A brief description of your command",
+	Long: `A longer description that spans multiple lines and likely contains examples
+and usage of using your command. For example:
 
-	if err := args.Config.Targets.Walk(func(t *config.Target) error {
-		for i := range t.Files {
-			fmt.Printf("%s  %s\n", t.Name, t.Files[i])
-		}
-		return nil
-	}); err != nil {
-		return 1, err
-	}
-	return 0, nil
+Cobra is a CLI library for Go that empowers applications.
+This application is a tool to generate the needed files
+to quickly create a Cobra application.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println("target called")
+	},
 }
 
-func target_add(args CommandArgs) (int, error) {
-	if err := args.Config.Targets.Add(&config.Target{
-		Name:  config.TargetName(args.Arguments[0]),
-		Files: args.Arguments[1:],
-	}); err != nil {
-		return 1, err
-	}
-	return 0, nil
-}
+func init() {
+	RootCmd.AddCommand(targetCmd)
 
-func target_remove(args CommandArgs) (int, error) {
-	for _, name := range args.Arguments {
-		if err := args.Config.Targets.Delete(config.TargetName(name)); err != nil {
-			return 1, err
-		}
-	}
-	return 0, nil
-}
+	// Here you will define your flags and configuration settings.
 
-func target_set_build(args CommandArgs) (int, error) {
-	name, cmds := args.Arguments[0], args.Arguments[1:]
-	t, err := args.Config.Targets.Get(config.TargetName(name))
-	if err != nil {
-		return 1, err
-	}
-	t.Build.Args = cmds
-	return 0, nil
+	// Cobra supports Persistent Flags which will work for this command
+	// and all subcommands, e.g.:
+	// targetCmd.PersistentFlags().String("foo", "", "A help for foo")
+
+	// Cobra supports local flags which will only run when this command
+	// is called directly, e.g.:
+	// targetCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
