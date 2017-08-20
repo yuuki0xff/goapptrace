@@ -21,8 +21,10 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
+	"github.com/yuuki0xff/goapptrace/httpserver"
 )
 
 // logShowCmd represents the show command
@@ -35,7 +37,15 @@ var logShowCmd = &cobra.Command{
 }
 
 func runLogShow(conf *config.Config, targets []string) error {
-	// TODO
+	srv := httpserver.NewHttpServer("")
+	if err := srv.Start(); err != nil {
+		return err
+	}
+	fmt.Printf("Started HTTP server on %s\n", srv.Addr())
+
+	if err := srv.Wait(); err != nil {
+		return err
+	}
 	return nil
 }
 
