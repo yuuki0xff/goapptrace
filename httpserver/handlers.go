@@ -48,10 +48,14 @@ func getRouter() *mux.Router {
 		router.HandleFunc("/goroutines.svg", func(w http.ResponseWriter, r *http.Request) {
 			rnd := render.SVGRender{
 				StartTime: 0,
-				EndTime:   500,
+				EndTime:   100000,
 				Layout:    render.Goroutine,
 				Log:       &l,
 				Height:    800,
+				Colors: render.Colors{
+					ColorRule: render.ColoringPerModule,
+					NColors:   5,
+				},
 			}
 			rnd.Render(w)
 		})
@@ -59,10 +63,14 @@ func getRouter() *mux.Router {
 		router.HandleFunc("/funccalls.svg", func(w http.ResponseWriter, r *http.Request) {
 			rnd := render.SVGRender{
 				StartTime: 0,
-				EndTime:   500,
+				EndTime:   100000,
 				Layout:    render.FunctionCall,
 				Log:       &l,
 				Height:    800,
+				Colors: render.Colors{
+					ColorRule: render.ColoringPerModule,
+					NColors:   5,
+				},
 			}
 			rnd.Render(w)
 		})

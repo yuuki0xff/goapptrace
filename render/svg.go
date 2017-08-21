@@ -1,6 +1,7 @@
 package render
 
 import (
+	"fmt"
 	"github.com/ajstarks/svgo"
 	"github.com/yuuki0xff/goapptrace/log"
 	"io"
@@ -21,6 +22,7 @@ type SVGRender struct {
 
 	Height int
 	Layout LayoutType
+	Colors Colors
 }
 
 func (r *SVGRender) Render(w io.Writer) {
@@ -43,7 +45,10 @@ func (r *SVGRender) Render(w io.Writer) {
 			}
 
 			width := gr.EndTime - gr.StartTime
-			canv.Rect(int(gr.StartTime), y, int(width), 1)
+			canv.Rect(
+				int(gr.StartTime), y, int(width), 1,
+				fmt.Sprintf(`fill="%s"`, r.Colors.GetByGoroutine(gr)),
+			)
 			return nil
 		})
 
@@ -58,7 +63,10 @@ func (r *SVGRender) Render(w io.Writer) {
 				if fl.EndTime != log.NotEnded {
 					yoffset := fl.Parents()
 					width := fl.EndTime - fl.StartTime
-					canv.Rect(int(fl.StartTime), yMap[fl.GID]+yoffset, int(width), 1)
+					canv.Rect(
+						int(fl.StartTime), yMap[fl.GID]+yoffset, int(width), 1,
+						fmt.Sprintf(`fill="%s"`, r.Colors.GetByGoroutine(gr)),
+					)
 				}
 			}
 			return nil
@@ -70,7 +78,10 @@ func (r *SVGRender) Render(w io.Writer) {
 				if fl.EndTime == log.NotEnded {
 					yoffset := fl.Parents()
 					width := maxEndTime - fl.StartTime
-					canv.Rect(int(fl.StartTime), yMap[fl.GID]+yoffset, int(width), 1, `color="red"`)
+					canv.Rect(
+						int(fl.StartTime), yMap[fl.GID]+yoffset, int(width), 1,
+						fmt.Sprintf(`fill="%s"`, r.Colors.GetByGoroutine(gr)),
+					)
 				}
 			}
 			return nil
