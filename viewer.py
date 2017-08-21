@@ -12,6 +12,8 @@ import svgwrite
 FILE_TYPES = ['svg']
 COLOR_RULES = ['goroutine', 'function', 'module']
 LAYOUTS = ['goroutines', 'funccalls']
+CELL_WIDTH = 20
+CELL_HEIGHT = 20
 
 
 class UncorrespondingRecord(ValueError):
@@ -373,26 +375,27 @@ def to_svg(max_depth: List[int], gr_history: List[List[GoRoutine]], color: Color
                 if gr[i] is None: continue
                 start_time.append(gr[i].start_time)
                 end_time.append(gr[i].end_time)
+                goroutines.append(gr[i])
                 break
             else:
                 raise Unreachable('bug')
 
         last_time = max(filter(lambda x: x is not None, end_time))
-        for i, start, end in zip(range(number_of_gr), start_time, end_time):
+        for i, start, end, gr in zip(range(number_of_gr), start_time, end_time, goroutines):
             if end is None:
                 width = last_time - start
             else:
                 width = end - start
 
             dwg.add(dwg.rect(
-                insert=(start, i),
-                size=(width, 1),
+                insert=(start * CELL_WIDTH, i * CELL_HEIGHT),
+                size=(width * CELL_WIDTH, 1 * CELL_HEIGHT),
                 fill=color.get(index=i, goroutine=None)
             ))
 
         dwg.viewbox(
             minx=0, miny=0,
-            width=last_time, height=number_of_gr,
+            width=last_time * CELL_WIDTH, height=number_of_gr * CELL_HEIGHT,
         )
     elif layout == 'goroutines':
         endless_goroutines = {}  # type: Dict[Tuple[int, int], GoRoutine]
@@ -412,10 +415,10 @@ def to_svg(max_depth: List[int], gr_history: List[List[GoRoutine]], color: Color
                     continue
 
                 last_time = max(last_time, gr.end_time)
-
+                width = gr.end_time - gr.start_time
                 dwg.add(dwg.rect(
-                    insert=(gr.start_time, y + gr.parents),
-                    size=(gr.end_time - gr.start_time, 1),
+                    insert=(gr.start_time * CELL_WIDTH, (y + gr.parents) * CELL_HEIGHT),
+                    size=(width * CELL_WIDTH, CELL_HEIGHT),
                     fill=color.get(index=i, goroutine=gr),
                 ))
                 rendered_goroutines.add(gr)
@@ -427,15 +430,16 @@ def to_svg(max_depth: List[int], gr_history: List[List[GoRoutine]], color: Color
             if gr is None: continue
             if gr.end_time is not None: continue
 
+            width = last_time - gr.start_time
             dwg.add(dwg.rect(
-                insert=(gr.start_time, y + gr.parents),
-                size=(last_time - gr.start_time, 1),
+                insert=(gr.start_time * CELL_WIDTH, (y + gr.parents) * CELL_HEIGHT),
+                size=(width * CELL_WIDTH, CELL_HEIGHT),
                 fill=color.get(index=i, goroutine=gr),
             ))
 
         dwg.viewbox(
             minx=0, miny=0,
-            width=last_time, height=sum(d + 1 for d in max_depth),
+            width=last_time * CELL_WIDTH, height=sum(d + 1 for d in max_depth) * CELL_HEIGHT,
         )
     else:
         raise ValueError('Unknown layout type: {}'.format(layout))
