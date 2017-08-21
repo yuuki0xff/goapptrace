@@ -363,8 +363,9 @@ def to_svg(max_depth: List[int], gr_history: List[List[GoRoutine]], color: Color
 
     if layout == 'funccalls':
         number_of_gr = len(gr_history[-1])
-        start_time = []  # type: List[int, int]
-        end_time = []  # type: List[int, int]
+        start_time = []  # type: List[int]
+        end_time = []  # type: List[int]
+        goroutines = []  # type: List[GoRoutine]
 
         for i in range(number_of_gr):
             for gr in gr_history:
