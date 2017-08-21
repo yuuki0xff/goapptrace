@@ -11,6 +11,7 @@ import svgwrite
 
 FILE_TYPES = ['svg']
 COLOR_RULES = ['goroutine', 'function', 'module']
+LAYOUTS = ['goroutines', 'funccalls']
 
 
 class UncorrespondingRecord(ValueError):
@@ -356,50 +357,88 @@ class ModuleColorRule(ColorRule):
         raise ValueError('goroutine must be not None')
 
 
-def to_svg(max_depth: List[int], gr_history: List[List[GoRoutine]], color: ColorRule, output: io.TextIOBase):
+def to_svg(max_depth: List[int], gr_history: List[List[GoRoutine]], color: ColorRule, layout: str,
+           output: io.TextIOBase):
     dwg = svgwrite.Drawing()
-    endless_goroutines = {}  # type: Dict[Tuple[int, int], GoRoutine]
-    rendered_goroutines = set()  # type: Set[GoRoutine]
-    last_time = -1
 
-    for goroutines in gr_history:
-        offset_y = 0
-        for i, gr in enumerate(goroutines):
-            y = offset_y
-            offset_y += max_depth[i] + 1
+    if layout == 'funccalls':
+        number_of_gr = len(gr_history[-1])
+        start_time = []  # type: List[int, int]
+        end_time = []  # type: List[int, int]
+
+        for i in range(number_of_gr):
+            for gr in gr_history:
+                if len(gr) <= i: continue
+                if gr[i] is None: continue
+                start_time.append(gr[i].start_time)
+                end_time.append(gr[i].end_time)
+                break
+            else:
+                raise Unreachable('bug')
+
+        last_time = max(filter(lambda x: x is not None, end_time))
+        for i, start, end in zip(range(number_of_gr), start_time, end_time):
+            if end is None:
+                width = last_time - start
+            else:
+                width = end - start
+
+            dwg.add(dwg.rect(
+                insert=(start, i),
+                size=(width, 1),
+                fill=color.get(index=i, goroutine=None)
+            ))
+
+        dwg.viewbox(
+            minx=0, miny=0,
+            width=last_time, height=number_of_gr,
+        )
+    elif layout == 'goroutines':
+        endless_goroutines = {}  # type: Dict[Tuple[int, int], GoRoutine]
+        rendered_goroutines = set()  # type: Set[GoRoutine]
+        last_time = -1
+
+        for goroutines in gr_history:
+            offset_y = 0
+            for i, gr in enumerate(goroutines):
+                y = offset_y
+                offset_y += max_depth[i] + 1
+                if gr is None: continue
+                if gr in rendered_goroutines: continue
+                if gr.end_time is None:
+                    if (i, gr.start_time) not in endless_goroutines:
+                        endless_goroutines[(i, gr.start_time)] = gr
+                    continue
+
+                last_time = max(last_time, gr.end_time)
+
+                dwg.add(dwg.rect(
+                    insert=(gr.start_time, y + gr.parents),
+                    size=(gr.end_time - gr.start_time, 1),
+                    fill=color.get(index=i, goroutine=gr),
+                ))
+                rendered_goroutines.add(gr)
+
+        # rendering of end-less functions
+        for key, gr in endless_goroutines.items():
+            i, _ = key
+            y = sum(d + 1 for d in max_depth[:i])
             if gr is None: continue
-            if gr in rendered_goroutines: continue
-            if gr.end_time is None:
-                if (i, gr.start_time) not in endless_goroutines:
-                    endless_goroutines[(i, gr.start_time)] = gr
-                continue
-
-            last_time = max(last_time, gr.end_time)
+            if gr.end_time is not None: continue
 
             dwg.add(dwg.rect(
                 insert=(gr.start_time, y + gr.parents),
-                size=(gr.end_time - gr.start_time, 1),
+                size=(last_time - gr.start_time, 1),
                 fill=color.get(index=i, goroutine=gr),
             ))
-            rendered_goroutines.add(gr)
 
-    # rendering of end-less functions
-    for key, gr in endless_goroutines.items():
-        i, _ = key
-        y = sum(d + 1 for d in max_depth[:i])
-        if gr is None: continue
-        if gr.end_time is not None: continue
+        dwg.viewbox(
+            minx=0, miny=0,
+            width=last_time, height=sum(d + 1 for d in max_depth),
+        )
+    else:
+        raise ValueError('Unknown layout type: {}'.format(layout))
 
-        dwg.add(dwg.rect(
-            insert=(gr.start_time, y + gr.parents),
-            size=(last_time - gr.start_time, 1),
-            fill=color.get(index=i, goroutine=gr),
-        ))
-
-    dwg.viewbox(
-        minx=0, miny=0,
-        width=last_time, height=sum(d + 1 for d in max_depth),
-    )
     dwg.write(output)
 
 
@@ -438,6 +477,10 @@ def parse_args():
                         default='goroutine',
                         metavar='TYPE',
                         help='change coloring rule (default: coloring per goroutine)')
+    parser.add_argument('-l', '--layout',
+                        choices=LAYOUTS,
+                        metavar='LAYOUT',
+                        help='change layout (default: goroutines)')
     return parser.parse_args()
 
 
@@ -457,7 +500,7 @@ def main():
         max_depth, gr_history = build_callstack(sort_by_start_time(find_start_end_pairs(parse_logs(args.input))))
 
         if args.type == 'svg':
-            to_svg(max_depth, gr_history, color, args.output)
+            to_svg(max_depth, gr_history, color, args.layout, args.output)
         else:
             raise ValueError('Unsupported type: {}'.format(args.type))
 
