@@ -1,9 +1,36 @@
 package httpserver
 
-import "github.com/gorilla/mux"
+import (
+	"compress/gzip"
+	"github.com/gorilla/mux"
+	"io"
+	"net/http"
+	"os"
+	"os/exec"
+)
 
 func getRouter() *mux.Router {
 	router := mux.NewRouter()
 	// TODO: Implements handlers
+
+	viewer := func(w io.Writer, args ...string) {
+		f, _ := os.Open("/home/yuuki/work/docker-log/docker.log.21119.log.gz")
+		g, _ := gzip.NewReader(f)
+		arg := append([]string{"./viewer.py"}, args...)
+		c := exec.Command("pypy3", arg...)
+		c.Stdin = g
+		c.Stdout = w
+		c.Stderr = os.Stderr
+		c.Start()
+		c.Wait()
+	}
+
+	router.HandleFunc("/goroutines.svg", func(w http.ResponseWriter, r *http.Request) {
+		viewer(w, "-l", "goroutines")
+	})
+
+	router.HandleFunc("/funccalls.svg", func(w http.ResponseWriter, r *http.Request) {
+		viewer(w, "-l", "funccalls")
+	})
 	return router
 }
