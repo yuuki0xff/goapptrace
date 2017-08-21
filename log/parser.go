@@ -223,6 +223,16 @@ func (trm *TimeRangeMap) Get(start Time, end Time) *GoroutineMap {
 	return grm
 }
 
+func (fl *FuncLog) Parents() int {
+	parents := 0
+	f := fl
+	for f.Parent != nil {
+		parents++
+		f = f.Parent
+	}
+	return parents
+}
+
 func compareCaller(fl *FuncLog, log *RawLog) bool {
 	f1 := fl.Frames[1:]
 	f2 := log.Frames[1:]
