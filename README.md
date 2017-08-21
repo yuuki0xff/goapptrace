@@ -1,4 +1,4 @@
-# goapptrace - function calls tracing utility for golang
+# goapptrace - function call tracer for golang
 
 ## Installation
 ```bash
