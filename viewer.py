@@ -3,6 +3,7 @@
 import argparse
 import io
 import json
+import os.path as path
 import sys
 from abc import abstractmethod
 from typing import NamedTuple, Dict, Tuple, List, Set, Iterable, Any, Union
@@ -392,6 +393,15 @@ def to_svg(max_depth: List[int], gr_history: List[List[GoRoutine]], color: Color
                 size=(width * CELL_WIDTH, 1 * CELL_HEIGHT),
                 fill=color.get(index=i, goroutine=None)
             ))
+            callee = gr.func.callee
+            dwg.add(dwg.text(
+                '{} ({}:{})'.format(
+                    callee.Function, path.basename(callee.File), callee.Line
+                ),
+                insert=(start * CELL_WIDTH, (i + 1) * CELL_HEIGHT),
+                font_size=CELL_HEIGHT,
+                fill='#000',
+            ))
 
         dwg.viewbox(
             minx=0, miny=0,
@@ -421,6 +431,15 @@ def to_svg(max_depth: List[int], gr_history: List[List[GoRoutine]], color: Color
                     size=(width * CELL_WIDTH, CELL_HEIGHT),
                     fill=color.get(index=i, goroutine=gr),
                 ))
+                callee = gr.func.callee
+                dwg.add(dwg.text(
+                    '{} ({}:{})'.format(
+                        callee.Function, path.basename(callee.File), callee.Line
+                    ),
+                    insert=(gr.start_time * CELL_WIDTH, (y + gr.parents + 1) * CELL_HEIGHT),
+                    font_size=CELL_HEIGHT,
+                    fill='#000',
+                ))
                 rendered_goroutines.add(gr)
 
         # rendering of end-less functions
@@ -435,6 +454,15 @@ def to_svg(max_depth: List[int], gr_history: List[List[GoRoutine]], color: Color
                 insert=(gr.start_time * CELL_WIDTH, (y + gr.parents) * CELL_HEIGHT),
                 size=(width * CELL_WIDTH, CELL_HEIGHT),
                 fill=color.get(index=i, goroutine=gr),
+            ))
+            callee = gr.func.callee
+            dwg.add(dwg.text(
+                '{} ({}:{})'.format(
+                    callee.Function, path.basename(callee.File), callee.Line
+                ),
+                insert=(gr.start_time * CELL_WIDTH, (y + gr.parents + 1) * CELL_HEIGHT),
+                font_size=CELL_HEIGHT,
+                fill='#000',
             ))
 
         dwg.viewbox(
