@@ -363,7 +363,7 @@ def to_svg(max_depth: List[int], gr_history: List[List[GoRoutine]], color: Color
            output: io.TextIOBase):
     dwg = svgwrite.Drawing()
 
-    if layout == 'funccalls':
+    if layout == 'goroutines':
         number_of_gr = len(gr_history[-1])
         start_time = []  # type: List[int]
         end_time = []  # type: List[int]
@@ -397,7 +397,7 @@ def to_svg(max_depth: List[int], gr_history: List[List[GoRoutine]], color: Color
             minx=0, miny=0,
             width=last_time * CELL_WIDTH, height=number_of_gr * CELL_HEIGHT,
         )
-    elif layout == 'goroutines':
+    elif layout == 'funccalls':
         endless_goroutines = {}  # type: Dict[Tuple[int, int], GoRoutine]
         rendered_goroutines = set()  # type: Set[GoRoutine]
         last_time = -1
