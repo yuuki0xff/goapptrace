@@ -391,7 +391,7 @@ def to_svg(max_depth: List[int], gr_history: List[List[GoRoutine]], color: Color
             dwg.add(dwg.rect(
                 insert=(start * CELL_WIDTH, i * CELL_HEIGHT),
                 size=(width * CELL_WIDTH, 1 * CELL_HEIGHT),
-                fill=color.get(index=i, goroutine=None)
+                fill=color.get(index=i, goroutine=gr)
             ))
             callee = gr.func.callee
             dwg.add(dwg.text(
