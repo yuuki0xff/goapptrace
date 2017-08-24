@@ -109,8 +109,8 @@ func (ce *CodeEditor) edit(fname string, src []byte) ([]byte, error) {
 }
 
 func isExported(funcname string) bool {
-	for _, rune := range funcname {
-		return unicode.IsUpper(rune)
+	for _, firstRune := range funcname {
+		return unicode.IsUpper(firstRune)
 	}
 	panic("Unreachable")
 }
