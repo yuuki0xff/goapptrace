@@ -84,6 +84,7 @@ func (ce *CodeEditor) edit(fname string, src []byte) ([]byte, error) {
 	}
 
 	// insert tracing code into functions
+	var wantImport bool
 	ast.Inspect(f, func(node_ ast.Node) bool {
 		switch node := node_.(type) {
 		case *ast.FuncDecl:
@@ -92,11 +93,13 @@ func (ce *CodeEditor) edit(fname string, src []byte) ([]byte, error) {
 				return false
 			}
 
+			wantImport = true
 			nl.Add(&InsertNode{
 				Pos: node.Body.Pos(),
 				Src: tmpl.render("funcStartStopStmt", nil),
 			})
 		case *ast.FuncLit:
+			wantImport = true
 			nl.Add(&InsertNode{
 				Pos: node.Body.Pos(),
 				Src: tmpl.render("funcStartStopStmt", nil),
@@ -104,6 +107,14 @@ func (ce *CodeEditor) edit(fname string, src []byte) ([]byte, error) {
 		}
 		return true
 	})
+
+	// insert a import statement after package statement
+	if wantImport {
+		nl.Add(&InsertNode{
+			Pos: f.Name.End(),
+			Src: tmpl.render("importStmt", nil),
+		})
+	}
 
 	return nl.Format()
 }
