@@ -28,7 +28,7 @@ var tmpl Template
 func init() {
 	tmpl.init()
 	tmpl.add("importStmt", `
-		import {{.ImportName}} {{.ImportPath}}
+		import {{.ImportName}} "{{.ImportPath}}"
 	`)
 	tmpl.add("funcStartStopStmt", `
 		{{.ImportName}}.FuncStart()
