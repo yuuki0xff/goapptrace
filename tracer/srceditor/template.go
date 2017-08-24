@@ -1,19 +1,21 @@
 package srceditor
 
 import (
-	"text/template"
 	"bytes"
+	"text/template"
 )
 
 const (
-	DefaultImportName = "__goapptrace_tracer"
-	DefaultImportPath = "github.com/yuuki0xff/goapptrace/tracer/client"
+	DefaultImportName     = "__goapptrace_tracer"
+	DefaultImportPath     = "github.com/yuuki0xff/goapptrace/tracer/client"
+	DefaultVariablePrefix = "__goapptrace_tracer_var_"
 )
 
 type TemplateData struct {
-	ImportName string
-	ImportPath string
-	D          interface{} // extra data
+	ImportName     string
+	ImportPath     string
+	VariablePrefix string
+	D              interface{} // extra data
 }
 
 type Template struct {
@@ -33,15 +35,17 @@ func init() {
 	`)
 }
 
-func (t *Template) init(importName, importPath string) {
-	t.data.ImportName = importName
-	if importName == "" {
+func (t *Template) init() {
+	if t.data.ImportName == "" {
 		t.data.ImportName = DefaultImportName
 	}
 
-	t.data.ImportPath = importPath
-	if importPath == "" {
+	if t.data.ImportPath == "" {
 		t.data.ImportPath = DefaultImportPath
+	}
+
+	if t.data.VariablePrefix == "" {
+		t.data.VariablePrefix = DefaultVariablePrefix
 	}
 
 	if t.t == nil {
