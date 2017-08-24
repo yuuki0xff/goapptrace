@@ -26,6 +26,7 @@ type Template struct {
 var tmpl Template
 
 func init() {
+	tmpl.init()
 	tmpl.add("importStmt", `
 		import {{.ImportName}} {{.ImportPath}}
 	`)
