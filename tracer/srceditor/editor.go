@@ -1,13 +1,13 @@
 package srceditor
 
 import (
-	"io/ioutil"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"io"
+	"io/ioutil"
 	"os"
 	"path"
-	"go/token"
-	"go/parser"
-	"go/ast"
 	"unicode"
 )
 
