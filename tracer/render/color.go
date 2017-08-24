@@ -3,7 +3,7 @@ package render
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/yuuki0xff/goapptrace/log"
+	"github.com/yuuki0xff/goapptrace/tracer/log"
 	"hash"
 	"hash/fnv"
 	"math"

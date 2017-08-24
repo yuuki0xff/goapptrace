@@ -3,8 +3,8 @@ package httpserver
 import (
 	"compress/gzip"
 	"github.com/gorilla/mux"
-	"github.com/yuuki0xff/goapptrace/log"
-	"github.com/yuuki0xff/goapptrace/render"
+	"github.com/yuuki0xff/goapptrace/tracer/log"
+	"github.com/yuuki0xff/goapptrace/tracer/render"
 	"io"
 	"net/http"
 	"os"

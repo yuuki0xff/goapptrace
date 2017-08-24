@@ -3,7 +3,7 @@ package render
 import (
 	"fmt"
 	"github.com/ajstarks/svgo"
-	"github.com/yuuki0xff/goapptrace/log"
+	"github.com/yuuki0xff/goapptrace/tracer/log"
 	"io"
 	"sort"
 )
