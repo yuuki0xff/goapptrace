@@ -2,6 +2,7 @@ package srceditor
 
 import (
 	"bytes"
+	"fmt"
 	"go/format"
 	"go/token"
 	"sort"
@@ -73,7 +74,7 @@ func (nl *NodeList) Format() ([]byte, error) {
 		case *DeleteNode:
 			pos = node.End
 		default:
-			panic("Unreachable")
+			panic(fmt.Sprintf("Unreachable: %+v", node))
 		}
 	}
 	buf.Write(nl.OrigSrc[pos:])
