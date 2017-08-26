@@ -1,9 +1,10 @@
 package srceditor
 
 import (
-	"github.com/pmezard/go-difflib/difflib"
 	"strings"
 	"testing"
+
+	"github.com/pmezard/go-difflib/difflib"
 )
 
 type editTestCase struct {

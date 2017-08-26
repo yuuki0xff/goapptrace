@@ -2,13 +2,14 @@ package httpserver
 
 import (
 	"compress/gzip"
-	"github.com/gorilla/mux"
-	"github.com/yuuki0xff/goapptrace/tracer/log"
-	"github.com/yuuki0xff/goapptrace/tracer/render"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
+
+	"github.com/gorilla/mux"
+	"github.com/yuuki0xff/goapptrace/tracer/log"
+	"github.com/yuuki0xff/goapptrace/tracer/render"
 )
 
 func getRouter() *mux.Router {

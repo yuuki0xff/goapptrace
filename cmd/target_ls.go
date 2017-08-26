@@ -21,9 +21,10 @@
 package cmd
 
 import (
+	"io"
+
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
-	"io"
 )
 
 // targetLsCmd represents the ls command

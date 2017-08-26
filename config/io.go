@@ -2,10 +2,11 @@ package config
 
 import (
 	"encoding/json"
-	"github.com/yuuki0xff/goapptrace/info"
 	"io/ioutil"
 	"os"
 	"path"
+
+	"github.com/yuuki0xff/goapptrace/info"
 )
 
 // Directory Layout

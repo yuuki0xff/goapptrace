@@ -21,10 +21,11 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
-	"github.com/yuuki0xff/goapptrace/config"
 	"io"
 	"strconv"
+
+	"github.com/spf13/cobra"
+	"github.com/yuuki0xff/goapptrace/config"
 )
 
 // traceStatusCmd represents the status command

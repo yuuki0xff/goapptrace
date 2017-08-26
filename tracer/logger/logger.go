@@ -3,11 +3,12 @@ package logger
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/yuuki0xff/goapptrace/info"
 	"os"
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/yuuki0xff/goapptrace/info"
 )
 
 const (

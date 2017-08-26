@@ -23,11 +23,12 @@ package cmd
 import (
 	"fmt"
 
+	"io"
+
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/yuuki0xff/goapptrace/config"
-	"io"
 )
 
 var cfgDir string
