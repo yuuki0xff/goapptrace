@@ -28,7 +28,7 @@ func (ce *CodeEditor) EditAll() error {
 }
 
 func (ce *CodeEditor) Edit(fname string) error {
-	if err := AtomicReadWrite(fname, func(r io.Reader, w io.Writer) error {
+	edit := func(r io.Reader, w io.Writer) error {
 		src, err := ioutil.ReadAll(r)
 		if err != nil {
 			return err
@@ -41,10 +41,18 @@ func (ce *CodeEditor) Edit(fname string) error {
 
 		_, err = w.Write(newSrc)
 		return err
-	}); err != nil {
-		return err
 	}
-	return nil
+
+	if ce.Overwrite {
+		return AtomicReadWrite(fname, edit)
+	} else {
+		file, err := os.Open(fname)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		return edit(file, os.Stdout)
+	}
 }
 
 func AtomicReadWrite(fname string, fn func(r io.Reader, w io.Writer) error) error {
