@@ -1,4 +1,4 @@
-.PHONEY: build-deps build release
+.PHONEY: build-deps build test release
 
 all: build
 
@@ -10,7 +10,10 @@ build:
 	$(MAKE) -C static build
 	go build
 
-release: build
+test:
+	go test ./...
+
+release: test build
 	git checkout master
 	git merge --no-ff --no-edit develop
 	git add --force static/*.js static/*.css
