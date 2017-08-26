@@ -17,7 +17,7 @@ format:
 check-formatted:
 	@cmp <(gofmt -l -e .) /dev/null &>/dev/null || ( \
 		echo 'ERROR: Source codes are NOT formatted.' && \
-		echo '       Please execute command: "go fmt"' && \
+		echo '       Please execute command: "make format"' && \
 		exit 1; \
 	)
 
