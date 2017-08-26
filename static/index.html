@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.5.1/css/bulma.min.css"
+      integrity="sha384-gw6S7D4HKc9UAg1JuZIyapWUOiIfG1BVB+9lY4ppXPyKr2VOB5vVyL80ZcGVXM26"
+      crossorigin="anonymous"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+      integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN"
+      crossorigin="anonymous"/>
+<link rel="stylesheet" href="index.css"/>
+
+
+<title>goapptrace</title>
+<div class="columns no-margin" ng-app="viewerApp" ng-controller="viewerCtl">
+    <aside class="menu column is-narrow is-fullheight is-hidden-mobile">
+        <nav class="navbar">
+            <a class="navbar-item" href="https://github.com/yuuki0xff/goapptrace">goapptrace</a>
+            <a class="navbar-item" href="https://github.com/yuuki0xff/goapptrace" target="_blank">
+                <span class="icon"><i class="fa fa-github"></i></span>
+            </a>
+        </nav>
+
+        <p class="menu-label">Control</p>
+        <ul class="menu-list">
+            <li><a class="button is-success"
+                   ng-class="{'is-outlined': !isEditable}"
+                   ng-click="isEditable = !isEditable">
+                <span class="icon"><i class="fa fa-pencil-square-o"></i></span>
+                <span>Edit</span>
+            </a></li>
+        </ul>
+
+        <p class="menu-label">Index</p>
+        <ul class="menu-list x-menu-list">
+            <li ng-repeat="(gwindex, gw) in graphs">
+                <a href="#graph-{{gwindex}}">{{ gw.title }}</a>
+            </li>
+        </ul>
+    </aside>
+    <!-- create space for the aside.menu -->
+    <div class="column is-narrow menu-dummy is-hidden-mobile"></div>
+
+    <div class="column" ng-class="{'x-editing': isEditable}">
+        <div id="graph-{{ gwindex }}" class="message"
+             ng-repeat-start="(gwindex, gw) in graphs"
+             ng-class="{'collapsed-message': gw.status == WindowStatus.Minimize}">
+            <div class="message-header">
+                <p>{{ gw.title }}</p>
+                <span class="edit-buttons">
+                    <a class="button" title="Change X-axis">
+                        <span class="icon"><i class="fa fa-arrows-h"></i></span>
+                    </a>
+                    <a class="button" title="Change Y-axis">
+                        <span class="icon"><i class="fa fa-arrows-v"></i></span>
+                    </a>
+                    <a class="button" title="Change graph type">
+                        <span class="icon"><i class="fa fa-line-chart"></i></span>
+                    </a>
+                </span>
+                <span>
+                    <a class="button" title="Move this window"
+                       ng-disabled="!isEditable"> <!-- TODO: ng-click -->
+                        <span class="icon"><i class="fa fa-arrows"></i></span>
+                    </a>
+                    <a class="button" title="Minimize this window"
+                       ng-click="gw.status = WindowStatus.Minimize"
+                       ng-disabled="gw.status == WindowStatus.Minimize">
+                        <span class="icon"><i class="fa fa-window-minimize"></i></span>
+                    </a>
+                    <a class="button" title="Maximize this window"
+                       ng-click="gw.status = WindowStatus.Default">
+                        <span class="icon"><i class="fa fa-window-maximize"></i></span>
+                    </a>
+                    <a class="button is-danger is-outlined" title="Close this window"
+                       ng-disabled="!isEditable"> <!-- TODO: ng-click -->
+                        <span class="icon"><i class="fa fa-remove"></i></span>
+                    </a>
+                </span>
+            </div>
+
+            <div class="message-body">
+                <p>{{ g.description }}</p>
+                <div class="graph" ng-class="{'expanded-graph': gw.graph.size == GraphSize.Expanded}">
+                    <span>Graph</span>
+                    <a class="button" title="Expand the graph"
+                       ng-if="gw.graph.size == GraphSize.Collapsed"
+                       ng-click="gw.graph.size = GraphSize.Expanded">
+                        <span class="icon"><i class="fa fa-angle-down"></i></span>
+                    </a>
+                    <a class="button" title="Collapse the graph"
+                       ng-if="gw.graph.size == GraphSize.Expanded"
+                       ng-click="gw.graph.size = GraphSize.Collapsed">
+                        <span class="icon"><i class="fa fa-angle-up"></i></span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <a class="x-add-gap-button" title="add new window" ng-repeat-end>
+            <span class="icon"><i class="fa fa-plus"></i></span>
+            <span>Add</span>
+        </a>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"
+        integrity="sha384-xBuQ/xzmlsLoJpyjoggmTEz8OWUFM0/RC5BsqQBDX2v5cMvDHcMakNTNrHIW2I5f"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.5/angular.min.js"
+        integrity="sha384-hOYZLmROZQbcYRe8tUP/9bcPGwwDxXf81Rnld8ETuGcGM45lysORQcHwyEFlYlaO"
+        crossorigin="anonymous"></script>
+<script src="index.js"></script>
+</html>

@@ -1,0 +1,6 @@
+{
+  "devDependencies": {
+    "@types/angular": "1.x",
+    "typescript": "2.x"
+  }
+}

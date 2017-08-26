@@ -1,0 +1,138 @@
+/*******************************
+ * Layout and Design
+ */
+.is-fullheight
+  height: 100vh
+
+div.no-margin
+  margin: 0
+
+aside.menu
+  position: fixed
+  top: 0
+  left: 0
+  width: 15rem
+  overflow-x: hidden
+  overflow-y: auto
+
+.menu-dummy
+  /* create right side space for the aside.menu */
+  width: 15rem
+
+nav.navbar
+  flex-wrap: wrap
+  margin-bottom: 1.5rem
+
+  /* cancel padding of parent element. */
+  margin-top: -.75rem
+  margin-left: -.75rem
+  margin-right: -.75rem
+
+.edit-buttons > .button
+  display: none
+
+.x-editing .edit-buttons > .button
+  display: inline-flex
+
+.x-add-gap-button
+  /* cancel padding of previous element. */
+  margin-top: -1.5rem
+  padding: 0 1rem
+
+  /* when hovering this element in edit mode, you can see these elements.
+   * when others mode (such as read-only mode), these elements are always hidden for performance. */
+  display: none
+
+.x-editing .x-add-gap-button
+  display: block
+  & *
+    visibility: hidden
+  &:hover *
+    visibility: visible
+
+.graph
+  height: 10rem
+  position: relative
+
+  &.expanded-graph
+    height: 30rem
+
+  & > span
+    /* for dummy text */
+    font-size: x-large
+    text-align: center
+
+    display: block
+    position: absolute
+    width: 100%
+    height: 1em
+    top: 0
+    bottom: 0
+    margin: auto
+
+  & .button
+    /* cancel .button style */
+    background: none
+    border: none
+
+    /* put on center */
+    width: 2em
+    display: block
+    margin: 0 auto
+    position: absolute
+    bottom: 0
+    right: 0
+    left: 0
+
+    /* to circularly */
+    border-radius: 50%
+
+.message.collapsed-message .message-body
+  display: none
+
+/*******************************
+ * Color and Animation
+ */
+@mixin ANIME
+  transition-duration: 0.1s
+  transition-property: all
+
+aside.menu
+  background-color: #222
+  & .menu-label
+    color: floralwhite
+
+  & .menu-list > li > a
+    @include ANIME
+
+  & .x-menu-list > li > a
+    @include ANIME
+    color: aliceblue
+
+    &:hover
+      background-color: silver
+      color: midnightblue
+
+.button
+  @include ANIME
+
+.x-add-gap-button
+  @include ANIME
+  color: red
+
+  &:hover
+    color: red
+    background-color: #fdd
+
+.graph
+  @include ANIME
+  border-width: 0.1em
+  border-color: dimgray
+  border-style: solid
+
+  & .button:hover
+    background-color: dimgray
+    color: aliceblue
+
+p + .graph
+  margin-top: 1em
