@@ -12,7 +12,7 @@ build:
 	go build
 
 format:
-	go fmt
+	go fmt ./...
 
 check-formatted:
 	@cmp <(gofmt -l -e .) /dev/null &>/dev/null || ( \
