@@ -1,7 +1,13 @@
 ############################################################
+# Config dir
+.goapptrace/
+
+
+############################################################
 # Go
 
 # Binaries for programs and plugins
+goapptrace
 *.exe
 *.dll
 *.so
