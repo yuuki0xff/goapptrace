@@ -5,16 +5,24 @@ all: build
 
 build-deps:
 	$(MAKE) -C static build-deps
-	go get
+	go get -u golang.org/x/tools/cmd/goimports
+	go get -u github.com/golang/lint/golint
+	go get -u
 
 build:
 	$(MAKE) -C static build
 	go build
 
 format:
+	goimports -w .
 	go fmt ./...
 
 check-formatted:
+	@cmp <(goimports -e -d .) /dev/null &>/dev/null || ( \
+		echo 'ERROR: Go import lines are NOT sorted.' && \
+		echo '       Please execute command: "make format"' && \
+		exit 1; \
+	)
 	@cmp <(gofmt -l -e .) /dev/null &>/dev/null || ( \
 		echo 'ERROR: Source codes are NOT formatted.' && \
 		echo '       Please execute command: "make format"' && \
@@ -22,6 +30,8 @@ check-formatted:
 	)
 
 test: check-formatted
+	# TODO: Enable golint
+	# golint -set_exit_status ./...
 	go test ./...
 
 release: test build
