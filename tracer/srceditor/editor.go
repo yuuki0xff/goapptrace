@@ -54,8 +54,13 @@ func AtomicReadWrite(fname string, fn func(r io.Reader, w io.Writer) error) erro
 	}
 	defer r.Close()
 
+	finfo, err := os.Stat(fname)
+	if err != nil {
+		return err
+	}
+
 	tmpfname := path.Join(path.Dir(fname), "."+path.Base(fname)+".tmp")
-	w, err := os.OpenFile(tmpfname, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0)
+	w, err := os.OpenFile(tmpfname, os.O_CREATE|os.O_WRONLY|os.O_EXCL, finfo.Mode())
 	if err != nil {
 		return err
 	}
