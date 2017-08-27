@@ -19,6 +19,14 @@ const (
 	ColoringPerModule
 )
 
+var (
+	ColorRuleNames = map[string]ColorRule{
+		"goroutine": ColoringPerGoroutine,
+		"function":  ColoringPerFunction,
+		"module":    ColoringPerModule,
+	}
+)
+
 type Colors struct {
 	ColorRule ColorRule
 	NColors   int

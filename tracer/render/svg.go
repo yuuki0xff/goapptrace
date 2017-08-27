@@ -16,6 +16,13 @@ const (
 	FunctionCall
 )
 
+var (
+	LayoutTypeNames = map[string]LayoutType{
+		"goroutine":     Goroutine,
+		"function-call": FunctionCall,
+	}
+)
+
 type SVGRender struct {
 	Log       *log.Log
 	StartTime log.Time
