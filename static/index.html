@@ -42,7 +42,7 @@
     <!-- create space for the aside.menu -->
     <div class="column is-narrow menu-dummy is-hidden-mobile"></div>
 
-    <div class="column" ng-class="{'x-editing': isEditable}">
+    <div class="column main" ng-class="{'x-editing': isEditable}">
         <div id="graph-{{ gwindex }}" class="message"
              ng-repeat-start="(gwindex, gw) in graphs"
              ng-class="{'collapsed-message': gw.status == WindowStatus.Minimize}">
@@ -83,7 +83,8 @@
             <div class="message-body">
                 <p>{{ g.description }}</p>
                 <div class="graph" ng-class="{'expanded-graph': gw.graph.size == GraphSize.Expanded}">
-                    <span>Graph</span>
+                    <svg-graph></svg-graph>
+
                     <a class="button" title="Expand the graph"
                        ng-if="gw.graph.size == GraphSize.Collapsed"
                        ng-click="gw.graph.size = GraphSize.Expanded">
