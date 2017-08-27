@@ -56,6 +56,7 @@ func getRouter() *mux.Router {
 				NColors:   int(colors),
 			},
 		}
+		w.Header().Add("Content-Type", "image/svg+xml")
 		rnd.Render(w)
 	}).Queries(
 		"width", "{width:[0-9]+}",
