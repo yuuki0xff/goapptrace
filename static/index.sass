@@ -52,12 +52,21 @@ nav.navbar
   &:hover *
     visibility: visible
 
+.root
+  display: flex
+
+  & > *
+    padding: 0.75rem
+
 .main
   width: calc(100vw - #{$menu-width})
   box-sizing: border-box
 
 .graph
   position: relative
+
+  & svg
+    width: 100%
 
   & > svg-graph > svg
     height: 10rem

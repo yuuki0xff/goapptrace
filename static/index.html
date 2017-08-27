@@ -13,8 +13,8 @@
 
 
 <title>goapptrace</title>
-<div class="columns no-margin" ng-app="viewerApp" ng-controller="viewerCtl">
-    <aside class="menu column is-narrow is-fullheight is-hidden-mobile">
+<div class="root no-margin" ng-app="viewerApp" ng-controller="viewerCtl">
+    <aside class="menu is-fullheight">
         <nav class="navbar">
             <a class="navbar-item" href="https://github.com/yuuki0xff/goapptrace">goapptrace</a>
             <a class="navbar-item" href="https://github.com/yuuki0xff/goapptrace" target="_blank">
@@ -40,9 +40,9 @@
         </ul>
     </aside>
     <!-- create space for the aside.menu -->
-    <div class="column is-narrow menu-dummy is-hidden-mobile"></div>
+    <div class="menu-dummy"></div>
 
-    <div class="column main" ng-class="{'x-editing': isEditable}">
+    <div class="main" ng-class="{'x-editing': isEditable}">
         <div id="graph-{{ gwindex }}" class="message"
              ng-repeat-start="(gwindex, gw) in graphs"
              ng-class="{'collapsed-message': gw.status == WindowStatus.Minimize}">
