@@ -23,6 +23,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/skratchdot/open-golang/open"
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/httpserver"
@@ -33,16 +34,25 @@ var logShowCmd = &cobra.Command{
 	Use:   "show",
 	Short: "Show logs on web browser",
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
-		return runLogShow(conf, args)
+		notOpenBrowser, err := cmd.Flags().GetBool("no-browser")
+		if err != nil {
+			return err
+		}
+		listen, err := cmd.Flags().GetString("listen")
+		return runLogShow(conf, args, notOpenBrowser, listen)
 	}),
 }
 
-func runLogShow(conf *config.Config, targets []string) error {
-	srv := httpserver.NewHttpServer("")
+func runLogShow(conf *config.Config, targets []string, notOpenBrowser bool, listen string) error {
+	srv := httpserver.NewHttpServer(listen)
 	if err := srv.Start(); err != nil {
 		return err
 	}
 	fmt.Printf("Started HTTP server on %s\n", srv.Addr())
+
+	if !notOpenBrowser {
+		open.Run(fmt.Sprintf("http://%s", srv.Addr()))
+	}
 
 	if err := srv.Wait(); err != nil {
 		return err
@@ -62,4 +72,6 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// logShowCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	logShowCmd.Flags().BoolP("no-browser", "b", false, "does not open web browser")
+	logShowCmd.Flags().StringP("listen", "l", "", "Set listen addr and port (ex: \"127.0.0.1:8080\")")
 }
