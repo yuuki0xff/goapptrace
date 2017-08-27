@@ -42,21 +42,47 @@ func (r *SVGRender) Render(w io.Writer) {
 	switch r.Layout {
 	case Goroutine:
 		gids := gids(grm)
-		// render to goroutines
+		maxEndTime := log.Time(0)
 		grm.Walk(func(gr *log.Goroutine) error {
-			var y int
-			for i, gid := range gids {
-				if log.GID(gid) == gr.GID {
-					y = i * 2
-					break
-				}
+			if maxEndTime < gr.EndTime {
+				maxEndTime = gr.EndTime
 			}
 
-			width := gr.EndTime - gr.StartTime
-			canv.Rect(
-				int(gr.StartTime), y, int(width), 1,
-				fmt.Sprintf(`fill="%s"`, r.Colors.GetByGoroutine(gr)),
-			)
+			if gr.EndTime != log.NotEnded {
+				var y int
+				for i, gid := range gids {
+					if log.GID(gid) == gr.GID {
+						y = i * 2
+						break
+					}
+				}
+
+				width := gr.EndTime - gr.StartTime
+				canv.Rect(
+					int(gr.StartTime), y, int(width), 1,
+					fmt.Sprintf(`fill="%s"`, r.Colors.GetByGoroutine(gr)),
+				)
+			}
+			return nil
+		})
+
+		maxEndTime++
+		grm.Walk(func(gr *log.Goroutine) error {
+			if gr.EndTime == log.NotEnded {
+				var y int
+				for i, gid := range gids {
+					if log.GID(gid) == gr.GID {
+						y = i * 2
+						break
+					}
+				}
+
+				width := maxEndTime - gr.StartTime
+				canv.Rect(
+					int(gr.StartTime), y, int(width), 1,
+					fmt.Sprintf(`fill="%s"`, r.Colors.GetByGoroutine(gr)),
+				)
+			}
 			return nil
 		})
 
