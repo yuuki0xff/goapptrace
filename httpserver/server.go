@@ -2,7 +2,6 @@ package httpserver
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -60,7 +59,6 @@ func (srv *HttpServer) Start() error {
 		}
 		srv.server.Addr = listener.Addr().String()
 	} else {
-		fmt.Printf("Addr: %s\n", srv.server.Addr)
 		listener, err = net.Listen("tcp", srv.server.Addr)
 		if err != nil {
 			return err
