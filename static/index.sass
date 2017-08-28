@@ -145,10 +145,12 @@ aside.menu
     background-color: #fdd
 
 .graph
-  @include ANIME
   border-width: 0.1em
   border-color: dimgray
   border-style: solid
+
+  & > svg-graph > svg
+    @include ANIME
 
   & .button:hover
     background-color: dimgray
