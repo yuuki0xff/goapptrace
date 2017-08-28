@@ -113,15 +113,14 @@ app.directive("svgGraph", ($compile, $sce, $document) => {
                 return false;
             }
 
+            // マウスの中ボタンを回転したときのエベントハンドラ。
+            // マウスポインタの位置を基準にして、拡大縮小を行う
             function mousewheel(event) {
                 if (event.target != svgElm[0] && !isDescendant(svgElm[0], event.target)) {
                     return true;
                 }
 
-                let oldw, oldh;
-                let w, h;
-                oldw = element[0].offsetWidth * scale;
-                oldh = element[0].offsetHeight * scale;
+                let oldScale = scale;
 
                 if (event.originalEvent.wheelDelta > 0 || event.originalEvent.detail < 0) {
                     // scroll up
@@ -131,12 +130,27 @@ app.directive("svgGraph", ($compile, $sce, $document) => {
                     scale *= 1 / 0.8;
                 }
 
-                w = element[0].offsetWidth * scale;
-                h = element[0].offsetHeight * scale;
-                x -= (-oldw + w) / 2;
-                y -= (-oldh + h) / 2;
+                let crect = element[0].getBoundingClientRect();
+                let w, h;
+                w = crect.width;
+                h = crect.height;
+
+                // viewPort上のマウスの座標
+                // 0.0 <= (mouseX, mouseY) <= 1.0
+                let mouseX, mouseY;
+                mouseX = (event.pageX - crect.left) / w;
+                mouseY = (event.pageY - crect.top) / h;
+
+                // viewBox上の基準座標
+                // この位置を起点として拡大縮小を行う。この座標のviewPort上の位置は移動してはいけない。
+                let baseX, baseY;
+                baseX = x + mouseX * w * oldScale;
+                baseY = y + mouseY * h * oldScale;
+
+                x = baseX - mouseX * w * scale;
+                y = baseY - mouseY * h * scale;
                 resize();
-                return false
+                return false;
             }
 
             function mouseup() {
