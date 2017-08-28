@@ -102,9 +102,19 @@ app.directive("svgGraph", ($compile, $sce, $document) => {
                 resize();
             }
 
+            function isDescendant(parent, child) {
+                let node = child.parentNode;
+                while (node) {
+                    if (node == parent) {
+                        return true;
+                    }
+                    node = node.parentNode;
+                }
+                return false;
+            }
+
             function mousewheel(event) {
-                if (event.target != svgElm[0]) {
-                    event.preventDefault();
+                if (event.target != svgElm[0] && !isDescendant(svgElm[0], event.target)) {
                     return true;
                 }
 
