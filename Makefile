@@ -1,4 +1,4 @@
-.PHONEY: build-deps build format check-formatted test release
+.PHONEY: all build-deps build format check-formatted test release
 SHELL=/bin/bash
 
 all: build
