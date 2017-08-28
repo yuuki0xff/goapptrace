@@ -131,6 +131,11 @@ app.directive("svgGraph", ($compile, $sce, $document) => {
                 }
 
                 let crect = element[0].getBoundingClientRect();
+                let bodycret = document.body.getBoundingClientRect();
+                let elmPageX, elmPageY;
+                elmPageX = crect.left - bodycret.left;
+                elmPageY = crect.top - bodycret.top;
+
                 let w, h;
                 w = crect.width;
                 h = crect.height;
@@ -138,8 +143,8 @@ app.directive("svgGraph", ($compile, $sce, $document) => {
                 // viewPort上のマウスの座標
                 // 0.0 <= (mouseX, mouseY) <= 1.0
                 let mouseX, mouseY;
-                mouseX = (event.pageX - crect.left) / w;
-                mouseY = (event.pageY - crect.top) / h;
+                mouseX = (event.pageX - elmPageX) / w;
+                mouseY = (event.pageY - elmPageY) / h;
 
                 // viewBox上の基準座標
                 // この位置を起点として拡大縮小を行う。この座標のviewPort上の位置は移動してはいけない。
