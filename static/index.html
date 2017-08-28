@@ -47,7 +47,12 @@
              ng-repeat-start="(gwindex, gw) in graphs"
              ng-class="{'collapsed-message': gw.status == WindowStatus.Minimize}">
             <div class="message-header">
-                <p>{{ gw.title }}</p>
+                <p class="message-title single-line"
+                   ng-change="change()"
+                   ng-model="gw.title"
+                   contenteditable="true"
+                   only-text="true"
+                   convert-new-lines="true"></p>
                 <span class="edit-buttons">
                     <a class="button" title="Change X-axis">
                         <span class="icon"><i class="fa fa-arrows-h"></i></span>
@@ -81,7 +86,10 @@
             </div>
 
             <div class="message-body">
-                <p>{{ g.description }}</p>
+                <p contenteditable="true"
+                   ng-model="gw.description"
+                   only-text="true"
+                   convert-new-lines="true"></p>
                 <div class="graph" ng-class="{'expanded-graph': gw.graph.size == GraphSize.Expanded}">
                     <svg-graph></svg-graph>
 
@@ -112,5 +120,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.5/angular.min.js"
         integrity="sha384-hOYZLmROZQbcYRe8tUP/9bcPGwwDxXf81Rnld8ETuGcGM45lysORQcHwyEFlYlaO"
         crossorigin="anonymous"></script>
+<script src="node_modules/ng-content-editable/dist/ng-content-editable.min.js"></script>
 <script src="index.js"></script>
 </html>

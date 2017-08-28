@@ -41,7 +41,7 @@ class GraphWindow {
     }
 }
 
-let app = angular.module("viewerApp", []);
+let app = angular.module("viewerApp", ["content-editable"]);
 app.controller("viewerCtl", ($scope) => {
     let numberOfDummyGraphs = 30;
     $scope.GraphSize = GraphSize;

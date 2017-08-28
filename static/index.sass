@@ -91,8 +91,20 @@ nav.navbar
     /* to circularly */
     border-radius: 50%
 
+.message > .message-header > .message-title
+  padding-right: 2rem
+
 .message.collapsed-message .message-body
   display: none
+
+[contenteditable="true"].single-line
+  white-space: nowrap
+  & br
+    display: none
+  & *
+    display: inline
+    white-space: nowrap
+
 
 /*******************************
  * Color and Animation
