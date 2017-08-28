@@ -14,4 +14,4 @@ index.css: index.sass
 	./.gem/bin/sass --update index.sass
 
 index.js: index.ts
-	./node_modules/.bin/tsc --sourceMap index.ts
+	./node_modules/.bin/tsc --sourceMap --target ES2015 index.ts

@@ -1,4 +1,9 @@
 /// <reference types="angular" />
+/// <reference types="jquery" />
+/// <reference path="./node_modules/svg.js/svg.js.d.ts" />
+
+// monkey patch for fixes bug that "svg.js" and "svg.js.d.ts".
+var SVG: svgjs.Library;
 
 enum WindowStatus {
     Default = 0,
@@ -57,13 +62,66 @@ app.controller("viewerCtl", ($scope) => {
 app.directive("svgGraph", ($compile, $sce, $document) => {
     // Query-string付きのURLで発生するエラーを止める
     $sce.RESOURCE_URL = ['self'];
+    let svgWidth = 100000;
+    let svgHeight = 100000;
+
+    if (!SVG.supported) {
+        alert(`**** ERROR ****
+
+This browser is not supported SVG.
+Please open on other browser.`);
+    }
+
+    function guid() {
+        function s4() {
+            return Math.floor((1 + Math.random()) * 0x10000)
+                .toString(16)
+                .substring(1);
+        }
+
+        return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
+            s4() + '-' + s4() + s4() + s4();
+    }
 
     return {
         restrict: 'E',
-        // TODO: templateURLを変更
-        templateUrl: "/api/log.svg?width=24000&height=800&layout=goroutine&color-rule=module&colors=6&start=1&scale=1.0",
         link: (scope, element, attrs) => {
-            let svgElm: any = element.find("svg");
+            let rootElm = $(element[0]);
+            let rootId = guid();
+            rootElm.attr('id', rootId);
+
+            let svg = SVG(rootId);
+            let svgElm = $(svg.native());
+
+            function loadSvg(layout, colorRule, colors, start) {
+                $.ajax({
+                    'url': '/api/log.svg',
+                    'dataType': 'xml',
+                    'data': {
+                        'width': svgWidth,
+                        'height': svgHeight,
+                        'layout': layout,
+                        'color-rule': colorRule,
+                        'colors': colors,
+                        'start': start,
+                        'scale': 1.0, // it's dummy parameter.
+                    },
+                }).done((data) => {
+                    let newsvg = data.children[0];
+                    let gElm = $(svg.element('g').native());
+                    $(newsvg.children).appendTo(gElm);
+                }).fail(() => {
+                    alert('Failed to load svg file.');
+                })
+
+            }
+
+            // TODO: 適切なタイミングで、追加のsvgを読み込む
+            loadSvg(
+                'goroutine',
+                'module',
+                6,
+                1);
 
             // position of mouse pointer last dragging event occurred
             let startX = 0, startY = 0;
