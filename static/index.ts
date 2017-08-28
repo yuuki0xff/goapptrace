@@ -103,11 +103,6 @@ app.directive("svgGraph", ($compile, $sce, $document) => {
             }
 
             function mousewheel(event) {
-                if (event.target != svgElm[0]) {
-                    event.preventDefault();
-                    return true;
-                }
-
                 let oldw, oldh;
                 let w, h;
                 oldw = element[0].offsetWidth * scale;
