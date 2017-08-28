@@ -74,6 +74,7 @@ app.directive("svgGraph", ($compile, $sce, $document) => {
             // temporary position of viewBox
             let x, y;
 
+            $document.bind('mousewheel DOMMouseScroll', mousewheel);
             element.on('mousedown', function (event) {
                 // Prevent default dragging of selected content
                 event.preventDefault();
@@ -87,7 +88,6 @@ app.directive("svgGraph", ($compile, $sce, $document) => {
                 // raw moving distance
                 let dx = event.pageX - startX;
                 let dy = event.pageY - startY;
-                console.log(dx,dy);
 
                 // set viewBox
                 let w, h;
@@ -95,8 +95,35 @@ app.directive("svgGraph", ($compile, $sce, $document) => {
                 y = vy - dy * scale;
                 w = element[0].offsetWidth * scale;
                 h = element[0].offsetHeight * scale;
-                console.log(svgElm);
                 svgElm.attr('viewBox', [x, y, w, h].join(' '));
+            }
+
+            function mousewheel(event) {
+                if (event.target != svgElm[0])
+                    return true;
+
+                let w, h;
+                if (event.originalEvent.wheelDelta > 0 || event.originalEvent.detail < 0) {
+                    // scroll up
+                    // console.log('scroll up', event, event.originalEvent.wheelDelta, event.originalEvent.detail);
+                    scale *= 0.8;
+                    w = element[0].offsetWidth * scale;
+                    h = element[0].offsetHeight * scale;
+                    x = vx - w / 2;
+                    y = vy - h / 2;
+                    console.log('scale in', scale);
+                } else {
+                    // scroll down
+                    // console.log('scroll down', event, event.originalEvent.wheelDelta, event.originalEvent.detail)
+                    scale *= 1.2;
+                    w = element[0].offsetWidth * scale;
+                    h = element[0].offsetHeight * scale;
+                    x = vx - w / 2;
+                    y = vy - h / 2;
+                    console.log('scale out', scale)
+                }
+                svgElm.attr('viewBox', [x, y, w, h].join(' '));
+                return false
             }
 
             function mouseup() {
