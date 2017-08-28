@@ -65,14 +65,12 @@ app.directive("svgGraph", ($compile, $sce, $document) => {
         link: (scope, element, attrs) => {
             let svgElm: any = element.find("svg");
 
-            // position of started drag.
+            // position of mouse pointer last dragging event occurred
             let startX = 0, startY = 0;
             // position of viewBox
-            let vx = 0, vy = 0;
+            let x = 0, y = 0;
             // viewBox size / viewPort size
             let scale = 1.0;
-            // temporary position of viewBox
-            let x, y;
 
             $document.bind('mousewheel DOMMouseScroll', mousewheel);
             element.on('mousedown', function (event) {
@@ -84,53 +82,54 @@ app.directive("svgGraph", ($compile, $sce, $document) => {
                 $document.on('mouseup', mouseup);
             });
 
-            function mousemove(event) {
-                // raw moving distance
-                let dx = event.pageX - startX;
-                let dy = event.pageY - startY;
-
-                // set viewBox
+            function resize() {
                 let w, h;
-                x = vx - dx * scale;
-                y = vy - dy * scale;
                 w = element[0].offsetWidth * scale;
                 h = element[0].offsetHeight * scale;
                 svgElm.attr('viewBox', [x, y, w, h].join(' '));
             }
 
-            function mousewheel(event) {
-                if (event.target != svgElm[0])
-                    return true;
+            function mousemove(event) {
+                // raw moving distance
+                let dx = event.pageX - startX;
+                let dy = event.pageY - startY;
+                startX = event.pageX;
+                startY = event.pageY;
 
+                // set viewBox
+                x -= dx * scale;
+                y -= dy * scale;
+                resize();
+            }
+
+            function mousewheel(event) {
+                if (event.target != svgElm[0]) {
+                    event.preventDefault();
+                    return true;
+                }
+
+                let oldw, oldh;
                 let w, h;
+                oldw = element[0].offsetWidth * scale;
+                oldh = element[0].offsetHeight * scale;
+
                 if (event.originalEvent.wheelDelta > 0 || event.originalEvent.detail < 0) {
                     // scroll up
-                    // console.log('scroll up', event, event.originalEvent.wheelDelta, event.originalEvent.detail);
                     scale *= 0.8;
-                    w = element[0].offsetWidth * scale;
-                    h = element[0].offsetHeight * scale;
-                    x = vx - w / 2;
-                    y = vy - h / 2;
-                    console.log('scale in', scale);
                 } else {
                     // scroll down
-                    // console.log('scroll down', event, event.originalEvent.wheelDelta, event.originalEvent.detail)
-                    scale *= 1.2;
-                    w = element[0].offsetWidth * scale;
-                    h = element[0].offsetHeight * scale;
-                    x = vx - w / 2;
-                    y = vy - h / 2;
-                    console.log('scale out', scale)
+                    scale *= 1 / 0.8;
                 }
-                svgElm.attr('viewBox', [x, y, w, h].join(' '));
+
+                w = element[0].offsetWidth * scale;
+                h = element[0].offsetHeight * scale;
+                x -= (-oldw + w) / 2;
+                y -= (-oldh + h) / 2;
+                resize();
                 return false
             }
 
             function mouseup() {
-                // update viewBox position
-                vx = x;
-                vy = y;
-
                 $document.off('mousemove', mousemove);
                 $document.off('mouseup', mouseup);
             }
