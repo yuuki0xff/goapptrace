@@ -23,20 +23,10 @@ type Template struct {
 	t    *template.Template
 }
 
-var tmpl Template
+func newTemplate(data TemplateData) *Template {
+	var t Template
 
-func init() {
-	tmpl.init()
-	tmpl.add("importStmt", `
-		import {{.ImportName}} "{{.ImportPath}}"
-	`)
-	tmpl.add("funcStartStopStmt", `
-		{{.ImportName}}.FuncStart()
-		defer {{.ImportName}}.FuncEnd()
-	`)
-}
-
-func (t *Template) init() {
+	t.data = data
 	if t.data.ImportName == "" {
 		t.data.ImportName = DefaultImportName
 	}
@@ -52,6 +42,15 @@ func (t *Template) init() {
 	if t.t == nil {
 		t.t = &template.Template{}
 	}
+
+	t.add("importStmt", `
+		import {{.ImportName}} "{{.ImportPath}}"
+	`)
+	t.add("funcStartStopStmt", `
+		{{.ImportName}}.FuncStart()
+		defer {{.ImportName}}.FuncEnd()
+	`)
+	return &t
 }
 
 func (t *Template) add(name, tmplStr string) {

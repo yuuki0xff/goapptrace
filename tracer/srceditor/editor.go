@@ -16,6 +16,8 @@ type CodeEditor struct {
 	Prefix       string
 	Files        []string
 	Overwrite    bool
+
+	tmpl *Template
 }
 
 func (ce *CodeEditor) EditAll() error {
@@ -28,6 +30,8 @@ func (ce *CodeEditor) EditAll() error {
 }
 
 func (ce *CodeEditor) Edit(fname string) error {
+	ce.init()
+
 	edit := func(r io.Reader, w io.Writer) error {
 		src, err := ioutil.ReadAll(r)
 		if err != nil {
@@ -87,6 +91,21 @@ func AtomicReadWrite(fname string, fn func(r io.Reader, w io.Writer) error) erro
 	return os.Rename(tmpfname, fname)
 }
 
+func (ce *CodeEditor) init() {
+	if ce.tmpl == nil {
+		var importPrefix, varPrefix string
+		if ce.Prefix != "" {
+			importPrefix = ce.Prefix + "_import"
+			varPrefix = ce.Prefix + "_var_"
+		}
+
+		ce.tmpl = newTemplate(TemplateData{
+			ImportName:     importPrefix,
+			VariablePrefix: varPrefix,
+		})
+	}
+}
+
 func (ce *CodeEditor) edit(fname string, src []byte) ([]byte, error) {
 	nl := NodeList{OrigSrc: src}
 
@@ -109,13 +128,13 @@ func (ce *CodeEditor) edit(fname string, src []byte) ([]byte, error) {
 			wantImport = true
 			nl.Add(&InsertNode{
 				Pos: node.Body.Pos(),
-				Src: tmpl.render("funcStartStopStmt", nil),
+				Src: ce.tmpl.render("funcStartStopStmt", nil),
 			})
 		case *ast.FuncLit:
 			wantImport = true
 			nl.Add(&InsertNode{
 				Pos: node.Body.Pos(),
-				Src: tmpl.render("funcStartStopStmt", nil),
+				Src: ce.tmpl.render("funcStartStopStmt", nil),
 			})
 		}
 		return true
@@ -125,7 +144,7 @@ func (ce *CodeEditor) edit(fname string, src []byte) ([]byte, error) {
 	if wantImport {
 		nl.Add(&InsertNode{
 			Pos: f.Name.End(),
-			Src: tmpl.render("importStmt", nil),
+			Src: ce.tmpl.render("importStmt", nil),
 		})
 	}
 

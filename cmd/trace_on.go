@@ -56,8 +56,8 @@ func runTraceOn(conf *config.Config, exportedOnly bool, prefix string, targetNam
 			editor := &srceditor.CodeEditor{
 				Files:        files,
 				ExportedOnly: exportedOnly,
-				Overwrite:    true,   //TODO
-				Prefix:       prefix, //TODO: does not work ....
+				Overwrite:    true, //TODO
+				Prefix:       prefix,
 			}
 			if err := editor.EditAll(); err != nil {
 				return err
