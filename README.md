@@ -43,3 +43,5 @@ License of packages bundled with binaries are listed below:
 * [TypeScript](https://www.typescriptlang.org/) : Apache 2.0
 * [svg.js](https://svgdotjs.github.io/) : MIT
 * [ng-content-editable](https://github.com/Vizir/ng-contenteditable) : MIT
+
+<!-- TODO: Add dependencies golang packages into this list. -->
