@@ -30,3 +30,16 @@ proc run [name]   - start processes, and start tracing
 log ls [name]   - show log names and histories
 log show [name] - show logs on web browser
 ```
+
+## Copyright and license
+These codes are written by yuuki \<https://github.com/yuuki0xff\>.
+Codes released under the MIT license.  
+
+License of packages bundled with binaries are listed below:
+
+* [Bulma](http://bulma.io/) : MIT
+* [Font Awesome](http://fontawesome.io/) : SIL OFL 1.1 (font) and MIT License (CSS)
+* [jQuery](https://jquery.org/) : MIT
+* [TypeScript](https://www.typescriptlang.org/) : Apache 2.0
+* [svg.js](https://svgdotjs.github.io/) : MIT
+* [ng-content-editable](https://github.com/Vizir/ng-contenteditable) : MIT
