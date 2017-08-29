@@ -31,12 +31,16 @@ var targetAddCmd = &cobra.Command{
 	Short: "Add to tracing targets",
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
 		conf.WantSave()
-		return runTargetAdd(conf, args)
+		return runTargetAdd(conf, args[0], args[1:])
 	}),
 }
 
-func runTargetAdd(conf *config.Config, targets []string) error {
-	// TODO
+func runTargetAdd(conf *config.Config, name string, targetPaths []string) error {
+	target := &config.Target{
+		Name:  config.TargetName(name),
+		Files: targetPaths,
+	}
+	conf.Targets.Add(target)
 	return nil
 }
 
