@@ -46,7 +46,7 @@ var traceOnCmd = &cobra.Command{
 }
 
 func runTraceOn(conf *config.Config, exportedOnly bool, prefix string, targetNames []string) error {
-	conf.Targets.Walk(targetNames, func(t *config.Target) error {
+	return conf.Targets.Walk(targetNames, func(t *config.Target) error {
 		return t.WalkTraces(t.Files, func(fname string, trace *config.Trace, created bool) error {
 			files, err := srceditor.FindFiles(fname)
 			if err != nil {
@@ -72,7 +72,6 @@ func runTraceOn(conf *config.Config, exportedOnly bool, prefix string, targetNam
 			return nil
 		})
 	})
-	return nil
 }
 
 func init() {
