@@ -3,6 +3,7 @@ package srceditor
 import (
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const DefaultCaps = 1024
@@ -19,7 +20,9 @@ func FindFiles(fileOrDir string) ([]string, error) {
 			if info.IsDir() {
 				return nil
 			}
-			files = append(files, fpath)
+			if strings.HasSuffix(fpath, ".go") {
+				files = append(files, fpath)
+			}
 			return nil
 		}); err != nil {
 			return nil, err
