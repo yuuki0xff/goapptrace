@@ -27,8 +27,9 @@ import (
 
 // targetAddCmd represents the add command
 var targetAddCmd = &cobra.Command{
-	Use:   "add",
-	Short: "Add to tracing targets",
+	Use:     "add [name] [path...]",
+	Short:   "Add to tracing targets",
+	Example: targetCmdExample,
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
 		conf.WantSave()
 		return runTargetAdd(conf, args)

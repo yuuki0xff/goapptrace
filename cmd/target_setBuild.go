@@ -27,8 +27,9 @@ import (
 
 // targetSetBuildCmd represents the setBuild command
 var targetSetBuildCmd = &cobra.Command{
-	Use:   "set-build",
-	Short: "Set the custom build processes instead of 'go build'",
+	Use:     "set-build [name] [cmd...]",
+	Short:   "Set the custom build processes instead of 'go build'",
+	Example: targetCmdExample,
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
 		conf.WantSave()
 		return runTargetSetBuild(conf, args[0], args[1:])

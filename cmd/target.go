@@ -24,10 +24,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const targetCmdExample = `  goapptrace target add docker ~/go/src/github.com/docker/docker-ce/components/engine
+  goapptrace target set-build docker make static
+  goapptrace target set-run ./components/packaging/static/build/linux/docker/dockerd`
+
 // targetCmd represents the target command
 var targetCmd = &cobra.Command{
-	Use:   "target",
-	Short: "Manage tracing targets",
+	Use:     "target",
+	Short:   "Manage tracing targets",
+	Example: targetCmdExample,
 }
 
 func init() {
