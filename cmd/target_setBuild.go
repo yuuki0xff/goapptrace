@@ -21,6 +21,8 @@
 package cmd
 
 import (
+	"strings"
+
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
 )
@@ -32,16 +34,25 @@ var targetSetBuildCmd = &cobra.Command{
 	Example: targetCmdExample,
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
 		conf.WantSave()
-		return runTargetSetBuild(conf, args[0], args[1:])
+		useShell, err := cmd.Flags().GetBool("shell")
+		if err != nil {
+			return err
+		}
+		return runTargetSetBuild(conf, args[0], args[1:], useShell)
 	}),
 }
 
-func runTargetSetBuild(conf *config.Config, name string, cmds []string) error {
+func runTargetSetBuild(conf *config.Config, name string, cmds []string, useShell bool) error {
 	t, err := conf.Targets.Get(config.TargetName(name))
 	if err != nil {
 		return err
 	}
-	t.Build.Args = cmds
+
+	if useShell {
+		t.Build.Args = []string{"/bin/bash", "-c", strings.Join(cmds, " ")}
+	} else {
+		t.Build.Args = cmds
+	}
 	return nil
 }
 
@@ -57,4 +68,5 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// targetSetBuildCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	targetSetBuildCmd.Flags().BoolP("shell", "s", false, "Execute throught shell")
 }
