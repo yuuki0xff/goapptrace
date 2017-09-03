@@ -15,6 +15,10 @@ func (bp *BuildProcess) Run() error {
 		args = []string{"go", "build"}
 	}
 
+	return execCmd(args)
+}
+
+func execCmd(args []string) error {
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout

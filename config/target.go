@@ -15,6 +15,7 @@ type Target struct {
 	Name  TargetName
 	Files []string
 	Build BuildProcess
+	Run   ExecProcess
 	Trace map[string]*Trace
 }
 
