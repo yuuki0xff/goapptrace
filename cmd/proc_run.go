@@ -31,15 +31,26 @@ var procRunCmd = &cobra.Command{
 	Short: "Start processes, and start tracing",
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
 		conf.WantSave()
-		return runProcRun(conf, args[0], args[1:])
+		return runProcRun(conf, args)
 	}),
 }
 
-func runProcRun(conf *config.Config, name string, files []string) error {
-	return conf.Targets.Add(&config.Target{
-		Name:  config.TargetName(name),
-		Files: files,
-	})
+func runProcRun(conf *config.Config, targets []string) error {
+	if len(targets) == 0 {
+		targets = conf.Targets.Names()
+	}
+
+	for _, targetName := range targets {
+		target, err := conf.Targets.Get(config.TargetName(targetName))
+		if err != nil {
+			return err
+		}
+
+		if err := target.Run.Run(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func init() {
