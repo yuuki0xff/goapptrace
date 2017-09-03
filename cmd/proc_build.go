@@ -36,7 +36,20 @@ var procBuildCmd = &cobra.Command{
 }
 
 func runProcBuild(conf *config.Config, targets []string) error {
-	// TODO
+	if len(targets) == 0 {
+		targets = conf.Targets.Names()
+	}
+
+	for _, targetName := range targets {
+		target, err := conf.Targets.Get(config.TargetName(targetName))
+		if err != nil {
+			return err
+		}
+
+		if err := target.Build.Run(); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
