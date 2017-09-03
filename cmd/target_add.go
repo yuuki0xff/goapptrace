@@ -21,6 +21,8 @@
 package cmd
 
 import (
+	"path/filepath"
+
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
 )
@@ -32,13 +34,24 @@ var targetAddCmd = &cobra.Command{
 	Example: targetCmdExample,
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
 		conf.WantSave()
-		return runTargetAdd(conf, args)
+		return runTargetAdd(conf, args[0], args[1:])
 	}),
 }
 
-func runTargetAdd(conf *config.Config, targets []string) error {
-	// TODO
-	return nil
+func runTargetAdd(conf *config.Config, name string, paths []string) error {
+	abspaths := make([]string, len(paths))
+	for i, p := range paths {
+		abspath, err := filepath.Abs(p)
+		if err != nil {
+			return err
+		}
+		abspaths[i] = abspath
+	}
+
+	return conf.Targets.Add(&config.Target{
+		Name:  config.TargetName(name),
+		Files: abspaths,
+	})
 }
 
 func init() {
