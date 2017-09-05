@@ -23,6 +23,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
+	"github.com/yuuki0xff/goapptrace/tracer/srceditor"
 )
 
 // traceOnCmd represents the on command
@@ -31,14 +32,36 @@ var traceOnCmd = &cobra.Command{
 	Short: "Insert tracing codes into targets",
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
 		conf.WantSave()
-		return runTraceOn(conf, args)
+		exportedOnly, err := cmd.Flags().GetBool("exported")
+		if err != nil {
+			return err
+		}
+		prefix, err := cmd.Flags().GetString("prefix")
+		if err != nil {
+			return err
+		}
+
+		return runTraceOn(conf, exportedOnly, prefix, args)
 	}),
 }
 
-func runTraceOn(conf *config.Config, targets []string) error {
-	conf.Targets.Walk(nil, func(t *config.Target) error {
-		return t.WalkTraces(targets, func(fname string, trace *config.Trace, created bool) error {
-			// TODO: add tracing code
+func runTraceOn(conf *config.Config, exportedOnly bool, prefix string, targetNames []string) error {
+	return conf.Targets.Walk(targetNames, func(t *config.Target) error {
+		return t.WalkTraces(t.Files, func(fname string, trace *config.Trace, created bool) error {
+			files, err := srceditor.FindFiles(fname)
+			if err != nil {
+				return err
+			}
+
+			editor := &srceditor.CodeEditor{
+				Files:        files,
+				ExportedOnly: exportedOnly,
+				Overwrite:    true, //TODO
+				Prefix:       prefix,
+			}
+			if err := editor.EditAll(); err != nil {
+				return err
+			}
 
 			if created {
 				trace.HasTracingCode = true // TODO: currently always true
@@ -49,7 +72,6 @@ func runTraceOn(conf *config.Config, targets []string) error {
 			return nil
 		})
 	})
-	return nil
 }
 
 func init() {
@@ -64,4 +86,6 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// traceOnCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	traceOnCmd.Flags().BoolP("exported", "e", false, "Insert tracing code into exorted function only")
+	traceOnCmd.Flags().StringP("prefix", "p", "", "Set prefix of import names and variable names")
 }
