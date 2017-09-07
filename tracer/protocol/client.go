@@ -40,10 +40,6 @@ type Client struct {
 	writeChan chan interface{}
 }
 
-func New() {
-	// TODO
-}
-
 func (c *Client) Connect() error {
 	var proto string
 	var url string
