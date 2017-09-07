@@ -30,8 +30,6 @@ func (ce *CodeEditor) EditAll() error {
 }
 
 func (ce *CodeEditor) Edit(fname string) error {
-	ce.init()
-
 	edit := func(r io.Reader, w io.Writer) error {
 		src, err := ioutil.ReadAll(r)
 		if err != nil {
@@ -107,8 +105,9 @@ func (ce *CodeEditor) init() {
 }
 
 func (ce *CodeEditor) edit(fname string, src []byte) ([]byte, error) {
-	nl := NodeList{OrigSrc: src}
+	ce.init()
 
+	nl := NodeList{OrigSrc: src}
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, fname, src, parser.ParseComments)
 	if err != nil {
