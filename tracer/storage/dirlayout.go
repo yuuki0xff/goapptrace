@@ -22,7 +22,7 @@ func (d DirLayout) DataDir() string {
 	return path.Join(d.Root, "data")
 }
 func (d DirLayout) MetaID(fname string) (id LogID, ok bool) {
-	if strings.HasSuffix(fname, ".meta.json.gz") {
+	if !strings.HasSuffix(fname, ".meta.json.gz") {
 		return
 	}
 	strid := strings.TrimSuffix(fname, ".meta.json.gz")
