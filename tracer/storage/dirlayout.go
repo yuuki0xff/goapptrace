@@ -2,6 +2,7 @@ package storage
 
 import (
 	"compress/gzip"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -20,11 +21,20 @@ func (d DirLayout) MetaDir() string {
 func (d DirLayout) DataDir() string {
 	return path.Join(d.Root, "data")
 }
-func (d DirLayout) MetaID(fname string) (id string, ok bool) {
+func (d DirLayout) MetaID(fname string) (id LogID, ok bool) {
 	if strings.HasSuffix(fname, ".meta.json.gz") {
 		return
 	}
-	id = strings.TrimSuffix(fname, ".meta.json.gz")
+	strid := strings.TrimSuffix(fname, ".meta.json.gz")
+	binid, err := hex.DecodeString(strid)
+	if err != nil {
+		return
+	}
+	if len(binid) != len(id) {
+		return
+	}
+
+	copy(id[:], binid)
 	ok = true
 	return
 }

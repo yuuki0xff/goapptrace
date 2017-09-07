@@ -2,7 +2,6 @@ package storage
 
 import (
 	"crypto/rand"
-	"encoding/hex"
 	"io/ioutil"
 	"sync"
 )
@@ -11,7 +10,7 @@ type Storage struct {
 	Root DirLayout
 
 	lock  sync.RWMutex
-	files map[string]*Log
+	files map[LogID]*Log
 }
 
 // Return all log instances
@@ -41,7 +40,7 @@ func (s *Storage) Logs() ([]*Log, error) {
 
 // 新しいLogインスタンスを作成する。
 // この関数を呼び出す前に、排他ロックをかける必要がある。
-func (s *Storage) log(id string) *Log {
+func (s *Storage) log(id LogID) *Log {
 	log := &Log{
 		ID:   id,
 		Root: s.Root,
@@ -55,10 +54,10 @@ func (s *Storage) New() *Log {
 	defer s.lock.Unlock()
 
 	// generate random id
-	id := make([]byte, 16)
-	if _, err := rand.Read(id); err != nil {
+	id := LogID{}
+	if _, err := rand.Read(id[:]); err != nil {
 		panic(err)
 	}
 
-	return s.log(hex.EncodeToString(id))
+	return s.log(id)
 }
