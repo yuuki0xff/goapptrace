@@ -29,7 +29,7 @@ type LogMetadata struct {
 }
 
 func (id LogID) Hex() string {
-	return hex.EncodeToString([]byte(id))
+	return hex.EncodeToString(id[:])
 }
 
 func (l *Log) Load() error {
