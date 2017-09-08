@@ -107,7 +107,9 @@ func (s *Server) Close() error {
 }
 
 func (s *Server) Wait() {
-	<-s.workerCtx.Done()
+	if s.workerCtx != nil {
+		<-s.workerCtx.Done()
+	}
 }
 
 func (s *Server) worker() {
@@ -118,8 +120,11 @@ func (s *Server) worker() {
 		if shouldStop {
 			return true
 		}
-		errCh <- err
-		return true
+		if err != nil {
+			errCh <- err
+			return true
+		}
+		return false
 	}
 
 	handleConn := func(conn net.Conn) {
