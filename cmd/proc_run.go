@@ -67,6 +67,11 @@ func runProcRun(conf *config.Config, targets []string) error {
 	}
 	defer srv.Close() // nolint: errcheck
 
+	// set env for child processes
+	if err := os.Setenv(info.DEFAULT_LOGFILE_ENV, srv.ActualAddr()); err != nil {
+		return err
+	}
+
 	for _, targetName := range targets {
 		target, err := conf.Targets.Get(config.TargetName(targetName))
 		if err != nil {
