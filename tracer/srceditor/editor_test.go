@@ -80,7 +80,7 @@ func nonExportedFunc() string {
 		Out: strings.TrimSpace(`
 package example
 
-import __goapptrace_tracer "github.com/yuuki0xff/goapptrace/tracer/client"
+import __goapptrace_tracer "github.com/yuuki0xff/goapptrace/tracer/logger"
 
 func ExportedFunc(a, b, c string) stirng {
 	__goapptrace_tracer.FuncStart()
@@ -116,7 +116,7 @@ func nonExportedFunc() string {
 		Out: strings.TrimSpace(`
 package example
 
-import __goapptrace_tracer "github.com/yuuki0xff/goapptrace/tracer/client"
+import __goapptrace_tracer "github.com/yuuki0xff/goapptrace/tracer/logger"
 
 func ExportedFunc(a, b, c string) stirng {
 	__goapptrace_tracer.FuncStart()
@@ -160,7 +160,7 @@ func ExportedFunc() {
 		Out: strings.TrimSpace(`
 package example
 
-import __goapptrace_tracer "github.com/yuuki0xff/goapptrace/tracer/client"
+import __goapptrace_tracer "github.com/yuuki0xff/goapptrace/tracer/logger"
 
 var ExportedVar = func() string {
 	__goapptrace_tracer.FuncStart()
