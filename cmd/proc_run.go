@@ -54,9 +54,11 @@ func runProcRun(conf *config.Config, targets []string) error {
 		Handler: protocol.ServerHandler{
 			Connected:    func() {},
 			Disconnected: func() {},
-			Error:        func(err error) {},
-			Symbols:      func(s *protocol.Symbols) {},
-			FuncLog:      func(f *protocol.FuncLog) {},
+			Error: func(err error) {
+				fmt.Println("ERROR", err)
+			},
+			Symbols: func(s *protocol.Symbols) {},
+			FuncLog: func(f *protocol.FuncLog) {},
 		},
 		AppName: info.APP_NAME,
 		Version: info.VERSION, // TODO: set server version
