@@ -65,6 +65,7 @@ func runProcRun(conf *config.Config, targets []string) error {
 	if err := srv.Listen(); err != nil {
 		return err
 	}
+	defer srv.Close() // nolint: errcheck
 
 	for _, targetName := range targets {
 		target, err := conf.Targets.Get(config.TargetName(targetName))
