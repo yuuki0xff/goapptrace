@@ -8,9 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"net"
-	"strings"
-
 	"errors"
 
 	"regexp"
@@ -18,6 +15,7 @@ import (
 
 	"github.com/yuuki0xff/goapptrace/info"
 	"github.com/yuuki0xff/goapptrace/tracer/log"
+	"github.com/yuuki0xff/goapptrace/tracer/protocol"
 )
 
 const (
@@ -28,7 +26,7 @@ const (
 var (
 	MaxStackSize = 1024
 	OutputFile   *os.File
-	OutputSocket net.Conn
+	Client       *protocol.Client
 
 	lock = sync.Mutex{}
 )
@@ -65,7 +63,7 @@ func sendLog(tag string) {
 
 	lock.Lock()
 	defer lock.Unlock()
-	if OutputFile == nil && OutputSocket == nil {
+	if OutputFile == nil && Client == nil {
 		setOutput()
 	}
 
@@ -84,8 +82,10 @@ func sendLog(tag string) {
 		if err != nil {
 			panic(err)
 		}
-	} else if OutputSocket != nil {
+	} else if Client != nil {
 		// TODO: send binary log to log server
+		// TODO: ログのフォーマットがprotocolと統一されていない。txIDの導入などを行う
+		//Client.Send(protocol.FuncLogMsg, struct{}{})
 	} else {
 		panic(errors.New("here is unreachable, but reached"))
 	}
@@ -96,15 +96,22 @@ func setOutput() {
 	url, ok := os.LookupEnv(info.DEFAULT_LOGSRV_ENV)
 	if ok {
 		// use socket
-		result := strings.SplitN(url, "://", 2)
-		proto := result[0]
-		hostport := result[1]
-
-		conn, err := net.Dial(proto, hostport)
-		if err != nil {
+		Client = &protocol.Client{
+			Addr: url,
+			Handler: protocol.ClientHandler{
+				Connected:    func() {},
+				Disconnected: func() {},
+				Error:        func(err error) {},
+				StartTrace:   func(args *protocol.StartTraceCmdArgs) {},
+				StopTrace:    func(args *protocol.StopTraceCmdArgs) {},
+			},
+			AppName: "TODO", // TODO
+			Version: info.VERSION,
+			Secret:  "secret",
+		}
+		if err := Client.Connect(); err != nil {
 			panic(err)
 		}
-		OutputSocket = conn
 	} else {
 		// use log file
 		prefix, ok := os.LookupEnv(info.DEFAULT_LOGFILE_ENV)
