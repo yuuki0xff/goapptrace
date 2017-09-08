@@ -7,7 +7,7 @@ import (
 
 const (
 	DefaultImportName     = "__goapptrace_tracer"
-	DefaultImportPath     = "github.com/yuuki0xff/goapptrace/tracer/client"
+	DefaultImportPath     = "github.com/yuuki0xff/goapptrace/tracer/logger"
 	DefaultVariablePrefix = "__goapptrace_tracer_var_"
 )
 
