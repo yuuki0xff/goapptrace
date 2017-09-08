@@ -62,11 +62,11 @@ type FuncID uint64
 type FuncStatusID uint64
 
 type Symbols struct {
-	Funcs          []*Func
+	Funcs          []*FuncSymbol
 	FuncExecStatus []*FuncStatus
 }
 
-type Func struct {
+type FuncSymbol struct {
 	ID   FuncID
 	Name string
 	File string
