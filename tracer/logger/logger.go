@@ -63,8 +63,14 @@ func sendLog(tag string) {
 			panic(err)
 		}
 	}
-	OutputFile.Write(js)
-	OutputFile.Write([]byte("\n"))
+	_, err = OutputFile.Write(js)
+	if err != nil {
+		panic(err)
+	}
+	_, err = OutputFile.Write([]byte("\n"))
+	if err != nil {
+		panic(err)
+	}
 }
 
 func FuncStart() {

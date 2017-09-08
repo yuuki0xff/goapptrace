@@ -104,9 +104,11 @@ func (l *Log) Search(start, end time.Time, fn func(evt interface{}) error) error
 	index := Index{
 		File: l.Root.IndexFile(l.ID),
 	}
-	index.Load()
+	if err := index.Load(); err != nil {
+		return err
+	}
 
-	index.Walk(func(i int64, ir IndexRecord) error {
+	if err := index.Walk(func(i int64, ir IndexRecord) error {
 		if start.Before(ir.Timestamps) {
 			startIdx = i - 1
 		} else if end.Before(ir.Timestamps) {
@@ -114,7 +116,9 @@ func (l *Log) Search(start, end time.Time, fn func(evt interface{}) error) error
 			return errors.New("break loop")
 		}
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
 
 	for i := startIdx; i <= endIdx; i++ {
 		el := EventLog{

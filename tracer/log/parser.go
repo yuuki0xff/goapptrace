@@ -212,12 +212,14 @@ func (trm *TimeRangeMap) Get(start Time, end Time) *GoroutineMap {
 	timeRanges := append(NewTimeRanges(start, end), TimeRange{NotEnded})
 	for _, tr := range timeRanges {
 		if _, ok := trm.m[tr]; ok {
-			trm.m[tr].Walk(func(gr *Goroutine) error {
+			if err := trm.m[tr].Walk(func(gr *Goroutine) error {
 				for _, fl := range gr.Records {
 					grm.Add(fl)
 				}
 				return nil
-			})
+			}); err != nil {
+				panic(err)
+			}
 		}
 	}
 	return grm

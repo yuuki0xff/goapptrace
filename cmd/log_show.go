@@ -51,7 +51,9 @@ func runLogShow(conf *config.Config, targets []string, notOpenBrowser bool, list
 	fmt.Printf("Started HTTP server on %s\n", srv.Addr())
 
 	if !notOpenBrowser {
-		open.Run(fmt.Sprintf("http://%s", srv.Addr()))
+		if err := open.Run(fmt.Sprintf("http://%s", srv.Addr())); err != nil {
+			return err
+		}
 	}
 
 	if err := srv.Wait(); err != nil {

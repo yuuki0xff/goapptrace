@@ -115,10 +115,14 @@ func (s *Server) worker() {
 
 	handleConn := func(conn net.Conn) {
 		setReadDeadline := func() {
-			conn.SetReadDeadline(time.Now().Add(s.Timeout))
+			if err := conn.SetReadDeadline(time.Now().Add(s.Timeout)); err != nil {
+				panic(err)
+			}
 		}
 		setWriteDeadline := func() {
-			conn.SetWriteDeadline(time.Now().Add(s.Timeout))
+			if err := conn.SetWriteDeadline(time.Now().Add(s.Timeout)); err != nil {
+				panic(err)
+			}
 		}
 
 		// initialize

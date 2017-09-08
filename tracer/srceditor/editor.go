@@ -52,7 +52,7 @@ func (ce *CodeEditor) Edit(fname string) error {
 		if err != nil {
 			return err
 		}
-		defer file.Close()
+		defer file.Close() // nolint: errcheck
 		return edit(file, os.Stdout)
 	}
 }
@@ -62,7 +62,7 @@ func AtomicReadWrite(fname string, fn func(r io.Reader, w io.Writer) error) erro
 	if err != nil {
 		return err
 	}
-	defer r.Close()
+	defer r.Close() // nolint: errcheck
 
 	finfo, err := os.Stat(fname)
 	if err != nil {
@@ -74,11 +74,13 @@ func AtomicReadWrite(fname string, fn func(r io.Reader, w io.Writer) error) erro
 	if err != nil {
 		return err
 	}
-	defer w.Close()
+	defer w.Close() // nolint: errcheck
 
 	if err = fn(r, w); err != nil {
 		// the original file was kept, and tmp file will be remove.
-		os.Remove(tmpfname)
+		if err := os.Remove(tmpfname); err != nil {
+			return err
+		}
 		return err
 	}
 

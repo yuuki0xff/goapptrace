@@ -66,8 +66,8 @@ func (srv *HttpServer) Start() error {
 	}
 
 	go func() {
-		defer srv.Stop() // stop all handlers
-		defer listener.Close()
+		defer srv.Stop()       // stop all handlers
+		defer listener.Close() // nolint
 		srv.errch <- srv.server.Serve(listener)
 	}()
 	return nil
@@ -84,8 +84,8 @@ func (srv *HttpServer) Wait() error {
 
 // HTTPサーバと全てのハンドラを停止する。
 func (srv *HttpServer) Stop() {
-	srv.server.Shutdown(srv.ctx)
-	srv.cancel() // stop all handlers
+	srv.server.Shutdown(srv.ctx) // nolint: errcheck
+	srv.cancel()                 // stop all handlers
 }
 
 func (srv *HttpServer) Addr() string {

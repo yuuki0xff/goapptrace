@@ -45,7 +45,7 @@ func runTraceStatus(conf *config.Config, out io.Writer) error {
 		"has tracing code",
 		"tracing",
 	})
-	conf.Targets.Walk(nil, func(t *config.Target) error {
+	if err := conf.Targets.Walk(nil, func(t *config.Target) error {
 		return t.WalkTraces(nil, func(fname string, trace *config.Trace, created bool) error {
 			table.Append([]string{
 				string(t.Name),
@@ -55,7 +55,9 @@ func runTraceStatus(conf *config.Config, out io.Writer) error {
 			})
 			return nil
 		})
-	})
+	}); err != nil {
+		return err
+	}
 	table.Render()
 	return nil
 }

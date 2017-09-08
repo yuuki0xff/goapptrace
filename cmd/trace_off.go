@@ -36,7 +36,7 @@ var traceOffCmd = &cobra.Command{
 }
 
 func runTraceOff(conf *config.Config, targets []string) error {
-	conf.Targets.Walk(nil, func(t *config.Target) error {
+	return conf.Targets.Walk(nil, func(t *config.Target) error {
 		return t.WalkTraces(targets, func(fname string, trace *config.Trace, created bool) error {
 			// TODO: remove tracing code
 
@@ -45,7 +45,6 @@ func runTraceOff(conf *config.Config, targets []string) error {
 			return nil
 		})
 	})
-	return nil
 }
 
 func init() {

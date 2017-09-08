@@ -29,7 +29,7 @@ func (idx *Index) Load() error {
 		return err
 	}
 	dec := gob.NewDecoder(r)
-	defer r.Close()
+	defer r.Close() // nolint: errcheck
 
 	idx.records = make([]IndexRecord, 0, DefaultBufferSize)
 	for {

@@ -51,7 +51,9 @@ func (c *Config) WantSave() {
 
 func (c *Config) Save() error {
 	if _, err := os.Stat(c.dir); os.IsNotExist(err) {
-		os.MkdirAll(c.dir, os.ModePerm)
+		if err := os.MkdirAll(c.dir, os.ModePerm); err != nil {
+			return err
+		}
 	}
 
 	js, err := json.Marshal(c.Targets)

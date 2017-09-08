@@ -43,7 +43,7 @@ func (r *SVGRender) Render(w io.Writer) {
 	case Goroutine:
 		gids := gids(grm)
 		maxEndTime := log.Time(0)
-		grm.Walk(func(gr *log.Goroutine) error {
+		if err := grm.Walk(func(gr *log.Goroutine) error {
 			if maxEndTime < gr.EndTime {
 				maxEndTime = gr.EndTime
 			}
@@ -64,10 +64,12 @@ func (r *SVGRender) Render(w io.Writer) {
 				)
 			}
 			return nil
-		})
+		}); err != nil {
+			panic(err)
+		}
 
 		maxEndTime++
-		grm.Walk(func(gr *log.Goroutine) error {
+		if err := grm.Walk(func(gr *log.Goroutine) error {
 			if gr.EndTime == log.NotEnded {
 				var y int
 				for i, gid := range gids {
@@ -84,12 +86,14 @@ func (r *SVGRender) Render(w io.Writer) {
 				)
 			}
 			return nil
-		})
+		}); err != nil {
+			panic(err)
+		}
 
 	case FunctionCall:
 		yMap := yMapFrom(grm)
 		maxEndTime := log.Time(0)
-		grm.Walk(func(gr *log.Goroutine) error {
+		if err := grm.Walk(func(gr *log.Goroutine) error {
 			for _, fl := range gr.Records {
 				if maxEndTime < fl.EndTime {
 					maxEndTime = fl.EndTime
@@ -104,10 +108,12 @@ func (r *SVGRender) Render(w io.Writer) {
 				}
 			}
 			return nil
-		})
+		}); err != nil {
+			panic(err)
+		}
 
 		maxEndTime++
-		grm.Walk(func(gr *log.Goroutine) error {
+		if err := grm.Walk(func(gr *log.Goroutine) error {
 			for _, fl := range gr.Records {
 				if fl.EndTime == log.NotEnded {
 					yoffset := fl.Parents()
@@ -119,7 +125,9 @@ func (r *SVGRender) Render(w io.Writer) {
 				}
 			}
 			return nil
-		})
+		}); err != nil {
+			panic(err)
+		}
 	}
 	canv.End()
 }

@@ -61,6 +61,8 @@ func (t *Template) render(name string, data interface{}) []byte {
 	var buf bytes.Buffer
 	var d = t.data
 	d.D = data
-	t.t.ExecuteTemplate(&buf, name, d)
+	if err := t.t.ExecuteTemplate(&buf, name, d); err != nil {
+		panic(err)
+	}
 	return buf.Bytes()
 }

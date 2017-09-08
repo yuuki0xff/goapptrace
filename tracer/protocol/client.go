@@ -115,10 +115,14 @@ func (c *Client) worker() {
 
 	go func() {
 		setReadDeadline := func() {
-			c.conn.SetReadDeadline(time.Now().Add(c.Timeout))
+			if err := c.conn.SetReadDeadline(time.Now().Add(c.Timeout)); err != nil {
+				panic(err)
+			}
 		}
 		setWriteDeadline := func() {
-			c.conn.SetWriteDeadline(time.Now().Add(c.Timeout))
+			if err := c.conn.SetWriteDeadline(time.Now().Add(c.Timeout)); err != nil {
+				panic(err)
+			}
 		}
 
 		// initialize

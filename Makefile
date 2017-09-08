@@ -6,7 +6,8 @@ all: build
 build-deps:
 	$(MAKE) -C static build-deps
 	go get -u golang.org/x/tools/cmd/goimports
-	go get -u github.com/golang/lint/golint
+	go get -u github.com/alecthomas/gometalinter
+	gometalinter --install
 	go get -u
 
 build:
@@ -30,8 +31,11 @@ check-formatted:
 	)
 
 test: check-formatted
-	# TODO: Enable golint
-	# golint -set_exit_status ./...
+	# TODO: Enable golint and others
+	gometalinter --exclude "${GOROOT}" \
+		--disable-all \
+		--enable errcheck \
+		./...
 	go test ./...
 
 release: test build
