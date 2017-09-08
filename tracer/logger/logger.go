@@ -13,6 +13,8 @@ import (
 	"regexp"
 	"strconv"
 
+	"math/rand"
+
 	"github.com/yuuki0xff/goapptrace/info"
 	"github.com/yuuki0xff/goapptrace/tracer/log"
 	"github.com/yuuki0xff/goapptrace/tracer/protocol"
@@ -31,11 +33,12 @@ var (
 	lock = sync.Mutex{}
 )
 
-func sendLog(tag string) {
+func sendLog(tag string, id log.TxID) {
 	logmsg := log.RawLog{}
 	logmsg.Timestamp = time.Now().Unix()
 	logmsg.Tag = tag
 	logmsg.Frames = make([]runtime.Frame, 0, MaxStackSize)
+	logmsg.TxID = id
 
 	pc := make([]uintptr, MaxStackSize)
 	pclen := runtime.Callers(skips, pc)
@@ -127,10 +130,12 @@ func setOutput() {
 	}
 }
 
-func FuncStart() {
-	sendLog("funcStart")
+func FuncStart() (id log.TxID) {
+	id = log.TxID(rand.Int63())
+	sendLog("funcStart", id)
+	return
 }
 
-func FuncEnd() {
-	sendLog("funcEnd")
+func FuncEnd(id log.TxID) {
+	sendLog("funcEnd", id)
 }

@@ -47,8 +47,8 @@ func newTemplate(data TemplateData) *Template {
 		import {{.ImportName}} "{{.ImportPath}}"
 	`)
 	t.add("funcStartStopStmt", `
-		{{.ImportName}}.FuncStart()
-		defer {{.ImportName}}.FuncEnd()
+		{{.VariablePrefix}}_txid := {{.ImportName}}.FuncStart()
+		defer {{.ImportName}}.FuncEnd({{.VariablePrefix}}_txid)
 	`)
 	return &t
 }

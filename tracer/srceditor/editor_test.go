@@ -83,15 +83,15 @@ package example
 import __goapptrace_tracer "github.com/yuuki0xff/goapptrace/tracer/logger"
 
 func ExportedFunc(a, b, c string) stirng {
-	__goapptrace_tracer.FuncStart()
-	defer __goapptrace_tracer.FuncEnd()
+	__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
+	defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
 
 	return "ok"
 }
 
 func nonExportedFunc() string {
-	__goapptrace_tracer.FuncStart()
-	defer __goapptrace_tracer.FuncEnd()
+	__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
+	defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
 
 	return "ok"
 }`),
@@ -119,8 +119,8 @@ package example
 import __goapptrace_tracer "github.com/yuuki0xff/goapptrace/tracer/logger"
 
 func ExportedFunc(a, b, c string) stirng {
-	__goapptrace_tracer.FuncStart()
-	defer __goapptrace_tracer.FuncEnd()
+	__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
+	defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
 
 	return "ok"
 }
@@ -163,41 +163,41 @@ package example
 import __goapptrace_tracer "github.com/yuuki0xff/goapptrace/tracer/logger"
 
 var ExportedVar = func() string {
-	__goapptrace_tracer.FuncStart()
-	defer __goapptrace_tracer.FuncEnd()
+	__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
+	defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
 	return "ok"
 }
 var nonExportedVar = func() string {
-	__goapptrace_tracer.FuncStart()
-	defer __goapptrace_tracer.FuncEnd()
+	__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
+	defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
 	return "ok"
 }
 
 func ExportedFunc() {
-	__goapptrace_tracer.FuncStart()
-	defer __goapptrace_tracer.FuncEnd()
+	__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
+	defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
 
 	fn := func() string {
-		__goapptrace_tracer.FuncStart()
-		defer __goapptrace_tracer.FuncEnd()
+		__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
+		defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
 
 		return "in function"
 	}
 
 	go func() string {
-		__goapptrace_tracer.FuncStart()
-		defer __goapptrace_tracer.FuncEnd()
+		__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
+		defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
 
 		return "in go statement"
 	}()
 
 	caller(func() string {
-		__goapptrace_tracer.FuncStart()
-		defer __goapptrace_tracer.FuncEnd()
+		__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
+		defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
 
 		go func() string {
-			__goapptrace_tracer.FuncStart()
-			defer __goapptrace_tracer.FuncEnd()
+			__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
+			defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
 
 			return "nested"
 		}()
