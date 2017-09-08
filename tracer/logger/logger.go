@@ -8,6 +8,11 @@ import (
 	"sync"
 	"time"
 
+	"net"
+	"strings"
+
+	"io"
+
 	"github.com/yuuki0xff/goapptrace/info"
 )
 
@@ -17,7 +22,7 @@ const (
 
 var (
 	MaxStackSize = 1024
-	OutputFile   *os.File
+	OutputFile   io.WriteCloser
 
 	lock = sync.Mutex{}
 )
@@ -55,17 +60,9 @@ func sendLog(tag string) {
 	lock.Lock()
 	defer lock.Unlock()
 	if OutputFile == nil {
-		pid := os.Getpid()
-		prefix, ok := os.LookupEnv(info.DEFAULT_LOGFILE_ENV)
-		if !ok {
-			prefix = info.DEFAULT_LOGFILE_PREFIX
-		}
-		fpath := fmt.Sprintf("%s.%d.log", prefix, pid)
-		OutputFile, err = os.OpenFile(fpath, os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			panic(err)
-		}
+		setOutputFile()
 	}
+
 	_, err = OutputFile.Write(js)
 	if err != nil {
 		panic(err)
@@ -73,6 +70,35 @@ func sendLog(tag string) {
 	_, err = OutputFile.Write([]byte("\n"))
 	if err != nil {
 		panic(err)
+	}
+}
+
+func setOutputFile() {
+	pid := os.Getpid()
+	url, ok := os.LookupEnv(info.DEFAULT_LOGSRV_ENV)
+	if ok {
+		// use socket
+		result := strings.SplitN(url, "://", 2)
+		proto := result[0]
+		hostport := result[1]
+
+		conn, err := net.Dial(proto, hostport)
+		if err != nil {
+			panic(err)
+		}
+		OutputFile = conn
+	} else {
+		// use log file
+		prefix, ok := os.LookupEnv(info.DEFAULT_LOGFILE_ENV)
+		if !ok {
+			prefix = info.DEFAULT_LOGFILE_PREFIX
+		}
+		fpath := fmt.Sprintf("%s.%d.log", prefix, pid)
+		file, err := os.OpenFile(fpath, os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			panic(err)
+		}
+		OutputFile = file
 	}
 }
 
