@@ -13,7 +13,7 @@ const (
 	DefaultCallstackSize = 1024
 )
 
-func (log *Log) Load(data io.Reader) error {
+func (log *Log) LoadFromJsonLines(data io.Reader) error {
 	log.Records = make([]*FuncLog, 0)
 	log.GoroutineMap = NewGoroutineMap()
 	log.TimeRangeMap = NewTimeRangeMap()

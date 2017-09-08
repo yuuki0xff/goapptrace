@@ -23,7 +23,7 @@ func getRouter() *mux.Router {
 	l := log.Log{
 		Name: "test",
 	}
-	if err := l.Load(g); err != nil {
+	if err := l.LoadFromJsonLines(g); err != nil {
 		panic(err)
 	}
 
