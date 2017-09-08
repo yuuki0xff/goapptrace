@@ -3,6 +3,8 @@ package storage
 import (
 	"encoding/gob"
 	"io"
+
+	"github.com/yuuki0xff/goapptrace/tracer/log"
 )
 
 type EventLog struct {
@@ -12,7 +14,7 @@ type EventLog struct {
 	enc *gob.Encoder
 }
 
-func (el *EventLog) Append(event interface{}) error {
+func (el *EventLog) Append(event log.FuncLog) error {
 	// TODO: fix evnet args type
 	if el.w == nil {
 		var err error
@@ -36,15 +38,18 @@ func (el *EventLog) Close() error {
 	return err
 }
 
-func (el *EventLog) Walk(fn func(interface{}) error) error {
+func (el *EventLog) Walk(fn func(log.FuncLog) error) error {
 	r, err := el.File.OpenReadOnly()
 	if err != nil {
 		return err
 	}
 	dec := gob.NewDecoder(r)
 	for {
-		var evt interface{}
+		var evt log.FuncLog
 		if err := dec.Decode(&evt); err != nil && err != io.EOF {
+			return err
+		}
+		if err := fn(evt); err != nil {
 			return err
 		}
 	}

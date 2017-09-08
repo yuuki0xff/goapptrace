@@ -6,6 +6,8 @@ import (
 	"errors"
 	"sync"
 	"time"
+
+	"github.com/yuuki0xff/goapptrace/tracer/log"
 )
 
 type LogID [16]byte
@@ -69,8 +71,7 @@ func (l *Log) Save() error {
 	return nil
 }
 
-// TODO: interface型を修正する
-func (l *Log) Append(event interface{}) error {
+func (l *Log) Append(event log.FuncLog) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
@@ -94,7 +95,7 @@ func (l *Log) Append(event interface{}) error {
 	return nil
 }
 
-func (l *Log) Search(start, end time.Time, fn func(evt interface{}) error) error {
+func (l *Log) Search(start, end time.Time, fn func(evt log.FuncLog) error) error {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
 
