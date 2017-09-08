@@ -13,11 +13,16 @@ import (
 
 	"errors"
 
+	"regexp"
+	"strconv"
+
 	"github.com/yuuki0xff/goapptrace/info"
+	"github.com/yuuki0xff/goapptrace/tracer/log"
 )
 
 const (
-	skips = 3
+	skips         = 3
+	backtraceSize = 1 << 16 // about 64KiB
 )
 
 var (
@@ -28,14 +33,8 @@ var (
 	lock = sync.Mutex{}
 )
 
-type LogMessage struct {
-	Timestamp int64           `json:"timestamp"`
-	Tag       string          `json:"tag"`
-	Frames    []runtime.Frame `json:"frames"`
-}
-
 func sendLog(tag string) {
-	logmsg := LogMessage{}
+	logmsg := log.RawLog{}
 	logmsg.Timestamp = time.Now().Unix()
 	logmsg.Tag = tag
 	logmsg.Frames = make([]runtime.Frame, 0, MaxStackSize)
@@ -53,6 +52,16 @@ func sendLog(tag string) {
 
 		logmsg.Frames = append(logmsg.Frames, frame)
 	}
+
+	buf := make([]byte, backtraceSize)
+	runtime.Stack(buf, false) // First line is "goroutine xxx [running]"
+	re := regexp.MustCompile(`^goroutine (\d+)`)
+	matches := re.FindSubmatch(buf)
+	gid, err := strconv.ParseInt(string(matches[1]), 10, 64)
+	if err != nil {
+		panic(err)
+	}
+	logmsg.GID = log.GID(gid)
 
 	lock.Lock()
 	defer lock.Unlock()
