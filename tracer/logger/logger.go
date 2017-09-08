@@ -86,9 +86,8 @@ func sendLog(tag string, id log.TxID) {
 			panic(err)
 		}
 	} else if Client != nil {
-		// TODO: send binary log to log server
-		// TODO: ログのフォーマットがprotocolと統一されていない。txIDの導入などを行う
-		//Client.Send(protocol.FuncLogMsg, struct{}{})
+		// send binary log to log server
+		Client.Send(protocol.FuncLogMsg, logmsg)
 	} else {
 		panic(errors.New("here is unreachable, but reached"))
 	}
