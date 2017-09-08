@@ -14,36 +14,51 @@ const (
 )
 
 func (log *Log) LoadFromJsonLines(data io.Reader) error {
+	r := bufio.NewReaderSize(data, BufferSize)
+	lineno := 0
+
+	var ioError error
+	loadErr := log.LoadFromIterator(func() (raw RawLog, ok bool) {
+		for {
+			var line []byte
+			line, _, ioError = r.ReadLine()
+			if ioError != nil {
+				if ioError == io.EOF {
+					ioError = nil
+				}
+				return
+			}
+
+			// ignore blank lines
+			if len(line) == 0 {
+				continue
+			}
+
+			ioError = json.Unmarshal(line, &raw)
+			if ioError != nil {
+				return
+			}
+			raw.Time = Time(lineno)
+			lineno++
+
+			ok = true
+			return
+		}
+	})
+
+	if ioError != nil {
+		return ioError
+	}
+	return loadErr
+}
+
+func (log *Log) LoadFromIterator(next func() (RawLog, bool)) error {
 	log.Records = make([]*FuncLog, 0)
 	log.GoroutineMap = NewGoroutineMap()
 	log.TimeRangeMap = NewTimeRangeMap()
-
-	r := bufio.NewReaderSize(data, BufferSize)
 	gmap := make(map[GID][]*FuncLog)
-	lineno := 0
 
-	for {
-		raw := RawLog{}
-		line, _, err := r.ReadLine()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
-
-		// ignore blank lines
-		if len(line) == 0 {
-			continue
-		}
-
-		err = json.Unmarshal(line, &raw)
-		if err != nil {
-			return err
-		}
-		raw.Time = Time(lineno)
-		lineno++
-
+	for raw, ok := next(); ok; raw, ok = next() {
 		if _, ok := gmap[raw.GID]; !ok {
 			// create new goroutine
 			gmap[raw.GID] = make([]*FuncLog, 0, DefaultCallstackSize)
