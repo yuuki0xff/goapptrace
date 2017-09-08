@@ -11,7 +11,7 @@ import (
 	"net"
 	"strings"
 
-	"io"
+	"errors"
 
 	"github.com/yuuki0xff/goapptrace/info"
 )
@@ -22,7 +22,8 @@ const (
 
 var (
 	MaxStackSize = 1024
-	OutputFile   io.WriteCloser
+	OutputFile   *os.File
+	OutputSocket net.Conn
 
 	lock = sync.Mutex{}
 )
@@ -52,28 +53,36 @@ func sendLog(tag string) {
 
 		logmsg.Frames = append(logmsg.Frames, frame)
 	}
-	js, err := json.Marshal(logmsg)
-	if err != nil {
-		panic(err)
-	}
 
 	lock.Lock()
 	defer lock.Unlock()
-	if OutputFile == nil {
-		setOutputFile()
+	if OutputFile == nil && OutputSocket == nil {
+		setOutput()
 	}
 
-	_, err = OutputFile.Write(js)
-	if err != nil {
-		panic(err)
-	}
-	_, err = OutputFile.Write([]byte("\n"))
-	if err != nil {
-		panic(err)
+	if OutputFile != nil {
+		js, err := json.Marshal(logmsg)
+		if err != nil {
+			panic(err)
+		}
+
+		// write to file
+		_, err = OutputFile.Write(js)
+		if err != nil {
+			panic(err)
+		}
+		_, err = OutputFile.Write([]byte("\n"))
+		if err != nil {
+			panic(err)
+		}
+	} else if OutputSocket != nil {
+		// TODO: send binary log to log server
+	} else {
+		panic(errors.New("here is unreachable, but reached"))
 	}
 }
 
-func setOutputFile() {
+func setOutput() {
 	pid := os.Getpid()
 	url, ok := os.LookupEnv(info.DEFAULT_LOGSRV_ENV)
 	if ok {
@@ -86,7 +95,7 @@ func setOutputFile() {
 		if err != nil {
 			panic(err)
 		}
-		OutputFile = conn
+		OutputSocket = conn
 	} else {
 		// use log file
 		prefix, ok := os.LookupEnv(info.DEFAULT_LOGFILE_ENV)
