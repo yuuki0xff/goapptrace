@@ -78,6 +78,11 @@ func (s *Server) Listen() error {
 	return nil
 }
 
+func (s *Server) ActualAddr() string {
+	addr := s.listener.Addr()
+	return addr.Network() + "://" + addr.String()
+}
+
 func (s *Server) Send(cmdType CommandType, args interface{}) {
 	s.writeChan <- &CommandHeader{
 		CommandType: cmdType,

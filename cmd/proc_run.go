@@ -25,6 +25,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"fmt"
+
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/info"
@@ -46,7 +48,9 @@ func runProcRun(conf *config.Config, targets []string) error {
 		targets = conf.Targets.Names()
 	}
 
+	addr := fmt.Sprintf("unix:///tmp/goapptrace.%d.sock", os.Getpid())
 	srv := protocol.Server{
+		Addr: addr,
 		Handler: protocol.ServerHandler{
 			Connected:    func() {},
 			Disconnected: func() {},
