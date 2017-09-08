@@ -56,7 +56,10 @@ func sendLog(tag string) {
 	defer lock.Unlock()
 	if OutputFile == nil {
 		pid := os.Getpid()
-		prefix := os.Getenv(info.DEFAULT_LOGFILE_ENV)
+		prefix, ok := os.LookupEnv(info.DEFAULT_LOGFILE_ENV)
+		if !ok {
+			prefix = info.DEFAULT_LOGFILE_PREFIX
+		}
 		fpath := fmt.Sprintf("%s.%d.log", prefix, pid)
 		OutputFile, err = os.OpenFile(fpath, os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
