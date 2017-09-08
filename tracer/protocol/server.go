@@ -101,6 +101,10 @@ func (s *Server) Close() error {
 	return nil
 }
 
+func (s *Server) Wait() {
+	<-s.workerCtx.Done()
+}
+
 func (s *Server) worker() {
 	errCh := make(chan error)
 	shouldStop := false

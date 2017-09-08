@@ -21,8 +21,14 @@
 package cmd
 
 import (
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
+	"github.com/yuuki0xff/goapptrace/info"
+	"github.com/yuuki0xff/goapptrace/tracer/protocol"
 )
 
 // procRunCmd represents the run command
@@ -40,6 +46,22 @@ func runProcRun(conf *config.Config, targets []string) error {
 		targets = conf.Targets.Names()
 	}
 
+	srv := protocol.Server{
+		Handler: protocol.ServerHandler{
+			Connected:    func() {},
+			Disconnected: func() {},
+			Error:        func(err error) {},
+			Symbols:      func(s *protocol.Symbols) {},
+			FuncLog:      func(f *protocol.FuncLog) {},
+		},
+		AppName: info.APP_NAME,
+		Version: info.VERSION, // TODO: set server version
+		Secret:  "secret",     // TODO: set random value
+	}
+	if err := srv.Listen(); err != nil {
+		return err
+	}
+
 	for _, targetName := range targets {
 		target, err := conf.Targets.Get(config.TargetName(targetName))
 		if err != nil {
@@ -50,7 +72,16 @@ func runProcRun(conf *config.Config, targets []string) error {
 			return err
 		}
 	}
-	return nil
+
+	var err error
+	go func() {
+		c := make(chan os.Signal)
+		signal.Notify(c, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT)
+		<-c
+		err = srv.Close()
+	}()
+	srv.Wait()
+	return err
 }
 
 func init() {
