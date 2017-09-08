@@ -20,10 +20,10 @@ type Log struct {
 	Metadata    *LogMetadata
 	MaxFileSize int64
 
-	lock         sync.RWMutex
-	lastN        int64
-	lastEventLog *EventLog
-	lastIndex    *Index
+	lock        sync.RWMutex
+	lastN       int64
+	lastFuncLog *FuncLog
+	lastIndex   *Index
 }
 
 type LogMetadata struct {
@@ -71,11 +71,11 @@ func (l *Log) Save() error {
 	return nil
 }
 
-func (l *Log) Append(event log.FuncLog) error {
+func (l *Log) Append(funclog log.FuncLog) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
-	size, err := l.lastEventLog.File.Size()
+	size, err := l.lastFuncLog.File.Size()
 	if err != nil {
 		return err
 	}
@@ -87,9 +87,9 @@ func (l *Log) Append(event log.FuncLog) error {
 		}); err != nil {
 			return err
 		}
-		l.lastEventLog = &EventLog{File: l.Root.FuncLogFile(l.ID, l.lastN)}
+		l.lastFuncLog = &FuncLog{File: l.Root.FuncLogFile(l.ID, l.lastN)}
 	}
-	if err := l.lastEventLog.Append(event); err != nil {
+	if err := l.lastFuncLog.Append(funclog); err != nil {
 		return err
 	}
 	return nil
@@ -122,10 +122,10 @@ func (l *Log) Search(start, end time.Time, fn func(evt log.FuncLog) error) error
 	}
 
 	for i := startIdx; i <= endIdx; i++ {
-		el := EventLog{
+		fl := FuncLog{
 			File: l.Root.FuncLogFile(l.ID, i),
 		}
-		if err := el.Walk(fn); err != nil {
+		if err := fl.Walk(fn); err != nil {
 			return err
 		}
 	}
