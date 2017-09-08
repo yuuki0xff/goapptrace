@@ -7,6 +7,8 @@ const (
 	TimeRangeStep = 5000
 )
 
+type LoadRawLogHandler func(*RawLog)
+type LoadFuncLogHandler func(*FuncLog)
 type GID int // GID - Goroutine ID
 type Time int
 type TimeRange struct{ rangeID int }
@@ -23,6 +25,9 @@ type Log struct {
 	Records      RecordList
 	GoroutineMap *GoroutineMap
 	TimeRangeMap *TimeRangeMap
+
+	RawLogHandler  LoadRawLogHandler
+	FuncLogHandler LoadFuncLogHandler
 }
 
 type Goroutine struct {

@@ -59,6 +59,11 @@ func (log *Log) LoadFromIterator(next func() (RawLog, bool)) error {
 	gmap := make(map[GID][]*FuncLog)
 
 	for raw, ok := next(); ok; raw, ok = next() {
+		// call an event handler
+		if log.RawLogHandler != nil {
+			log.RawLogHandler(&raw)
+		}
+
 		if _, ok := gmap[raw.GID]; !ok {
 			// create new goroutine
 			gmap[raw.GID] = make([]*FuncLog, 0, DefaultCallstackSize)
@@ -87,6 +92,10 @@ func (log *Log) LoadFromIterator(next func() (RawLog, bool)) error {
 					log.Records = append(log.Records, fl)
 					log.GoroutineMap.Add(fl)
 					log.TimeRangeMap.Add(fl)
+					// call an event handler
+					if log.FuncLogHandler != nil {
+						log.FuncLogHandler(fl)
+					}
 
 					if i != len(gmap[raw.GID])-1 {
 						fmt.Printf("WARN: missing funcEnd log: %+v\n", gmap[raw.GID][i:])
