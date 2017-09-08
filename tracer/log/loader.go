@@ -13,7 +13,7 @@ const (
 	DefaultCallstackSize = 1024
 )
 
-func (log *Log) LoadFromJsonLines(data io.Reader) error {
+func (log *RawLogLoader) LoadFromJsonLines(data io.Reader) error {
 	r := bufio.NewReaderSize(data, BufferSize)
 	lineno := 0
 
@@ -52,7 +52,7 @@ func (log *Log) LoadFromJsonLines(data io.Reader) error {
 	return loadErr
 }
 
-func (log *Log) LoadFromIterator(next func() (RawLog, bool)) error {
+func (log *RawLogLoader) LoadFromIterator(next func() (RawLog, bool)) error {
 	log.Records = make([]*FuncLog, 0)
 	log.GoroutineMap = NewGoroutineMap()
 	log.TimeRangeMap = NewTimeRangeMap()

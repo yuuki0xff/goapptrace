@@ -20,7 +20,7 @@ type TimeRangeMap struct {
 	m map[TimeRange]*GoroutineMap
 }
 
-type Log struct {
+type RawLogLoader struct {
 	Name         string
 	Records      RecordList
 	GoroutineMap *GoroutineMap

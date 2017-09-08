@@ -24,7 +24,7 @@ var (
 )
 
 type SVGRender struct {
-	Log       *log.Log
+	Log       *log.RawLogLoader
 	StartTime log.Time
 	EndTime   log.Time
 

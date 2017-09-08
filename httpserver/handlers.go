@@ -20,7 +20,7 @@ func getRouter() *mux.Router {
 	// TODO: 本来はHTTPリクエストを受け取った後に処理するべき
 	f, _ := os.Open("/home/yuuki/work/docker-log/docker.log.21119.log.gz")
 	g, _ := gzip.NewReader(f)
-	l := log.Log{
+	l := log.RawLogLoader{
 		Name: "test",
 	}
 	if err := l.LoadFromJsonLines(g); err != nil {
