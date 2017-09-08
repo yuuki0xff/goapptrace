@@ -45,6 +45,9 @@ func (d DirLayout) MetaFile(id LogID) File {
 func (d DirLayout) FuncLogFile(id LogID, n int64) File {
 	return File(path.Join(d.DataDir(), fmt.Sprintf("%s.%d.func.log.gz", id.Hex(), n)))
 }
+func (d DirLayout) SymbolFile(id LogID) File {
+	return File(path.Join(d.DataDir(), fmt.Sprintf("%s.symbol.gz", id.Hex())))
+}
 func (d DirLayout) IndexFile(id LogID) File {
 	return File(path.Join(d.DataDir(), fmt.Sprintf("%s.index.gz", id.Hex())))
 }
