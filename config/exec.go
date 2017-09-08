@@ -1,5 +1,11 @@
 package config
 
+import (
+	"path/filepath"
+
+	"github.com/yuuki0xff/goapptrace/info"
+)
+
 type ExecProcess struct {
 	Args []string
 }
@@ -7,7 +13,10 @@ type ExecProcess struct {
 func (ep *ExecProcess) Run() error {
 	args := ep.Args
 	if args == nil || len(args) == 0 {
-		args = []string{} // TODO: 実行スべきコマンド名を特定する
+		args = []string{
+			// NOTE: filepath.Join() will strip of "./"
+			"." + string(filepath.Separator) + info.DEFAULT_EXE_NAME,
+		}
 	}
 	return execCmd(args)
 }

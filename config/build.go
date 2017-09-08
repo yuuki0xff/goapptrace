@@ -3,6 +3,8 @@ package config
 import (
 	"os"
 	"os/exec"
+
+	"github.com/yuuki0xff/goapptrace/info"
 )
 
 type BuildProcess struct {
@@ -12,7 +14,7 @@ type BuildProcess struct {
 func (bp *BuildProcess) Run() error {
 	args := bp.Args
 	if args == nil || len(args) == 0 {
-		args = []string{"go", "build"}
+		args = []string{"go", "build", "-o", info.DEFAULT_EXE_NAME}
 	}
 
 	return execCmd(args)
