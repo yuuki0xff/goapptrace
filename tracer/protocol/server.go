@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"time"
+
+	"github.com/yuuki0xff/goapptrace/tracer/log"
 )
 
 type ServerHandler struct {
@@ -17,8 +19,8 @@ type ServerHandler struct {
 
 	Error func(error)
 
-	Symbols func(*Symbols)
-	FuncLog func(*FuncLog)
+	Symbols func(*log.Symbols)
+	FuncLog func(*log.FuncLog)
 }
 
 type Server struct {
@@ -175,9 +177,9 @@ func (s *Server) worker() {
 				var data interface{}
 				switch msgHeader.MessageType {
 				case SymbolsMsg:
-					data = &Symbols{}
+					data = &log.Symbols{}
 				case FuncLogMsg:
-					data = &FuncLog{}
+					data = &log.FuncLog{}
 				default:
 					errCh <- errors.New(fmt.Sprintf("Invalid MessageType: %d", msgHeader.MessageType))
 					return
@@ -193,9 +195,9 @@ func (s *Server) worker() {
 
 				switch msgHeader.MessageType {
 				case SymbolsMsg:
-					s.Handler.Symbols(data.(*Symbols))
+					s.Handler.Symbols(data.(*log.Symbols))
 				case FuncLogMsg:
-					s.Handler.FuncLog(data.(*FuncLog))
+					s.Handler.FuncLog(data.(*log.FuncLog))
 				default:
 					panic("bug")
 				}

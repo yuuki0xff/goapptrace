@@ -30,6 +30,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/info"
+	"github.com/yuuki0xff/goapptrace/tracer/log"
 	"github.com/yuuki0xff/goapptrace/tracer/protocol"
 )
 
@@ -57,8 +58,8 @@ func runProcRun(conf *config.Config, targets []string) error {
 			Error: func(err error) {
 				fmt.Println("ERROR", err)
 			},
-			Symbols: func(s *protocol.Symbols) {},
-			FuncLog: func(f *protocol.FuncLog) {},
+			Symbols: func(s *log.Symbols) {},
+			FuncLog: func(f *log.FuncLog) {},
 		},
 		AppName: info.APP_NAME,
 		Version: info.VERSION, // TODO: set server version

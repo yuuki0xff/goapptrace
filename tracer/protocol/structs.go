@@ -1,5 +1,7 @@
 package protocol
 
+import "github.com/yuuki0xff/goapptrace/tracer/log"
+
 // Protocol Specification
 // Step1: Server <-- Client
 //   [ClientHeader]
@@ -18,11 +20,7 @@ package protocol
 //     ...
 
 type MessageType uint64
-type FuncID uint64
-type FuncStatusID uint64
-type TxID uint64
 type FuncLogType uint64
-
 type CommandType uint64
 
 const (
@@ -65,39 +63,12 @@ type CommandHeader struct {
 }
 
 ////////////////////////////////////////////////////////////////
-// Messages
-
-type Symbols struct {
-	Funcs          []*Func
-	FuncExecStatus []*FuncStatus
-}
-
-type Func struct {
-	ID   FuncID
-	Name string
-	File string
-}
-
-type FuncStatus struct {
-	ID    FuncStatusID
-	Func  FuncID
-	Line  uint64
-	Entry uintptr
-}
-
-type FuncLog struct {
-	TxID      TxID
-	Timestamp int64
-	Frames    []FuncStatusID
-}
-
-////////////////////////////////////////////////////////////////
 // Command Arguments
 
 type StartTraceCmdArgs struct {
-	FuncID FuncID
+	FuncID log.FuncID
 }
 
 type StopTraceCmdArgs struct {
-	FuncID FuncID
+	FuncID log.FuncID
 }

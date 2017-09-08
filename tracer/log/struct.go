@@ -10,6 +10,7 @@ const (
 type LoadRawLogHandler func(*RawLog)
 type LoadFuncLogHandler func(*FuncLog)
 type GID int64 // GID - Goroutine ID
+type TxID uint64
 type Time int
 type TimeRange struct{ rangeID int }
 type RecordList []*FuncLog
@@ -52,4 +53,28 @@ type RawLog struct {
 	Timestamp int64           `json:"timestamp"`
 	Frames    []runtime.Frame `json:"frames"`
 	GID       GID             `json:"gid"`
+	TxID      TxID            `json:"txid"`
+}
+
+////////////////////////////////////////////////////////////////
+// Symbols
+type FuncID uint64
+type FuncStatusID uint64
+
+type Symbols struct {
+	Funcs          []*Func
+	FuncExecStatus []*FuncStatus
+}
+
+type Func struct {
+	ID   FuncID
+	Name string
+	File string
+}
+
+type FuncStatus struct {
+	ID    FuncStatusID
+	Func  FuncID
+	Line  uint64
+	Entry uintptr
 }
