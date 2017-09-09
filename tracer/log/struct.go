@@ -22,11 +22,12 @@ type TimeRangeMap struct {
 }
 
 type RawLogLoader struct {
-	Name         string
-	Records      RecordList
-	GoroutineMap *GoroutineMap
-	TimeRangeMap *TimeRangeMap
-	Symbols
+	Name           string
+	Records        RecordList
+	GoroutineMap   *GoroutineMap
+	TimeRangeMap   *TimeRangeMap
+	Symbols        Symbols
+	SymbolResolver SymbolResolver
 
 	RawLogHandler  LoadRawLogHandler
 	FuncLogHandler LoadFuncLogHandler
@@ -77,14 +78,21 @@ type Symbols struct {
 }
 
 type FuncSymbol struct {
-	ID   FuncID
-	Name string // example: "github.com/yuuki0xff/goapptrace.main"
-	File string // example: "/go/src/github.com/yuuki0xff/goapptrace/goapptrace.go"
+	ID    FuncID
+	Name  string  // example: "github.com/yuuki0xff/goapptrace.main"
+	File  string  // example: "/go/src/github.com/yuuki0xff/goapptrace/goapptrace.go"
+	Entry uintptr // entry point of function
 }
 
 type FuncStatus struct {
-	ID    FuncStatusID
-	Func  FuncID
-	Line  uint64
-	Entry uintptr
+	ID   FuncStatusID
+	Func FuncID
+	Line uint64
+	PC   uintptr
+}
+
+type SymbolResolver struct {
+	symbols    *Symbols
+	funcs      map[string]FuncID
+	funcStatus map[FuncStatus]FuncStatusID // FuncStatus.IDは常に0
 }
