@@ -10,8 +10,6 @@ import (
 
 	"time"
 
-	"io"
-
 	"github.com/yuuki0xff/goapptrace/tracer/log"
 )
 
@@ -125,7 +123,9 @@ func (s *Server) worker() {
 			return true
 		}
 		if err != nil {
-			if err == io.EOF {
+			if isEOF(err) || isBrokenPipe(err) {
+				// ignore errors
+				errCh <- nil
 				return true
 			}
 			errCh <- err
@@ -258,7 +258,9 @@ func (s *Server) worker() {
 		shouldStop = true
 		return
 	case err := <-errCh:
-		s.Handler.Error(err)
+		if err != nil {
+			s.Handler.Error(err)
+		}
 		shouldStop = true
 		if err := s.Close(); err != nil {
 			s.Handler.Error(err)

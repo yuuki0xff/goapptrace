@@ -10,7 +10,6 @@ import (
 
 	"reflect"
 	"time"
-	"io"
 )
 
 type ClientHandler struct {
@@ -112,7 +111,9 @@ func (c *Client) worker() {
 			return true
 		}
 		if err != nil {
-			if err == io.EOF {
+			if isEOF(err) || isBrokenPipe(err) {
+				// ignore errors
+				errCh <- nil
 				return true
 			}
 			errCh <- err
