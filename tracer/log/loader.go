@@ -43,14 +43,26 @@ func (log *RawLogLoader) LoadFromJsonLines(data io.Reader) error {
 			lineno++
 
 			// convert format from RawLog to RawLogNew
-
 			raw = RawLogNew{
 				Time:      oldraw.Time,
 				Tag:       oldraw.Tag,
 				Timestamp: oldraw.Timestamp,
-				Frames:    []FuncStatusID{}, // TODO
+				Frames:    []FuncStatusID{},
 				GID:       oldraw.GID,
 				TxID:      oldraw.TxID,
+			}
+			for _, oldframe := range oldraw.Frames {
+				funcID := log.SymbolResolver.AddFunc(FuncSymbol{
+					Name:  oldframe.Function,
+					File:  oldframe.File,
+					Entry: oldframe.Entry,
+				})
+				funcStatusID := log.SymbolResolver.AddFuncStatus(FuncStatus{
+					Func: funcID,
+					Line: uint64(oldframe.Line),
+					PC:   oldframe.PC,
+				})
+				raw.Frames = append(raw.Frames, funcStatusID)
 			}
 
 			ok = true
