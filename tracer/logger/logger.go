@@ -145,9 +145,11 @@ func setOutput() {
 			Handler: protocol.ClientHandler{
 				Connected:    func() {},
 				Disconnected: func() {},
-				Error:        func(err error) {},
-				StartTrace:   func(args *protocol.StartTraceCmdArgs) {},
-				StopTrace:    func(args *protocol.StopTraceCmdArgs) {},
+				Error: func(err error) {
+					fmt.Println("Client ERROR:", err.Error())
+				},
+				StartTrace: func(args *protocol.StartTraceCmdArgs) {},
+				StopTrace:  func(args *protocol.StopTraceCmdArgs) {},
 			},
 			AppName: "TODO", // TODO
 			Version: info.VERSION,

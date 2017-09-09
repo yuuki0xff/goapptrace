@@ -56,7 +56,7 @@ func runProcRun(conf *config.Config, targets []string) error {
 			Connected:    func() {},
 			Disconnected: func() {},
 			Error: func(err error) {
-				fmt.Println("ERROR", err)
+				fmt.Println("Server ERROR:", err)
 			},
 			Symbols: func(s *log.Symbols) {},
 			FuncLog: func(f *log.FuncLog) {},

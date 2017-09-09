@@ -8,7 +8,9 @@ import (
 	"net"
 	"strings"
 
+	"reflect"
 	"time"
+	"io"
 )
 
 type ClientHandler struct {
@@ -135,6 +137,7 @@ func (c *Client) worker() {
 		enc := gob.NewEncoder(c.conn)
 		dec := gob.NewDecoder(c.conn)
 
+		println("client: send client header")
 		setWriteDeadline()
 		if isError(enc.Encode(&ClientHeader{
 			AppName:       c.AppName,
@@ -143,16 +146,20 @@ func (c *Client) worker() {
 		})) {
 			return
 		}
+		println("client: send client header done")
 
+		println("client: read server response")
 		setReadDeadline()
 		serverHeader := ServerHeader{}
 		if isError(dec.Decode(&serverHeader)) {
 			return
 		}
+		println("client: read server response done")
 		// TODO: check response
 
 		// initialize process is done
 		// start read/write workers
+		println("client: initialize done")
 
 		// start read worker
 		go func() {
@@ -215,6 +222,7 @@ func (c *Client) worker() {
 					return
 				}
 
+				fmt.Printf("client data: %s : %+v\n", reflect.TypeOf(data).String(), data)
 				setWriteDeadline()
 				if isError(enc.Encode(data)) {
 					return

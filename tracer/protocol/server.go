@@ -146,26 +146,33 @@ func (s *Server) worker() {
 			}
 		}
 
+		time.Sleep(1 * time.Second)
+
 		// initialize
 		enc := gob.NewEncoder(conn)
 		dec := gob.NewDecoder(conn)
 
+		println("server: read client header")
 		setReadDeadline()
 		clientHeader := ClientHeader{}
 		if isError(dec.Decode(&clientHeader)) {
 			return
 		}
+		println("server: read client header done")
 		// TODO: check response
 
+		println("server: send server header")
 		setWriteDeadline()
 		if isError(enc.Encode(&ServerHeader{
 			ServerVersion: "", //TODO
 		})) {
 			return
 		}
+		println("server: send server header done")
 
 		// initialize process is done
 		// start read/write workers
+		println("server: initialize done")
 
 		// start read worker
 		go func() {
