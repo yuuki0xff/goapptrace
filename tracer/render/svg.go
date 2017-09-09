@@ -34,6 +34,7 @@ type SVGRender struct {
 }
 
 func (r *SVGRender) Render(w io.Writer) {
+	r.Colors.Log = r.Log
 	length := r.EndTime - r.StartTime
 	grm := r.Log.TimeRangeMap.Get(r.StartTime, r.EndTime)
 

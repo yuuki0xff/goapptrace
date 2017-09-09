@@ -6,7 +6,6 @@ import (
 	"hash"
 	"hash/fnv"
 	"math"
-	"strings"
 
 	"github.com/yuuki0xff/goapptrace/tracer/log"
 )
@@ -30,6 +29,7 @@ var (
 type Colors struct {
 	ColorRule ColorRule
 	NColors   int
+	Log       *log.RawLogLoader
 	strColors []string
 	hash      hash.Hash64
 }
@@ -48,17 +48,9 @@ func (c *Colors) GetByFuncLog(fl *log.FuncLog) string {
 	case ColoringPerGoroutine:
 		return c.GetByInt(int(fl.GID))
 	case ColoringPerFunction:
-		return c.GetByString(fl.Frames[0].Function)
+		return c.GetByInt(int(c.Log.Symbols.FuncID(fl.Frames[0])))
 	case ColoringPerModule:
-		f := fl.Frames[0].Function
-
-		// strip function name from f
-		moduleHierarchy := strings.Split(f, "/")
-		last := len(moduleHierarchy) - 1
-		moduleHierarchy[last] = strings.SplitN(moduleHierarchy[last], ".", 2)[0]
-		moduleName := strings.Join(moduleHierarchy, "/")
-
-		return c.GetByString(moduleName)
+		return c.GetByString(c.Log.Symbols.ModuleName(fl.Frames[0]))
 	default:
 		panic("Unsupported rule")
 	}
