@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/yuuki0xff/goapptrace/tracer/log"
+	"reflect"
 )
 
 type ServerHandler struct {
@@ -128,6 +129,7 @@ func (s *Server) worker() {
 				errCh <- nil
 				return true
 			}
+			panic(err)
 			errCh <- err
 			return true
 		}
@@ -146,7 +148,7 @@ func (s *Server) worker() {
 			}
 		}
 
-		time.Sleep(1 * time.Second)
+		//time.Sleep(1 * time.Second)
 
 		// initialize
 		enc := gob.NewEncoder(conn)
@@ -206,6 +208,7 @@ func (s *Server) worker() {
 				if shouldStop {
 					return
 				}
+				fmt.Printf("server data: %s : %+v\n", reflect.TypeOf(data).String(), data)
 
 				switch msgHeader.MessageType {
 				case PingMsg:
