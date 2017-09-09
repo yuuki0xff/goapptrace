@@ -52,12 +52,12 @@ func (log *RawLogLoader) LoadFromJsonLines(data io.Reader) error {
 				TxID:      oldraw.TxID,
 			}
 			for _, oldframe := range oldraw.Frames {
-				funcID := log.SymbolResolver.AddFunc(FuncSymbol{
+				funcID, _ := log.SymbolResolver.AddFunc(FuncSymbol{
 					Name:  oldframe.Function,
 					File:  oldframe.File,
 					Entry: oldframe.Entry,
 				})
-				funcStatusID := log.SymbolResolver.AddFuncStatus(FuncStatus{
+				funcStatusID, _ := log.SymbolResolver.AddFuncStatus(FuncStatus{
 					Func: funcID,
 					Line: uint64(oldframe.Line),
 					PC:   oldframe.PC,

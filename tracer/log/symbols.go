@@ -30,25 +30,25 @@ func (sr *SymbolResolver) Init(symbols *Symbols) {
 	}
 }
 
-func (sr *SymbolResolver) AddFunc(symbol FuncSymbol) FuncID {
+func (sr *SymbolResolver) AddFunc(symbol FuncSymbol) (id FuncID, added bool) {
 	id, ok := sr.funcs[symbol.Name]
 	if ok {
 		// if exists, nothing to do
-		return id
+		return id, false
 	}
 
 	symbol.ID = FuncID(len(sr.symbols.Funcs))
 	sr.symbols.Funcs = append(sr.symbols.Funcs, &symbol)
 	sr.funcs[symbol.Name] = symbol.ID
-	return symbol.ID
+	return symbol.ID, true
 }
 
-func (sr *SymbolResolver) AddFuncStatus(status FuncStatus) FuncStatusID {
+func (sr *SymbolResolver) AddFuncStatus(status FuncStatus) (id FuncStatusID, added bool) {
 	status.ID = 0
 	id, ok := sr.funcStatus[status]
 	if ok {
 		// if exists, nothing to do
-		return id
+		return id, false
 	}
 
 	// NOTE: sr.funcStatusのkeyとなるFuncStatusオブジェクトは、必ずFuncStatus.ID=0
@@ -58,5 +58,5 @@ func (sr *SymbolResolver) AddFuncStatus(status FuncStatus) FuncStatusID {
 
 	status.ID = id
 	sr.symbols.FuncStatus = append(sr.symbols.FuncStatus, &status)
-	return id
+	return id, true
 }
