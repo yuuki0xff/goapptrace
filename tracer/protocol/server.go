@@ -10,6 +10,8 @@ import (
 
 	"time"
 
+	"io"
+
 	"github.com/yuuki0xff/goapptrace/tracer/log"
 )
 
@@ -123,6 +125,9 @@ func (s *Server) worker() {
 			return true
 		}
 		if err != nil {
+			if err == io.EOF {
+				return true
+			}
 			errCh <- err
 			return true
 		}
