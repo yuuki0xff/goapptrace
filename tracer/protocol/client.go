@@ -109,8 +109,14 @@ func (c *Client) worker() {
 		if shouldStop {
 			return true
 		}
-		errCh <- err
-		return true
+		if err != nil {
+			if err == io.EOF {
+				return true
+			}
+			errCh <- err
+			return true
+		}
+		return false
 	}
 
 	go func() {
