@@ -193,7 +193,7 @@ func (c *Client) worker() {
 		// start ping worker
 		go func() {
 			for !shouldStop {
-				c.Send(PingMsg, &struct{}{})
+				c.Send(PingMsg, &PingMsgData{})
 				time.Sleep(c.PingInterval)
 			}
 		}()
