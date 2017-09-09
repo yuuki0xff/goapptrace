@@ -211,7 +211,7 @@ func (s *Server) worker() {
 		// start ping worker
 		go func() {
 			for !shouldStop {
-				s.Send(PingCmd, &struct{}{})
+				s.Send(PingCmd, &PingCmdArgs{})
 				time.Sleep(s.PingInterval)
 			}
 		}()
