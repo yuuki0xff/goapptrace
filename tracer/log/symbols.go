@@ -2,6 +2,11 @@ package log
 
 import "strings"
 
+func (s *Symbols) Init() {
+	s.Funcs = make([]*FuncSymbol, 0)
+	s.FuncStatus = make([]*FuncStatus, 0)
+}
+
 func (s Symbols) FuncID(id FuncStatusID) FuncID {
 	return s.FuncStatus[id].Func
 }

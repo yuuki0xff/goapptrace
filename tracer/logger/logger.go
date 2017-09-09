@@ -30,14 +30,23 @@ var (
 	OutputFile   *os.File
 	Client       *protocol.Client
 
-	lock = sync.Mutex{}
+	lock           = sync.Mutex{}
+	symbols        = log.Symbols{}
+	symbolResolver = log.SymbolResolver{}
 )
 
+func init() {
+	symbols.Init()
+	symbolResolver.Init(&symbols)
+}
+
 func sendLog(tag string, id log.TxID) {
-	logmsg := log.RawLog{}
+	var newSymbols *log.Symbols
+
+	logmsg := log.RawLogNew{}
 	logmsg.Timestamp = time.Now().Unix()
 	logmsg.Tag = tag
-	logmsg.Frames = make([]runtime.Frame, 0, MaxStackSize)
+	logmsg.Frames = make([]log.FuncStatusID, 0, MaxStackSize)
 	logmsg.TxID = id
 
 	pc := make([]uintptr, MaxStackSize)
@@ -51,7 +60,30 @@ func sendLog(tag string, id log.TxID) {
 			break
 		}
 
-		logmsg.Frames = append(logmsg.Frames, frame)
+		funcID, added1 := symbolResolver.AddFunc(log.FuncSymbol{
+			Name:  frame.Function,
+			File:  frame.File,
+			Entry: frame.Entry,
+		})
+		funcStatusID, added2 := symbolResolver.AddFuncStatus(log.FuncStatus{
+			Func: funcID,
+			Line: uint64(frame.Line),
+			PC:   frame.PC,
+		})
+		logmsg.Frames = append(logmsg.Frames, funcStatusID)
+
+		if added1 || added2 {
+			// prepare newSymbols
+			newSymbols = &log.Symbols{}
+			newSymbols.Init()
+
+			if added1 {
+				newSymbols.Funcs = append(newSymbols.Funcs, symbols.Funcs[funcID])
+			}
+			if added2 {
+				newSymbols.FuncStatus = append(newSymbols.FuncStatus, symbols.FuncStatus[funcStatusID])
+			}
+		}
 	}
 
 	buf := make([]byte, backtraceSize)
@@ -71,13 +103,20 @@ func sendLog(tag string, id log.TxID) {
 	}
 
 	if OutputFile != nil {
-		js, err := json.Marshal(logmsg)
+		// write symbols to file
+		if newSymbols != nil {
+			err := json.NewEncoder(OutputFile).Encode(newSymbols)
+			if err != nil {
+				panic(err)
+			}
+		}
+		_, err = OutputFile.Write([]byte("\n"))
 		if err != nil {
 			panic(err)
 		}
 
-		// write to file
-		_, err = OutputFile.Write(js)
+		// write backtrace to file
+		err := json.NewEncoder(OutputFile).Encode(&logmsg)
 		if err != nil {
 			panic(err)
 		}
@@ -87,6 +126,9 @@ func sendLog(tag string, id log.TxID) {
 		}
 	} else if Client != nil {
 		// send binary log to log server
+		if newSymbols != nil {
+			Client.Send(protocol.SymbolsMsg, newSymbols)
+		}
 		Client.Send(protocol.FuncLogMsg, logmsg)
 	} else {
 		panic(errors.New("here is unreachable, but reached"))
