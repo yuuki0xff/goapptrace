@@ -71,6 +71,9 @@ type PingMsgData struct {
 ////////////////////////////////////////////////////////////////
 // Command Arguments
 
+type PingCmdArgs struct {
+}
+
 type StartTraceCmdArgs struct {
 	FuncID log.FuncID
 }

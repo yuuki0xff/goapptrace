@@ -162,6 +162,8 @@ func (c *Client) worker() {
 
 				var data interface{}
 				switch cmdHeader.CommandType {
+				case PingCmd:
+					data = &PingCmdArgs{}
 				case StartTraceCmd:
 					data = &StartTraceCmdArgs{}
 				case StopTraceCmd:
@@ -180,6 +182,8 @@ func (c *Client) worker() {
 				}
 
 				switch cmdHeader.CommandType {
+				case PingCmd:
+					// do nothing
 				case StartTraceCmd:
 					c.Handler.StartTrace(data.(*StartTraceCmdArgs))
 				case StopTraceCmd:
