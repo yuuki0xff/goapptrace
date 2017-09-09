@@ -68,8 +68,8 @@ type Symbols struct {
 
 type FuncSymbol struct {
 	ID   FuncID
-	Name string
-	File string
+	Name string // example: "github.com/yuuki0xff/goapptrace.main"
+	File string // example: "/go/src/github.com/yuuki0xff/goapptrace/goapptrace.go"
 }
 
 type FuncStatus struct {
