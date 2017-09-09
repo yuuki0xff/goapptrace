@@ -18,7 +18,7 @@ func (log *RawLogLoader) LoadFromJsonLines(data io.Reader) error {
 	lineno := 0
 
 	var ioError error
-	loadErr := log.LoadFromIterator(func() (raw RawLog, ok bool) {
+	loadErr := log.LoadFromIterator(func() (raw RawLogNew, ok bool) {
 		for {
 			var line []byte
 			line, _, ioError = r.ReadLine()
@@ -34,12 +34,24 @@ func (log *RawLogLoader) LoadFromJsonLines(data io.Reader) error {
 				continue
 			}
 
-			ioError = json.Unmarshal(line, &raw)
+			var oldraw RawLog
+			ioError = json.Unmarshal(line, &oldraw)
 			if ioError != nil {
 				return
 			}
-			raw.Time = Time(lineno)
+			oldraw.Time = Time(lineno)
 			lineno++
+
+			// convert format from RawLog to RawLogNew
+
+			raw = RawLogNew{
+				Time:      oldraw.Time,
+				Tag:       oldraw.Tag,
+				Timestamp: oldraw.Timestamp,
+				Frames:    []FuncStatusID{}, // TODO
+				GID:       oldraw.GID,
+				TxID:      oldraw.TxID,
+			}
 
 			ok = true
 			return
@@ -52,7 +64,7 @@ func (log *RawLogLoader) LoadFromJsonLines(data io.Reader) error {
 	return loadErr
 }
 
-func (log *RawLogLoader) LoadFromIterator(next func() (RawLog, bool)) error {
+func (log *RawLogLoader) LoadFromIterator(next func() (RawLogNew, bool)) error {
 	log.Records = make([]*FuncLog, 0)
 	log.GoroutineMap = NewGoroutineMap()
 	log.TimeRangeMap = NewTimeRangeMap()
@@ -85,7 +97,7 @@ func (log *RawLogLoader) LoadFromIterator(next func() (RawLog, bool)) error {
 		case "funcEnd":
 			for i := len(gmap[raw.GID]) - 1; i >= 0; i-- {
 				fl := gmap[raw.GID][i]
-				if compareCallee(fl, &raw) && compareCaller(fl, &raw) {
+				if log.compareCallee(fl, &raw) && log.compareCaller(fl, &raw) {
 					// detect EndTime
 					fl.EndTime = raw.Time
 					// add to records
@@ -259,7 +271,7 @@ func (fl *FuncLog) Parents() int {
 	return parents
 }
 
-func compareCaller(fl *FuncLog, log *RawLog) bool {
+func (rll RawLogLoader) compareCaller(fl *FuncLog, log *RawLogNew) bool {
 	f1 := fl.Frames[1:]
 	f2 := log.Frames[1:]
 
@@ -274,6 +286,8 @@ func compareCaller(fl *FuncLog, log *RawLog) bool {
 	return true
 }
 
-func compareCallee(fl *FuncLog, log *RawLog) bool {
-	return fl.Frames[0].Function == log.Frames[0].Function
+func (rll RawLogLoader) compareCallee(fl *FuncLog, log *RawLogNew) bool {
+	funcID1 := rll.Symbols.FuncStatus[fl.Frames[0]].Func
+	funcID2 := rll.Symbols.FuncStatus[log.Frames[0]].Func
+	return funcID1 == funcID2
 }

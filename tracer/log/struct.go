@@ -7,7 +7,7 @@ const (
 	TimeRangeStep = 5000
 )
 
-type LoadRawLogHandler func(*RawLog)
+type LoadRawLogHandler func(*RawLogNew)
 type LoadFuncLogHandler func(*FuncLog)
 type GID int64 // GID - Goroutine ID
 type TxID uint64
@@ -26,6 +26,7 @@ type RawLogLoader struct {
 	Records      RecordList
 	GoroutineMap *GoroutineMap
 	TimeRangeMap *TimeRangeMap
+	Symbols
 
 	RawLogHandler  LoadRawLogHandler
 	FuncLogHandler LoadFuncLogHandler
@@ -43,7 +44,7 @@ type FuncLog struct {
 	EndTime   Time
 	Parent    *FuncLog
 
-	Frames []runtime.Frame
+	Frames []FuncStatusID
 	GID    GID
 }
 
@@ -54,6 +55,15 @@ type RawLog struct {
 	Frames    []runtime.Frame `json:"frames"`
 	GID       GID             `json:"gid"`
 	TxID      TxID            `json:"txid"`
+}
+
+type RawLogNew struct {
+	Time      Time
+	Tag       string         `json:"tag"`
+	Timestamp int64          `json:"timestamp"`
+	Frames    []FuncStatusID `json:"frames"`
+	GID       GID            `json:"gid"`
+	TxID      TxID           `json:"txid"`
 }
 
 ////////////////////////////////////////////////////////////////
