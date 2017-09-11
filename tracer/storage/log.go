@@ -37,6 +37,9 @@ func (id LogID) Hex() string {
 }
 
 func (l *Log) Init() error {
+	l.lock.Lock()
+	defer l.lock.Unlock()
+
 	return l.Load()
 }
 
