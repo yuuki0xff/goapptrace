@@ -20,10 +20,12 @@ type Log struct {
 	Metadata    *LogMetadata
 	MaxFileSize int64
 
-	lock        sync.RWMutex
+	lock sync.RWMutex
+	// -1:    log files are not exists.
+	// 0 > 0: log files are exists.
 	lastN       int64
 	lastFuncLog *FuncLog
-	lastIndex   *Index
+	index       *Index
 }
 
 type LogMetadata struct {
@@ -32,6 +34,10 @@ type LogMetadata struct {
 
 func (id LogID) Hex() string {
 	return hex.EncodeToString(id[:])
+}
+
+func (l *Log) Init() error {
+	return l.Load()
 }
 
 func (l *Log) Load() error {
@@ -50,10 +56,13 @@ func (l *Log) Load() error {
 	l.Metadata = meta
 
 	// find last id
-	var i int64
-	for i = 0; l.Root.FuncLogFile(l.ID, i).Exists(); i++ {
+	var last int64 = -1
+	for i := int64(0); l.Root.FuncLogFile(l.ID, i).Exists(); i++ {
+		last = i
 	}
-	l.lastN = i
+	l.lastN = last
+	l.lastFuncLog = &FuncLog{File: l.Root.FuncLogFile(l.ID, l.lastN)}
+	l.index = &Index{File: l.Root.IndexFile(l.ID)}
 	return nil
 }
 
@@ -81,7 +90,7 @@ func (l *Log) Append(funclog log.FuncLog) error {
 	}
 	if l.MaxFileSize != 0 && size > l.MaxFileSize {
 		l.lastN++
-		if err := l.lastIndex.Append(IndexRecord{
+		if err := l.index.Append(IndexRecord{
 			Records:    UnknownRecords,
 			Timestamps: time.Now(), /// TODO
 		}); err != nil {

@@ -50,6 +50,10 @@ func (s *Storage) log(id LogID) *Log {
 		ID:   id,
 		Root: s.Root,
 	}
+	if err := log.Init(); err != nil {
+		// TODO: return err
+		panic(err)
+	}
 	s.files[id] = log
 	return log
 }
