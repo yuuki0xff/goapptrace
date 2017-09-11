@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/httpserver"
+	"github.com/yuuki0xff/goapptrace/tracer/storage"
 )
 
 // logShowCmd represents the show command
@@ -44,7 +45,15 @@ var logShowCmd = &cobra.Command{
 }
 
 func runLogShow(conf *config.Config, targets []string, notOpenBrowser bool, listen string) error {
-	srv := httpserver.NewHttpServer(listen)
+	strg := &storage.Storage{
+		Root: storage.DirLayout{Root: conf.DataDir()},
+	}
+	strg.Init()
+
+	srvArgs := &httpserver.ServerArgs{
+		Storage: strg,
+	}
+	srv := httpserver.NewHttpServer(listen, srvArgs)
 	if err := srv.Start(); err != nil {
 		return err
 	}

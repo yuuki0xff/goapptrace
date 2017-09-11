@@ -17,8 +17,8 @@ type HttpServer struct {
 	errch  chan error
 }
 
-func NewHttpServer(addr string) *HttpServer {
-	router := getRouter()
+func NewHttpServer(addr string, args *ServerArgs) *HttpServer {
+	router := getRouter(args)
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &HttpServer{
