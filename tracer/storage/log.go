@@ -209,7 +209,10 @@ func (l *Log) Search(start, end time.Time, fn func(evt log.RawFuncLogNew) error)
 		}
 		return nil
 	}); err != nil {
-		return err
+		// ignore "break loop" error
+		if err.Error() != "break loop" {
+			return err
+		}
 	}
 
 	for i := startIdx; i <= endIdx; i++ {
