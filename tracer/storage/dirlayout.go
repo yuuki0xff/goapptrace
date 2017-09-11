@@ -59,8 +59,8 @@ func (d DirLayout) MetaID(fname string) (id LogID, ok bool) {
 func (d DirLayout) MetaFile(id LogID) File {
 	return File(path.Join(d.MetaDir(), id.Hex()+".meta.json.gz"))
 }
-func (d DirLayout) FuncLogFile(id LogID, n int64) File {
-	return File(path.Join(d.DataDir(), fmt.Sprintf("%s.%d.func.log.gz", id.Hex(), n)))
+func (d DirLayout) RawFuncLogFile(id LogID, n int64) File {
+	return File(path.Join(d.DataDir(), fmt.Sprintf("%s.%d.rawfunc.log.gz", id.Hex(), n)))
 }
 func (d DirLayout) SymbolFile(id LogID) File {
 	return File(path.Join(d.DataDir(), fmt.Sprintf("%s.symbol.gz", id.Hex())))

@@ -26,7 +26,7 @@ type CommandType uint64
 const (
 	PingMsg MessageType = iota
 	SymbolsMsg
-	FuncLogMsg
+	RawFuncLogMsg
 )
 
 const (

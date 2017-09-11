@@ -129,7 +129,7 @@ func sendLog(tag string, id log.TxID) {
 		if newSymbols != nil {
 			Client.Send(protocol.SymbolsMsg, newSymbols)
 		}
-		Client.Send(protocol.FuncLogMsg, logmsg)
+		Client.Send(protocol.RawFuncLogMsg, logmsg)
 	} else {
 		panic(errors.New("here is unreachable, but reached"))
 	}

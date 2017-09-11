@@ -26,7 +26,7 @@ type Log struct {
 	// -1:    log files are not exists.
 	// 0 > 0: log files are exists.
 	lastN       int64
-	lastFuncLog *FuncLogWriter
+	lastFuncLog *RawFuncLogWriter
 	index       *Index
 	symbols     *SymbolsWriter
 }
@@ -77,7 +77,7 @@ func (l *Log) New() (err error) {
 	if checkFileNotExists(l.Root.MetaFile(l.ID)) {
 		return
 	}
-	if checkFileNotExists(l.Root.FuncLogFile(l.ID, 0)) {
+	if checkFileNotExists(l.Root.RawFuncLogFile(l.ID, 0)) {
 		return
 	}
 	if checkFileNotExists(l.Root.IndexFile(l.ID)) {
@@ -85,7 +85,7 @@ func (l *Log) New() (err error) {
 	}
 
 	l.lastN = 0
-	l.lastFuncLog = &FuncLogWriter{File: l.Root.FuncLogFile(l.ID, l.lastN)}
+	l.lastFuncLog = &RawFuncLogWriter{File: l.Root.RawFuncLogFile(l.ID, l.lastN)}
 	l.index = &Index{File: l.Root.IndexFile(l.ID)}
 	l.symbols = &SymbolsWriter{File: l.Root.SymbolFile(l.ID)}
 
@@ -117,12 +117,12 @@ func (l *Log) Load() error {
 
 	// find last id
 	var last int64 = -1
-	for i := int64(0); l.Root.FuncLogFile(l.ID, i).Exists(); i++ {
+	for i := int64(0); l.Root.RawFuncLogFile(l.ID, i).Exists(); i++ {
 		last = i
 	}
 
 	l.lastN = last
-	l.lastFuncLog = &FuncLogWriter{File: l.Root.FuncLogFile(l.ID, l.lastN)}
+	l.lastFuncLog = &RawFuncLogWriter{File: l.Root.RawFuncLogFile(l.ID, l.lastN)}
 	l.index = &Index{File: l.Root.IndexFile(l.ID)}
 	l.symbols = &SymbolsWriter{File: l.Root.SymbolFile(l.ID)}
 
@@ -170,14 +170,14 @@ func (l *Log) Close() error {
 	return err
 }
 
-func (l *Log) AppendFuncLog(funclog *log.FuncLog) error {
+func (l *Log) AppendFuncLog(raw *log.RawFuncLogNew) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
 	if err := l.autoRotate(); err != nil {
 		return err
 	}
-	if err := l.lastFuncLog.Append(funclog); err != nil {
+	if err := l.lastFuncLog.Append(raw); err != nil {
 		return err
 	}
 	return nil
@@ -193,7 +193,7 @@ func (l *Log) AppendSymbols(symbols *log.Symbols) error {
 	return nil
 }
 
-func (l *Log) Search(start, end time.Time, fn func(evt log.FuncLog) error) error {
+func (l *Log) Search(start, end time.Time, fn func(evt log.RawFuncLogNew) error) error {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
 
@@ -220,8 +220,8 @@ func (l *Log) Search(start, end time.Time, fn func(evt log.FuncLog) error) error
 	}
 
 	for i := startIdx; i <= endIdx; i++ {
-		fl := FuncLogReader{
-			File: l.Root.FuncLogFile(l.ID, i),
+		fl := RawFuncLogReader{
+			File: l.Root.RawFuncLogFile(l.ID, i),
 		}
 		if err := fl.Walk(fn); err != nil {
 			return err
@@ -249,6 +249,6 @@ func (l *Log) rotate() error {
 	}); err != nil {
 		return err
 	}
-	l.lastFuncLog = &FuncLogWriter{File: l.Root.FuncLogFile(l.ID, l.lastN)}
+	l.lastFuncLog = &RawFuncLogWriter{File: l.Root.RawFuncLogFile(l.ID, l.lastN)}
 	return nil
 }

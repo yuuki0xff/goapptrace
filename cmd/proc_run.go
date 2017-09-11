@@ -83,7 +83,7 @@ func runProcRun(conf *config.Config, targets []string) error {
 					panic(err)
 				}
 			},
-			FuncLog: func(f *log.FuncLog) {
+			RawFuncLog: func(f *log.RawFuncLogNew) {
 				if err := logobj.AppendFuncLog(f); err != nil {
 					panic(err)
 				}

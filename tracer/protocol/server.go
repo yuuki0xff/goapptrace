@@ -21,8 +21,8 @@ type ServerHandler struct {
 
 	Error func(error)
 
-	Symbols func(*log.Symbols)
-	FuncLog func(*log.FuncLog)
+	Symbols    func(*log.Symbols)
+	RawFuncLog func(*log.RawFuncLogNew)
 }
 
 type Server struct {
@@ -195,8 +195,8 @@ func (s *Server) worker() {
 					data = &PingMsgData{}
 				case SymbolsMsg:
 					data = &log.Symbols{}
-				case FuncLogMsg:
-					data = &log.FuncLog{}
+				case RawFuncLogMsg:
+					data = &log.RawFuncLogNew{}
 				default:
 					errCh <- errors.New(fmt.Sprintf("Invalid MessageType: %d", msgHeader.MessageType))
 					return
@@ -216,8 +216,8 @@ func (s *Server) worker() {
 					// do nothing
 				case SymbolsMsg:
 					s.Handler.Symbols(data.(*log.Symbols))
-				case FuncLogMsg:
-					s.Handler.FuncLog(data.(*log.FuncLog))
+				case RawFuncLogMsg:
+					s.Handler.RawFuncLog(data.(*log.RawFuncLogNew))
 				default:
 					panic("bug")
 				}
