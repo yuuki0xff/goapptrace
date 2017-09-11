@@ -118,20 +118,7 @@ func (l *Log) Append(funclog log.FuncLog) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
-	size, err := l.lastFuncLog.File.Size()
-	if err != nil {
-		return err
-	}
-	if l.MaxFileSize != 0 && size > l.MaxFileSize {
-		l.lastN++
-		if err := l.index.Append(IndexRecord{
-			Records:    UnknownRecords,
-			Timestamps: time.Now(), /// TODO
-		}); err != nil {
-			return err
-		}
-		l.lastFuncLog = &FuncLog{File: l.Root.FuncLogFile(l.ID, l.lastN)}
-	}
+	l.autoRotate()
 	if err := l.lastFuncLog.Append(funclog); err != nil {
 		return err
 	}
@@ -172,5 +159,28 @@ func (l *Log) Search(start, end time.Time, fn func(evt log.FuncLog) error) error
 			return err
 		}
 	}
+	return nil
+}
+
+func (l *Log) autoRotate() error {
+	size, err := l.lastFuncLog.File.Size()
+	if err != nil {
+		return err
+	}
+	if l.MaxFileSize != 0 && size > l.MaxFileSize {
+		return l.rotate()
+	}
+	return nil
+}
+
+func (l *Log) rotate() error {
+	l.lastN++
+	if err := l.index.Append(IndexRecord{
+		Records:    UnknownRecords,
+		Timestamps: time.Now(), /// TODO
+	}); err != nil {
+		return err
+	}
+	l.lastFuncLog = &FuncLog{File: l.Root.FuncLogFile(l.ID, l.lastN)}
 	return nil
 }
