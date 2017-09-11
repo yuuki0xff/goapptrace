@@ -10,8 +10,9 @@ import (
 
 	"time"
 
-	"github.com/yuuki0xff/goapptrace/tracer/log"
 	"reflect"
+
+	"github.com/yuuki0xff/goapptrace/tracer/log"
 )
 
 type ServerHandler struct {
