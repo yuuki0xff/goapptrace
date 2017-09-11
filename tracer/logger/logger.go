@@ -60,12 +60,12 @@ func sendLog(tag string, id log.TxID) {
 			break
 		}
 
-		funcID, added1 := symbolResolver.AddFunc(log.FuncSymbol{
+		funcID, added1 := symbolResolver.AddFunc(&log.FuncSymbol{
 			Name:  frame.Function,
 			File:  frame.File,
 			Entry: frame.Entry,
 		})
-		funcStatusID, added2 := symbolResolver.AddFuncStatus(log.FuncStatus{
+		funcStatusID, added2 := symbolResolver.AddFuncStatus(&log.FuncStatus{
 			Func: funcID,
 			Line: uint64(frame.Line),
 			PC:   frame.PC,
