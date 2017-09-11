@@ -17,6 +17,7 @@ type ServerArgs struct {
 	Storage *storage.Storage
 }
 
+// TODO: define schema for API response
 func getRouter(args *ServerArgs) *mux.Router {
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api").Subrouter()
