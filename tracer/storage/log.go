@@ -200,14 +200,7 @@ func (l *Log) Search(start, end time.Time, fn func(evt log.RawFuncLogNew) error)
 	var startIdx int64
 	var endIdx int64
 
-	index := Index{
-		File: l.Root.IndexFile(l.ID),
-	}
-	if err := index.Load(); err != nil {
-		return err
-	}
-
-	if err := index.Walk(func(i int64, ir IndexRecord) error {
+	if err := l.index.Walk(func(i int64, ir IndexRecord) error {
 		if start.Before(ir.Timestamps) {
 			startIdx = i - 1
 		} else if end.Before(ir.Timestamps) {
