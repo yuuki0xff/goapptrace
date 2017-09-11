@@ -3,7 +3,7 @@
 info.json
 ./meta/<name>.meta.json.gz
 ./data/<name>.<number>.func.log.gz
-./data/<name>.<number>.index.gz
+./data/<name>.index.gz
 ```
 
 * `<name>`: 16バイトの乱数 (hex表記)
