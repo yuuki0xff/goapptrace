@@ -45,6 +45,32 @@ func getRouter(args *ServerArgs) *mux.Router {
 			panic(err)
 		}
 	})
+	api.HandleFunc("/log/{id}", func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		strid := vars["id"]
+		id, err := storage.LogID{}.Unhex(strid)
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+
+		logobj, ok := args.Storage.Log(id)
+		if !ok {
+			http.Error(w, "not found Log", http.StatusNotFound)
+			return
+		}
+
+		res := struct {
+			ID       string
+			Metadata *storage.LogMetadata
+		}{
+			ID:       logobj.ID.Hex(),
+			Metadata: logobj.Metadata,
+		}
+		if err := json.NewEncoder(w).Encode(res); err != nil {
+			panic(err)
+		}
+	})
 	api.HandleFunc("/log.svg", func(w http.ResponseWriter, r *http.Request) {
 		//vars := mux.Vars(r)
 
