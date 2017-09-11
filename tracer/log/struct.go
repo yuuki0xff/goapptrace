@@ -22,15 +22,18 @@ type TimeRangeMap struct {
 }
 
 type RawLogLoader struct {
-	Name           string
-	Records        RecordList
-	GoroutineMap   *GoroutineMap
-	TimeRangeMap   *TimeRangeMap
-	Symbols        Symbols
-	SymbolResolver SymbolResolver
+	Name string
 
 	RawLogHandler  LoadRawLogHandler
 	FuncLogHandler LoadFuncLogHandler
+
+	////////////////
+	// ↓ 初期化不要 ↓
+	Symbols        Symbols
+	SymbolResolver SymbolResolver
+	Records        RecordList
+	GoroutineMap   *GoroutineMap
+	TimeRangeMap   *TimeRangeMap
 }
 
 type Goroutine struct {

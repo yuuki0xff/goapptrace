@@ -13,6 +13,11 @@ const (
 	DefaultCallstackSize = 1024
 )
 
+func (log *RawLogLoader) Init() {
+	log.Symbols.Init()
+	log.SymbolResolver.Init(&log.Symbols)
+}
+
 func (log *RawLogLoader) LoadFromJsonLines(data io.Reader) error {
 	r := bufio.NewReaderSize(data, BufferSize)
 	lineno := 0
