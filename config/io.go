@@ -77,6 +77,6 @@ func (c Config) targetsPath() string {
 	return path.Join(c.dir, "targets.json")
 }
 
-func (c Config) DataDir() string {
-	return path.Join(c.dir, "data")
+func (c Config) LogsDir() string {
+	return path.Join(c.dir, "logs")
 }

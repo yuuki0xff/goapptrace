@@ -52,7 +52,7 @@ func runProcRun(conf *config.Config, targets []string) error {
 
 	strg := storage.Storage{
 		Root: storage.DirLayout{
-			Root: conf.DataDir(),
+			Root: conf.LogsDir(),
 		},
 	}
 	var logobj *storage.Log
