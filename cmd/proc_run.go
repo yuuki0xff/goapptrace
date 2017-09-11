@@ -32,6 +32,7 @@ import (
 	"github.com/yuuki0xff/goapptrace/info"
 	"github.com/yuuki0xff/goapptrace/tracer/log"
 	"github.com/yuuki0xff/goapptrace/tracer/protocol"
+	"github.com/yuuki0xff/goapptrace/tracer/storage"
 )
 
 // procRunCmd represents the run command
@@ -49,17 +50,42 @@ func runProcRun(conf *config.Config, targets []string) error {
 		targets = conf.Targets.Names()
 	}
 
+	strg := storage.Storage{
+		Root: storage.DirLayout{
+			Root: conf.DataDir(),
+		},
+	}
+	var logobj *storage.Log
+
+	if err := strg.Init(); err != nil {
+		return err
+	}
+
 	addr := fmt.Sprintf("unix:///tmp/goapptrace.%d.sock", os.Getpid())
 	srv := protocol.Server{
 		Addr: addr,
 		Handler: protocol.ServerHandler{
-			Connected:    func() {},
-			Disconnected: func() {},
+			Connected: func() {
+				if logobj == nil {
+					logobj = strg.New()
+				}
+			},
+			Disconnected: func() {
+				if err := logobj.Save(); err != nil {
+					panic(err)
+				}
+			},
 			Error: func(err error) {
 				fmt.Println("Server ERROR:", err)
 			},
-			Symbols: func(s *log.Symbols) {},
-			FuncLog: func(f *log.FuncLog) {},
+			Symbols: func(s *log.Symbols) {
+				// TODO: add symbol
+			},
+			FuncLog: func(f *log.FuncLog) {
+				if err := logobj.Append(*f); err != nil {
+					panic(err)
+				}
+			},
 		},
 		AppName: info.APP_NAME,
 		Version: info.VERSION, // TODO: set server version
