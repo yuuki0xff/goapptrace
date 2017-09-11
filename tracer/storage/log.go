@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"fmt"
+
 	"github.com/yuuki0xff/goapptrace/tracer/log"
 )
 
@@ -36,8 +38,39 @@ func (id LogID) Hex() string {
 	return hex.EncodeToString(id[:])
 }
 
+// 既存のログファイルからオブジェクトを生成したときに呼び出すこと。
 func (l *Log) Init() error {
 	return l.Load()
+}
+
+// Logを新規作成する場合に呼び出すこと
+// Init()は呼び出してはいけない。
+func (l *Log) New() (err error) {
+	l.lock.Lock()
+	defer l.lock.Unlock()
+
+	checkFileNotExists := func(file File) bool {
+		if file.Exists() {
+			err = errors.New(fmt.Sprintf(`"%s" is exists`, string(file)))
+			return true
+		}
+		return false
+	}
+
+	if checkFileNotExists(l.Root.MetaFile(l.ID)) {
+		return
+	}
+	if checkFileNotExists(l.Root.FuncLogFile(l.ID, 0)) {
+		return
+	}
+	if checkFileNotExists(l.Root.IndexFile(l.ID)) {
+		return
+	}
+
+	l.lastN = -1
+	l.lastFuncLog = nil
+	l.index = &Index{File: l.Root.IndexFile(l.ID)}
+	return
 }
 
 func (l *Log) Load() error {
@@ -61,6 +94,7 @@ func (l *Log) Load() error {
 		last = i
 	}
 	l.lastN = last
+
 	l.lastFuncLog = &FuncLog{File: l.Root.FuncLogFile(l.ID, l.lastN)}
 	l.index = &Index{File: l.Root.IndexFile(l.ID)}
 	return nil

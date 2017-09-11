@@ -36,7 +36,7 @@ func (s *Storage) Logs() ([]*Log, error) {
 
 		log, ok := s.files[id]
 		if !ok {
-			log = s.log(id)
+			log = s.log(id, false)
 		}
 		logs = append(logs, log)
 	}
@@ -45,14 +45,21 @@ func (s *Storage) Logs() ([]*Log, error) {
 
 // 新しいLogインスタンスを作成する。
 // この関数を呼び出す前に、排他ロックをかける必要がある。
-func (s *Storage) log(id LogID) *Log {
+func (s *Storage) log(id LogID, new bool) *Log {
 	log := &Log{
 		ID:   id,
 		Root: s.Root,
 	}
-	if err := log.Init(); err != nil {
-		// TODO: return err
-		panic(err)
+	if new {
+		if err := log.New(); err != nil {
+			// TODO: return err
+			panic(err)
+		}
+	} else {
+		if err := log.Init(); err != nil {
+			// TODO: return err
+			panic(err)
+		}
 	}
 	s.files[id] = log
 	return log
@@ -68,5 +75,5 @@ func (s *Storage) New() *Log {
 		panic(err)
 	}
 
-	return s.log(id)
+	return s.log(id, true)
 }
