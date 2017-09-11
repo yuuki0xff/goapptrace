@@ -219,9 +219,15 @@ func (l *Log) Search(start, end time.Time, fn func(evt log.RawFuncLogNew) error)
 		fl := RawFuncLogReader{
 			File: l.Root.RawFuncLogFile(l.ID, i),
 		}
-		if err := fl.Walk(fn); err != nil {
+		if err := fl.Open(); err != nil {
 			return err
 		}
+
+		if err := fl.Walk(fn); err != nil {
+			fl.Close() // nolint: errcheck
+			return err
+		}
+		fl.Close() // nolint: errcheck
 	}
 	return nil
 }
