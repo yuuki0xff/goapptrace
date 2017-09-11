@@ -145,7 +145,7 @@ func (l *Log) Save() error {
 	if err != nil {
 		return err
 	}
-	defer w.Close()
+	defer w.Close() // nolint: errcheck
 	if err := json.NewEncoder(w).Encode(l.Metadata); err != nil {
 		return err
 	}

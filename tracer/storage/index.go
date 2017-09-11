@@ -30,7 +30,7 @@ func (idx *Index) Load() error {
 	if err := dec.Open(); err != nil {
 		return err
 	}
-	defer dec.Close()
+	defer dec.Close() // nolint: errcheck
 
 	idx.records = make([]IndexRecord, 0, DefaultBufferSize)
 	return dec.Walk(

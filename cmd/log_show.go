@@ -48,7 +48,9 @@ func runLogShow(conf *config.Config, targets []string, notOpenBrowser bool, list
 	strg := &storage.Storage{
 		Root: storage.DirLayout{Root: conf.LogsDir()},
 	}
-	strg.Init()
+	if err := strg.Init(); err != nil {
+		return err
+	}
 
 	srvArgs := &httpserver.ServerArgs{
 		Storage: strg,
