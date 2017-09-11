@@ -26,9 +26,9 @@ type Log struct {
 	// -1:    log files are not exists.
 	// 0 > 0: log files are exists.
 	lastN       int64
-	lastFuncLog *FuncLog
+	lastFuncLog *FuncLogWriter
 	index       *Index
-	symbols     *Symbols
+	symbols     *SymbolsWriter
 }
 
 type LogMetadata struct {
@@ -85,9 +85,18 @@ func (l *Log) New() (err error) {
 	}
 
 	l.lastN = 0
-	l.lastFuncLog = &FuncLog{File: l.Root.FuncLogFile(l.ID, l.lastN)}
+	l.lastFuncLog = &FuncLogWriter{File: l.Root.FuncLogFile(l.ID, l.lastN)}
 	l.index = &Index{File: l.Root.IndexFile(l.ID)}
-	l.symbols = &Symbols{File: l.Root.SymbolFile(l.ID)}
+	l.symbols = &SymbolsWriter{File: l.Root.SymbolFile(l.ID)}
+
+	checkError := func(e error) {
+		if e != nil && e == nil {
+			err = e
+		}
+	}
+	checkError(l.lastFuncLog.Open())
+	checkError(l.index.Open())
+	checkError(l.symbols.Open())
 	return
 }
 
@@ -111,10 +120,20 @@ func (l *Log) Load() error {
 	for i := int64(0); l.Root.FuncLogFile(l.ID, i).Exists(); i++ {
 		last = i
 	}
-	l.lastN = last
 
-	l.lastFuncLog = &FuncLog{File: l.Root.FuncLogFile(l.ID, l.lastN)}
+	l.lastN = last
+	l.lastFuncLog = &FuncLogWriter{File: l.Root.FuncLogFile(l.ID, l.lastN)}
 	l.index = &Index{File: l.Root.IndexFile(l.ID)}
+	l.symbols = &SymbolsWriter{File: l.Root.SymbolFile(l.ID)}
+
+	checkError := func(e error) {
+		if e != nil && e == nil {
+			err = e
+		}
+	}
+	checkError(l.lastFuncLog.Open())
+	checkError(l.index.Open())
+	checkError(l.symbols.Open())
 	return nil
 }
 
@@ -151,7 +170,7 @@ func (l *Log) Close() error {
 	return err
 }
 
-func (l *Log) AppendFuncLog(funclog log.FuncLog) error {
+func (l *Log) AppendFuncLog(funclog *log.FuncLog) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
@@ -164,7 +183,7 @@ func (l *Log) AppendFuncLog(funclog log.FuncLog) error {
 	return nil
 }
 
-func (l *Log) AppendSymbols(symbols log.Symbols) error {
+func (l *Log) AppendSymbols(symbols *log.Symbols) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
@@ -201,7 +220,7 @@ func (l *Log) Search(start, end time.Time, fn func(evt log.FuncLog) error) error
 	}
 
 	for i := startIdx; i <= endIdx; i++ {
-		fl := FuncLog{
+		fl := FuncLogReader{
 			File: l.Root.FuncLogFile(l.ID, i),
 		}
 		if err := fl.Walk(fn); err != nil {
@@ -230,6 +249,6 @@ func (l *Log) rotate() error {
 	}); err != nil {
 		return err
 	}
-	l.lastFuncLog = &FuncLog{File: l.Root.FuncLogFile(l.ID, l.lastN)}
+	l.lastFuncLog = &FuncLogWriter{File: l.Root.FuncLogFile(l.ID, l.lastN)}
 	return nil
 }

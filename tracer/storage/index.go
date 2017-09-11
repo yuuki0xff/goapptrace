@@ -1,8 +1,6 @@
 package storage
 
 import (
-	"encoding/gob"
-	"io"
 	"time"
 )
 
@@ -14,8 +12,7 @@ const (
 type Index struct {
 	File    File
 	records []IndexRecord
-	a       io.WriteCloser
-	enc     *gob.Encoder
+	enc     Encoder
 }
 
 type IndexRecord struct {
@@ -23,41 +20,33 @@ type IndexRecord struct {
 	Records    int64
 }
 
+func (idx *Index) Open() error {
+	idx.enc = Encoder{File: idx.File}
+	return idx.enc.Open()
+}
+
 func (idx *Index) Load() error {
-	r, err := idx.File.OpenReadOnly()
-	if err != nil {
+	dec := Decoder{File: idx.File}
+	if err := dec.Open(); err != nil {
 		return err
 	}
-	dec := gob.NewDecoder(r)
-	defer r.Close() // nolint: errcheck
+	defer dec.Close()
 
 	idx.records = make([]IndexRecord, 0, DefaultBufferSize)
-	for {
-		rec := IndexRecord{}
-		if err := dec.Decode(&rec); err != nil {
-			if err == io.EOF {
-				return nil
-			}
-			return err
-		}
-
-		idx.records = append(idx.records, rec)
-	}
-	return nil
+	return dec.Walk(
+		func() interface{} {
+			return &IndexRecord{}
+		},
+		func(val interface{}) error {
+			rec := val.(*IndexRecord)
+			idx.records = append(idx.records, *rec)
+			return nil
+		},
+	)
 }
 
 func (idx *Index) Append(record IndexRecord) error {
-	if idx.a == nil {
-		var err error
-		idx.a, err = idx.File.OpenAppendOnly()
-		if err != nil {
-			return err
-		}
-
-		idx.enc = gob.NewEncoder(idx.a)
-	}
-
-	err := idx.enc.Encode(record)
+	err := idx.enc.Append(record)
 	if err == nil {
 		idx.records = append(idx.records, record)
 	}
@@ -65,13 +54,7 @@ func (idx *Index) Append(record IndexRecord) error {
 }
 
 func (idx *Index) Close() error {
-	if idx.a == nil {
-		return nil
-	}
-	err := idx.a.Close()
-	idx.a = nil
-	idx.enc = nil
-	return err
+	return idx.enc.Close()
 }
 
 func (idx *Index) Walk(fn func(i int64, ir IndexRecord) error) error {

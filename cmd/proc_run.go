@@ -79,12 +79,12 @@ func runProcRun(conf *config.Config, targets []string) error {
 				fmt.Println("Server ERROR:", err)
 			},
 			Symbols: func(s *log.Symbols) {
-				if err := logobj.AppendSymbols(*s); err != nil {
+				if err := logobj.AppendSymbols(s); err != nil {
 					panic(err)
 				}
 			},
 			FuncLog: func(f *log.FuncLog) {
-				if err := logobj.AppendFuncLog(*f); err != nil {
+				if err := logobj.AppendFuncLog(f); err != nil {
 					panic(err)
 				}
 			},

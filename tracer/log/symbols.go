@@ -35,7 +35,17 @@ func (sr *SymbolResolver) Init(symbols *Symbols) {
 	}
 }
 
-func (sr *SymbolResolver) AddFunc(symbol FuncSymbol) (id FuncID, added bool) {
+// 注意: 引数(symbols)のIDは引き継がれない。
+func (sr *SymbolResolver) AddSymbols(symbols *Symbols) {
+	for _, fsymbol := range symbols.Funcs {
+		sr.AddFunc(fsymbol)
+	}
+	for _, fsatus := range symbols.FuncStatus {
+		sr.AddFuncStatus(fsatus)
+	}
+}
+
+func (sr *SymbolResolver) AddFunc(symbol *FuncSymbol) (id FuncID, added bool) {
 	id, ok := sr.funcs[symbol.Name]
 	if ok {
 		// if exists, nothing to do
@@ -43,14 +53,14 @@ func (sr *SymbolResolver) AddFunc(symbol FuncSymbol) (id FuncID, added bool) {
 	}
 
 	symbol.ID = FuncID(len(sr.symbols.Funcs))
-	sr.symbols.Funcs = append(sr.symbols.Funcs, &symbol)
+	sr.symbols.Funcs = append(sr.symbols.Funcs, symbol)
 	sr.funcs[symbol.Name] = symbol.ID
 	return symbol.ID, true
 }
 
-func (sr *SymbolResolver) AddFuncStatus(status FuncStatus) (id FuncStatusID, added bool) {
+func (sr *SymbolResolver) AddFuncStatus(status *FuncStatus) (id FuncStatusID, added bool) {
 	status.ID = 0
-	id, ok := sr.funcStatus[status]
+	id, ok := sr.funcStatus[*status]
 	if ok {
 		// if exists, nothing to do
 		return id, false
@@ -59,9 +69,9 @@ func (sr *SymbolResolver) AddFuncStatus(status FuncStatus) (id FuncStatusID, add
 	// NOTE: sr.funcStatusのkeyとなるFuncStatusオブジェクトは、必ずFuncStatus.ID=0
 	//       そのため、FuncStatus.IDを更新する前にsr.funcStatusへ追加する必要がある。
 	id = FuncStatusID(len(sr.symbols.FuncStatus))
-	sr.funcStatus[status] = id
+	sr.funcStatus[*status] = id
 
 	status.ID = id
-	sr.symbols.FuncStatus = append(sr.symbols.FuncStatus, &status)
+	sr.symbols.FuncStatus = append(sr.symbols.FuncStatus, status)
 	return id, true
 }

@@ -1,57 +1,54 @@
 package storage
 
 import (
-	"encoding/gob"
-	"io"
-
 	"github.com/yuuki0xff/goapptrace/tracer/log"
 )
 
-type FuncLog struct {
+type FuncLogWriter struct {
 	File File
-	// TODO: add caching
-	w   io.WriteCloser
-	enc *gob.Encoder
+	enc  Encoder
 }
 
-func (el *FuncLog) Append(event log.FuncLog) error {
-	// TODO: fix evnet args type
-	if el.w == nil {
-		var err error
-		el.w, err = el.File.OpenAppendOnly()
-		if err != nil {
-			return err
-		}
-		el.enc = gob.NewEncoder(el.w)
-	}
-
-	return el.enc.Encode(event)
+type FuncLogReader struct {
+	File File
+	dec  Decoder
 }
 
-func (el *FuncLog) Close() error {
-	if el.w == nil {
-		return nil
-	}
-	err := el.w.Close()
-	el.w = nil
-	el.enc = nil
-	return err
+func (flw *FuncLogWriter) Open() error {
+	flw.enc = Encoder{File: flw.File}
+	return flw.enc.Open()
 }
 
-func (el *FuncLog) Walk(fn func(log.FuncLog) error) error {
-	r, err := el.File.OpenReadOnly()
-	if err != nil {
+func (flw *FuncLogWriter) Append(funclog *log.FuncLog) error {
+	return flw.enc.Append(funclog)
+}
+
+func (flw *FuncLogWriter) Close() error {
+	return flw.enc.Close()
+}
+
+func (flr *FuncLogReader) Open() error {
+	flr.dec = Decoder{File: flr.File}
+	return flr.dec.Open()
+}
+
+func (flr *FuncLogReader) Walk(fn func(log.FuncLog) error) error {
+	if err := flr.dec.Open(); err != nil {
 		return err
 	}
-	dec := gob.NewDecoder(r)
-	for {
-		var evt log.FuncLog
-		if err := dec.Decode(&evt); err != nil && err != io.EOF {
-			return err
-		}
-		if err := fn(evt); err != nil {
-			return err
-		}
-	}
-	return nil
+	defer flr.dec.Close()
+
+	return flr.dec.Walk(
+		func() interface{} {
+			return &log.FuncLog{}
+		},
+		func(val interface{}) error {
+			data := val.(*log.FuncLog)
+			return fn(*data)
+		},
+	)
+}
+
+func (flr *FuncLogReader) Close() error {
+	return flr.dec.Close()
 }
