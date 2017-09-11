@@ -33,11 +33,6 @@ func (flr *RawFuncLogReader) Open() error {
 }
 
 func (flr *RawFuncLogReader) Walk(fn func(log.RawFuncLogNew) error) error {
-	if err := flr.dec.Open(); err != nil {
-		return err
-	}
-	defer flr.dec.Close() // nolint: errcheck
-
 	return flr.dec.Walk(
 		func() interface{} {
 			return &log.RawFuncLogNew{}
