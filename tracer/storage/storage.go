@@ -15,29 +15,42 @@ type Storage struct {
 
 func (s *Storage) Init() error {
 	s.files = make(map[LogID]*Log)
-	return s.Root.Init()
+
+	if err := s.Root.Init(); err != nil {
+		return err
+	}
+	return s.Load()
 }
 
-// Return all log instances
-func (s *Storage) Logs() ([]*Log, error) {
+func (s *Storage) Load() error {
 	files, err := ioutil.ReadDir(s.Root.MetaDir())
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	logs := make([]*Log, 0, len(files))
 	for _, finfo := range files {
 		id, ok := s.Root.MetaID(finfo.Name())
 		if !ok {
 			continue
 		}
 
-		log, ok := s.files[id]
+		_, ok = s.files[id]
 		if !ok {
-			log = s.log(id, false)
+			s.files[id] = s.log(id, false)
 		}
+	}
+	return nil
+}
+
+// Return all log instances
+func (s *Storage) Logs() ([]*Log, error) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	logs := make([]*Log, 0, len(s.files))
+	for _, log := range s.files {
 		logs = append(logs, log)
 	}
 	return logs, nil
