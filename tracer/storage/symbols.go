@@ -45,3 +45,7 @@ func (s *SymbolsReader) Load() error {
 		},
 	)
 }
+
+func (s *SymbolsReader) Close() error {
+	return s.dec.Close()
+}
