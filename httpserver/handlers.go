@@ -3,6 +3,8 @@ package httpserver
 import (
 	"net/http"
 
+	"encoding/json"
+
 	"github.com/gorilla/mux"
 	"github.com/yuuki0xff/goapptrace/info"
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
@@ -18,6 +20,30 @@ type ServerArgs struct {
 func getRouter(args *ServerArgs) *mux.Router {
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api").Subrouter()
+	api.HandleFunc("/logs", func(w http.ResponseWriter, r *http.Request) {
+		logs, err := args.Storage.Logs()
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		logsRes := []interface{}{}
+		for _, log := range logs {
+			logsRes = append(logsRes, struct {
+				ID string
+			}{
+				ID: log.ID.Hex(),
+			})
+		}
+		res := struct {
+			Logs interface{}
+		}{
+			Logs: logsRes,
+		}
+		if err := json.NewEncoder(w).Encode(res); err != nil {
+			panic(err)
+		}
+	})
 	api.HandleFunc("/log.svg", func(w http.ResponseWriter, r *http.Request) {
 		//vars := mux.Vars(r)
 
