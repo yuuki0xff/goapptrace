@@ -11,12 +11,25 @@ import (
 	"strings"
 )
 
+const (
+	DefaultDirPerm = 0777
+)
+
 type DirLayout struct {
 	Root string
 }
 
 func (d DirLayout) Init() error {
-	return os.MkdirAll(d.Root, 0666)
+	if err := os.MkdirAll(d.Root, DefaultDirPerm); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(d.MetaDir(), DefaultDirPerm); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(d.DataDir(), DefaultDirPerm); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (d DirLayout) MetaDir() string {
