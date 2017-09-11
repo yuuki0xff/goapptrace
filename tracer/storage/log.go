@@ -67,8 +67,8 @@ func (l *Log) New() (err error) {
 		return
 	}
 
-	l.lastN = -1
-	l.lastFuncLog = nil
+	l.lastN = 0
+	l.lastFuncLog = &FuncLog{File: l.Root.FuncLogFile(l.ID, l.lastN)}
 	l.index = &Index{File: l.Root.IndexFile(l.ID)}
 	return
 }
