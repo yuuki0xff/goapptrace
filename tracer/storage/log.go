@@ -118,7 +118,9 @@ func (l *Log) Append(funclog log.FuncLog) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
-	l.autoRotate()
+	if err := l.autoRotate(); err != nil {
+		return err
+	}
 	if err := l.lastFuncLog.Append(funclog); err != nil {
 		return err
 	}
