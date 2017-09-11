@@ -31,11 +31,19 @@ log ls [name]   - show log names and histories
 log show [name] - show logs on web browser
 ```
 
+## TODO
+* Add unittests.
+* Bundle the html/css/js/font files into a executable file.
+* Create documents.
+* Enable linters that are currently disabled.
+* Migrate from Angular v1.6 to Angular v4.x.
+* Improve UX.
+
 ## Copyright and license
 These codes are written by yuuki \<https://github.com/yuuki0xff\>.
 Codes released under the MIT license.  
 
-License of packages bundled with binaries are listed below:
+Licenses of dependent packages are listed below:
 
 * [Bulma](http://bulma.io/) : MIT
 * [Font Awesome](http://fontawesome.io/) : SIL OFL 1.1 (font) and MIT License (CSS)
