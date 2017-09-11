@@ -43,6 +43,15 @@ func (s *Storage) Logs() ([]*Log, error) {
 	return logs, nil
 }
 
+// Return an exists log instance
+func (s *Storage) Log(id LogID) (log *Log, ok bool) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	log, ok = s.files[id]
+	return
+}
+
 // 新しいLogインスタンスを作成する。
 // この関数を呼び出す前に、排他ロックをかける必要がある。
 func (s *Storage) log(id LogID, new bool) *Log {
