@@ -110,6 +110,7 @@ func (l *Log) Save() error {
 	if err != nil {
 		return err
 	}
+	defer w.Close()
 	if err := json.NewEncoder(w).Encode(l.Metadata); err != nil {
 		return err
 	}
