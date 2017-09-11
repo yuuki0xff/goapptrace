@@ -38,6 +38,22 @@ type LogMetadata struct {
 func (id LogID) Hex() string {
 	return hex.EncodeToString(id[:])
 }
+func (LogID) Unhex(str string) (id LogID, err error) {
+	var buf []byte
+	buf, err = hex.DecodeString(str)
+	if err != nil {
+		return
+	}
+	if len(buf) != len(id) {
+		err = errors.New(fmt.Sprintf(
+			"missmatch id length. expect %d charactors, but %d",
+			2*len(id), 2*len(buf),
+		))
+		return
+	}
+	copy(id[:], buf)
+	return
+}
 
 // 既存のログファイルからオブジェクトを生成したときに呼び出すこと。
 func (l *Log) Init() error {
