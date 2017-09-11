@@ -10,8 +10,8 @@ import (
 )
 
 // Directory Layout
-//   $dir/log/name.jsonl.gz  - gzip compressed log file
 //   $dir/targets.json        - includes target, trace, build
+//   $dir/data/               - managed under tracer.storage
 
 type Config struct {
 	// TODO
@@ -75,4 +75,8 @@ func (c *Config) SaveIfWant() error {
 
 func (c Config) targetsPath() string {
 	return path.Join(c.dir, "targets.json")
+}
+
+func (c Config) DataDir() string {
+	return path.Join(c.dir, "data")
 }
