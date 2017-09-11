@@ -13,6 +13,11 @@ type Storage struct {
 	files map[LogID]*Log
 }
 
+func (s *Storage) Init() error {
+	s.files = make(map[LogID]*Log)
+	return s.Root.Init()
+}
+
 // Return all log instances
 func (s *Storage) Logs() ([]*Log, error) {
 	files, err := ioutil.ReadDir(s.Root.MetaDir())

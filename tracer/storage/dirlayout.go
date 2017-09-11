@@ -15,6 +15,10 @@ type DirLayout struct {
 	Root string
 }
 
+func (d DirLayout) Init() error {
+	return os.MkdirAll(d.Root, 0666)
+}
+
 func (d DirLayout) MetaDir() string {
 	return path.Join(d.Root, "meta")
 }
