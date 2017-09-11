@@ -7,7 +7,7 @@ const (
 	TimeRangeStep = 5000
 )
 
-type LoadRawLogHandler func(*RawLogNew)
+type LoadRawLogHandler func(*RawFuncLogNew)
 type LoadFuncLogHandler func(*FuncLog)
 type GID int64 // GID - Goroutine ID
 type TxID uint64
@@ -58,7 +58,7 @@ type RawFuncLog struct {
 	TxID      TxID            `json:"txid"`
 }
 
-type RawLogNew struct {
+type RawFuncLogNew struct {
 	Time      Time
 	Tag       string         `json:"tag"`
 	Timestamp int64          `json:"timestamp"`

@@ -18,7 +18,7 @@ func (log *RawLogLoader) LoadFromJsonLines(data io.Reader) error {
 	lineno := 0
 
 	var ioError error
-	loadErr := log.LoadFromIterator(func() (raw RawLogNew, ok bool) {
+	loadErr := log.LoadFromIterator(func() (raw RawFuncLogNew, ok bool) {
 		for {
 			var line []byte
 			line, _, ioError = r.ReadLine()
@@ -42,8 +42,8 @@ func (log *RawLogLoader) LoadFromJsonLines(data io.Reader) error {
 			oldraw.Time = Time(lineno)
 			lineno++
 
-			// convert format from RawFuncLog to RawLogNew
-			raw = RawLogNew{
+			// convert format from RawFuncLog to RawFuncLogNew
+			raw = RawFuncLogNew{
 				Time:      oldraw.Time,
 				Tag:       oldraw.Tag,
 				Timestamp: oldraw.Timestamp,
@@ -76,7 +76,7 @@ func (log *RawLogLoader) LoadFromJsonLines(data io.Reader) error {
 	return loadErr
 }
 
-func (log *RawLogLoader) LoadFromIterator(next func() (RawLogNew, bool)) error {
+func (log *RawLogLoader) LoadFromIterator(next func() (RawFuncLogNew, bool)) error {
 	log.Records = make([]*FuncLog, 0)
 	log.GoroutineMap = NewGoroutineMap()
 	log.TimeRangeMap = NewTimeRangeMap()
@@ -283,7 +283,7 @@ func (fl *FuncLog) Parents() int {
 	return parents
 }
 
-func (rll RawLogLoader) compareCaller(fl *FuncLog, log *RawLogNew) bool {
+func (rll RawLogLoader) compareCaller(fl *FuncLog, log *RawFuncLogNew) bool {
 	f1 := fl.Frames[1:]
 	f2 := log.Frames[1:]
 
@@ -298,7 +298,7 @@ func (rll RawLogLoader) compareCaller(fl *FuncLog, log *RawLogNew) bool {
 	return true
 }
 
-func (rll RawLogLoader) compareCallee(fl *FuncLog, log *RawLogNew) bool {
+func (rll RawLogLoader) compareCallee(fl *FuncLog, log *RawFuncLogNew) bool {
 	funcID1 := rll.Symbols.FuncStatus[fl.Frames[0]].Func
 	funcID2 := rll.Symbols.FuncStatus[log.Frames[0]].Func
 	return funcID1 == funcID2
