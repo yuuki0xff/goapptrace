@@ -90,14 +90,14 @@ func (f File) OpenReadOnly() (io.ReadCloser, error) {
 	return gzip.NewReader(file)
 }
 func (f File) OpenWriteOnly() (io.WriteCloser, error) {
-	file, err := os.OpenFile(string(f), os.O_WRONLY, 0666)
+	file, err := os.OpenFile(string(f), os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		return nil, err
 	}
 	return gzip.NewWriterLevel(file, gzip.BestCompression)
 }
 func (f File) OpenAppendOnly() (io.WriteCloser, error) {
-	file, err := os.OpenFile(string(f), os.O_APPEND, 0666)
+	file, err := os.OpenFile(string(f), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		return nil, err
 	}
