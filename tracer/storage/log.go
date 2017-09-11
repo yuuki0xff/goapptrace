@@ -28,6 +28,7 @@ type Log struct {
 	lastN       int64
 	lastFuncLog *FuncLog
 	index       *Index
+	symbols     *Symbols
 }
 
 type LogMetadata struct {
@@ -70,6 +71,7 @@ func (l *Log) New() (err error) {
 	l.lastN = 0
 	l.lastFuncLog = &FuncLog{File: l.Root.FuncLogFile(l.ID, l.lastN)}
 	l.index = &Index{File: l.Root.IndexFile(l.ID)}
+	l.symbols = &Symbols{File: l.Root.SymbolFile(l.ID)}
 	return
 }
 
@@ -114,7 +116,25 @@ func (l *Log) Save() error {
 	return nil
 }
 
-func (l *Log) Append(funclog log.FuncLog) error {
+func (l *Log) Close() error {
+	var err error
+	checkError := func(e error) {
+		if e != nil && e == nil {
+			err = e
+		}
+	}
+
+	checkError(l.Save())
+
+	l.lock.Lock()
+	defer l.lock.Unlock()
+	checkError(l.lastFuncLog.Close())
+	checkError(l.index.Close())
+	checkError(l.symbols.Close())
+	return err
+}
+
+func (l *Log) AppendFuncLog(funclog log.FuncLog) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
@@ -122,6 +142,16 @@ func (l *Log) Append(funclog log.FuncLog) error {
 		return err
 	}
 	if err := l.lastFuncLog.Append(funclog); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *Log) AppendSymbols(symbols log.Symbols) error {
+	l.lock.Lock()
+	defer l.lock.Unlock()
+
+	if err := l.symbols.Append(symbols); err != nil {
 		return err
 	}
 	return nil
