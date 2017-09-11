@@ -29,6 +29,9 @@ type Log struct {
 	lastFuncLog *RawFuncLogWriter
 	index       *Index
 	symbols     *SymbolsWriter
+
+	symbolsCache   *log.Symbols
+	symbolResolver *log.SymbolResolver
 }
 
 type LogMetadata struct {
@@ -97,6 +100,8 @@ func (l *Log) New() (err error) {
 	checkError(l.lastFuncLog.Open())
 	checkError(l.index.Open())
 	checkError(l.symbols.Open())
+
+	checkError(l.loadSymbols())
 	return
 }
 
@@ -134,6 +139,8 @@ func (l *Log) Load() error {
 	checkError(l.lastFuncLog.Open())
 	checkError(l.index.Open())
 	checkError(l.symbols.Open())
+
+	checkError(l.loadSymbols())
 	return nil
 }
 
@@ -190,6 +197,7 @@ func (l *Log) AppendSymbols(symbols *log.Symbols) error {
 	if err := l.symbols.Append(symbols); err != nil {
 		return err
 	}
+	l.symbolResolver.AddSymbols(symbols)
 	return nil
 }
 
@@ -230,6 +238,37 @@ func (l *Log) Search(start, end time.Time, fn func(evt log.RawFuncLogNew) error)
 		fl.Close() // nolint: errcheck
 	}
 	return nil
+}
+
+func (l *Log) Symbols() *log.Symbols {
+	return l.symbolsCache
+}
+
+func (l *Log) loadSymbols() (err error) {
+	if l.symbolsCache != nil {
+		return nil
+	}
+
+	l.symbolsCache = &log.Symbols{}
+	l.symbolsCache.Init()
+
+	l.symbolResolver = &log.SymbolResolver{}
+	l.symbolResolver.Init(l.symbolsCache)
+
+	r := &SymbolsReader{
+		File:           l.Root.SymbolFile(l.ID),
+		SymbolResolver: l.symbolResolver,
+	}
+	if err = r.Open(); err != nil {
+		return
+	}
+	if err = r.Load(); err != nil {
+		return
+	}
+	if err = r.Close(); err != nil {
+		return
+	}
+	return
 }
 
 func (l *Log) autoRotate() error {
