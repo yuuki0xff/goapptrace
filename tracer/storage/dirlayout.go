@@ -73,7 +73,7 @@ type File string
 
 func (f File) Exists() bool {
 	_, err := os.Stat(string(f))
-	return os.IsExist(err)
+	return err == nil
 }
 func (f File) Size() (int64, error) {
 	stat, err := os.Stat(string(f))
