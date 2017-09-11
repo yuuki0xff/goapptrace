@@ -34,7 +34,7 @@ func (log *RawLogLoader) LoadFromJsonLines(data io.Reader) error {
 				continue
 			}
 
-			var oldraw RawLog
+			var oldraw RawFuncLog
 			ioError = json.Unmarshal(line, &oldraw)
 			if ioError != nil {
 				return
@@ -42,7 +42,7 @@ func (log *RawLogLoader) LoadFromJsonLines(data io.Reader) error {
 			oldraw.Time = Time(lineno)
 			lineno++
 
-			// convert format from RawLog to RawLogNew
+			// convert format from RawFuncLog to RawLogNew
 			raw = RawLogNew{
 				Time:      oldraw.Time,
 				Tag:       oldraw.Tag,

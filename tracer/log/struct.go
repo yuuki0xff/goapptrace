@@ -49,7 +49,7 @@ type FuncLog struct {
 	GID    GID
 }
 
-type RawLog struct {
+type RawFuncLog struct {
 	Time      Time
 	Tag       string          `json:"tag"`
 	Timestamp int64           `json:"timestamp"`
