@@ -193,6 +193,8 @@ func (s *Server) worker() {
 				switch msgHeader.MessageType {
 				case PingMsg:
 					data = &PingMsgData{}
+				case ShutdownMsg:
+					data = &ShutdownMsgData{}
 				case SymbolsMsg:
 					data = &log.Symbols{}
 				case RawFuncLogMsg:
@@ -213,6 +215,8 @@ func (s *Server) worker() {
 
 				switch msgHeader.MessageType {
 				case PingMsg:
+					// do nothing
+				case ShutdownMsg:
 					// do nothing
 				case SymbolsMsg:
 					s.Handler.Symbols(data.(*log.Symbols))

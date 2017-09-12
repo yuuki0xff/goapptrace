@@ -25,6 +25,7 @@ type CommandType uint64
 
 const (
 	PingMsg MessageType = iota
+	ShutdownMsg
 	SymbolsMsg
 	RawFuncLogMsg
 )
@@ -36,6 +37,7 @@ const (
 
 const (
 	PingCmd CommandType = iota
+	ShutdownCmd
 	StartTraceCmd
 	StopTraceCmd
 )
@@ -68,10 +70,16 @@ type CommandHeader struct {
 type PingMsgData struct {
 }
 
+type ShutdownMsgData struct {
+}
+
 ////////////////////////////////////////////////////////////////
 // Command Arguments
 
 type PingCmdArgs struct {
+}
+
+type ShutdownCmdArgs struct {
 }
 
 type StartTraceCmdArgs struct {
