@@ -96,7 +96,7 @@ func (c *Client) Close() error {
 		c.cancel()
 		c.cancel = nil
 
-		// disallow send new message to client
+		// disallow send new message to server
 		close(c.writeChan)
 
 		// wait for worker ended before close TCP connection
