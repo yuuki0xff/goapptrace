@@ -235,11 +235,9 @@ func (s *Server) worker() {
 
 		// start write worker
 		go func() {
+			// will be closing c.writeChan by c.Close() when occurred shutdown request.
+			// so, this worker should not check 'shouldStop' variable.
 			for data := range s.writeChan {
-				if shouldStop {
-					return
-				}
-
 				setWriteDeadline()
 				if isError(enc.Encode(data)) {
 					return
@@ -260,16 +258,14 @@ func (s *Server) worker() {
 
 	select {
 	case <-s.workerCtx.Done():
-		shouldStop = true
-		return
+		// do nothing
 	case err := <-errCh:
 		if err != nil {
 			s.Handler.Error(err)
 		}
-		shouldStop = true
-		if err := s.Close(); err != nil {
-			s.Handler.Error(err)
-		}
-		return
+	}
+	shouldStop = true
+	if err := s.Close(); err != nil {
+		s.Handler.Error(err)
 	}
 }
