@@ -95,8 +95,7 @@ func (s *Server) Send(cmdType CommandType, args interface{}) {
 }
 
 func (s *Server) Close() error {
-	if s.workerCtx != nil {
-		s.workerCtx = nil
+	if s.cancel != nil {
 		s.cancel()
 		s.cancel = nil
 

@@ -90,9 +90,8 @@ func (c *Client) Send(msgType MessageType, data interface{}) {
 }
 
 func (c *Client) Close() error {
-	if c.workerCtx != nil {
+	if c.cancel != nil {
 		// request to worker shutdown
-		c.workerCtx = nil
 		c.cancel()
 		c.cancel = nil
 
