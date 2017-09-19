@@ -149,8 +149,6 @@ func (s *Server) worker() {
 			}
 		}
 
-		//time.Sleep(1 * time.Second)
-
 		// initialize
 		enc := gob.NewEncoder(conn)
 		dec := gob.NewDecoder(conn)
