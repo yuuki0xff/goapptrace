@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"reflect"
+	"sync"
 	"time"
 )
 
@@ -37,6 +38,7 @@ type Client struct {
 	conn      net.Conn
 	cancel    context.CancelFunc
 	workerCtx context.Context
+	workerWg  sync.WaitGroup
 
 	writeChan chan interface{}
 }
@@ -73,6 +75,7 @@ func (c *Client) Connect() error {
 		c.PingInterval = DefaultPingInterval
 	}
 
+	c.workerWg.Add(1)
 	go c.worker()
 	c.Handler.Connected()
 	return nil
@@ -88,12 +91,16 @@ func (c *Client) Send(msgType MessageType, data interface{}) {
 
 func (c *Client) Close() error {
 	if c.workerCtx != nil {
+		// request to worker shutdown
 		c.workerCtx = nil
 		c.cancel()
 		c.cancel = nil
 
+		// disallow send new message to client
 		close(c.writeChan)
 
+		// wait for worker ended before close TCP connection
+		c.workerWg.Wait()
 		err := c.conn.Close()
 		c.conn = nil
 		c.Handler.Disconnected()
@@ -103,6 +110,7 @@ func (c *Client) Close() error {
 }
 
 func (c *Client) worker() {
+	defer c.workerWg.Done()
 	errCh := make(chan error)
 	shouldStop := false
 
