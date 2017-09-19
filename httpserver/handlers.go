@@ -45,7 +45,7 @@ func getRouter(args *ServerArgs) *mux.Router {
 			panic(err)
 		}
 	})
-	api.HandleFunc("/log/{id}", func(w http.ResponseWriter, r *http.Request) {
+	api.HandleFunc("/log/{id:[0-9a-f]+}", func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		strid := vars["id"]
 		id, err := storage.LogID{}.Unhex(strid)
