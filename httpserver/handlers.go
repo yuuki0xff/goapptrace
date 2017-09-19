@@ -71,7 +71,7 @@ func getRouter(args *ServerArgs) *mux.Router {
 			panic(err)
 		}
 	})
-	api.HandleFunc("/log.svg", func(w http.ResponseWriter, r *http.Request) {
+	api.HandleFunc("/log/{id:[0-9a-f]+}.svg", func(w http.ResponseWriter, r *http.Request) {
 		//vars := mux.Vars(r)
 
 		// TOOD: error handling
