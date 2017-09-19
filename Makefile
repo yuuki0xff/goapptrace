@@ -4,18 +4,18 @@ SHELL=/bin/bash
 all: build
 
 build-deps:
-	$(MAKE) -C static build-deps
+	cd static && $(MAKE) build-deps
 	go get -u golang.org/x/tools/cmd/goimports
 	go get -u github.com/alecthomas/gometalinter
 	gometalinter --install
 	go get -u
 
 build:
-	$(MAKE) -C static build
+	cd static && $(MAKE) build
 	go build
 
 build-debug:
-	$(MAKE) -C static build
+	cd static && $(MAKE) build
 	# Turn off optimization
 	# See https://gist.github.com/tetsuok/3025333
 	go build -gcflags '-N -l'
