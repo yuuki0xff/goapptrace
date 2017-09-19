@@ -135,6 +135,18 @@ func sendLog(tag string, id log.TxID) {
 	}
 }
 
+func Close() {
+	if OutputFile != nil {
+		OutputFile.Close()
+		OutputFile = nil
+	} else if Client != nil {
+		Client.Close()
+		Client = nil
+	} else {
+		panic(errors.New("here is unreachable, but reached"))
+	}
+}
+
 func setOutput() {
 	pid := os.Getpid()
 	url, ok := os.LookupEnv(info.DEFAULT_LOGSRV_ENV)
