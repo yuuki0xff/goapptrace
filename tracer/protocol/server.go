@@ -12,6 +12,8 @@ import (
 
 	"reflect"
 
+	"sync"
+
 	"github.com/yuuki0xff/goapptrace/tracer/log"
 )
 
@@ -40,6 +42,7 @@ type Server struct {
 	listener  net.Listener
 	cancel    context.CancelFunc
 	workerCtx context.Context
+	workerWg  sync.WaitGroup
 
 	writeChan chan interface{}
 }
@@ -77,6 +80,7 @@ func (s *Server) Listen() error {
 		s.PingInterval = DefaultPingInterval
 	}
 
+	s.workerWg.Add(1)
 	go s.worker()
 	s.Handler.Connected()
 	return nil
@@ -101,6 +105,7 @@ func (s *Server) Close() error {
 
 		close(s.writeChan)
 
+		s.workerWg.Wait()
 		err := s.listener.Close()
 		s.listener = nil
 		s.Handler.Disconnected()
@@ -110,12 +115,11 @@ func (s *Server) Close() error {
 }
 
 func (s *Server) Wait() {
-	if s.workerCtx != nil {
-		<-s.workerCtx.Done()
-	}
+	s.workerWg.Wait()
 }
 
 func (s *Server) worker() {
+	defer s.workerWg.Done()
 	errCh := make(chan error)
 	shouldStop := false
 
