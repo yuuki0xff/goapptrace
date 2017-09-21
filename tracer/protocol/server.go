@@ -103,11 +103,12 @@ func (s *Server) Close() error {
 		s.cancel()
 		s.cancel = nil
 
+		err := s.listener.Close()
+		s.listener = nil
+
 		close(s.writeChan)
 
 		s.workerWg.Wait()
-		err := s.listener.Close()
-		s.listener = nil
 		s.Handler.Disconnected()
 		return err
 	}
