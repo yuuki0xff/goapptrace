@@ -9,6 +9,8 @@ import (
 
 	"time"
 
+	"log"
+
 	"github.com/gorilla/mux"
 	"github.com/yuuki0xff/goapptrace/info"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
@@ -56,7 +58,7 @@ func getRouter(args *ServerArgs) *mux.Router {
 		strid := vars["id"]
 		id, err := storage.LogID{}.Unhex(strid)
 		if err != nil {
-			println("id", strid)
+			log.Printf("INFO: invalid id: %s\n", strid)
 			http.Error(w, "invalid id", http.StatusBadRequest)
 			return
 		}
@@ -98,7 +100,9 @@ func getRouter(args *ServerArgs) *mux.Router {
 			Name: strid,
 		}
 		rawlog.Init()
+		log.Printf("DEBUG: logobj symbols: %+v\n", logobj.Symbols())
 		rawlog.SymbolResolver.AddSymbols(logobj.Symbols())
+		log.Printf("DEBUG: rawlog symbols: %+v\n", &rawlog.Symbols)
 
 		// TODO: error handling
 		// TODO: scaleパラメータに対する処理を実装する

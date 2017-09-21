@@ -27,6 +27,8 @@ import (
 
 	"fmt"
 
+	"log"
+
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/info"
@@ -66,24 +68,28 @@ func runProcRun(conf *config.Config, targets []string) error {
 		Addr: addr,
 		Handler: protocol.ServerHandler{
 			Connected: func() {
+				log.Println("INFO: Server: connected")
 				if logobj == nil {
 					logobj = strg.New()
 				}
 			},
 			Disconnected: func() {
+				log.Println("INFO: Server: disconnected")
 				if err := logobj.Close(); err != nil {
 					panic(err)
 				}
 			},
 			Error: func(err error) {
-				fmt.Println("Server ERROR:", err)
+				log.Println("ERROR: Server:", err)
 			},
 			Symbols: func(s *logutil.Symbols) {
+				log.Printf("DEBUG: Server: add symbols: %+v\n", s)
 				if err := logobj.AppendSymbols(s); err != nil {
 					panic(err)
 				}
 			},
 			RawFuncLog: func(f *logutil.RawFuncLogNew) {
+				log.Printf("DEBUG: Server: got RawFuncLog: %+v\n", f)
 				if err := logobj.AppendFuncLog(f); err != nil {
 					panic(err)
 				}

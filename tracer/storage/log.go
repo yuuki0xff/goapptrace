@@ -9,6 +9,8 @@ import (
 
 	"fmt"
 
+	"log"
+
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
@@ -174,6 +176,7 @@ func (l *Log) Close() error {
 	checkError(l.lastFuncLog.Close())
 	checkError(l.index.Close())
 	checkError(l.symbols.Close())
+	log.Println("INFO: storage logs closed")
 	return err
 }
 

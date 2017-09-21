@@ -3,6 +3,8 @@ package main
 import (
 	"os"
 
+	"log"
+
 	"github.com/yuuki0xff/goapptrace/cmd"
 )
 
@@ -11,5 +13,6 @@ func main() {
 }
 
 func realMain() int {
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 	return cmd.Execute()
 }

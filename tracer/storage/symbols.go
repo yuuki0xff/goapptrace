@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"log"
+
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
@@ -40,6 +42,7 @@ func (s *SymbolsReader) Load() error {
 		},
 		func(val interface{}) error {
 			symbol := val.(*logutil.Symbols)
+			log.Printf("DEBUG: add symbols: %+v\n", symbol)
 			s.SymbolResolver.AddSymbols(symbol)
 			return nil
 		},

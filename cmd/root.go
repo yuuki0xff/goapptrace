@@ -21,9 +21,9 @@
 package cmd
 
 import (
-	"fmt"
-
 	"io"
+
+	"log"
 
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
@@ -46,7 +46,7 @@ var RootCmd = &cobra.Command{
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() int {
 	if err := RootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return 1
 	}
 	return 0

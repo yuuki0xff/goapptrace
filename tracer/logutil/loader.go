@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 )
 
 const (
@@ -127,7 +128,7 @@ func (rll *RawLogLoader) LoadFromIterator(next func() (RawFuncLogNew, bool)) err
 					}
 
 					if i != len(gmap[raw.GID])-1 {
-						fmt.Printf("WARN: missing funcEnd log: %+v\n", gmap[raw.GID][i:])
+						log.Printf("WARN: missing funcEnd log: %+v\n", gmap[raw.GID][i:])
 					}
 					// add to goroutines
 					if i == 0 {

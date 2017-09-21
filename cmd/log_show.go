@@ -23,6 +23,8 @@ package cmd
 import (
 	"fmt"
 
+	"log"
+
 	"github.com/skratchdot/open-golang/open"
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
@@ -59,7 +61,7 @@ func runLogShow(conf *config.Config, targets []string, notOpenBrowser bool, list
 	if err := srv.Start(); err != nil {
 		return err
 	}
-	fmt.Printf("Started HTTP server on %s\n", srv.Addr())
+	log.Printf("INFO: Started HTTP server on %s\n", srv.Addr())
 
 	if !notOpenBrowser {
 		if err := open.Run(fmt.Sprintf("http://%s", srv.Addr())); err != nil {

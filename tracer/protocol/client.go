@@ -8,6 +8,7 @@ import (
 	"net"
 	"strings"
 
+	"log"
 	"reflect"
 	"sync"
 	"time"
@@ -44,6 +45,7 @@ type Client struct {
 }
 
 func (c *Client) Connect() error {
+	log.Println("INFO: clinet: connected")
 	var proto string
 	var url string
 
@@ -82,6 +84,7 @@ func (c *Client) Connect() error {
 }
 
 func (c *Client) Send(msgType MessageType, data interface{}) {
+	log.Printf("DEBUG: client: send message type=%+v, data=%+v\n", msgType, data)
 	c.writeChan <- &MessageHeader{
 		MessageType: msgType,
 		Messages:    1,
@@ -90,6 +93,8 @@ func (c *Client) Send(msgType MessageType, data interface{}) {
 }
 
 func (c *Client) Close() error {
+	log.Println("INFO: client: closing a connection")
+	defer log.Println("DEBUG: client: closed a connection")
 	if c.cancel != nil {
 		// request to worker shutdown
 		c.cancel()
@@ -109,6 +114,8 @@ func (c *Client) Close() error {
 }
 
 func (c *Client) worker() {
+	log.Println("INFO: client: start worker")
+	defer log.Println("INFO client: ended worker")
 	defer c.workerWg.Done()
 	errCh := make(chan error)
 	shouldStop := false
@@ -134,7 +141,11 @@ func (c *Client) worker() {
 
 	c.workerWg.Add(1)
 	go func() {
+		log.Println("DEBUG: client: start worker launcher")
+		defer log.Println("DEBUG: client: stop worker launcher")
 		defer c.workerWg.Done()
+		log.Println("INFO: client: initialize")
+
 		setReadDeadline := func() {
 			if err := c.conn.SetReadDeadline(time.Now().Add(c.Timeout)); err != nil {
 				panic(err)
@@ -150,7 +161,7 @@ func (c *Client) worker() {
 		enc := gob.NewEncoder(c.conn)
 		dec := gob.NewDecoder(c.conn)
 
-		println("client: send client header")
+		log.Println("DEBUG: client: send client header")
 		setWriteDeadline()
 		if isErrorNoStop(enc.Encode(&ClientHeader{
 			AppName:       c.AppName,
@@ -159,24 +170,26 @@ func (c *Client) worker() {
 		})) {
 			return
 		}
-		println("client: send client header done")
+		log.Println("DEBUG: client: send client header ... done")
 
-		println("client: read server response")
+		log.Println("DEBUG: client: read server response")
 		setReadDeadline()
 		serverHeader := ServerHeader{}
 		if isErrorNoStop(dec.Decode(&serverHeader)) {
 			return
 		}
-		println("client: read server response done")
+		log.Println("DEBUG: client: read server response ... done")
 		// TODO: check response
 
 		// initialize process is done
 		// start read/write workers
-		println("client: initialize done")
+		log.Println("DEBUG: client: initialize ... done")
 
 		// start read worker
 		c.workerWg.Add(1)
 		go func() {
+			log.Println("DEBUG: client: start read worker")
+			defer log.Println("DEBUG: client: stop read worker")
 			defer c.workerWg.Done()
 			for !shouldStop {
 				setReadDeadline()
@@ -223,8 +236,12 @@ func (c *Client) worker() {
 		// start ping worker
 		c.workerWg.Add(1)
 		go func() {
+			log.Println("DEBUG: client: start ping worker")
+			defer log.Println("DEBUG: client: stop ping worker")
 			defer c.workerWg.Done()
+
 			for !shouldStop {
+				log.Println("DEBUG: client: send ping message")
 				c.Send(PingMsg, &PingMsgData{})
 				time.Sleep(c.PingInterval)
 			}
@@ -233,11 +250,13 @@ func (c *Client) worker() {
 		// start write worker
 		c.workerWg.Add(1)
 		go func() {
+			log.Println("DEBUG: client: start write worker")
+			defer log.Println("DEBUG: client: stop write worker")
 			defer c.workerWg.Done()
 			// will be closing c.writeChan by c.Close() when occurred shutdown request.
 			// so, this worker should not check 'shouldStop' variable.
 			for data := range c.writeChan {
-				fmt.Printf("client data: %s : %+v\n", reflect.TypeOf(data).String(), data)
+				log.Printf("DEBUG: client: send %s message: %+v\n", reflect.TypeOf(data).String(), data)
 				setWriteDeadline()
 				if isErrorNoStop(enc.Encode(data)) {
 					return
