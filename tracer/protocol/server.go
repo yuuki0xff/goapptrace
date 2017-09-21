@@ -14,7 +14,7 @@ import (
 
 	"sync"
 
-	"github.com/yuuki0xff/goapptrace/tracer/log"
+	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
 type ServerHandler struct {
@@ -23,8 +23,8 @@ type ServerHandler struct {
 
 	Error func(error)
 
-	Symbols    func(*log.Symbols)
-	RawFuncLog func(*log.RawFuncLogNew)
+	Symbols    func(*logutil.Symbols)
+	RawFuncLog func(*logutil.RawFuncLogNew)
 }
 
 type Server struct {
@@ -200,9 +200,9 @@ func (s *Server) worker() {
 				case ShutdownMsg:
 					data = &ShutdownMsgData{}
 				case SymbolsMsg:
-					data = &log.Symbols{}
+					data = &logutil.Symbols{}
 				case RawFuncLogMsg:
-					data = &log.RawFuncLogNew{}
+					data = &logutil.RawFuncLogNew{}
 				default:
 					errCh <- errors.New(fmt.Sprintf("Invalid MessageType: %d", msgHeader.MessageType))
 					return
@@ -220,9 +220,9 @@ func (s *Server) worker() {
 				case ShutdownMsg:
 					// do nothing
 				case SymbolsMsg:
-					s.Handler.Symbols(data.(*log.Symbols))
+					s.Handler.Symbols(data.(*logutil.Symbols))
 				case RawFuncLogMsg:
-					s.Handler.RawFuncLog(data.(*log.RawFuncLogNew))
+					s.Handler.RawFuncLog(data.(*logutil.RawFuncLogNew))
 				default:
 					panic("bug")
 				}

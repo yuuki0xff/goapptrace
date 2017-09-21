@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"github.com/yuuki0xff/goapptrace/tracer/log"
+	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
 type RawFuncLogWriter struct {
@@ -19,7 +19,7 @@ func (flw *RawFuncLogWriter) Open() error {
 	return flw.enc.Open()
 }
 
-func (flw *RawFuncLogWriter) Append(raw *log.RawFuncLogNew) error {
+func (flw *RawFuncLogWriter) Append(raw *logutil.RawFuncLogNew) error {
 	return flw.enc.Append(raw)
 }
 
@@ -32,13 +32,13 @@ func (flr *RawFuncLogReader) Open() error {
 	return flr.dec.Open()
 }
 
-func (flr *RawFuncLogReader) Walk(fn func(log.RawFuncLogNew) error) error {
+func (flr *RawFuncLogReader) Walk(fn func(logutil.RawFuncLogNew) error) error {
 	return flr.dec.Walk(
 		func() interface{} {
-			return &log.RawFuncLogNew{}
+			return &logutil.RawFuncLogNew{}
 		},
 		func(val interface{}) error {
-			data := val.(*log.RawFuncLogNew)
+			data := val.(*logutil.RawFuncLogNew)
 			return fn(*data)
 		},
 	)

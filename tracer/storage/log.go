@@ -9,7 +9,7 @@ import (
 
 	"fmt"
 
-	"github.com/yuuki0xff/goapptrace/tracer/log"
+	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
 type LogID [16]byte
@@ -30,8 +30,8 @@ type Log struct {
 	index       *Index
 	symbols     *SymbolsWriter
 
-	symbolsCache   *log.Symbols
-	symbolResolver *log.SymbolResolver
+	symbolsCache   *logutil.Symbols
+	symbolResolver *logutil.SymbolResolver
 }
 
 type LogMetadata struct {
@@ -177,7 +177,7 @@ func (l *Log) Close() error {
 	return err
 }
 
-func (l *Log) AppendFuncLog(raw *log.RawFuncLogNew) error {
+func (l *Log) AppendFuncLog(raw *logutil.RawFuncLogNew) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
@@ -190,7 +190,7 @@ func (l *Log) AppendFuncLog(raw *log.RawFuncLogNew) error {
 	return nil
 }
 
-func (l *Log) AppendSymbols(symbols *log.Symbols) error {
+func (l *Log) AppendSymbols(symbols *logutil.Symbols) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
@@ -201,7 +201,7 @@ func (l *Log) AppendSymbols(symbols *log.Symbols) error {
 	return nil
 }
 
-func (l *Log) Search(start, end time.Time, fn func(evt log.RawFuncLogNew) error) error {
+func (l *Log) Search(start, end time.Time, fn func(evt logutil.RawFuncLogNew) error) error {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
 
@@ -240,7 +240,7 @@ func (l *Log) Search(start, end time.Time, fn func(evt log.RawFuncLogNew) error)
 	return nil
 }
 
-func (l *Log) Symbols() *log.Symbols {
+func (l *Log) Symbols() *logutil.Symbols {
 	return l.symbolsCache
 }
 
@@ -249,10 +249,10 @@ func (l *Log) loadSymbols() (err error) {
 		return nil
 	}
 
-	l.symbolsCache = &log.Symbols{}
+	l.symbolsCache = &logutil.Symbols{}
 	l.symbolsCache.Init()
 
-	l.symbolResolver = &log.SymbolResolver{}
+	l.symbolResolver = &logutil.SymbolResolver{}
 	l.symbolResolver.Init(l.symbolsCache)
 
 	r := &SymbolsReader{

@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"github.com/yuuki0xff/goapptrace/tracer/log"
+	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
 type SymbolsWriter struct {
@@ -11,7 +11,7 @@ type SymbolsWriter struct {
 
 type SymbolsReader struct {
 	File           File
-	SymbolResolver *log.SymbolResolver
+	SymbolResolver *logutil.SymbolResolver
 	dec            Decoder
 }
 
@@ -20,7 +20,7 @@ func (s *SymbolsWriter) Open() error {
 	return s.enc.Open()
 }
 
-func (s *SymbolsWriter) Append(symbols *log.Symbols) error {
+func (s *SymbolsWriter) Append(symbols *logutil.Symbols) error {
 	return s.enc.Append(symbols)
 }
 
@@ -36,10 +36,10 @@ func (s *SymbolsReader) Open() error {
 func (s *SymbolsReader) Load() error {
 	return s.dec.Walk(
 		func() interface{} {
-			return &log.Symbols{}
+			return &logutil.Symbols{}
 		},
 		func(val interface{}) error {
-			symbol := val.(*log.Symbols)
+			symbol := val.(*logutil.Symbols)
 			s.SymbolResolver.AddSymbols(symbol)
 			return nil
 		},

@@ -7,7 +7,7 @@ import (
 	"hash/fnv"
 	"math"
 
-	"github.com/yuuki0xff/goapptrace/tracer/log"
+	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
 type ColorRule int
@@ -29,12 +29,12 @@ var (
 type Colors struct {
 	ColorRule ColorRule
 	NColors   int
-	Log       *log.RawLogLoader
+	Log       *logutil.RawLogLoader
 	strColors []string
 	hash      hash.Hash64
 }
 
-func (c *Colors) GetByGoroutine(gr *log.Goroutine) string {
+func (c *Colors) GetByGoroutine(gr *logutil.Goroutine) string {
 	switch c.ColorRule {
 	case ColoringPerGoroutine:
 		return c.GetByInt(int(gr.GID))
@@ -43,7 +43,7 @@ func (c *Colors) GetByGoroutine(gr *log.Goroutine) string {
 	}
 }
 
-func (c *Colors) GetByFuncLog(fl *log.FuncLog) string {
+func (c *Colors) GetByFuncLog(fl *logutil.FuncLog) string {
 	switch c.ColorRule {
 	case ColoringPerGoroutine:
 		return c.GetByInt(int(fl.GID))

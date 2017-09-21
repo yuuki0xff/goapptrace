@@ -16,7 +16,7 @@ import (
 	"math/rand"
 
 	"github.com/yuuki0xff/goapptrace/info"
-	"github.com/yuuki0xff/goapptrace/tracer/log"
+	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/protocol"
 )
 
@@ -31,8 +31,8 @@ var (
 	Client       *protocol.Client
 
 	lock           = sync.Mutex{}
-	symbols        = log.Symbols{}
-	symbolResolver = log.SymbolResolver{}
+	symbols        = logutil.Symbols{}
+	symbolResolver = logutil.SymbolResolver{}
 )
 
 func init() {
@@ -40,13 +40,13 @@ func init() {
 	symbolResolver.Init(&symbols)
 }
 
-func sendLog(tag string, id log.TxID) {
-	var newSymbols *log.Symbols
+func sendLog(tag string, id logutil.TxID) {
+	var newSymbols *logutil.Symbols
 
-	logmsg := log.RawFuncLogNew{}
+	logmsg := logutil.RawFuncLogNew{}
 	logmsg.Timestamp = time.Now().Unix()
 	logmsg.Tag = tag
-	logmsg.Frames = make([]log.FuncStatusID, 0, MaxStackSize)
+	logmsg.Frames = make([]logutil.FuncStatusID, 0, MaxStackSize)
 	logmsg.TxID = id
 
 	pc := make([]uintptr, MaxStackSize)
@@ -60,12 +60,12 @@ func sendLog(tag string, id log.TxID) {
 			break
 		}
 
-		funcID, added1 := symbolResolver.AddFunc(&log.FuncSymbol{
+		funcID, added1 := symbolResolver.AddFunc(&logutil.FuncSymbol{
 			Name:  frame.Function,
 			File:  frame.File,
 			Entry: frame.Entry,
 		})
-		funcStatusID, added2 := symbolResolver.AddFuncStatus(&log.FuncStatus{
+		funcStatusID, added2 := symbolResolver.AddFuncStatus(&logutil.FuncStatus{
 			Func: funcID,
 			Line: uint64(frame.Line),
 			PC:   frame.PC,
@@ -74,7 +74,7 @@ func sendLog(tag string, id log.TxID) {
 
 		if added1 || added2 {
 			// prepare newSymbols
-			newSymbols = &log.Symbols{}
+			newSymbols = &logutil.Symbols{}
 			newSymbols.Init()
 
 			if added1 {
@@ -94,7 +94,7 @@ func sendLog(tag string, id log.TxID) {
 	if err != nil {
 		panic(err)
 	}
-	logmsg.GID = log.GID(gid)
+	logmsg.GID = logutil.GID(gid)
 
 	lock.Lock()
 	defer lock.Unlock()
@@ -185,12 +185,12 @@ func setOutput() {
 	}
 }
 
-func FuncStart() (id log.TxID) {
-	id = log.TxID(rand.Int63())
+func FuncStart() (id logutil.TxID) {
+	id = logutil.TxID(rand.Int63())
 	sendLog("funcStart", id)
 	return
 }
 
-func FuncEnd(id log.TxID) {
+func FuncEnd(id logutil.TxID) {
 	sendLog("funcEnd", id)
 }

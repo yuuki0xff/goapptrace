@@ -1,6 +1,6 @@
 package protocol
 
-import "github.com/yuuki0xff/goapptrace/tracer/log"
+import "github.com/yuuki0xff/goapptrace/tracer/logutil"
 
 // Protocol Specification
 // Step1: Server <-- Client
@@ -83,9 +83,9 @@ type ShutdownCmdArgs struct {
 }
 
 type StartTraceCmdArgs struct {
-	FuncID log.FuncID
+	FuncID logutil.FuncID
 }
 
 type StopTraceCmdArgs struct {
-	FuncID log.FuncID
+	FuncID logutil.FuncID
 }

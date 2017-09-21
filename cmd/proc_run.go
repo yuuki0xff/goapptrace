@@ -30,7 +30,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/info"
-	"github.com/yuuki0xff/goapptrace/tracer/log"
+	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/protocol"
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
 )
@@ -78,12 +78,12 @@ func runProcRun(conf *config.Config, targets []string) error {
 			Error: func(err error) {
 				fmt.Println("Server ERROR:", err)
 			},
-			Symbols: func(s *log.Symbols) {
+			Symbols: func(s *logutil.Symbols) {
 				if err := logobj.AppendSymbols(s); err != nil {
 					panic(err)
 				}
 			},
-			RawFuncLog: func(f *log.RawFuncLogNew) {
+			RawFuncLog: func(f *logutil.RawFuncLogNew) {
 				if err := logobj.AppendFuncLog(f); err != nil {
 					panic(err)
 				}

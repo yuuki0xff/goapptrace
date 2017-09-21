@@ -6,7 +6,7 @@ import (
 	"sort"
 
 	"github.com/ajstarks/svgo"
-	"github.com/yuuki0xff/goapptrace/tracer/log"
+	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
 type LayoutType int
@@ -24,9 +24,9 @@ var (
 )
 
 type SVGRender struct {
-	Log       *log.RawLogLoader
-	StartTime log.Time
-	EndTime   log.Time
+	Log       *logutil.RawLogLoader
+	StartTime logutil.Time
+	EndTime   logutil.Time
 
 	Height int
 	Layout LayoutType
@@ -43,16 +43,16 @@ func (r *SVGRender) Render(w io.Writer) {
 	switch r.Layout {
 	case Goroutine:
 		gids := gids(grm)
-		maxEndTime := log.Time(0)
-		if err := grm.Walk(func(gr *log.Goroutine) error {
+		maxEndTime := logutil.Time(0)
+		if err := grm.Walk(func(gr *logutil.Goroutine) error {
 			if maxEndTime < gr.EndTime {
 				maxEndTime = gr.EndTime
 			}
 
-			if gr.EndTime != log.NotEnded {
+			if gr.EndTime != logutil.NotEnded {
 				var y int
 				for i, gid := range gids {
-					if log.GID(gid) == gr.GID {
+					if logutil.GID(gid) == gr.GID {
 						y = i * 2
 						break
 					}
@@ -70,11 +70,11 @@ func (r *SVGRender) Render(w io.Writer) {
 		}
 
 		maxEndTime++
-		if err := grm.Walk(func(gr *log.Goroutine) error {
-			if gr.EndTime == log.NotEnded {
+		if err := grm.Walk(func(gr *logutil.Goroutine) error {
+			if gr.EndTime == logutil.NotEnded {
 				var y int
 				for i, gid := range gids {
-					if log.GID(gid) == gr.GID {
+					if logutil.GID(gid) == gr.GID {
 						y = i * 2
 						break
 					}
@@ -93,13 +93,13 @@ func (r *SVGRender) Render(w io.Writer) {
 
 	case FunctionCall:
 		yMap := yMapFrom(grm)
-		maxEndTime := log.Time(0)
-		if err := grm.Walk(func(gr *log.Goroutine) error {
+		maxEndTime := logutil.Time(0)
+		if err := grm.Walk(func(gr *logutil.Goroutine) error {
 			for _, fl := range gr.Records {
 				if maxEndTime < fl.EndTime {
 					maxEndTime = fl.EndTime
 				}
-				if fl.EndTime != log.NotEnded {
+				if fl.EndTime != logutil.NotEnded {
 					yoffset := fl.Parents()
 					width := fl.EndTime - fl.StartTime
 					canv.Rect(
@@ -114,9 +114,9 @@ func (r *SVGRender) Render(w io.Writer) {
 		}
 
 		maxEndTime++
-		if err := grm.Walk(func(gr *log.Goroutine) error {
+		if err := grm.Walk(func(gr *logutil.Goroutine) error {
 			for _, fl := range gr.Records {
-				if fl.EndTime == log.NotEnded {
+				if fl.EndTime == logutil.NotEnded {
 					yoffset := fl.Parents()
 					width := maxEndTime - fl.StartTime
 					canv.Rect(
@@ -133,10 +133,10 @@ func (r *SVGRender) Render(w io.Writer) {
 	canv.End()
 }
 
-func gids(gmap *log.GoroutineMap) []int {
+func gids(gmap *logutil.GoroutineMap) []int {
 	// NOTE: []GIDを[]intにキャストできないから、[]intにしている
 	gids := []int{}
-	if err := gmap.Walk(func(gr *log.Goroutine) error {
+	if err := gmap.Walk(func(gr *logutil.Goroutine) error {
 		gids = append(gids, int(gr.GID))
 		return nil
 	}); err != nil {
@@ -147,12 +147,12 @@ func gids(gmap *log.GoroutineMap) []int {
 }
 
 // GIDからy座標に変換するマップを返す
-func yMapFrom(gmap *log.GoroutineMap) map[log.GID]int {
+func yMapFrom(gmap *logutil.GoroutineMap) map[logutil.GID]int {
 	// key: GID
 	// value: コールスタックの深さの最大値 (>=1)
-	maxDepth := map[log.GID]int{}
+	maxDepth := map[logutil.GID]int{}
 
-	if err := gmap.Walk(func(gr *log.Goroutine) error {
+	if err := gmap.Walk(func(gr *logutil.Goroutine) error {
 		if _, ok := maxDepth[gr.GID]; !ok {
 			maxDepth[gr.GID] = 0
 		}
@@ -172,12 +172,12 @@ func yMapFrom(gmap *log.GoroutineMap) map[log.GID]int {
 
 	// key: GID
 	// value: y座標
-	yMap := map[log.GID]int{}
+	yMap := map[logutil.GID]int{}
 	for i := range gids {
-		gid := log.GID(gids[i])
+		gid := logutil.GID(gids[i])
 		y := 0
 		if i > 0 {
-			prevGid := log.GID(gids[i-1])
+			prevGid := logutil.GID(gids[i-1])
 			if maxDepth[prevGid] == 0 {
 				y = yMap[prevGid]
 			} else {

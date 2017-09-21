@@ -11,7 +11,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/yuuki0xff/goapptrace/info"
-	"github.com/yuuki0xff/goapptrace/tracer/log"
+	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/render"
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
 )
@@ -94,7 +94,7 @@ func getRouter(args *ServerArgs) *mux.Router {
 		}
 		defer logobj.Close() // nolint: errcheck
 
-		rawlog := &log.RawLogLoader{
+		rawlog := &logutil.RawLogLoader{
 			Name: strid,
 		}
 		rawlog.Init()
@@ -114,9 +114,9 @@ func getRouter(args *ServerArgs) *mux.Router {
 		colors, _ := strconv.ParseInt(vars["colors"], 10, BIT_SIZE)
 
 		// TODO:
-		logChan := make(chan log.RawFuncLogNew, 10000)
+		logChan := make(chan logutil.RawFuncLogNew, 10000)
 		go func() {
-			if err := logobj.Search(time.Unix(start, 0), time.Unix(end, 0), func(evt log.RawFuncLogNew) error {
+			if err := logobj.Search(time.Unix(start, 0), time.Unix(end, 0), func(evt logutil.RawFuncLogNew) error {
 				logChan <- evt
 				return nil
 			}); err != nil {
@@ -124,7 +124,7 @@ func getRouter(args *ServerArgs) *mux.Router {
 			}
 			close(logChan)
 		}()
-		if err := rawlog.LoadFromIterator(func() (raw log.RawFuncLogNew, ok bool) {
+		if err := rawlog.LoadFromIterator(func() (raw logutil.RawFuncLogNew, ok bool) {
 			raw, ok = <-logChan
 			if !ok {
 				return
@@ -134,8 +134,8 @@ func getRouter(args *ServerArgs) *mux.Router {
 			panic(err)
 		}
 		rnd := render.SVGRender{
-			StartTime: log.Time(start),
-			EndTime:   log.Time(end),
+			StartTime: logutil.Time(start),
+			EndTime:   logutil.Time(end),
 			Layout:    layout,
 			Log:       rawlog,
 			Height:    int(height),
