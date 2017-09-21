@@ -120,7 +120,6 @@ func (c *Client) worker() {
 				errCh <- nil
 				return true
 			}
-			panic(err)
 			errCh <- err
 			return true
 		}

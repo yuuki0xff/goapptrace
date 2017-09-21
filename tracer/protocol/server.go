@@ -130,7 +130,6 @@ func (s *Server) worker() {
 				errCh <- nil
 				return true
 			}
-			panic(err)
 			errCh <- err
 			return true
 		}
