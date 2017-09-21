@@ -123,10 +123,7 @@ func (s *Server) worker() {
 	errCh := make(chan error)
 	shouldStop := false
 
-	isError := func(err error) bool {
-		if shouldStop {
-			return true
-		}
+	isErrorNoStop := func(err error) bool {
 		if err != nil {
 			if isEOF(err) || isBrokenPipe(err) {
 				// ignore errors
@@ -139,8 +136,15 @@ func (s *Server) worker() {
 		}
 		return false
 	}
+	isError := func(err error) bool {
+		if shouldStop {
+			return true
+		}
+		return isErrorNoStop(err)
+	}
 
 	handleConn := func(conn net.Conn) {
+		defer s.workerWg.Done()
 		setReadDeadline := func() {
 			if err := conn.SetReadDeadline(time.Now().Add(s.Timeout)); err != nil {
 				panic(err)
@@ -159,7 +163,7 @@ func (s *Server) worker() {
 		println("server: read client header")
 		setReadDeadline()
 		clientHeader := ClientHeader{}
-		if isError(dec.Decode(&clientHeader)) {
+		if isErrorNoStop(dec.Decode(&clientHeader)) {
 			return
 		}
 		println("server: read client header done")
@@ -167,7 +171,7 @@ func (s *Server) worker() {
 
 		println("server: send server header")
 		setWriteDeadline()
-		if isError(enc.Encode(&ServerHeader{
+		if isErrorNoStop(enc.Encode(&ServerHeader{
 			ServerVersion: "", //TODO
 		})) {
 			return
@@ -179,14 +183,13 @@ func (s *Server) worker() {
 		println("server: initialize done")
 
 		// start read worker
+		s.workerWg.Add(1)
 		go func() {
+			defer s.workerWg.Done()
 			for !shouldStop {
 				setReadDeadline()
 				msgHeader := &MessageHeader{}
 				if isError(dec.Decode(msgHeader)) {
-					return
-				}
-				if shouldStop {
 					return
 				}
 
@@ -206,10 +209,7 @@ func (s *Server) worker() {
 				}
 
 				setReadDeadline()
-				if isError(dec.Decode(data)) {
-					return
-				}
-				if shouldStop {
+				if isErrorNoStop(dec.Decode(data)) {
 					return
 				}
 				fmt.Printf("server data: %s : %+v\n", reflect.TypeOf(data).String(), data)
@@ -230,7 +230,9 @@ func (s *Server) worker() {
 		}()
 
 		// start ping worker
+		s.workerWg.Add(1)
 		go func() {
+			defer s.workerWg.Done()
 			for !shouldStop {
 				s.Send(PingCmd, &PingCmdArgs{})
 				time.Sleep(s.PingInterval)
@@ -238,7 +240,9 @@ func (s *Server) worker() {
 		}()
 
 		// start write worker
+		s.workerWg.Add(1)
 		go func() {
+			defer s.workerWg.Done()
 			// will be closing c.writeChan by c.Close() when occurred shutdown request.
 			// so, this worker should not check 'shouldStop' variable.
 			for data := range s.writeChan {
@@ -250,12 +254,15 @@ func (s *Server) worker() {
 		}()
 	}
 
+	s.workerWg.Add(1)
 	go func() {
+		defer s.workerWg.Done()
 		for !shouldStop {
 			conn, err := s.listener.Accept()
 			if isError(err) {
 				return
 			}
+			s.workerWg.Add(1)
 			go handleConn(conn)
 		}
 	}()
@@ -269,7 +276,4 @@ func (s *Server) worker() {
 		}
 	}
 	shouldStop = true
-	if err := s.Close(); err != nil {
-		s.Handler.Error(err)
-	}
 }

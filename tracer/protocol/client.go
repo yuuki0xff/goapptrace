@@ -113,10 +113,7 @@ func (c *Client) worker() {
 	errCh := make(chan error)
 	shouldStop := false
 
-	isError := func(err error) bool {
-		if shouldStop {
-			return true
-		}
+	isErrorNoStop := func(err error) bool {
 		if err != nil {
 			if isEOF(err) || isBrokenPipe(err) {
 				// ignore errors
@@ -129,8 +126,16 @@ func (c *Client) worker() {
 		}
 		return false
 	}
+	isError := func(err error) bool {
+		if shouldStop {
+			return true
+		}
+		return isErrorNoStop(err)
+	}
 
+	c.workerWg.Add(1)
 	go func() {
+		defer c.workerWg.Done()
 		setReadDeadline := func() {
 			if err := c.conn.SetReadDeadline(time.Now().Add(c.Timeout)); err != nil {
 				panic(err)
@@ -148,7 +153,7 @@ func (c *Client) worker() {
 
 		println("client: send client header")
 		setWriteDeadline()
-		if isError(enc.Encode(&ClientHeader{
+		if isErrorNoStop(enc.Encode(&ClientHeader{
 			AppName:       c.AppName,
 			ClientSecret:  c.Secret,
 			ClientVersion: c.Version,
@@ -160,7 +165,7 @@ func (c *Client) worker() {
 		println("client: read server response")
 		setReadDeadline()
 		serverHeader := ServerHeader{}
-		if isError(dec.Decode(&serverHeader)) {
+		if isErrorNoStop(dec.Decode(&serverHeader)) {
 			return
 		}
 		println("client: read server response done")
@@ -171,14 +176,13 @@ func (c *Client) worker() {
 		println("client: initialize done")
 
 		// start read worker
+		c.workerWg.Add(1)
 		go func() {
+			defer c.workerWg.Done()
 			for !shouldStop {
 				setReadDeadline()
 				cmdHeader := &CommandHeader{}
 				if isError(dec.Decode(cmdHeader)) {
-					return
-				}
-				if shouldStop {
 					return
 				}
 
@@ -201,9 +205,6 @@ func (c *Client) worker() {
 				if isError(dec.Decode(data)) {
 					return
 				}
-				if shouldStop {
-					return
-				}
 
 				switch cmdHeader.CommandType {
 				case PingCmd:
@@ -221,7 +222,9 @@ func (c *Client) worker() {
 		}()
 
 		// start ping worker
+		c.workerWg.Add(1)
 		go func() {
+			defer c.workerWg.Done()
 			for !shouldStop {
 				c.Send(PingMsg, &PingMsgData{})
 				time.Sleep(c.PingInterval)
@@ -229,13 +232,15 @@ func (c *Client) worker() {
 		}()
 
 		// start write worker
+		c.workerWg.Add(1)
 		go func() {
+			defer c.workerWg.Done()
 			// will be closing c.writeChan by c.Close() when occurred shutdown request.
 			// so, this worker should not check 'shouldStop' variable.
 			for data := range c.writeChan {
 				fmt.Printf("client data: %s : %+v\n", reflect.TypeOf(data).String(), data)
 				setWriteDeadline()
-				if isError(enc.Encode(data)) {
+				if isErrorNoStop(enc.Encode(data)) {
 					return
 				}
 			}
@@ -252,7 +257,4 @@ func (c *Client) worker() {
 	}
 	// shutdown other workers
 	shouldStop = true
-	if err := c.Close(); err != nil {
-		c.Handler.Error(err)
-	}
 }
