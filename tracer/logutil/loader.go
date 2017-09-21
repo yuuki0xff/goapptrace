@@ -13,17 +13,17 @@ const (
 	DefaultCallstackSize = 1024
 )
 
-func (log *RawLogLoader) Init() {
-	log.Symbols.Init()
-	log.SymbolResolver.Init(&log.Symbols)
+func (rll *RawLogLoader) Init() {
+	rll.Symbols.Init()
+	rll.SymbolResolver.Init(&rll.Symbols)
 }
 
-func (log *RawLogLoader) LoadFromJsonLines(data io.Reader) error {
+func (rll *RawLogLoader) LoadFromJsonLines(data io.Reader) error {
 	r := bufio.NewReaderSize(data, BufferSize)
 	lineno := 0
 
 	var ioError error
-	loadErr := log.LoadFromIterator(func() (raw RawFuncLogNew, ok bool) {
+	loadErr := rll.LoadFromIterator(func() (raw RawFuncLogNew, ok bool) {
 		for {
 			var line []byte
 			line, _, ioError = r.ReadLine()
@@ -57,12 +57,12 @@ func (log *RawLogLoader) LoadFromJsonLines(data io.Reader) error {
 				TxID:      oldraw.TxID,
 			}
 			for _, oldframe := range oldraw.Frames {
-				funcID, _ := log.SymbolResolver.AddFunc(&FuncSymbol{
+				funcID, _ := rll.SymbolResolver.AddFunc(&FuncSymbol{
 					Name:  oldframe.Function,
 					File:  oldframe.File,
 					Entry: oldframe.Entry,
 				})
-				funcStatusID, _ := log.SymbolResolver.AddFuncStatus(&FuncStatus{
+				funcStatusID, _ := rll.SymbolResolver.AddFuncStatus(&FuncStatus{
 					Func: funcID,
 					Line: uint64(oldframe.Line),
 					PC:   oldframe.PC,
@@ -81,16 +81,16 @@ func (log *RawLogLoader) LoadFromJsonLines(data io.Reader) error {
 	return loadErr
 }
 
-func (log *RawLogLoader) LoadFromIterator(next func() (RawFuncLogNew, bool)) error {
-	log.Records = make([]*FuncLog, 0)
-	log.GoroutineMap = NewGoroutineMap()
-	log.TimeRangeMap = NewTimeRangeMap()
+func (rll *RawLogLoader) LoadFromIterator(next func() (RawFuncLogNew, bool)) error {
+	rll.Records = make([]*FuncLog, 0)
+	rll.GoroutineMap = NewGoroutineMap()
+	rll.TimeRangeMap = NewTimeRangeMap()
 	gmap := make(map[GID][]*FuncLog)
 
 	for raw, ok := next(); ok; raw, ok = next() {
 		// call an event handler
-		if log.RawLogHandler != nil {
-			log.RawLogHandler(&raw)
+		if rll.RawLogHandler != nil {
+			rll.RawLogHandler(&raw)
 		}
 
 		if _, ok := gmap[raw.GID]; !ok {
@@ -114,16 +114,16 @@ func (log *RawLogLoader) LoadFromIterator(next func() (RawFuncLogNew, bool)) err
 		case "funcEnd":
 			for i := len(gmap[raw.GID]) - 1; i >= 0; i-- {
 				fl := gmap[raw.GID][i]
-				if log.compareCallee(fl, &raw) && log.compareCaller(fl, &raw) {
+				if rll.compareCallee(fl, &raw) && rll.compareCaller(fl, &raw) {
 					// detect EndTime
 					fl.EndTime = raw.Time
 					// add to records
-					log.Records = append(log.Records, fl)
-					log.GoroutineMap.Add(fl)
-					log.TimeRangeMap.Add(fl)
+					rll.Records = append(rll.Records, fl)
+					rll.GoroutineMap.Add(fl)
+					rll.TimeRangeMap.Add(fl)
 					// call an event handler
-					if log.FuncLogHandler != nil {
-						log.FuncLogHandler(fl)
+					if rll.FuncLogHandler != nil {
+						rll.FuncLogHandler(fl)
 					}
 
 					if i != len(gmap[raw.GID])-1 {
@@ -148,9 +148,9 @@ func (log *RawLogLoader) LoadFromIterator(next func() (RawFuncLogNew, bool)) err
 	// end-less funcs
 	for gid := range gmap {
 		for _, fl := range gmap[gid] {
-			log.Records = append(log.Records, fl)
-			log.GoroutineMap.Add(fl)
-			log.TimeRangeMap.Add(fl)
+			rll.Records = append(rll.Records, fl)
+			rll.GoroutineMap.Add(fl)
+			rll.TimeRangeMap.Add(fl)
 		}
 	}
 	return nil
