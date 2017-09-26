@@ -40,6 +40,10 @@ type LogMetadata struct {
 	Timestamp time.Time
 }
 
+var (
+	StopIteration = errors.New("stop iteration error")
+)
+
 func (id LogID) Hex() string {
 	return hex.EncodeToString(id[:])
 }
@@ -126,6 +130,7 @@ func (l *Log) Load() error {
 	return l.load()
 }
 
+// help for New()/Load() function
 func (l *Log) load() (err error) {
 	checkError := func(errprefix string, e error) {
 		if e != nil && e == nil {
@@ -134,9 +139,9 @@ func (l *Log) load() (err error) {
 	}
 	checkError("failed open lasat func log file", l.lastFuncLog.Open())
 	checkError("failed open index file", l.index.Open())
-	checkError("failed open symbol file", l.symbols.Open())
+	checkError("failed open symbols file", l.symbols.Open())
 
-	checkError("failed load symbol file", l.loadSymbols())
+	checkError("failed load symbols file", l.loadSymbols())
 	return
 }
 
@@ -157,19 +162,19 @@ func (l *Log) Save() error {
 
 func (l *Log) Close() error {
 	var err error
-	checkError := func(e error) {
+	checkError := func(logprefix string, e error) {
 		if e != nil && e == nil {
-			err = e
+			err = errors.New(fmt.Sprintf("%s: %s", logprefix, e.Error()))
 		}
 	}
 
-	checkError(l.Save())
+	checkError("cannot save:", l.Save())
 
 	l.lock.Lock()
 	defer l.lock.Unlock()
-	checkError(l.lastFuncLog.Close())
-	checkError(l.index.Close())
-	checkError(l.symbols.Close())
+	checkError("failed close last func log file", l.lastFuncLog.Close())
+	checkError("failed close index file", l.index.Close())
+	checkError("failed close symbols file", l.symbols.Close())
 	log.Println("INFO: storage logs closed")
 	return err
 }
@@ -210,12 +215,12 @@ func (l *Log) Search(start, end time.Time, fn func(evt logutil.RawFuncLogNew) er
 			startIdx = i - 1
 		} else if end.Before(ir.Timestamps) {
 			endIdx = i - 1
-			return errors.New("break loop")
+			return StopIteration
 		}
 		return nil
 	}); err != nil {
-		// ignore "break loop" error
-		if err.Error() != "break loop" {
+		// ignore StopIteration error
+		if err == StopIteration {
 			return err
 		}
 	}
@@ -285,7 +290,7 @@ func (l *Log) rotate() error {
 		Records:    UnknownRecords,
 		Timestamps: time.Now(), /// TODO
 	}); err != nil {
-		return err
+		return errors.New(fmt.Sprintln("cannot write new index record:", err.Error()))
 	}
 	l.lastFuncLog = &RawFuncLogWriter{File: l.Root.RawFuncLogFile(l.ID, l.lastN)}
 	return nil
