@@ -38,7 +38,10 @@ func (s *Storage) Load() error {
 
 		_, ok = s.files[id]
 		if !ok {
-			s.files[id] = s.log(id, false)
+			s.files[id], err = s.log(id, false)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -67,34 +70,30 @@ func (s *Storage) Log(id LogID) (log *Log, ok bool) {
 
 // 新しいLogインスタンスを作成する。
 // この関数を呼び出す前に、排他ロックをかける必要がある。
-func (s *Storage) log(id LogID, new bool) *Log {
+func (s *Storage) log(id LogID, new bool) (*Log, error) {
 	log := &Log{
 		ID:   id,
 		Root: s.Root,
 	}
 	if new {
 		if err := log.New(); err != nil {
-			// TODO: return err
-			panic(err)
+			return nil, err
 		}
 	} else {
 		if err := log.Init(); err != nil {
-			// TODO: return err
-			panic(err)
+			return nil, err
 		}
 	}
 	s.files[id] = log
-	return log
+	return log, nil
 }
 
-func (s *Storage) New() *Log {
+func (s *Storage) New() (*Log, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-
-	// generate random id
 	id := LogID{}
 	if _, err := rand.Read(id[:]); err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	return s.log(id, true)

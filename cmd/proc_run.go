@@ -70,7 +70,11 @@ func runProcRun(conf *config.Config, targets []string) error {
 			Connected: func() {
 				log.Println("INFO: Server: connected")
 				if logobj == nil {
-					logobj = strg.New()
+					var err error
+					logobj, err = strg.New()
+					if err != nil {
+						panic(err)
+					}
 				}
 			},
 			Disconnected: func() {
