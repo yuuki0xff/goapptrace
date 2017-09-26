@@ -8,6 +8,7 @@ import (
 
 const DefaultCaps = 1024
 
+// returns all file paths of golang source in all sub-directories.
 func FindFiles(fileOrDir string) ([]string, error) {
 	files := make([]string, 0, DefaultCaps)
 
