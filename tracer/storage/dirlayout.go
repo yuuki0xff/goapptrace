@@ -3,6 +3,7 @@ package storage
 import (
 	"compress/gzip"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -87,21 +88,21 @@ func (f File) Size() (int64, error) {
 func (f File) OpenReadOnly() (io.ReadCloser, error) {
 	file, err := os.Open(string(f))
 	if err != nil {
-		return nil, err
+		return nil, errors.New(fmt.Sprintf("cannot open %s for reading: %s", string(f), err))
 	}
 	return gzip.NewReader(file)
 }
 func (f File) OpenWriteOnly() (io.WriteCloser, error) {
 	file, err := os.OpenFile(string(f), os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(fmt.Sprintf("cannot open %s for writing: %s", string(f), err))
 	}
 	return gzip.NewWriterLevel(file, gzip.BestCompression)
 }
 func (f File) OpenAppendOnly() (io.WriteCloser, error) {
 	file, err := os.OpenFile(string(f), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(fmt.Sprintf("cannot open %s for appending: %s", string(f), err))
 	}
 	return gzip.NewWriterLevel(file, gzip.BestCompression)
 }

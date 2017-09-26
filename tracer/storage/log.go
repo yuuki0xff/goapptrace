@@ -94,17 +94,7 @@ func (l *Log) New() (err error) {
 	l.index = &Index{File: l.Root.IndexFile(l.ID)}
 	l.symbols = &SymbolsWriter{File: l.Root.SymbolFile(l.ID)}
 
-	checkError := func(e error) {
-		if e != nil && e == nil {
-			err = e
-		}
-	}
-	checkError(l.lastFuncLog.Open())
-	checkError(l.index.Open())
-	checkError(l.symbols.Open())
-
-	checkError(l.loadSymbols())
-	return
+	return l.load()
 }
 
 func (l *Log) Load() error {
@@ -133,17 +123,21 @@ func (l *Log) Load() error {
 	l.index = &Index{File: l.Root.IndexFile(l.ID)}
 	l.symbols = &SymbolsWriter{File: l.Root.SymbolFile(l.ID)}
 
-	checkError := func(e error) {
+	return l.load()
+}
+
+func (l *Log) load() (err error) {
+	checkError := func(errprefix string, e error) {
 		if e != nil && e == nil {
-			err = e
+			err = errors.New(fmt.Sprintf("%s: %s", errprefix, e.Error()))
 		}
 	}
-	checkError(l.lastFuncLog.Open())
-	checkError(l.index.Open())
-	checkError(l.symbols.Open())
+	checkError("failed open lasat func log file", l.lastFuncLog.Open())
+	checkError("failed open index file", l.index.Open())
+	checkError("failed open symbol file", l.symbols.Open())
 
-	checkError(l.loadSymbols())
-	return nil
+	checkError("failed load symbol file", l.loadSymbols())
+	return
 }
 
 func (l *Log) Save() error {

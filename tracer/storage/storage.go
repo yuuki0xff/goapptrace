@@ -2,6 +2,8 @@ package storage
 
 import (
 	"crypto/rand"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"sync"
 )
@@ -25,7 +27,7 @@ func (s *Storage) Init() error {
 func (s *Storage) Load() error {
 	files, err := ioutil.ReadDir(s.Root.MetaDir())
 	if err != nil {
-		return err
+		return errors.New(fmt.Sprintln("Storage.Load(): failed get file list:", err.Error()))
 	}
 
 	s.lock.Lock()
@@ -40,7 +42,7 @@ func (s *Storage) Load() error {
 		if !ok {
 			s.files[id], err = s.log(id, false)
 			if err != nil {
-				return err
+				return errors.New(fmt.Sprintln("Storage.Load():", err))
 			}
 		}
 	}
@@ -77,11 +79,11 @@ func (s *Storage) log(id LogID, new bool) (*Log, error) {
 	}
 	if new {
 		if err := log.New(); err != nil {
-			return nil, err
+			return nil, errors.New(fmt.Sprintf("failed create a log (%s): %s", id.Hex(), err.Error()))
 		}
 	} else {
 		if err := log.Init(); err != nil {
-			return nil, err
+			return nil, errors.New(fmt.Sprintf("failed load a log (%s): %s", id.Hex(), err.Error()))
 		}
 	}
 	s.files[id] = log
