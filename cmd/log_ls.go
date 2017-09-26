@@ -21,8 +21,11 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
+	"github.com/yuuki0xff/goapptrace/tracer/storage"
 )
 
 // logLsCmd represents the ls command
@@ -35,7 +38,30 @@ var logLsCmd = &cobra.Command{
 }
 
 func runLogLs(conf *config.Config, targets []string) error {
-	// TODO
+	stg := storage.Storage{
+		Root: storage.DirLayout{
+			Root: conf.LogsDir(),
+		},
+	}
+	if err := stg.Init(); err != nil {
+		return err
+	}
+
+	logs, err := stg.Logs()
+	if err != nil {
+		return err
+	}
+	tbl := defaultTable(os.Stdout)
+	for i := range logs {
+		tbl.SetHeader([]string{
+			"ID", "Time",
+		})
+		tbl.Append([]string{
+			logs[i].ID.Hex(),
+			logs[i].Metadata.Timestamp.String(),
+		})
+	}
+	tbl.Render()
 	return nil
 }
 
