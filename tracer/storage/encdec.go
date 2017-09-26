@@ -57,9 +57,11 @@ func (e *Encoder) Append(data interface{}) (err error) {
 }
 
 func (e *Encoder) Close() (err error) {
-	err = e.a.Close()
-	e.a = nil
-	e.enc = nil
+	if e.a != nil {
+		err = e.a.Close()
+		e.a = nil
+		e.enc = nil
+	}
 	return
 }
 

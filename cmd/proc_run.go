@@ -58,6 +58,13 @@ func runProcRun(conf *config.Config, targets []string) error {
 		},
 	}
 	var logobj *storage.Log
+	defer func() {
+		if logobj != nil {
+			// セッションが異常終了した場合、disconnected eventが発生せずにサーバが終了してしまう。
+			// Close()漏れによるファイル破損を防止するため、ここでもClose()しておく
+			logobj.Close()
+		}
+	}()
 
 	if err := strg.Init(); err != nil {
 		return err
@@ -82,6 +89,7 @@ func runProcRun(conf *config.Config, targets []string) error {
 				if err := logobj.Close(); err != nil {
 					panic(err)
 				}
+				logobj = nil
 			},
 			Error: func(err error) {
 				log.Println("ERROR: Server:", err)
