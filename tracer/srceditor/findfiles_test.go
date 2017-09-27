@@ -38,6 +38,11 @@ func TestFindFiles(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
+	defer func() {
+		if err = os.RemoveAll(tmpdir); err != nil {
+			panic(err)
+		}
+	}()
 
 	// create test dir
 	touch(tmpdir, "main.go")
