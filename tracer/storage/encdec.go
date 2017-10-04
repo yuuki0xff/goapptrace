@@ -33,8 +33,9 @@ func (d *Decoder) Open() (err error) {
 }
 
 func (d *Decoder) Read(data interface{}) (err error) {
-	log.Printf("DEBUG: decoder read: %+v\n", data)
-	return d.dec.Decode(data)
+	err = d.dec.Decode(data)
+	log.Printf("DEBUG: Decoder.Read: data=%+v, err=%+v\n", data, err)
+	return
 }
 
 func (d *Decoder) Walk(newPtr func() interface{}, callback func(interface{}) error) error {
