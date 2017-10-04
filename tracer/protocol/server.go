@@ -105,6 +105,9 @@ func (s *Server) Close() error {
 	defer log.Println("DEBUG: server: closing a connection ... done")
 
 	if s.cancel != nil {
+		// send a shutdown command
+		s.Send(ShutdownCmd, &ShutdownCmdArgs{})
+
 		// request to worker shutdown
 		log.Println("DEBUG: server: Close(): request to shutdown")
 		s.cancel()
@@ -239,7 +242,13 @@ func (s *Server) worker() {
 				case PingMsg:
 					// do nothing
 				case ShutdownMsg:
-					// do nothing
+					log.Println("INFO: server: get a shutdown msg")
+					shouldStop = true
+					go func() {
+						if err := s.Close(); err != nil {
+							log.Println("WARN: server: failed Close():", err.Error())
+						}
+					}()
 				case SymbolsMsg:
 					s.Handler.Symbols(data.(*logutil.Symbols))
 				case RawFuncLogMsg:

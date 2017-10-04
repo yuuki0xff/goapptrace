@@ -96,6 +96,9 @@ func (c *Client) Close() error {
 	log.Println("INFO: client: closing a connection")
 	defer log.Println("DEBUG: client: closed a connection")
 	if c.cancel != nil {
+		// send a shutdown message
+		c.Send(ShutdownMsg, &ShutdownCmdArgs{})
+
 		// request to worker shutdown
 		c.cancel()
 		c.cancel = nil
@@ -222,7 +225,13 @@ func (c *Client) worker() {
 				case PingCmd:
 					// do nothing
 				case ShutdownCmd:
-					// do nothing
+					log.Println("INFO: server: get a shutdown cmd")
+					shouldStop = true
+					go func() {
+						if err := c.Close(); err != nil {
+							log.Println("WARN: client: failed Close():", err.Error())
+						}
+					}()
 				case StartTraceCmd:
 					c.Handler.StartTrace(data.(*StartTraceCmdArgs))
 				case StopTraceCmd:
