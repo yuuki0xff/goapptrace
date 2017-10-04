@@ -162,6 +162,6 @@ func getRouter(args *ServerArgs) *mux.Router {
 	)
 
 	router.PathPrefix("/").Methods("GET").Handler(
-		http.FileServer(http.Dir(info.DEFAULT_HTTP_DOC_ROOT)))
+		http.FileServer(http.Dir(info.DocRootAbsPath)))
 	return router
 }

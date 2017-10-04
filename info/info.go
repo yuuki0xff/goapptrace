@@ -1,5 +1,10 @@
 package info
 
+import (
+	"os"
+	"path/filepath"
+)
+
 const (
 	APP_NAME = "goapptrace"
 	VERSION  = "0.0.1"
@@ -10,4 +15,8 @@ const (
 	DEFAULT_LOGSRV_ENV     = "GOAPPTRACE_SERVER"
 	DEFAULT_HTTP_DOC_ROOT  = "./static/"
 	DEFAULT_EXE_NAME       = "exe"
+)
+
+var (
+	DocRootAbsPath, _ = filepath.Abs(filepath.Join(filepath.Dir(os.Args[0]), DEFAULT_HTTP_DOC_ROOT))
 )
