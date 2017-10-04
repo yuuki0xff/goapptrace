@@ -93,35 +93,68 @@ Please open on other browser.`);
             let svg = SVG(rootId);
             let svgElm = $(svg.native());
 
-            function loadSvg(layout, colorRule, colors, start) {
-                $.ajax({
-                    'url': '/api/log.svg',
-                    'dataType': 'xml',
-                    'data': {
-                        'width': svgWidth,
-                        'height': svgHeight,
-                        'layout': layout,
-                        'color-rule': colorRule,
-                        'colors': colors,
-                        'start': start,
-                        'scale': 1.0, // it's dummy parameter.
-                    },
-                }).done((data) => {
-                    let newsvg = data.children[0];
-                    let gElm = $(svg.element('g').native());
-                    $(newsvg.children).appendTo(gElm);
-                }).fail(() => {
-                    alert('Failed to load svg file.');
-                })
-
+            function loadLogIDs() {
+                return new Promise((resolve, reject) => {
+                    $.ajax({
+                        'url': '/api/logs',
+                        'dataType': 'json',
+                    }).done((data) => {
+                        // data: {
+                        //      "Logs": [
+                        //          {"ID": "hex"},
+                        //          ...
+                        //      ]
+                        // }
+                        let ids = [];
+                        for (let log of data['Logs']) {
+                            ids.push(log['ID'])
+                        }
+                        resolve(ids);
+                    }).fail(() => {
+                        reject('Failed to load log list.');
+                    })
+                });
             }
 
-            // TODO: 適切なタイミングで、追加のsvgを読み込む
-            loadSvg(
-                'goroutine',
-                'module',
-                6,
-                1);
+            function loadSVG(id, layout, colorRule, colors, start) {
+                return new Promise((resolve, reject) => {
+                    $.ajax({
+                        'url': '/api/log/' + id + '.svg',
+                        'dataType': 'xml',
+                        'data': {
+                            'width': svgWidth,
+                            'height': svgHeight,
+                            'layout': layout,
+                            'color-rule': colorRule,
+                            'colors': colors,
+                            'start': start,
+                            'scale': 1.0, // it's dummy parameter.
+                        },
+                    }).done((svg) => {
+                        resolve(svg);
+                    }).fail(() => {
+                        reject('Failed to load svg file.');
+                    });
+                });
+            }
+
+            loadLogIDs().catch((reason) => {
+                alert(reason);
+            }).then((ids) => {
+                // TODO: どのIDのログを解析対象にするべきか、指定する方法を作る
+                return loadSVG(
+                    ids[0],
+                    'goroutine',
+                    'module',
+                    6,
+                    1
+                );
+            }).catch((reason) => {
+                alert(reason);
+            }).then((newsvg: XMLDocument) => {
+                let gElm = $(svg.element('g').native());
+                $(newsvg.children[0].children).appendTo(gElm);
+            });
 
             // position of mouse pointer last dragging event occurred
             let startX = 0, startY = 0;
