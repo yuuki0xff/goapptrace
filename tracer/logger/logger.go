@@ -136,11 +136,13 @@ func sendLog(tag string, id logutil.TxID) {
 }
 
 func Close() {
+	// 組み込み対象のアプリケーションが出力するログに、余計なものを混ぜないようにするため、
+	// 発生したエラーは無視する。
 	if OutputFile != nil {
-		OutputFile.Close()
+		OutputFile.Close() // nolint: errcheck
 		OutputFile = nil
 	} else if Client != nil {
-		Client.Close()
+		Client.Close() // nolint: errcheck
 		Client = nil
 	} else {
 		panic(errors.New("here is unreachable, but reached"))

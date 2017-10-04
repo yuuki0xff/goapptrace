@@ -62,7 +62,9 @@ func runProcRun(conf *config.Config, targets []string) error {
 		if logobj != nil {
 			// セッションが異常終了した場合、disconnected eventが発生せずにサーバが終了してしまう。
 			// Close()漏れによるファイル破損を防止するため、ここでもClose()しておく
-			logobj.Close()
+			if err := logobj.Close(); err != nil {
+				log.Println(err)
+			}
 		}
 	}()
 
