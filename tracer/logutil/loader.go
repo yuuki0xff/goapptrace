@@ -115,6 +115,7 @@ func (rll *RawLogLoader) LoadFromIterator(next func() (RawFuncLogNew, bool)) err
 		case "funcEnd":
 			for i := len(gmap[raw.GID]) - 1; i >= 0; i-- {
 				fl := gmap[raw.GID][i]
+				log.Printf("DEBUG: loader.LoadFromIterator: funcEnd: raw=%+v, fl=%+v", raw, fl)
 				if rll.compareCallee(fl, &raw) && rll.compareCaller(fl, &raw) {
 					// detect EndTime
 					fl.EndTime = raw.Time
