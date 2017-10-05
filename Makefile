@@ -8,7 +8,7 @@ build-deps:
 	go get -u golang.org/x/tools/cmd/goimports
 	go get -u github.com/alecthomas/gometalinter
 	gometalinter --install
-	go get -u
+	go get -t ./...
 
 build:
 	cd static && $(MAKE) build
