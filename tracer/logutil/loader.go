@@ -7,12 +7,17 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 )
 
 const (
 	BufferSize           = 1 << 16
 	DefaultCallstackSize = 1024
 )
+
+func NewTxID() TxID {
+	return TxID(rand.Int63())
+}
 
 func (rll *RawLogLoader) Init() {
 	rll.Symbols.Init()

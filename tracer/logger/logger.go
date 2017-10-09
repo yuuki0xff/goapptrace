@@ -13,8 +13,6 @@ import (
 	"regexp"
 	"strconv"
 
-	"math/rand"
-
 	"github.com/yuuki0xff/goapptrace/info"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/protocol"
@@ -188,7 +186,7 @@ func setOutput() {
 }
 
 func FuncStart() (id logutil.TxID) {
-	id = logutil.TxID(rand.Int63())
+	id = logutil.NewTxID()
 	sendLog("funcStart", id)
 	return
 }
