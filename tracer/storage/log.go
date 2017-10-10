@@ -145,21 +145,6 @@ func (l *Log) load() (err error) {
 	return
 }
 
-func (l *Log) Save() error {
-	l.lock.Lock()
-	defer l.lock.Unlock()
-
-	w, err := l.Root.MetaFile(l.ID).OpenWriteOnly()
-	if err != nil {
-		return err
-	}
-	defer w.Close() // nolint: errcheck
-	if err := json.NewEncoder(w).Encode(l.Metadata); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (l *Log) Close() error {
 	var err error
 	checkError := func(logprefix string, e error) {
@@ -168,7 +153,14 @@ func (l *Log) Close() error {
 		}
 	}
 
-	checkError("cannot save:", l.Save())
+	w, err := l.Root.MetaFile(l.ID).OpenWriteOnly()
+	if err != nil {
+		return errors.New("can not open meta data file: " + err.Error())
+	}
+	defer w.Close() // nolint: errcheck
+	if err := json.NewEncoder(w).Encode(l.Metadata); err != nil {
+		return errors.New("can not write meta data file: " + err.Error())
+	}
 
 	l.lock.Lock()
 	defer l.lock.Unlock()

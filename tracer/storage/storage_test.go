@@ -41,7 +41,7 @@ func setupStorageDir(t *testing.T) (dir DirLayout, logIDSet set.Set, cleanup fun
 		if logobj == nil {
 			t.Fatalf("Storage.New() should not return nil")
 		}
-		must(t, logobj.Save(), "lobobj.Save():")
+		must(t, logobj.Close(), "lobobj.Close():")
 		logIDSet.Add(logobj.ID)
 	}
 	return
