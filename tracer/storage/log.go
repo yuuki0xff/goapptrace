@@ -285,5 +285,5 @@ func (l *Log) rotate() error {
 		return errors.New(fmt.Sprintln("cannot write new index record:", err.Error()))
 	}
 	l.lastFuncLog = &RawFuncLogWriter{File: l.Root.RawFuncLogFile(l.ID, l.lastN)}
-	return nil
+	return l.lastFuncLog.Open()
 }
