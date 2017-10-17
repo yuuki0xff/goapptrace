@@ -87,7 +87,7 @@ func (rll *RawLogLoader) LoadFromJsonLines(data io.Reader) error {
 	return loadErr
 }
 
-func (rll *RawLogLoader) LoadFromIterator(next func() (RawFuncLogNew, bool)) error {
+func (rll *RawLogLoader) LoadFromIterator(next func() (raw RawFuncLogNew, ok bool)) error {
 	rll.Records = make([]*FuncLog, 0)
 	rll.GoroutineMap = NewGoroutineMap()
 	rll.TimeRangeMap = NewTimeRangeMap()
