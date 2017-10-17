@@ -21,6 +21,7 @@ type TimeRangeMap struct {
 	m map[TimeRange]*GoroutineMap
 }
 
+// TODO: 要リファクタ
 type RawLogLoader struct {
 	Name string
 
