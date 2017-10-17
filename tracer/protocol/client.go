@@ -14,6 +14,10 @@ import (
 	"time"
 )
 
+var (
+	InvalidProtocolError = errors.New("invalid protocol")
+)
+
 type ClientHandler struct {
 	Connected    func()
 	Disconnected func()
@@ -57,7 +61,7 @@ func (c *Client) Connect() error {
 		url = strings.TrimPrefix(c.Addr, "tcp://")
 		proto = "tcp"
 	default:
-		return errors.New("Invalid protocol")
+		return InvalidProtocolError
 	}
 
 	conn, err := net.Dial(proto, url)
