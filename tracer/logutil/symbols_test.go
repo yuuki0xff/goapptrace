@@ -28,7 +28,7 @@ func TestSymbols_ModuleName(t *testing.T) {
 	}
 }
 
-func TestSymbolResolver_Init(t *testing.T) {
+func TestSymbolResolver(t *testing.T) {
 	dummyFID := FuncID(9999)
 	dummyFSID := FuncStatusID(1111)
 	f1 := FuncSymbol{
