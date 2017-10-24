@@ -62,7 +62,7 @@ func (s *Server) Listen() error {
 		url = strings.TrimPrefix(s.Addr, "tcp://")
 		proto = "tcp"
 	default:
-		return errors.New("Invalid protocol")
+		return InvalidProtocolError
 	}
 
 	s.listener, err = net.Listen(proto, url)
