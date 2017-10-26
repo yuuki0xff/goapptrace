@@ -35,6 +35,7 @@ func (pr Proto) Pack(p xtcp.Packet) ([]byte, error) {
 	var buf bytes.Buffer
 
 	// prepare header packet
+	hp.PacketType = detectPacketType(p)
 
 	// ensure uint32 space
 	buf.WriteByte(0)
