@@ -86,6 +86,8 @@ func (pr Proto) Unpack(b []byte) (xtcp.Packet, int, error) {
 	return p, packetSize, nil
 }
 
+// detectPacketType returns PacketType of packet.
+// If packet is not PacketType, will be occurs panic.
 func detectPacketType(packet xtcp.Packet) PacketType {
 	switch packet.(type) {
 	case LogPacket:
@@ -104,6 +106,7 @@ func detectPacketType(packet xtcp.Packet) PacketType {
 	}
 }
 
+// createPacket returns empty packet.
 func createPacket(packetType PacketType) xtcp.Packet {
 	switch packetType {
 	case LogPacketType:
