@@ -54,7 +54,7 @@ func (pr Proto) Pack(p xtcp.Packet) ([]byte, error) {
 
 	// write data size
 	b := buf.Bytes()
-	packetSize := uint32(buf.Len() - 4)
+	packetSize := uint32(len(b) - 4)
 	binary.BigEndian.PutUint32(b[:4], packetSize)
 	return b, nil
 }
