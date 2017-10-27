@@ -16,6 +16,11 @@ func TestProto_PackUnpack(t *testing.T) {
 		return
 	}
 
+	persistPktSize := proto.PackSize(pkt)
+	if persistPktSize != len(pktData) {
+		t.Errorf("PacketSize mismatch: PackSize()=%d actual=%d", persistPktSize, len(pktData))
+	}
+
 	pktSize := int(binary.BigEndian.Uint32(pktData[:4]))
 	pktBody := pktData[4:]
 	if pktSize != len(pktBody) {
