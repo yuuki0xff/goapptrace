@@ -179,6 +179,9 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 		}
 	case xtcp.EventSend:
 	case xtcp.EventClosed:
+		// request worker shutdown
+		c.cancel()
+
 		if c.Handler.Disconnected != nil {
 			c.Handler.Disconnected()
 		}
