@@ -46,9 +46,9 @@ const (
 // Headers
 
 type ClientHeader struct {
-	AppName       string
-	ClientSecret  string
-	ClientVersion string
+	AppName         string
+	ClientSecret    string
+	ProtocolVersion string
 }
 
 type MessageHeader struct {
@@ -57,7 +57,7 @@ type MessageHeader struct {
 }
 
 type ServerHeader struct {
-	ServerVersion string
+	ProtocolVersion string
 }
 
 type CommandHeader struct {

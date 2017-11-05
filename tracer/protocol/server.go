@@ -201,7 +201,7 @@ func (s *Server) worker() {
 		log.Println("DEBUG: server: send server header")
 		setWriteDeadline()
 		if isErrorNoStop(enc.Encode(&ServerHeader{
-			ServerVersion: "", //TODO
+			ProtocolVersion: "", //TODO
 		})) {
 			return
 		}
@@ -349,12 +349,12 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 				return
 			}
 			// TODO: client headerを確認する
-			if pkt.ClientVersion == "" {
+			if pkt.ProtocolVersion == "" {
 				conn.Stop(xtcp.StopImmediately)
 				return
 			}
 			conn.Send(&ServerHeader{
-				ServerVersion: ProtocolVersion,
+				ProtocolVersion: ProtocolVersion,
 			})
 			s.isNegotiated = true
 		} else {

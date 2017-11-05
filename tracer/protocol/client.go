@@ -158,9 +158,9 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 
 		// send client header packet
 		pkt := &ClientHeader{
-			AppName:       c.AppName,
-			ClientSecret:  c.Secret,
-			ClientVersion: ProtocolVersion,
+			AppName:         c.AppName,
+			ClientSecret:    c.Secret,
+			ProtocolVersion: ProtocolVersion,
 		}
 		c.xtcpconn.Send(pkt)
 	case xtcp.EventRecv:
@@ -174,7 +174,7 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 				return
 			}
 			// TODO serverheaderを確認する
-			if pkt.ServerVersion == "" {
+			if pkt.ProtocolVersion == "" {
 				// 対応していないバージョンなら、切断する。
 				conn.Stop(xtcp.StopImmediately)
 				return
