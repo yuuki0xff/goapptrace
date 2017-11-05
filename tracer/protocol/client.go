@@ -40,8 +40,6 @@ type Client struct {
 	workerCtx context.Context
 	workerWg  sync.WaitGroup
 
-	writeChan chan xtcp.Packet
-
 	opt        *xtcp.Options
 	xtcpconn   *xtcp.Conn
 	shouldStop bool
