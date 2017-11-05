@@ -40,10 +40,10 @@ type Client struct {
 	workerCtx context.Context
 	workerWg  sync.WaitGroup
 
-	opt        *xtcp.Options
-	xtcpconn   *xtcp.Conn
-	shouldStop bool
-	firstEvent bool
+	opt          *xtcp.Options
+	xtcpconn     *xtcp.Conn
+	shouldStop   bool
+	isNegotiated bool
 }
 
 func (c *Client) init() {
@@ -51,8 +51,6 @@ func (c *Client) init() {
 	if c.PingInterval == time.Duration(0) {
 		c.PingInterval = DefaultPingInterval
 	}
-
-	c.firstEvent = true
 }
 
 func (c *Client) Connect() error {
@@ -141,7 +139,7 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 	case xtcp.EventRecv:
 		// 初めてのパケットを受け取ったときには、サーバハンドラとしてデコードする
 		// if first time, a packet MUST BE ServerHeader type.
-		if c.firstEvent {
+		if !c.isNegotiated {
 			pkt, ok := p.(ServerHeader)
 			if !ok {
 				log.Printf("ERROR: invalid server header")
@@ -157,7 +155,7 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 			c.workerWg.Add(1)
 			go c.pingWorker()
 
-			c.firstEvent = false
+			c.isNegotiated = true
 		} else {
 			switch pkt := p.(type) {
 			case PingPacket:
