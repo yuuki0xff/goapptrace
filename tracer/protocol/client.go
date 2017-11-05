@@ -33,10 +33,9 @@ type Client struct {
 	Addr    string
 	Handler ClientHandler
 
-	AppName         string
-	Secret          string
-	MaxBufferedMsgs int
-	PingInterval    time.Duration
+	AppName      string
+	Secret       string
+	PingInterval time.Duration
 
 	conn      net.Conn
 	cancel    context.CancelFunc
@@ -53,10 +52,6 @@ type Client struct {
 
 func (c *Client) init() {
 	c.workerCtx, c.cancel = context.WithCancel(context.Background())
-	if c.MaxBufferedMsgs <= 0 {
-		c.MaxBufferedMsgs = DefaultMaxBufferedMsgs
-	}
-	c.writeChan = make(chan xtcp.Packet, c.MaxBufferedMsgs)
 	if c.PingInterval == time.Duration(0) {
 		c.PingInterval = DefaultPingInterval
 	}
@@ -87,11 +82,11 @@ func (c *Client) Connect() error {
 
 func (c *Client) Send(msgType MessageType, data xtcp.Packet) {
 	log.Printf("DEBUG: client: send message type=%+v, data=%+v\n", msgType, data)
-	c.writeChan <- &MessageHeader{
+	c.xtcpconn.Send(&MessageHeader{
 		MessageType: msgType,
 		Messages:    1,
-	}
-	c.writeChan <- data
+	})
+	c.xtcpconn.Send(data)
 }
 
 func (c *Client) Close() error {
@@ -107,21 +102,10 @@ func (c *Client) Close() error {
 		c.cancel()
 		c.cancel = nil
 
-		// disallow send new message to server
-		close(c.writeChan)
-
 		// wait for worker ended before close TCP connection
 		c.workerWg.Wait()
 	}
 	return nil
-}
-
-func (c *Client) sendWorker() {
-	defer c.workerWg.Done()
-
-	for msg := range c.writeChan {
-		c.xtcpconn.Send(msg)
-	}
 }
 
 func (c *Client) pingWorker() {
@@ -174,8 +158,6 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 				return
 			}
 
-			c.workerWg.Add(1)
-			go c.sendWorker()
 			c.workerWg.Add(1)
 			go c.pingWorker()
 
