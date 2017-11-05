@@ -49,8 +49,9 @@ type Server struct {
 
 	writeChan chan interface{}
 
-	opt     *xtcp.Options
-	xtcpsrv *xtcp.Server
+	opt          *xtcp.Options
+	xtcpsrv      *xtcp.Server
+	isNegotiated bool
 }
 
 func (s *Server) Listen() error {
@@ -334,13 +335,50 @@ func (s *Server) worker() {
 func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 	switch et {
 	case xtcp.EventAccept:
-		// TODO: do nothing
+		// wait for client header packet to be received.
 	case xtcp.EventRecv:
-		// TODO: check client header if first header.
-		// and send server header
+		if !s.isNegotiated {
+			// check client header.
+			pkt, ok := p.(ClientHeader)
+			if !ok {
+				log.Printf("ERROR: invalid client header")
+				conn.Stop(xtcp.StopImmediately)
+				return
+			}
+			// TODO: client headerを確認する
+			if pkt.ClientVersion == "" {
+				conn.Stop(xtcp.StopImmediately)
+				return
+			}
+			conn.Send(&ServerHeader{
+				ServerVersion: "", // TODO
+			})
+			s.isNegotiated = true
+		} else {
+			switch pkt := p.(type) {
+			case PingPacket:
+				// TODO
+			case ShutdownPacket:
+				// TODO: dummy code
+				pkt.String()
+				log.Println("INFO: server: get a shutdown msg")
+				conn.Stop(xtcp.StopImmediately)
+				return
+			case StartTraceCmdPacket:
+				log.Println("ERROR: invalid packet: StartTraceCmdPacket is not allowed")
+				conn.Stop(xtcp.StopImmediately)
+				return
+			case StopTraceCmdPacket:
+				log.Println("ERROR: invalid packet: StopTraceCmdPacket is not allowed")
+				conn.Stop(xtcp.StopImmediately)
+				return
+			case SymbolPacket:
+				// TODO
+			case RawFuncLogNewPacket:
+				// TODO
+			}
+		}
 	case xtcp.EventSend:
-		// TODO: do nothing?
 	case xtcp.EventClosed:
-		// TODO: do nothing?
 	}
 }
