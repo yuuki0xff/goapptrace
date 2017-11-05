@@ -120,7 +120,6 @@ func (c *Client) sendWorker() {
 	defer c.workerWg.Done()
 
 	for msg := range c.writeChan {
-		// TODO: convert msg to pkt
 		c.xtcpconn.Send(msg)
 	}
 }
