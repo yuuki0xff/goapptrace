@@ -102,6 +102,7 @@ func (s *Server) ActualAddr() string {
 }
 
 func (s *Server) Send(cmdType CommandType, args interface{}) {
+	log.Printf("DEBUG: client: send message type=%+v, data=%+v\n", cmdType, args)
 	s.writeChan <- &CommandHeader{
 		CommandType: cmdType,
 	}
