@@ -41,7 +41,7 @@ func init() {
 func sendLog(tag string, id logutil.TxID) {
 	var newSymbols *logutil.Symbols
 
-	logmsg := logutil.RawFuncLogNew{}
+	logmsg := &logutil.RawFuncLogNew{}
 	logmsg.Timestamp = time.Now().Unix()
 	logmsg.Tag = tag
 	logmsg.Frames = make([]logutil.FuncStatusID, 0, MaxStackSize)
@@ -125,9 +125,9 @@ func sendLog(tag string, id logutil.TxID) {
 	} else if Client != nil {
 		// send binary log to log server
 		if newSymbols != nil {
-			Client.Send(protocol.SymbolsMsg, newSymbols)
+			Client.Send(protocol.SymbolsMsg, &protocol.SymbolPacket{newSymbols})
 		}
-		Client.Send(protocol.RawFuncLogMsg, logmsg)
+		Client.Send(protocol.RawFuncLogMsg, &protocol.RawFuncLogNewPacket{logmsg})
 	} else {
 		panic(errors.New("here is unreachable, but reached"))
 	}

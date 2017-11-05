@@ -2,16 +2,15 @@ package protocol
 
 import (
 	"context"
-	"encoding/gob"
 	"errors"
-	"fmt"
 	"net"
 	"strings"
 
 	"log"
-	"reflect"
 	"sync"
 	"time"
+
+	"github.com/xfxdev/xtcp"
 )
 
 var (
@@ -29,7 +28,8 @@ type ClientHandler struct {
 }
 
 type Client struct {
-	// "unix:///path/to/socket/file" or "tcp://host:port"
+	// Addr is "tcp://host:port"
+	// 現在は、"unix:///path/to/socket/file" 形式のアドレスはサポートしていない。
 	Addr    string
 	Handler ClientHandler
 
@@ -45,35 +45,20 @@ type Client struct {
 	workerCtx context.Context
 	workerWg  sync.WaitGroup
 
-	writeChan chan interface{}
+	writeChan chan xtcp.Packet
+
+	opt        *xtcp.Options
+	xtcpconn   *xtcp.Conn
+	shouldStop bool
+	firstEvent bool
 }
 
-func (c *Client) Connect() error {
-	log.Println("INFO: clinet: connected")
-	var proto string
-	var url string
-
-	switch {
-	case strings.HasPrefix(c.Addr, "unix://"):
-		url = strings.TrimPrefix(c.Addr, "unix://")
-		proto = "unix"
-	case strings.HasPrefix(c.Addr, "tcp://"):
-		url = strings.TrimPrefix(c.Addr, "tcp://")
-		proto = "tcp"
-	default:
-		return InvalidProtocolError
-	}
-
-	conn, err := net.Dial(proto, url)
-	if err != nil {
-		return err
-	}
-	c.conn = conn
+func (c *Client) init() {
 	c.workerCtx, c.cancel = context.WithCancel(context.Background())
 	if c.MaxBufferedMsgs <= 0 {
 		c.MaxBufferedMsgs = DefaultMaxBufferedMsgs
 	}
-	c.writeChan = make(chan interface{}, c.MaxBufferedMsgs)
+	c.writeChan = make(chan xtcp.Packet, c.MaxBufferedMsgs)
 	if c.Timeout == time.Duration(0) {
 		c.Timeout = DefaultTimeout
 	}
@@ -81,13 +66,31 @@ func (c *Client) Connect() error {
 		c.PingInterval = DefaultPingInterval
 	}
 
-	c.workerWg.Add(1)
-	go c.worker()
-	c.Handler.Connected()
-	return nil
+	c.firstEvent = true
 }
 
-func (c *Client) Send(msgType MessageType, data interface{}) {
+func (c *Client) Connect() error {
+	log.Println("INFO: clinet: connected")
+	c.init()
+
+	var addr string
+	switch {
+	case strings.HasPrefix(c.Addr, "unix://"):
+		// TODO
+		return InvalidProtocolError
+	case strings.HasPrefix(c.Addr, "tcp://"):
+		addr = strings.TrimPrefix(c.Addr, "tcp://")
+	default:
+		return InvalidProtocolError
+	}
+
+	prt := &Proto{}
+	c.opt = xtcp.NewOpts(c, prt)
+	c.xtcpconn = xtcp.NewConn(c.opt)
+	return c.xtcpconn.DialAndServe(addr)
+}
+
+func (c *Client) Send(msgType MessageType, data xtcp.Packet) {
 	log.Printf("DEBUG: client: send message type=%+v, data=%+v\n", msgType, data)
 	c.writeChan <- &MessageHeader{
 		MessageType: msgType,
@@ -100,8 +103,10 @@ func (c *Client) Close() error {
 	log.Println("INFO: client: closing a connection")
 	defer log.Println("DEBUG: client: closed a connection")
 	if c.cancel != nil {
+		c.shouldStop = true
+
 		// send a shutdown message
-		c.Send(ShutdownMsg, &ShutdownCmdArgs{})
+		c.Send(ShutdownMsg, &ShutdownPacket{})
 
 		// request to worker shutdown
 		c.cancel()
@@ -112,180 +117,97 @@ func (c *Client) Close() error {
 
 		// wait for worker ended before close TCP connection
 		c.workerWg.Wait()
-		err := c.conn.Close()
-		c.conn = nil
-		c.Handler.Disconnected()
-		return err
 	}
 	return nil
 }
 
-func (c *Client) worker() {
-	log.Println("INFO: client: start worker")
-	defer log.Println("INFO client: ended worker")
+func (c *Client) sendWorker() {
 	defer c.workerWg.Done()
-	errCh := make(chan error)
-	shouldStop := false
 
-	isErrorNoStop := func(err error) bool {
-		if err != nil {
-			if isEOF(err) || isBrokenPipe(err) {
-				// ignore errors
-				errCh <- nil
-				return true
-			}
-			errCh <- err
-			return true
-		}
-		return false
+	for msg := range c.writeChan {
+		// TODO: convert msg to pkt
+		c.xtcpconn.Send(msg)
 	}
-	isError := func(err error) bool {
-		if shouldStop {
-			return true
+}
+
+func (c *Client) pingWorker() {
+	log.Println("DEBUG: client: start ping worker")
+	defer log.Println("DEBUG: client: stop ping worker")
+	defer c.workerWg.Done()
+
+	timer := time.NewTicker(c.PingInterval)
+
+	for {
+		select {
+		case <-timer.C:
+			log.Println("DEBUG: client: send ping message")
+			c.Send(PingMsg, &PingPacket{})
+
+		case <-c.workerCtx.Done():
+			return
 		}
-		return isErrorNoStop(err)
 	}
+}
 
-	c.workerWg.Add(1)
-	go func() {
-		log.Println("DEBUG: client: start worker launcher")
-		defer log.Println("DEBUG: client: stop worker launcher")
-		defer c.workerWg.Done()
-		log.Println("INFO: client: initialize")
-
-		setReadDeadline := func() {
-			if err := c.conn.SetReadDeadline(time.Now().Add(c.Timeout)); err != nil {
-				panic(err)
-			}
-		}
-		setWriteDeadline := func() {
-			if err := c.conn.SetWriteDeadline(time.Now().Add(c.Timeout)); err != nil {
-				panic(err)
-			}
+// p will be nil when event is EventAccept/EventConnected/EventClosed
+func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
+	switch et {
+	case xtcp.EventConnected:
+		if c.Handler.Connected != nil {
+			c.Handler.Connected()
 		}
 
-		// initialize
-		enc := gob.NewEncoder(c.conn)
-		dec := gob.NewDecoder(c.conn)
-
-		log.Println("DEBUG: client: send client header")
-		setWriteDeadline()
-		if isErrorNoStop(enc.Encode(&ClientHeader{
+		// send client header packet
+		pkt := &ClientHeader{
 			AppName:       c.AppName,
 			ClientSecret:  c.Secret,
 			ClientVersion: c.Version,
-		})) {
-			return
 		}
-		log.Println("DEBUG: client: send client header ... done")
+		c.xtcpconn.Send(pkt)
+	case xtcp.EventRecv:
+		// 初めてのパケットを受け取ったときには、サーバハンドラとしてデコードする
+		// if first time, a packet MUST BE ServerHeader type.
+		if c.firstEvent {
+			pkt, ok := p.(ServerHeader)
+			if !ok {
+				log.Printf("ERROR: invalid server header")
+				c.xtcpconn.Stop(xtcp.StopImmediately)
+				return
+			}
+			// TODO serverheaderを確認する
+			if pkt.ServerVersion == "" {
+				// 対応していないバージョンなら、切断する。
+				conn.Stop(xtcp.StopImmediately)
+				return
+			}
 
-		log.Println("DEBUG: client: read server response")
-		setReadDeadline()
-		serverHeader := ServerHeader{}
-		if isErrorNoStop(dec.Decode(&serverHeader)) {
-			return
+			c.workerWg.Add(1)
+			go c.sendWorker()
+			c.workerWg.Add(1)
+			go c.pingWorker()
+
+			c.firstEvent = false
+		} else {
+			switch pkt := p.(type) {
+			case PingPacket:
+				// TODO
+			case ShutdownPacket:
+				// TODO: dummy code
+				pkt.String()
+				conn.Stop(xtcp.StopImmediately)
+				return
+			case StartTraceCmdPacket:
+				// TODO
+			case StopTraceCmdPacket:
+				// TODO
+			default:
+				panic("bug")
+			}
 		}
-		log.Println("DEBUG: client: read server response ... done")
-		// TODO: check response
-
-		// initialize process is done
-		// start read/write workers
-		log.Println("DEBUG: client: initialize ... done")
-
-		// start read worker
-		c.workerWg.Add(1)
-		go func() {
-			log.Println("DEBUG: client: start read worker")
-			defer log.Println("DEBUG: client: stop read worker")
-			defer c.workerWg.Done()
-			for !shouldStop {
-				setReadDeadline()
-				cmdHeader := &CommandHeader{}
-				if isError(dec.Decode(cmdHeader)) {
-					return
-				}
-
-				var data interface{}
-				switch cmdHeader.CommandType {
-				case PingCmd:
-					data = &PingCmdArgs{}
-				case ShutdownCmd:
-					data = &ShutdownCmdArgs{}
-				case StartTraceCmd:
-					data = &StartTraceCmdArgs{}
-				case StopTraceCmd:
-					data = &StopTraceCmdArgs{}
-				default:
-					errCh <- errors.New(fmt.Sprintf("Invalid CommandType: %d", cmdHeader.CommandType))
-					return
-				}
-
-				setReadDeadline()
-				if isError(dec.Decode(data)) {
-					return
-				}
-
-				switch cmdHeader.CommandType {
-				case PingCmd:
-					// do nothing
-				case ShutdownCmd:
-					log.Println("INFO: server: get a shutdown cmd")
-					shouldStop = true
-					go func() {
-						if err := c.Close(); err != nil {
-							log.Println("WARN: client: failed Close():", err.Error())
-						}
-					}()
-				case StartTraceCmd:
-					c.Handler.StartTrace(data.(*StartTraceCmdArgs))
-				case StopTraceCmd:
-					c.Handler.StopTrace(data.(*StopTraceCmdArgs))
-				default:
-					panic("bug")
-				}
-			}
-		}()
-
-		// start ping worker
-		c.workerWg.Add(1)
-		go func() {
-			log.Println("DEBUG: client: start ping worker")
-			defer log.Println("DEBUG: client: stop ping worker")
-			defer c.workerWg.Done()
-
-			for !shouldStop {
-				log.Println("DEBUG: client: send ping message")
-				c.Send(PingMsg, &PingMsgData{})
-				time.Sleep(c.PingInterval)
-			}
-		}()
-
-		// start write worker
-		c.workerWg.Add(1)
-		go func() {
-			log.Println("DEBUG: client: start write worker")
-			defer log.Println("DEBUG: client: stop write worker")
-			defer c.workerWg.Done()
-			// will be closing c.writeChan by c.Close() when occurred shutdown request.
-			// so, this worker should not check 'shouldStop' variable.
-			for data := range c.writeChan {
-				log.Printf("DEBUG: client: send %s message: %+v\n", reflect.TypeOf(data).String(), data)
-				setWriteDeadline()
-				if isErrorNoStop(enc.Encode(data)) {
-					return
-				}
-			}
-		}()
-	}()
-
-	select {
-	case <-c.workerCtx.Done():
-		// do nothing
-	case err := <-errCh:
-		if err != nil {
-			c.Handler.Error(err)
+	case xtcp.EventSend:
+	case xtcp.EventClosed:
+		if c.Handler.Disconnected != nil {
+			c.Handler.Disconnected()
 		}
 	}
-	// shutdown other workers
-	shouldStop = true
 }

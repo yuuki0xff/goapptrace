@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/xfxdev/xtcp"
+	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
 type PacketType int64
@@ -16,6 +17,8 @@ const (
 	ShutdownPacketType
 	StartTraceCmdPacketType
 	StopTraceCmdPacketType
+	SymbolPacketType
+	RawFuncLogNewPacketType
 )
 
 // detectPacketType returns PacketType of packet.
@@ -32,6 +35,10 @@ func detectPacketType(packet xtcp.Packet) PacketType {
 		return StartTraceCmdPacketType
 	case StopTraceCmdPacket:
 		return StopTraceCmdPacketType
+	case SymbolPacket:
+		return SymbolPacketType
+	case RawFuncLogNewPacket:
+		return RawFuncLogNewPacketType
 	default:
 		log.Panic("bug")
 		return UnknownPacketType
@@ -51,6 +58,10 @@ func createPacket(packetType PacketType) xtcp.Packet {
 		return &StartTraceCmdPacket{}
 	case StopTraceCmdPacketType:
 		return &StopTraceCmdPacket{}
+	case SymbolPacketType:
+		return &SymbolPacket{}
+	case RawFuncLogNewPacketType:
+		return &RawFuncLogNewPacket{}
 	default:
 		log.Panic("bug")
 		return nil
@@ -68,6 +79,13 @@ type ShutdownPacket struct{}
 type StartTraceCmdPacket struct{}
 type StopTraceCmdPacket struct{}
 
+type SymbolPacket struct {
+	Symbols *logutil.Symbols
+}
+type RawFuncLogNewPacket struct {
+	FuncLog *logutil.RawFuncLogNew
+}
+
 func (p HeaderPacket) String() string {
 	return fmt.Sprintf("<HeaderPacket PacketType=%d>",
 		p.PacketType)
@@ -84,6 +102,9 @@ func (p ShutdownPacket) String() string {
 func (p StartTraceCmdPacket) String() string {
 	return ""
 }
-func (p StopTraceCmdPacket) String() string {
-	return ""
-}
+func (StopTraceCmdPacket) String() string  { return "" }
+func (ClientHeader) String() string        { return "" }
+func (ServerHeader) String() string        { return "" }
+func (MessageHeader) String() string       { return "" }
+func (SymbolPacket) String() string        { return "" }
+func (RawFuncLogNewPacket) String() string { return "" }
