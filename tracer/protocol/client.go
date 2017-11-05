@@ -201,6 +201,12 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 				// TODO
 			case StopTraceCmdPacket:
 				// TODO
+			case SymbolPacket:
+				log.Println("ERROR: invalid packet: SymbolPacket is not allowed")
+				conn.Stop(xtcp.StopImmediately)
+			case RawFuncLogNewPacket:
+				log.Println("ERROR: invalid packet: RawFuncLogNewPacket is not allowed")
+				conn.Stop(xtcp.StopImmediately)
 			default:
 				panic("bug")
 			}
