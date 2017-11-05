@@ -31,7 +31,6 @@ type Server struct {
 	Handler ServerHandler
 
 	AppName         string
-	Version         string
 	Secret          string
 	MaxBufferedMsgs int
 	PingInterval    time.Duration

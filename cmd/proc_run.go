@@ -110,8 +110,7 @@ func runProcRun(conf *config.Config, targets []string) error {
 			},
 		},
 		AppName: info.APP_NAME,
-		Version: info.VERSION, // TODO: set server version
-		Secret:  "secret",     // TODO: set random value
+		Secret:  "secret", // TODO: set random value
 	}
 	if err := srv.Listen(); err != nil {
 		return err
