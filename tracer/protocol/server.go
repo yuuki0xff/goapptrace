@@ -335,6 +335,9 @@ func (s *Server) worker() {
 func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 	switch et {
 	case xtcp.EventAccept:
+		if s.Handler.Connected != nil {
+			s.Handler.Connected()
+		}
 		// wait for client header packet to be received.
 	case xtcp.EventRecv:
 		if !s.isNegotiated {
@@ -380,5 +383,8 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 		}
 	case xtcp.EventSend:
 	case xtcp.EventClosed:
+		if s.Handler.Disconnected != nil {
+			s.Handler.Disconnected()
+		}
 	}
 }
