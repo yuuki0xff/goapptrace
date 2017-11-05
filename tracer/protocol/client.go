@@ -3,7 +3,6 @@ package protocol
 import (
 	"context"
 	"errors"
-	"net"
 	"strings"
 
 	"log"
@@ -37,7 +36,6 @@ type Client struct {
 	Secret       string
 	PingInterval time.Duration
 
-	conn      net.Conn
 	cancel    context.CancelFunc
 	workerCtx context.Context
 	workerWg  sync.WaitGroup
