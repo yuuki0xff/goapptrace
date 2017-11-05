@@ -357,7 +357,7 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 		} else {
 			switch pkt := p.(type) {
 			case PingPacket:
-				// TODO
+				// do nothing
 			case ShutdownPacket:
 				// TODO: dummy code
 				pkt.String()
