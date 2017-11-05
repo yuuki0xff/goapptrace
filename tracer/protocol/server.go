@@ -76,8 +76,6 @@ func (s *Server) Listen() error {
 		s.PingInterval = DefaultPingInterval
 	}
 
-	s.workerWg.Add(1)
-	go s.worker()
 	s.Handler.Connected()
 
 	prt := &Proto{}
