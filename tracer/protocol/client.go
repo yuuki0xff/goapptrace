@@ -42,7 +42,6 @@ type Client struct {
 
 	opt          *xtcp.Options
 	xtcpconn     *xtcp.Conn
-	shouldStop   bool
 	isNegotiated bool
 }
 
@@ -87,8 +86,6 @@ func (c *Client) Close() error {
 	log.Println("INFO: client: closing a connection")
 	defer log.Println("DEBUG: client: closed a connection")
 	if c.cancel != nil {
-		c.shouldStop = true
-
 		// send a shutdown message
 		c.Send(ShutdownMsg, &ShutdownPacket{})
 
