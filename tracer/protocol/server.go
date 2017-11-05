@@ -76,8 +76,6 @@ func (s *Server) Listen() error {
 		s.PingInterval = DefaultPingInterval
 	}
 
-	s.Handler.Connected()
-
 	prt := &Proto{}
 	s.opt = xtcp.NewOpts(s, prt)
 	s.xtcpsrv = xtcp.NewServer(s.opt)
