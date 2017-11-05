@@ -34,7 +34,6 @@ type Server struct {
 	Version         string
 	Secret          string
 	MaxBufferedMsgs int
-	Timeout         time.Duration
 	PingInterval    time.Duration
 
 	listener  net.Listener
@@ -73,9 +72,6 @@ func (s *Server) Listen() error {
 		s.MaxBufferedMsgs = DefaultMaxBufferedMsgs
 	}
 	s.writeChan = make(chan interface{}, s.MaxBufferedMsgs)
-	if s.Timeout == time.Duration(0) {
-		s.Timeout = DefaultTimeout
-	}
 	if s.PingInterval == time.Duration(0) {
 		s.PingInterval = DefaultPingInterval
 	}

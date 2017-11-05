@@ -36,7 +36,6 @@ type Client struct {
 	AppName         string
 	Secret          string
 	MaxBufferedMsgs int
-	Timeout         time.Duration
 	PingInterval    time.Duration
 
 	conn      net.Conn
@@ -58,9 +57,6 @@ func (c *Client) init() {
 		c.MaxBufferedMsgs = DefaultMaxBufferedMsgs
 	}
 	c.writeChan = make(chan xtcp.Packet, c.MaxBufferedMsgs)
-	if c.Timeout == time.Duration(0) {
-		c.Timeout = DefaultTimeout
-	}
 	if c.PingInterval == time.Duration(0) {
 		c.PingInterval = DefaultPingInterval
 	}
