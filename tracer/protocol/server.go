@@ -51,7 +51,6 @@ type Server struct {
 func (s *Server) Listen() error {
 	var addr string
 	var err error
-	var l net.Listener
 
 	switch {
 	case strings.HasPrefix(s.Addr, "unix://"):
@@ -59,7 +58,7 @@ func (s *Server) Listen() error {
 		return InvalidProtocolError
 	case strings.HasPrefix(s.Addr, "tcp://"):
 		addr = strings.TrimPrefix(s.Addr, "tcp://")
-		l, err = net.Listen("tcp", addr)
+		s.listener, err = net.Listen("tcp", addr)
 		if err != nil {
 			return err
 		}
@@ -79,7 +78,7 @@ func (s *Server) Listen() error {
 	prt := &Proto{}
 	s.opt = xtcp.NewOpts(s, prt)
 	s.xtcpsrv = xtcp.NewServer(s.opt)
-	s.xtcpsrv.Serve(l)
+	s.xtcpsrv.Serve(s.listener)
 	return nil
 }
 
