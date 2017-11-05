@@ -16,6 +16,11 @@ const (
 	ProtocolVersion = "1"
 )
 
+// isCompatibleVersion returns true if "version" has compatibility of current version
+func isCompatibleVersion(version string) bool {
+	return ProtocolVersion == version
+}
+
 // Message: [size int32] [hp HeaderPacket] [p xtcp.Packet]
 // size =  hp.size() + p.size()
 type Proto struct{}

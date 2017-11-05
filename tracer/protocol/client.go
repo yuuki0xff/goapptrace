@@ -173,8 +173,7 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 				c.xtcpconn.Stop(xtcp.StopImmediately)
 				return
 			}
-			// TODO serverheaderを確認する
-			if pkt.ProtocolVersion == "" {
+			if isCompatibleVersion(pkt.ProtocolVersion) {
 				// 対応していないバージョンなら、切断する。
 				conn.Stop(xtcp.StopImmediately)
 				return

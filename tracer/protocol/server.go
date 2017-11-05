@@ -349,7 +349,7 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 				return
 			}
 			// TODO: client headerを確認する
-			if pkt.ProtocolVersion == "" {
+			if isCompatibleVersion(pkt.ProtocolVersion) {
 				conn.Stop(xtcp.StopImmediately)
 				return
 			}
