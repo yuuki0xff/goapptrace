@@ -194,6 +194,7 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 			case ShutdownPacket:
 				// TODO: dummy code
 				pkt.String()
+				log.Println("INFO: client: get a shutdown msg")
 				conn.Stop(xtcp.StopImmediately)
 				return
 			case StartTraceCmdPacket:
