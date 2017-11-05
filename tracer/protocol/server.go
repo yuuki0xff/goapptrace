@@ -122,19 +122,16 @@ func (s *Server) Close() error {
 		s.cancel()
 		s.cancel = nil
 
-		// stop listen worker
-		log.Println("DEBUG: server: Close(): stop listen worker")
-		err := s.listener.Close()
-		s.listener = nil
-
 		// disallow send new message to server
 		log.Println("DEBUG: server: Close(): closing writeChan")
 		close(s.writeChan)
 
 		log.Println("DEBUG: server: Close(): wait for all worker is ended")
 		s.workerWg.Wait()
-		s.Handler.Disconnected()
-		return err
+
+		// stop listen worker
+		log.Println("DEBUG: server: Close(): stop listen worker")
+		s.xtcpsrv.Stop(xtcp.StopGracefullyAndWait)
 	}
 	return nil
 }
