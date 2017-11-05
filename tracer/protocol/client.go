@@ -125,10 +125,6 @@ func (c *Client) pingWorker() {
 func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 	switch et {
 	case xtcp.EventConnected:
-		if c.Handler.Connected != nil {
-			c.Handler.Connected()
-		}
-
 		// send client header packet
 		pkt := &ClientHeader{
 			AppName:         c.AppName,
@@ -156,6 +152,10 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 			go c.pingWorker()
 
 			c.isNegotiated = true
+
+			if c.Handler.Connected != nil {
+				c.Handler.Connected()
+			}
 		} else {
 			switch pkt := p.(type) {
 			case PingPacket:

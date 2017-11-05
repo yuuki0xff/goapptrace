@@ -129,9 +129,6 @@ func (s *Server) Wait() {
 func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 	switch et {
 	case xtcp.EventAccept:
-		if s.Handler.Connected != nil {
-			s.Handler.Connected()
-		}
 		// wait for client header packet to be received.
 	case xtcp.EventRecv:
 		if !s.isNegotiated {
@@ -150,6 +147,10 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 				ProtocolVersion: ProtocolVersion,
 			})
 			s.isNegotiated = true
+
+			if s.Handler.Connected != nil {
+				s.Handler.Connected()
+			}
 		} else {
 			switch pkt := p.(type) {
 			case PingPacket:
