@@ -164,7 +164,6 @@ func setOutput() {
 				StopTrace:  func(args *protocol.StopTraceCmdArgs) {},
 			},
 			AppName: "TODO", // TODO
-			Version: info.VERSION,
 			Secret:  "secret",
 		}
 		if err := Client.Connect(); err != nil {

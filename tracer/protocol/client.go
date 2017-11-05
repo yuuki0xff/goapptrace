@@ -34,7 +34,6 @@ type Client struct {
 	Handler ClientHandler
 
 	AppName         string
-	Version         string
 	Secret          string
 	MaxBufferedMsgs int
 	Timeout         time.Duration
@@ -161,7 +160,7 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 		pkt := &ClientHeader{
 			AppName:       c.AppName,
 			ClientSecret:  c.Secret,
-			ClientVersion: c.Version,
+			ClientVersion: ProtocolVersion,
 		}
 		c.xtcpconn.Send(pkt)
 	case xtcp.EventRecv:

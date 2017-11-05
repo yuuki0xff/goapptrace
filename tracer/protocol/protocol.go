@@ -12,6 +12,10 @@ import (
 	"github.com/xfxdev/xtcp"
 )
 
+const (
+	ProtocolVersion = "1"
+)
+
 // Message: [size int32] [hp HeaderPacket] [p xtcp.Packet]
 // size =  hp.size() + p.size()
 type Proto struct{}

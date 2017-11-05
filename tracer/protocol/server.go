@@ -354,7 +354,7 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 				return
 			}
 			conn.Send(&ServerHeader{
-				ServerVersion: "", // TODO
+				ServerVersion: ProtocolVersion,
 			})
 			s.isNegotiated = true
 		} else {
