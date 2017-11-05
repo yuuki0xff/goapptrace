@@ -16,6 +16,7 @@ import (
 
 	"log"
 
+	"github.com/xfxdev/xtcp"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
@@ -47,27 +48,28 @@ type Server struct {
 	workerWg  sync.WaitGroup
 
 	writeChan chan interface{}
+
+	opt     *xtcp.Options
+	xtcpsrv *xtcp.Server
 }
 
 func (s *Server) Listen() error {
-	var proto string
-	var url string
+	var addr string
 	var err error
+	var l net.Listener
 
 	switch {
 	case strings.HasPrefix(s.Addr, "unix://"):
-		url = strings.TrimPrefix(s.Addr, "unix://")
-		proto = "unix"
+		// TODO
+		return InvalidProtocolError
 	case strings.HasPrefix(s.Addr, "tcp://"):
-		url = strings.TrimPrefix(s.Addr, "tcp://")
-		proto = "tcp"
+		addr = strings.TrimPrefix(s.Addr, "tcp://")
+		l, err = net.Listen("tcp", addr)
+		if err != nil {
+			return err
+		}
 	default:
 		return InvalidProtocolError
-	}
-
-	s.listener, err = net.Listen(proto, url)
-	if err != nil {
-		return err
 	}
 
 	s.workerCtx, s.cancel = context.WithCancel(context.Background())
@@ -85,6 +87,11 @@ func (s *Server) Listen() error {
 	s.workerWg.Add(1)
 	go s.worker()
 	s.Handler.Connected()
+
+	prt := &Proto{}
+	s.opt = xtcp.NewOpts(s, prt)
+	s.xtcpsrv = xtcp.NewServer(s.opt)
+	s.xtcpsrv.Serve(l)
 	return nil
 }
 
@@ -321,4 +328,19 @@ func (s *Server) worker() {
 		}
 	}
 	shouldStop = true
+}
+
+// p will be nil when event is EventAccept/EventConnected/EventClosed
+func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
+	switch et {
+	case xtcp.EventAccept:
+		// TODO: do nothing
+	case xtcp.EventRecv:
+		// TODO: check client header if first header.
+		// and send server header
+	case xtcp.EventSend:
+		// TODO: do nothing?
+	case xtcp.EventClosed:
+		// TODO: do nothing?
+	}
 }
