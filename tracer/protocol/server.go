@@ -69,7 +69,6 @@ func (s *Server) Listen() error {
 	if s.MaxBufferedMsgs <= 0 {
 		s.MaxBufferedMsgs = DefaultMaxBufferedMsgs
 	}
-	s.writeChan = make(chan interface{}, s.MaxBufferedMsgs)
 	if s.PingInterval == time.Duration(0) {
 		s.PingInterval = DefaultPingInterval
 	}
@@ -88,30 +87,18 @@ func (s *Server) ActualAddr() string {
 	return addr.Network() + "://" + addr.String()
 }
 
-func (s *Server) Send(cmdType CommandType, args interface{}) {
-	log.Printf("DEBUG: client: send message type=%+v, data=%+v\n", cmdType, args)
-	s.writeChan <- &CommandHeader{
-		CommandType: cmdType,
-	}
-	s.writeChan <- args
-}
-
 func (s *Server) Close() error {
 	log.Println("INFO: server: closeing a connection")
 	defer log.Println("DEBUG: server: closing a connection ... done")
 
 	if s.cancel != nil {
 		// send a shutdown command
-		s.Send(ShutdownCmd, &ShutdownCmdArgs{})
+		//s.Send(ShutdownCmd, &ShutdownCmdArgs{})
 
 		// request to worker shutdown
 		log.Println("DEBUG: server: Close(): request to shutdown")
 		s.cancel()
 		s.cancel = nil
-
-		// disallow send new message to server
-		log.Println("DEBUG: server: Close(): closing writeChan")
-		close(s.writeChan)
 
 		log.Println("DEBUG: server: Close(): wait for all worker is ended")
 		s.workerWg.Wait()
