@@ -73,12 +73,14 @@ func (s *Server) Listen() error {
 	if s.PingInterval == time.Duration(0) {
 		s.PingInterval = DefaultPingInterval
 	}
+	return nil
+}
 
+func (s *Server) Serve() {
 	prt := &Proto{}
 	s.opt = xtcp.NewOpts(s, prt)
 	s.xtcpsrv = xtcp.NewServer(s.opt)
 	s.xtcpsrv.Serve(s.listener)
-	return nil
 }
 
 func (s *Server) ActualAddr() string {
