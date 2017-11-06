@@ -1,7 +1,6 @@
 package protocol
 
 import (
-	"context"
 	"net"
 	"strings"
 
@@ -35,10 +34,8 @@ type Server struct {
 	MaxBufferedMsgs int
 	PingInterval    time.Duration
 
-	listener  net.Listener
-	cancel    context.CancelFunc
-	workerCtx context.Context
-	workerWg  sync.WaitGroup
+	listener net.Listener
+	workerWg sync.WaitGroup
 
 	writeChan chan interface{}
 
@@ -65,7 +62,6 @@ func (s *Server) Listen() error {
 		return InvalidProtocolError
 	}
 
-	s.workerCtx, s.cancel = context.WithCancel(context.Background())
 	if s.MaxBufferedMsgs <= 0 {
 		s.MaxBufferedMsgs = DefaultMaxBufferedMsgs
 	}
@@ -91,22 +87,7 @@ func (s *Server) Close() error {
 	log.Println("INFO: server: closeing a connection")
 	defer log.Println("DEBUG: server: closing a connection ... done")
 
-	if s.cancel != nil {
-		// send a shutdown command
-		//s.Send(ShutdownCmd, &ShutdownCmdArgs{})
-
-		// request to worker shutdown
-		log.Println("DEBUG: server: Close(): request to shutdown")
-		s.cancel()
-		s.cancel = nil
-
-		log.Println("DEBUG: server: Close(): wait for all worker is ended")
-		s.workerWg.Wait()
-
-		// stop listen worker
-		log.Println("DEBUG: server: Close(): stop listen worker")
-		s.xtcpsrv.Stop(xtcp.StopGracefullyAndWait)
-	}
+	s.xtcpsrv.Stop(xtcp.StopImmediately)
 	return nil
 }
 
