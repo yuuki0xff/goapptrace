@@ -35,7 +35,7 @@ type Server struct {
 	PingInterval    time.Duration
 
 	listener net.Listener
-	workerWg sync.WaitGroup
+	wg       sync.WaitGroup
 
 	opt          *xtcp.Options
 	xtcpsrv      *xtcp.Server
@@ -70,6 +70,9 @@ func (s *Server) Listen() error {
 }
 
 func (s *Server) Serve() {
+	s.wg.Add(1)
+	defer s.wg.Done()
+
 	prt := &Proto{}
 	s.opt = xtcp.NewOpts(s, prt)
 	s.xtcpsrv = xtcp.NewServer(s.opt)
@@ -90,7 +93,7 @@ func (s *Server) Close() error {
 }
 
 func (s *Server) Wait() {
-	s.workerWg.Wait()
+	s.wg.Wait()
 }
 
 // p will be nil when event is EventAccept/EventConnected/EventClosed
