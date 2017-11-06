@@ -25,8 +25,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"fmt"
-
 	"log"
 
 	"github.com/spf13/cobra"
@@ -72,7 +70,8 @@ func runProcRun(conf *config.Config, targets []string) error {
 		return err
 	}
 
-	addr := fmt.Sprintf("unix:///tmp/goapptrace.%d.sock", os.Getpid())
+	// use ephemeral port for communication with child process
+	addr := "tcp://:"
 	srv := protocol.Server{
 		Addr: addr,
 		Handler: protocol.ServerHandler{
