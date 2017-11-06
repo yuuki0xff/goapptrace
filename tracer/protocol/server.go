@@ -37,8 +37,6 @@ type Server struct {
 	listener net.Listener
 	workerWg sync.WaitGroup
 
-	writeChan chan interface{}
-
 	opt          *xtcp.Options
 	xtcpsrv      *xtcp.Server
 	isNegotiated bool
