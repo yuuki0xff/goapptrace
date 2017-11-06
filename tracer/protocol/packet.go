@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 
+	"reflect"
+
 	"github.com/xfxdev/xtcp"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
@@ -24,6 +26,11 @@ const (
 // detectPacketType returns PacketType of packet.
 // If packet is not PacketType, will be occurs panic.
 func detectPacketType(packet xtcp.Packet) PacketType {
+	if reflect.TypeOf(packet).Kind() == reflect.Ptr {
+		// dereference the packet of pointer type.
+		packet = reflect.ValueOf(packet).Elem().Interface().(xtcp.Packet)
+	}
+
 	switch packet.(type) {
 	case LogPacket:
 		return LogPacketType
