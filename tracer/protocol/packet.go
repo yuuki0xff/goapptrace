@@ -97,18 +97,10 @@ func (p HeaderPacket) String() string {
 	return fmt.Sprintf("<HeaderPacket PacketType=%d>",
 		p.PacketType)
 }
-func (p LogPacket) String() string {
-	return ""
-}
-func (p PingPacket) String() string {
-	return ""
-}
-func (p ShutdownPacket) String() string {
-	return ""
-}
-func (p StartTraceCmdPacket) String() string {
-	return ""
-}
+func (LogPacket) String() string           { return "" }
+func (PingPacket) String() string          { return "" }
+func (ShutdownPacket) String() string      { return "" }
+func (StartTraceCmdPacket) String() string { return "" }
 func (StopTraceCmdPacket) String() string  { return "" }
 func (ClientHeader) String() string        { return "" }
 func (ServerHeader) String() string        { return "" }
