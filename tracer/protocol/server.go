@@ -100,6 +100,7 @@ func (s *Server) Wait() {
 func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 	switch et {
 	case xtcp.EventAccept:
+		log.Println("DEBUG: Server: accepted a connection. wait for receives a ClientHelloPacket")
 		// wait for client header packet to be received.
 	case xtcp.EventRecv:
 		if !s.isNegotiated {
@@ -110,15 +111,20 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 				conn.Stop(xtcp.StopImmediately)
 				return
 			}
+			log.Printf("DEBUG: Server: received a ClientHelloPacket: %+v", pkt)
 			if isCompatibleVersion(pkt.ProtocolVersion) {
 				conn.Stop(xtcp.StopImmediately)
 				return
 			}
-			conn.Send(&ServerHelloPacket{
+
+			packet := &ServerHelloPacket{
 				ProtocolVersion: ProtocolVersion,
-			})
+			}
+			log.Printf("DEBUG: Server: send a ServerHelloPacket: %+v", packet)
+			conn.Send(packet)
 			s.isNegotiated = true
 
+			log.Println("DEBUG: Server: success negotiation process")
 			if s.Handler.Connected != nil {
 				s.Handler.Connected()
 			}

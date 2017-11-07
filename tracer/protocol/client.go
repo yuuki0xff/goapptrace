@@ -124,12 +124,14 @@ func (c *Client) pingWorker() {
 func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 	switch et {
 	case xtcp.EventConnected:
+		log.Println("DEBUG: Client: connected to the server")
 		// send client header packet
 		pkt := &ClientHelloPacket{
 			AppName:         c.AppName,
 			ClientSecret:    c.Secret,
 			ProtocolVersion: ProtocolVersion,
 		}
+		log.Printf("DEBUG: Client: send a ClientHelloPacket: %+v", pkt)
 		c.xtcpconn.Send(pkt)
 	case xtcp.EventRecv:
 		// 初めてのパケットを受け取ったときには、サーバハンドラとしてデコードする
@@ -141,11 +143,13 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 				c.xtcpconn.Stop(xtcp.StopImmediately)
 				return
 			}
+			log.Printf("DEBUG: Client: received a ServerHelloPacket: %+v", pkt)
 			if isCompatibleVersion(pkt.ProtocolVersion) {
 				// 対応していないバージョンなら、切断する。
 				conn.Stop(xtcp.StopImmediately)
 				return
 			}
+			log.Println("DEBUG: Client: success negotiation process")
 
 			c.workerWg.Add(1)
 			go c.pingWorker()
@@ -156,6 +160,7 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 				c.Handler.Connected()
 			}
 		} else {
+			log.Printf("DEBUG: Client: recieved a packet: %+v", p)
 			switch pkt := p.(type) {
 			case PingPacket:
 				// do nothing
@@ -181,6 +186,8 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 		}
 	case xtcp.EventSend:
 	case xtcp.EventClosed:
+		log.Println("DEBUG: Client: connection closed")
+
 		// request worker shutdown
 		c.cancel()
 
