@@ -97,7 +97,7 @@ func (p HeaderPacket) String() string {
 	return fmt.Sprintf("<HeaderPacket PacketType=%d>",
 		p.PacketType)
 }
-func (p ClientHeader) String() string        { return "<ClientHeader>" }
+func (p ClientHelloPacket) String() string   { return "<ClientHelloPacket>" }
 func (p ServerHeader) String() string        { return "<ServerHeader>" }
 func (p LogPacket) String() string           { return "<LogPacket>" }
 func (p PingPacket) String() string          { return "<PingPacket>" }

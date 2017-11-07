@@ -4,7 +4,7 @@ import "github.com/yuuki0xff/goapptrace/tracer/logutil"
 
 // Protocol Specification
 // Step1: Server <-- Client
-//   [ClientHeader]
+//   [ClientHelloPacket]
 //
 // Step2: Server --> Client
 //   [ServerHeader]
@@ -45,7 +45,7 @@ const (
 ////////////////////////////////////////////////////////////////
 // Headers
 
-type ClientHeader struct {
+type ClientHelloPacket struct {
 	AppName         string
 	ClientSecret    string
 	ProtocolVersion string

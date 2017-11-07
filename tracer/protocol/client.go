@@ -125,7 +125,7 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 	switch et {
 	case xtcp.EventConnected:
 		// send client header packet
-		pkt := &ClientHeader{
+		pkt := &ClientHelloPacket{
 			AppName:         c.AppName,
 			ClientSecret:    c.Secret,
 			ProtocolVersion: ProtocolVersion,
