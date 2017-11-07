@@ -14,6 +14,8 @@ type PacketType int64
 
 const (
 	UnknownPacketType = PacketType(iota)
+	ClientHelloPacketType
+	ServerHelloPacketType
 	LogPacketType
 	PingPacketType
 	ShutdownPacketType
@@ -32,6 +34,10 @@ func detectPacketType(packet xtcp.Packet) PacketType {
 	}
 
 	switch packet.(type) {
+	case ClientHelloPacket:
+		return ClientHelloPacketType
+	case ServerHelloPacket:
+		return ServerHelloPacketType
 	case LogPacket:
 		return LogPacketType
 	case PingPacket:
@@ -55,6 +61,10 @@ func detectPacketType(packet xtcp.Packet) PacketType {
 // createPacket returns empty packet.
 func createPacket(packetType PacketType) xtcp.Packet {
 	switch packetType {
+	case ClientHelloPacketType:
+		return &ClientHelloPacket{}
+	case ServerHelloPacketType:
+		return &ServerHelloPacket{}
 	case LogPacketType:
 		return &LogPacket{}
 	case PingPacketType:
