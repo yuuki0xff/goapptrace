@@ -7,7 +7,7 @@ import "github.com/yuuki0xff/goapptrace/tracer/logutil"
 //   [ClientHelloPacket]
 //
 // Step2: Server --> Client
-//   [ServerHeader]
+//   [ServerHelloPacket]
 //
 // Step3: Server <-> Client
 //   Client -> Server
@@ -56,7 +56,7 @@ type MessageHeader struct {
 	Messages    uint64 // number of messages
 }
 
-type ServerHeader struct {
+type ServerHelloPacket struct {
 	ProtocolVersion string
 }
 

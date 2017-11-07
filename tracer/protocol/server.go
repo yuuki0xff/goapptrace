@@ -114,7 +114,7 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 				conn.Stop(xtcp.StopImmediately)
 				return
 			}
-			conn.Send(&ServerHeader{
+			conn.Send(&ServerHelloPacket{
 				ProtocolVersion: ProtocolVersion,
 			})
 			s.isNegotiated = true

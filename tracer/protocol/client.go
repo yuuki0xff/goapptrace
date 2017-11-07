@@ -133,9 +133,9 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 		c.xtcpconn.Send(pkt)
 	case xtcp.EventRecv:
 		// 初めてのパケットを受け取ったときには、サーバハンドラとしてデコードする
-		// if first time, a packet MUST BE ServerHeader type.
+		// if first time, a packet MUST BE ServerHelloPacket type.
 		if !c.isNegotiated {
-			pkt, ok := p.(ServerHeader)
+			pkt, ok := p.(ServerHelloPacket)
 			if !ok {
 				log.Printf("ERROR: invalid server header")
 				c.xtcpconn.Stop(xtcp.StopImmediately)

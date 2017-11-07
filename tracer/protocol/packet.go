@@ -98,7 +98,7 @@ func (p HeaderPacket) String() string {
 		p.PacketType)
 }
 func (p ClientHelloPacket) String() string   { return "<ClientHelloPacket>" }
-func (p ServerHeader) String() string        { return "<ServerHeader>" }
+func (p ServerHelloPacket) String() string   { return "<ServerHelloPacket>" }
 func (p LogPacket) String() string           { return "<LogPacket>" }
 func (p PingPacket) String() string          { return "<PingPacket>" }
 func (p ShutdownPacket) String() string      { return "<ShutdownPacket>" }
