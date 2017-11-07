@@ -47,7 +47,7 @@ func detectPacketType(packet xtcp.Packet) PacketType {
 	case RawFuncLogNewPacket:
 		return RawFuncLogNewPacketType
 	default:
-		log.Panic("bug")
+		log.Panic(fmt.Sprintf("bug: invalid Packet: %+v", packet))
 		return UnknownPacketType
 	}
 }
@@ -70,7 +70,7 @@ func createPacket(packetType PacketType) xtcp.Packet {
 	case RawFuncLogNewPacketType:
 		return &RawFuncLogNewPacket{}
 	default:
-		log.Panic("bug")
+		log.Panic(fmt.Sprintf("bug: invalid PacketType: %+v", packetType))
 		return nil
 	}
 }
