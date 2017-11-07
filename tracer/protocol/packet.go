@@ -97,13 +97,13 @@ func (p HeaderPacket) String() string {
 	return fmt.Sprintf("<HeaderPacket PacketType=%d>",
 		p.PacketType)
 }
-func (LogPacket) String() string           { return "" }
-func (PingPacket) String() string          { return "" }
-func (ShutdownPacket) String() string      { return "" }
-func (StartTraceCmdPacket) String() string { return "" }
-func (StopTraceCmdPacket) String() string  { return "" }
-func (ClientHeader) String() string        { return "" }
-func (ServerHeader) String() string        { return "" }
-func (MessageHeader) String() string       { return "" }
-func (SymbolPacket) String() string        { return "" }
-func (RawFuncLogNewPacket) String() string { return "" }
+func (p LogPacket) String() string           { return "<LogPacket>" }
+func (p PingPacket) String() string          { return "<PingPacket>" }
+func (p ShutdownPacket) String() string      { return "<ShutdownPacket>" }
+func (p StartTraceCmdPacket) String() string { return "<StartTraceCmdPacket>" }
+func (p StopTraceCmdPacket) String() string  { return "<StopTraceCmdPacket>" }
+func (p ClientHeader) String() string        { return "<ClientHeader>" }
+func (p ServerHeader) String() string        { return "<ServerHeader>" }
+func (p MessageHeader) String() string       { return "<MessageHeader>" }
+func (p SymbolPacket) String() string        { return "<SymbolPacket>" }
+func (p RawFuncLogNewPacket) String() string { return "<RawFuncLogNewPacket>" }
