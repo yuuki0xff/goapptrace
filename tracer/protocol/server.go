@@ -103,6 +103,7 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 		log.Println("DEBUG: Server: accepted a connection. wait for receives a ClientHelloPacket")
 		// wait for client header packet to be received.
 	case xtcp.EventRecv:
+		log.Printf("DEBUG: Server: received a Packet: %+v", p)
 		if !s.isNegotiated {
 			// check client header.
 			pkt, ok := p.(ClientHelloPacket)

@@ -30,6 +30,7 @@ func (pr Proto) PackSize(p xtcp.Packet) int {
 	if err != nil {
 		log.Panic(err)
 	}
+	log.Printf("DEBUG: Proto.PackSize(): p=%+v size=%d", p, len(b))
 	return len(b)
 }
 func (pr Proto) PackTo(p xtcp.Packet, w io.Writer) (int, error) {
@@ -37,6 +38,7 @@ func (pr Proto) PackTo(p xtcp.Packet, w io.Writer) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	log.Printf("DEBUG: Proto.PackTo(): p=%+v, len(b)=%d b=%+v", p, len(b), b)
 	return w.Write(b)
 }
 func (pr Proto) Pack(p xtcp.Packet) ([]byte, error) {
@@ -65,26 +67,32 @@ func (pr Proto) Pack(p xtcp.Packet) ([]byte, error) {
 	b := buf.Bytes()
 	packetSize := uint32(len(b) - 4)
 	binary.BigEndian.PutUint32(b[:4], packetSize)
+	log.Printf("DEBUG: Proto.Pack(): p=%+v len(b)=%d b=%+v", p, len(b), b)
 	return b, nil
 }
 func (pr Proto) Unpack(b []byte) (xtcp.Packet, int, error) {
+	log.Printf("DEBUG: Proto.Unpack(): len(b)=%d b=%+v", len(b), b)
 	var hp HeaderPacket
 	var buf bytes.Buffer
 
 	if len(b) < 4 {
 		// buf size not enough for unpack
+		log.Printf("DEBUG: Proto.Unpack(): requireSize>=4 p=%+v size=%d, err=%+v", nil, 0, nil)
 		return nil, 0, nil
 	}
+	packetSizeBin := b[:4]
+	packetSize := int(binary.BigEndian.Uint32(packetSizeBin))
 	packetData := b[4:]
-	packetSize := int(binary.BigEndian.Uint32(packetData))
 	if len(packetData) < packetSize {
 		// buf size not enough for unpack
+		log.Printf("DEBUG: Proto.Unpack(): requireSize>=4+%d packetSize=%d p=%+v size=%d, err=%+v", packetSize, packetSize, nil, 0, nil)
 		return nil, 0, nil
 	}
 
 	buf.Write(packetData)
 	dec := gob.NewDecoder(&buf)
 	if err := dec.Decode(&hp); err != nil {
+		log.Printf("DEBUG: Proto.Unpack(): p=%+v size=%d, err=%+v", nil, packetSize, err)
 		return nil, packetSize, err
 	}
 
@@ -93,5 +101,6 @@ func (pr Proto) Unpack(b []byte) (xtcp.Packet, int, error) {
 	if err != nil {
 		return nil, packetSize, err
 	}
+	log.Printf("DEBUG: Proto.Unpack(): p=%+v size=%d, err=%+v", p, packetSize, nil)
 	return p, packetSize, nil
 }
