@@ -106,7 +106,7 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 		log.Printf("DEBUG: Server: received a Packet: %+v", p)
 		if !s.isNegotiated {
 			// check client header.
-			pkt, ok := p.(ClientHelloPacket)
+			pkt, ok := p.(*ClientHelloPacket)
 			if !ok {
 				log.Printf("ERROR: invalid client header")
 				conn.Stop(xtcp.StopImmediately)
