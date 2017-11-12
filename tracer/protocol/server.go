@@ -113,7 +113,8 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 				return
 			}
 			log.Printf("DEBUG: Server: received a ClientHelloPacket: %+v", pkt)
-			if isCompatibleVersion(pkt.ProtocolVersion) {
+			log.Printf("DEBUG: Sever: ProtocolVersion server=%s client=%s", ProtocolVersion, pkt.ProtocolVersion)
+			if !isCompatibleVersion(pkt.ProtocolVersion) {
 				conn.Stop(xtcp.StopImmediately)
 				return
 			}
