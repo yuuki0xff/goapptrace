@@ -36,6 +36,7 @@ type Server struct {
 
 	listener net.Listener
 	wg       sync.WaitGroup
+	stopOnce sync.Once
 
 	opt          *xtcp.Options
 	xtcpsrv      *xtcp.Server
@@ -88,7 +89,10 @@ func (s *Server) Close() error {
 	log.Println("INFO: server: closeing a connection")
 	defer log.Println("DEBUG: server: closing a connection ... done")
 
-	s.xtcpsrv.Stop(xtcp.StopImmediately)
+	s.stopOnce.Do(func() {
+		// Stop method MUST NOT be called many times.
+		s.xtcpsrv.Stop(xtcp.StopImmediately)
+	})
 	return nil
 }
 
