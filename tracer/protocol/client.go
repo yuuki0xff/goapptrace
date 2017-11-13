@@ -101,6 +101,7 @@ func (c *Client) Close() error {
 		c.cancel = nil
 
 		// wait for worker ended before close TCP connection
+		log.Println("DEBUG: client: wait for worker ended")
 		c.workerWg.Wait()
 	}
 	return nil
