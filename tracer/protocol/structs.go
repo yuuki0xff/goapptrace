@@ -5,13 +5,6 @@ type FuncLogType uint64
 type CommandType uint64
 
 const (
-	PingMsg MessageType = iota
-	ShutdownMsg
-	SymbolsMsg
-	RawFuncLogMsg
-)
-
-const (
 	FuncStart FuncLogType = iota
 	FuncEnd
 )
