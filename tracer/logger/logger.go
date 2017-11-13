@@ -125,9 +125,15 @@ func sendLog(tag string, id logutil.TxID) {
 	} else if Client != nil {
 		// send binary log to log server
 		if newSymbols != nil {
-			Client.Send(protocol.SymbolsMsg, &protocol.SymbolPacket{newSymbols})
+			if err := Client.Send(protocol.SymbolsMsg, &protocol.SymbolPacket{newSymbols}); err != nil {
+				// TODO: try to reconnect
+				panic(err)
+			}
 		}
-		Client.Send(protocol.RawFuncLogMsg, &protocol.RawFuncLogNewPacket{logmsg})
+		if err := Client.Send(protocol.RawFuncLogMsg, &protocol.RawFuncLogNewPacket{logmsg}); err != nil {
+			// TODO: try to reconnect
+			panic(err)
+		}
 	} else {
 		panic(errors.New("here is unreachable, but reached"))
 	}
