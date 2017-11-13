@@ -163,6 +163,7 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 		}
 	case xtcp.EventSend:
 	case xtcp.EventClosed:
+		log.Println("INFO: Server: disconnected")
 		if s.Handler.Disconnected != nil {
 			s.Handler.Disconnected()
 		}
