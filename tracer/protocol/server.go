@@ -88,8 +88,8 @@ func (s *Server) ActualAddr() string {
 }
 
 func (s *Server) Close() error {
-	log.Println("INFO: server: closeing a connection")
-	defer log.Println("DEBUG: server: closing a connection ... done")
+	log.Println("INFO: Server: closeing a connection")
+	defer log.Println("DEBUG: Server: closing a connection ... done")
 
 	s.stopOnce.Do(func() {
 		// Stop method MUST NOT be called many times.
@@ -114,7 +114,7 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 			// check client header.
 			pkt, ok := p.(*ClientHelloPacket)
 			if !ok {
-				log.Printf("ERROR: invalid ClientHelloPacket")
+				log.Printf("ERROR: Server: invalid ClientHelloPacket")
 				conn.Stop(xtcp.StopImmediately)
 				return
 			}
@@ -148,15 +148,15 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 			case ShutdownPacket:
 				// TODO: dummy code
 				pkt.String()
-				log.Println("INFO: server: get a shutdown msg")
+				log.Println("INFO: Server: get a shutdown msg")
 				conn.Stop(xtcp.StopImmediately)
 				return
 			case StartTraceCmdPacket:
-				log.Println("ERROR: invalid packet: StartTraceCmdPacket is not allowed")
+				log.Println("ERROR: Server: invalid packet: StartTraceCmdPacket is not allowed")
 				conn.Stop(xtcp.StopImmediately)
 				return
 			case StopTraceCmdPacket:
-				log.Println("ERROR: invalid packet: StopTraceCmdPacket is not allowed")
+				log.Println("ERROR: Server: invalid packet: StopTraceCmdPacket is not allowed")
 				conn.Stop(xtcp.StopImmediately)
 				return
 			case SymbolPacket:
