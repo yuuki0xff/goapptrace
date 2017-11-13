@@ -115,7 +115,6 @@ func runProcRun(conf *config.Config, targets []string) error {
 		return err
 	}
 	go srv.Serve()
-	defer srv.Close() // nolint: errcheck
 
 	// set env for child processes
 	if err := os.Setenv(info.DEFAULT_LOGSRV_ENV, srv.ActualAddr()); err != nil {
