@@ -10,6 +10,8 @@ import (
 
 	"log"
 
+	"fmt"
+
 	"github.com/xfxdev/xtcp"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
@@ -161,6 +163,8 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 				// TODO
 			case RawFuncLogNewPacket:
 				// TODO
+			default:
+				panic(fmt.Sprintf("BUG: Server: Server receives a invalid Packet: %+v", pkt))
 			}
 		}
 	case xtcp.EventSend:
