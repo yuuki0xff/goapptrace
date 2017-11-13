@@ -29,6 +29,8 @@ import (
 
 	"sync"
 
+	"fmt"
+
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/info"
@@ -123,6 +125,7 @@ func runProcRun(conf *config.Config, targets []string) error {
 		return err
 	}
 
+	var lastErr error
 	wg := sync.WaitGroup{}
 	for _, targetName := range targets {
 		target, err := conf.Targets.Get(config.TargetName(targetName))
@@ -135,27 +138,35 @@ func runProcRun(conf *config.Config, targets []string) error {
 		}
 		wg.Add(1)
 		go func() {
-			// TODO: add error checking
-			proc.Wait() // nolint: errcheck
+			if err := proc.Wait(); err != nil {
+				wrapped := fmt.Errorf("failed run a command (%s): %s", proc.Args, err.Error())
+				lastErr = wrapped
+				log.Printf("WARN: %s", wrapped)
+			}
 			wg.Done()
 		}()
 	}
 
-	var err error
 	go func() {
 		// close server when all child process was exited
 		wg.Wait()
-		err = srv.Close()
+		log.Println("DEBUG: all child process was exited. the server is going exit")
+		if err := srv.Close(); err != nil {
+			lastErr = err
+		}
 	}()
 	go func() {
 		// close server when a signal was received
 		c := make(chan os.Signal)
 		signal.Notify(c, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT)
 		<-c
-		err = srv.Close()
+		log.Println("DEBUG: signal was received. the server is going exit")
+		if err := srv.Close(); err != nil {
+			lastErr = err
+		}
 	}()
 	srv.Wait()
-	return err
+	return lastErr
 }
 
 func init() {

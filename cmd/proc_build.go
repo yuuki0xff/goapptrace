@@ -22,7 +22,6 @@ package cmd
 
 import (
 	"fmt"
-	"os/exec"
 
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
