@@ -75,13 +75,16 @@ func (c *Client) Connect() error {
 	return c.xtcpconn.DialAndServe(addr)
 }
 
-func (c *Client) Send(msgType MessageType, data xtcp.Packet) {
+func (c *Client) Send(msgType MessageType, data xtcp.Packet) error {
 	log.Printf("DEBUG: client: send message type=%+v, data=%+v\n", msgType, data)
-	c.xtcpconn.Send(&MessageHeader{
+	err := c.xtcpconn.Send(&MessageHeader{
 		MessageType: msgType,
 		Messages:    1,
 	})
-	c.xtcpconn.Send(data)
+	if err != nil {
+		return err
+	}
+	return c.xtcpconn.Send(data)
 }
 
 func (c *Client) Close() error {
@@ -89,7 +92,9 @@ func (c *Client) Close() error {
 	defer log.Println("DEBUG: client: closed a connection")
 	if c.cancel != nil {
 		// send a shutdown message
-		c.Send(ShutdownMsg, &ShutdownPacket{})
+		if err := c.Send(ShutdownMsg, &ShutdownPacket{}); err != nil {
+			log.Printf("WARN: client: can not send ShutdownPacket")
+		}
 
 		// request to worker shutdown
 		c.cancel()
@@ -112,7 +117,10 @@ func (c *Client) pingWorker() {
 		select {
 		case <-timer.C:
 			log.Println("DEBUG: client: send ping message")
-			c.Send(PingMsg, &PingPacket{})
+			if err := c.Send(PingMsg, &PingPacket{}); err != nil {
+				// TODO: try to reconnect
+				panic(err)
+			}
 
 		case <-c.workerCtx.Done():
 			return
@@ -132,7 +140,10 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 			ProtocolVersion: ProtocolVersion,
 		}
 		log.Printf("DEBUG: Client: send a ClientHelloPacket: %+v", pkt)
-		c.xtcpconn.Send(pkt)
+		if err := c.xtcpconn.Send(pkt); err != nil {
+			// try to reconnect
+			panic(err)
+		}
 	case xtcp.EventRecv:
 		// 初めてのパケットを受け取ったときには、サーバハンドラとしてデコードする
 		// if first time, a packet MUST BE ServerHelloPacket type.
