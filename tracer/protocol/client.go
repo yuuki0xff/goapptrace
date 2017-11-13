@@ -48,7 +48,7 @@ type Client struct {
 	isNegotiated bool
 }
 
-func (c *Client) init() {
+func (c *Client) Init() {
 	c.initOnce.Do(func() {
 		c.workerCtx, c.cancel = context.WithCancel(context.Background())
 		if c.PingInterval == time.Duration(0) {
@@ -61,7 +61,7 @@ func (c *Client) init() {
 // this method is block until disconnected.
 func (c *Client) Serve() error {
 	log.Println("INFO: clinet: connected")
-	c.init()
+	c.Init()
 
 	var addr string
 	switch {
