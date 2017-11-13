@@ -39,6 +39,7 @@ type Client struct {
 	PingInterval time.Duration
 
 	initOnce     sync.Once
+	closeOnce    sync.Once
 	negotiatedCh chan interface{}
 	cancel       context.CancelFunc
 	workerCtx    context.Context
@@ -91,14 +92,13 @@ func (c *Client) Send(data xtcp.Packet) error {
 func (c *Client) Close() error {
 	log.Println("INFO: Client: closing a connection")
 	defer log.Println("DEBUG: Client: closed a connection")
-	if c.cancel != nil {
+	c.closeOnce.Do(func() {
 		// send a shutdown message
 		if err := c.Send(&ShutdownPacket{}); err != nil {
 			log.Printf("WARN: Client: can not send ShutdownPacket")
 		}
 		// request to worker shutdown
 		c.cancel()
-		c.cancel = nil
 
 		// wait for worker ended before close TCP connection
 		log.Println("DEBUG: Client: wait for worker ended")
@@ -107,7 +107,7 @@ func (c *Client) Close() error {
 		log.Println("DEBUG: Client: closing a connection")
 		c.xtcpconn.Stop(xtcp.StopGracefullyAndWait)
 		log.Println("DEBUG: Client: closed a connection")
-	}
+	})
 	return nil
 }
 
