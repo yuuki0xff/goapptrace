@@ -85,9 +85,36 @@ func createPacket(packetType PacketType) xtcp.Packet {
 	}
 }
 
+////////////////////////////////////////////////////////////////
+// HelloPacket
+
+type ClientHelloPacket struct {
+	AppName         string
+	ClientSecret    string
+	ProtocolVersion string
+}
+
+type ServerHelloPacket struct {
+	ProtocolVersion string
+}
+
+func (p ClientHelloPacket) String() string { return "<ClientHelloPacket>" }
+func (p ServerHelloPacket) String() string { return "<ServerHelloPacket>" }
+
+////////////////////////////////////////////////////////////////
+// HeaderPacket
+
 type HeaderPacket struct {
 	PacketType PacketType
 }
+
+func (p HeaderPacket) String() string {
+	return fmt.Sprintf("<HeaderPacket PacketType=%d>",
+		p.PacketType)
+}
+
+////////////////////////////////////////////////////////////////
+// DataPacket
 
 type LogPacket struct{}
 type PingPacket struct{}
@@ -103,12 +130,6 @@ type RawFuncLogNewPacket struct {
 	FuncLog *logutil.RawFuncLogNew
 }
 
-func (p HeaderPacket) String() string {
-	return fmt.Sprintf("<HeaderPacket PacketType=%d>",
-		p.PacketType)
-}
-func (p ClientHelloPacket) String() string   { return "<ClientHelloPacket>" }
-func (p ServerHelloPacket) String() string   { return "<ServerHelloPacket>" }
 func (p LogPacket) String() string           { return "<LogPacket>" }
 func (p PingPacket) String() string          { return "<PingPacket>" }
 func (p ShutdownPacket) String() string      { return "<ShutdownPacket>" }
