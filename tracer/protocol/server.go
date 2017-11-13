@@ -117,7 +117,7 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 				return
 			}
 			log.Printf("DEBUG: Server: received a ClientHelloPacket: %+v", pkt)
-			log.Printf("DEBUG: Sever: ProtocolVersion server=%s client=%s", ProtocolVersion, pkt.ProtocolVersion)
+			log.Printf("DEBUG: Server: ProtocolVersion server=%s client=%s", ProtocolVersion, pkt.ProtocolVersion)
 			if !isCompatibleVersion(pkt.ProtocolVersion) {
 				// 対応していないバージョンなら、切断する。
 				log.Printf("ERROR: Server: mismatch the protocol version: server=%s client=%s", ProtocolVersion, pkt.ProtocolVersion)
