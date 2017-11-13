@@ -172,9 +172,12 @@ func setOutput() {
 			AppName: "TODO", // TODO
 			Secret:  "secret",
 		}
-		if err := Client.Serve(); err != nil {
-			panic(err)
-		}
+		go func() {
+			if err := Client.Serve(); err != nil {
+				panic(err)
+			}
+		}()
+		// TODO: wait for negotiation process is completed
 	} else {
 		// use log file
 		prefix, ok := os.LookupEnv(info.DEFAULT_LOGFILE_ENV)
