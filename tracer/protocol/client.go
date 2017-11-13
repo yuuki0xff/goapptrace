@@ -77,13 +77,6 @@ func (c *Client) Connect() error {
 
 func (c *Client) Send(msgType MessageType, data xtcp.Packet) error {
 	log.Printf("DEBUG: client: send message type=%+v, data=%+v\n", msgType, data)
-	err := c.xtcpconn.Send(&MessageHeader{
-		MessageType: msgType,
-		Messages:    1,
-	})
-	if err != nil {
-		return err
-	}
 	return c.xtcpconn.Send(data)
 }
 

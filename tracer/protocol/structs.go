@@ -51,11 +51,6 @@ type ClientHelloPacket struct {
 	ProtocolVersion string
 }
 
-type MessageHeader struct {
-	MessageType MessageType
-	Messages    uint64 // number of messages
-}
-
 type ServerHelloPacket struct {
 	ProtocolVersion string
 }
