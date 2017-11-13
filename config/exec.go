@@ -20,5 +20,5 @@ func (ep *ExecProcess) Run() (*exec.Cmd, error) {
 			"." + string(filepath.Separator) + info.DEFAULT_EXE_NAME,
 		}
 	}
-	return execCmd(args)
+	return runCmd(args)
 }
