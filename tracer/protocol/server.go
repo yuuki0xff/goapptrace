@@ -93,7 +93,7 @@ func (s *Server) Close() error {
 
 	s.stopOnce.Do(func() {
 		// Stop method MUST NOT be called many times.
-		s.xtcpsrv.Stop(xtcp.StopImmediately)
+		s.xtcpsrv.Stop(xtcp.StopGracefullyAndWait)
 	})
 	return nil
 }
