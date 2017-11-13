@@ -2,23 +2,6 @@ package protocol
 
 import "github.com/yuuki0xff/goapptrace/tracer/logutil"
 
-// Protocol Specification
-// Step1: Server <-- Client
-//   [ClientHelloPacket]
-//
-// Step2: Server --> Client
-//   [ServerHelloPacket]
-//
-// Step3: Server <-> Client
-//   Client -> Server
-//     [MessageHeader] [MessageData]*n
-//     [MessageHeader] [MessageData]*n
-//     ...
-//   Server -> Client
-//     [CommandHeader] [CommandArgs]
-//     [CommandHeader] [CommandArgs]
-//     ...
-
 type MessageType uint64
 type FuncLogType uint64
 type CommandType uint64
