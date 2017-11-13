@@ -24,8 +24,8 @@ type ClientHandler struct {
 
 	Error func(error)
 
-	StartTrace func(*StartTraceCmdArgs)
-	StopTrace  func(*StopTraceCmdArgs)
+	StartTrace func(*StartTraceCmdPacket)
+	StopTrace  func(*StopTraceCmdPacket)
 }
 
 type Client struct {

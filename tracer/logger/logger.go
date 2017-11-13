@@ -166,8 +166,8 @@ func setOutput() {
 				Error: func(err error) {
 					fmt.Println("Client ERROR:", err.Error())
 				},
-				StartTrace: func(args *protocol.StartTraceCmdArgs) {},
-				StopTrace:  func(args *protocol.StopTraceCmdArgs) {},
+				StartTrace: func(args *protocol.StartTraceCmdPacket) {},
+				StopTrace:  func(args *protocol.StopTraceCmdPacket) {},
 			},
 			AppName: "TODO", // TODO
 			Secret:  "secret",
