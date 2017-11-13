@@ -21,6 +21,9 @@
 package cmd
 
 import (
+	"fmt"
+	"os/exec"
+
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
 )
@@ -46,8 +49,9 @@ func runProcBuild(conf *config.Config, targets []string) error {
 			return err
 		}
 
-		if _, err := target.Build.Run(); err != nil {
-			return err
+		buildProc, err := target.Build.Run()
+		if err != nil {
+			return fmt.Errorf("failed to run a command (%s): %s", buildProc.Args, err.Error())
 		}
 	}
 	return nil
