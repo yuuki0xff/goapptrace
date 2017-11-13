@@ -146,7 +146,7 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 		}
 		log.Printf("DEBUG: Client: send a ClientHelloPacket: %+v", pkt)
 		if err := c.xtcpconn.Send(pkt); err != nil {
-			// try to reconnect
+			// TODO: try to reconnect
 			panic(err)
 		}
 	case xtcp.EventRecv:
