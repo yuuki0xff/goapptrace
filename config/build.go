@@ -11,6 +11,8 @@ type BuildProcess struct {
 	Args []string
 }
 
+// Run run a command for build the app
+// This method wait for exit build process.
 func (bp *BuildProcess) Run() (*exec.Cmd, error) {
 	args := bp.Args
 	if args == nil || len(args) == 0 {
