@@ -123,7 +123,10 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 				ProtocolVersion: ProtocolVersion,
 			}
 			log.Printf("DEBUG: Server: send a ServerHelloPacket: %+v", packet)
-			conn.Send(packet)
+			if err := conn.Send(packet); err != nil {
+				// TODO: try to reconnect
+				panic(err)
+			}
 			s.isNegotiated = true
 
 			log.Println("DEBUG: Server: success negotiation process")
