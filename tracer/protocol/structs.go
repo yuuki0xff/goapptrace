@@ -1,14 +1,5 @@
 package protocol
 
-type MessageType uint64
-type FuncLogType uint64
-type CommandType uint64
-
-const (
-	FuncStart FuncLogType = iota
-	FuncEnd
-)
-
 ////////////////////////////////////////////////////////////////
 // Headers
 
