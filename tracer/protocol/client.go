@@ -38,6 +38,7 @@ type Client struct {
 	Secret       string
 	PingInterval time.Duration
 
+	initOnce  sync.Once
 	cancel    context.CancelFunc
 	workerCtx context.Context
 	workerWg  sync.WaitGroup
@@ -48,10 +49,12 @@ type Client struct {
 }
 
 func (c *Client) init() {
-	c.workerCtx, c.cancel = context.WithCancel(context.Background())
-	if c.PingInterval == time.Duration(0) {
-		c.PingInterval = DefaultPingInterval
-	}
+	c.initOnce.Do(func() {
+		c.workerCtx, c.cancel = context.WithCancel(context.Background())
+		if c.PingInterval == time.Duration(0) {
+			c.PingInterval = DefaultPingInterval
+		}
+	})
 }
 
 // Serve connects to the server and serve.
