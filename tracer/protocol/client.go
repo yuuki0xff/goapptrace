@@ -63,7 +63,7 @@ func (c *Client) Init() {
 // Serve connects to the server and serve.
 // this method is block until disconnected.
 func (c *Client) Serve() error {
-	log.Println("INFO: clinet: connected")
+	log.Println("INFO: Client: connected")
 	c.Init()
 
 	var addr string
@@ -84,36 +84,36 @@ func (c *Client) Serve() error {
 }
 
 func (c *Client) Send(data xtcp.Packet) error {
-	log.Printf("DEBUG: client: send packet: %+v\n", data)
+	log.Printf("DEBUG: Client: send packet: %+v\n", data)
 	return c.xtcpconn.Send(data)
 }
 
 func (c *Client) Close() error {
-	log.Println("INFO: client: closing a connection")
-	defer log.Println("DEBUG: client: closed a connection")
+	log.Println("INFO: Client: closing a connection")
+	defer log.Println("DEBUG: Client: closed a connection")
 	if c.cancel != nil {
 		// send a shutdown message
 		if err := c.Send(&ShutdownPacket{}); err != nil {
-			log.Printf("WARN: client: can not send ShutdownPacket")
+			log.Printf("WARN: Client: can not send ShutdownPacket")
 		}
 		// request to worker shutdown
 		c.cancel()
 		c.cancel = nil
 
 		// wait for worker ended before close TCP connection
-		log.Println("DEBUG: client: wait for worker ended")
+		log.Println("DEBUG: Client: wait for worker ended")
 		c.workerWg.Wait()
 
-		log.Println("DEBUG: client: closing a connection")
+		log.Println("DEBUG: Client: closing a connection")
 		c.xtcpconn.Stop(xtcp.StopGracefullyAndWait)
-		log.Println("DEBUG: client: closed a connection")
+		log.Println("DEBUG: Client: closed a connection")
 	}
 	return nil
 }
 
 func (c *Client) pingWorker() {
-	log.Println("DEBUG: client: start ping worker")
-	defer log.Println("DEBUG: client: stop ping worker")
+	log.Println("DEBUG: Client: start ping worker")
+	defer log.Println("DEBUG: Client: stop ping worker")
 	defer c.workerWg.Done()
 
 	timer := time.NewTicker(c.PingInterval)
@@ -121,7 +121,7 @@ func (c *Client) pingWorker() {
 	for {
 		select {
 		case <-timer.C:
-			log.Println("DEBUG: client: send ping message")
+			log.Println("DEBUG: Client: send ping message")
 			if err := c.Send(&PingPacket{}); err != nil {
 				// TODO: try to reconnect
 				panic(err)
@@ -154,7 +154,7 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 		if !c.isNegotiated {
 			pkt, ok := p.(*ServerHelloPacket)
 			if !ok {
-				log.Printf("ERROR: invalid ServerHelloPacket")
+				log.Printf("ERROR: Client: invalid ServerHelloPacket")
 				c.xtcpconn.Stop(xtcp.StopImmediately)
 				return
 			}
@@ -184,7 +184,7 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 			case ShutdownPacket:
 				// TODO: dummy code
 				pkt.String()
-				log.Println("INFO: client: get a shutdown msg")
+				log.Println("INFO: Client: get a shutdown msg")
 				conn.Stop(xtcp.StopImmediately)
 				return
 			case StartTraceCmdPacket:
@@ -192,13 +192,13 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 			case StopTraceCmdPacket:
 				// TODO
 			case SymbolPacket:
-				log.Println("ERROR: invalid packet: SymbolPacket is not allowed")
+				log.Println("ERROR: Client: invalid packet: SymbolPacket is not allowed")
 				conn.Stop(xtcp.StopImmediately)
 			case RawFuncLogNewPacket:
-				log.Println("ERROR: invalid packet: RawFuncLogNewPacket is not allowed")
+				log.Println("ERROR: Client: invalid packet: RawFuncLogNewPacket is not allowed")
 				conn.Stop(xtcp.StopImmediately)
 			default:
-				panic(fmt.Sprintf("bug: Client receives a invalid Packet: %+v", pkt))
+				panic(fmt.Sprintf("BUG: Client: Client receives a invalid Packet: %+v", pkt))
 			}
 		}
 	case xtcp.EventSend:
