@@ -95,7 +95,6 @@ func (c *Client) Close() error {
 		if err := c.Send(ShutdownMsg, &ShutdownPacket{}); err != nil {
 			log.Printf("WARN: client: can not send ShutdownPacket")
 		}
-
 		// request to worker shutdown
 		c.cancel()
 		c.cancel = nil
@@ -103,6 +102,10 @@ func (c *Client) Close() error {
 		// wait for worker ended before close TCP connection
 		log.Println("DEBUG: client: wait for worker ended")
 		c.workerWg.Wait()
+
+		log.Println("DEBUG: client: closing a connection")
+		c.xtcpconn.Stop(xtcp.StopGracefullyAndWait)
+		log.Println("DEBUG: client: closed a connection")
 	}
 	return nil
 }
