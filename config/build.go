@@ -11,7 +11,7 @@ type BuildProcess struct {
 	Args []string
 }
 
-func (bp *BuildProcess) Run() error {
+func (bp *BuildProcess) Run() (*exec.Cmd, error) {
 	args := bp.Args
 	if args == nil || len(args) == 0 {
 		args = []string{"go", "build", "-o", info.DEFAULT_EXE_NAME}
@@ -20,13 +20,13 @@ func (bp *BuildProcess) Run() error {
 	return execCmd(args)
 }
 
-func execCmd(args []string) error {
+func execCmd(args []string) (*exec.Cmd, error) {
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return cmd, nil
 }

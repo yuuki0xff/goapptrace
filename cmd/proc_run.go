@@ -27,6 +27,8 @@ import (
 
 	"log"
 
+	"sync"
+
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/info"
@@ -121,19 +123,32 @@ func runProcRun(conf *config.Config, targets []string) error {
 		return err
 	}
 
+	wg := sync.WaitGroup{}
 	for _, targetName := range targets {
 		target, err := conf.Targets.Get(config.TargetName(targetName))
 		if err != nil {
 			return err
 		}
-
-		if err := target.Run.Run(); err != nil {
+		proc, err := target.Run.Run()
+		if err != nil {
 			return err
 		}
+		wg.Add(1)
+		go func() {
+			// TODO: add error checking
+			proc.Wait() // nolint: errcheck
+			wg.Done()
+		}()
 	}
 
 	var err error
 	go func() {
+		// close server when all child process was exited
+		wg.Wait()
+		err = srv.Close()
+	}()
+	go func() {
+		// close server when a signal was received
 		c := make(chan os.Signal)
 		signal.Notify(c, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT)
 		<-c

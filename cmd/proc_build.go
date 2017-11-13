@@ -46,7 +46,7 @@ func runProcBuild(conf *config.Config, targets []string) error {
 			return err
 		}
 
-		if err := target.Build.Run(); err != nil {
+		if _, err := target.Build.Run(); err != nil {
 			return err
 		}
 	}
