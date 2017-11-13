@@ -163,6 +163,7 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 			log.Printf("DEBUG: Client: ProtocolVersion server=%s client=%s", pkt.ProtocolVersion, ProtocolVersion)
 			if !isCompatibleVersion(pkt.ProtocolVersion) {
 				// 対応していないバージョンなら、切断する。
+				log.Printf("ERROR: Client: mismatch the protocol version: server=%s client=%s", pkt.ProtocolVersion, ProtocolVersion)
 				conn.Stop(xtcp.StopImmediately)
 				return
 			}
