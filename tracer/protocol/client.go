@@ -38,10 +38,11 @@ type Client struct {
 	Secret       string
 	PingInterval time.Duration
 
-	initOnce  sync.Once
-	cancel    context.CancelFunc
-	workerCtx context.Context
-	workerWg  sync.WaitGroup
+	initOnce     sync.Once
+	negotiatedCh chan interface{}
+	cancel       context.CancelFunc
+	workerCtx    context.Context
+	workerWg     sync.WaitGroup
 
 	opt          *xtcp.Options
 	xtcpconn     *xtcp.Conn
@@ -50,6 +51,8 @@ type Client struct {
 
 func (c *Client) Init() {
 	c.initOnce.Do(func() {
+		c.negotiatedCh = make(chan interface{})
+
 		c.workerCtx, c.cancel = context.WithCancel(context.Background())
 		if c.PingInterval == time.Duration(0) {
 			c.PingInterval = DefaultPingInterval
@@ -168,7 +171,7 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 			c.workerWg.Add(1)
 			go c.pingWorker()
 
-			c.isNegotiated = true
+			c.negotiated()
 
 			if c.Handler.Connected != nil {
 				c.Handler.Connected()
@@ -209,4 +212,14 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 			c.Handler.Disconnected()
 		}
 	}
+}
+
+// WaitNegotiation wait for negotiation to be finish
+func (c *Client) WaitNegotiation() {
+	<-c.negotiatedCh
+}
+
+func (c *Client) negotiated() {
+	c.isNegotiated = true
+	close(c.negotiatedCh)
 }
