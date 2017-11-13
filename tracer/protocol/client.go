@@ -75,8 +75,8 @@ func (c *Client) Connect() error {
 	return c.xtcpconn.DialAndServe(addr)
 }
 
-func (c *Client) Send(msgType MessageType, data xtcp.Packet) error {
-	log.Printf("DEBUG: client: send message type=%+v, data=%+v\n", msgType, data)
+func (c *Client) Send(data xtcp.Packet) error {
+	log.Printf("DEBUG: client: send packet: %+v\n", data)
 	return c.xtcpconn.Send(data)
 }
 
@@ -85,7 +85,7 @@ func (c *Client) Close() error {
 	defer log.Println("DEBUG: client: closed a connection")
 	if c.cancel != nil {
 		// send a shutdown message
-		if err := c.Send(ShutdownMsg, &ShutdownPacket{}); err != nil {
+		if err := c.Send(&ShutdownPacket{}); err != nil {
 			log.Printf("WARN: client: can not send ShutdownPacket")
 		}
 		// request to worker shutdown
@@ -114,7 +114,7 @@ func (c *Client) pingWorker() {
 		select {
 		case <-timer.C:
 			log.Println("DEBUG: client: send ping message")
-			if err := c.Send(PingMsg, &PingPacket{}); err != nil {
+			if err := c.Send(&PingPacket{}); err != nil {
 				// TODO: try to reconnect
 				panic(err)
 			}
