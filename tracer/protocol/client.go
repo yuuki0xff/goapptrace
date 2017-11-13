@@ -54,7 +54,9 @@ func (c *Client) init() {
 	}
 }
 
-func (c *Client) Connect() error {
+// Serve connects to the server and serve.
+// this method is block until disconnected.
+func (c *Client) Serve() error {
 	log.Println("INFO: clinet: connected")
 	c.init()
 

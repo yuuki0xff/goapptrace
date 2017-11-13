@@ -172,7 +172,7 @@ func setOutput() {
 			AppName: "TODO", // TODO
 			Secret:  "secret",
 		}
-		if err := Client.Connect(); err != nil {
+		if err := Client.Serve(); err != nil {
 			panic(err)
 		}
 	} else {
