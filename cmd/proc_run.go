@@ -129,7 +129,7 @@ func runProcRun(conf *config.Config, targets []string) error {
 		if err != nil {
 			return err
 		}
-		proc, err := target.Run.Run()
+		proc, err := target.Run.Start()
 		if err != nil {
 			return err
 		}

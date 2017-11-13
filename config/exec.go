@@ -12,7 +12,8 @@ type ExecProcess struct {
 	Args []string
 }
 
-func (ep *ExecProcess) Run() (*exec.Cmd, error) {
+// Start execute a command but does not wait for exit
+func (ep *ExecProcess) Start() (*exec.Cmd, error) {
 	args := ep.Args
 	if args == nil || len(args) == 0 {
 		args = []string{
