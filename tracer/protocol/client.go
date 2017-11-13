@@ -152,14 +152,15 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 		// 初めてのパケットを受け取ったときには、サーバハンドラとしてデコードする
 		// if first time, a packet MUST BE ServerHelloPacket type.
 		if !c.isNegotiated {
-			pkt, ok := p.(ServerHelloPacket)
+			pkt, ok := p.(*ServerHelloPacket)
 			if !ok {
 				log.Printf("ERROR: invalid ServerHelloPacket")
 				c.xtcpconn.Stop(xtcp.StopImmediately)
 				return
 			}
 			log.Printf("DEBUG: Client: received a ServerHelloPacket: %+v", pkt)
-			if isCompatibleVersion(pkt.ProtocolVersion) {
+			log.Printf("DEBUG: Client: ProtocolVersion server=%s client=%s", pkt.ProtocolVersion, ProtocolVersion)
+			if !isCompatibleVersion(pkt.ProtocolVersion) {
 				// 対応していないバージョンなら、切断する。
 				conn.Stop(xtcp.StopImmediately)
 				return
