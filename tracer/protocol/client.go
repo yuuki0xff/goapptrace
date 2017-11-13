@@ -154,7 +154,7 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 		if !c.isNegotiated {
 			pkt, ok := p.(ServerHelloPacket)
 			if !ok {
-				log.Printf("ERROR: invalid server header")
+				log.Printf("ERROR: invalid ServerHelloPacket")
 				c.xtcpconn.Stop(xtcp.StopImmediately)
 				return
 			}

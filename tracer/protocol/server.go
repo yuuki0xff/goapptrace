@@ -112,7 +112,7 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 			// check client header.
 			pkt, ok := p.(*ClientHelloPacket)
 			if !ok {
-				log.Printf("ERROR: invalid client header")
+				log.Printf("ERROR: invalid ClientHelloPacket")
 				conn.Stop(xtcp.StopImmediately)
 				return
 			}
