@@ -218,9 +218,13 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 				conn.Stop(xtcp.StopImmediately)
 				return
 			case *StartTraceCmdPacket:
-				// TODO
+				if c.Handler.StartTrace != nil {
+					c.Handler.StartTrace(pkt)
+				}
 			case *StopTraceCmdPacket:
-				// TODO
+				if c.Handler.StopTrace != nil {
+					c.Handler.StopTrace(pkt)
+				}
 			case *SymbolPacket:
 				log.Println("ERROR: Client: invalid packet: SymbolPacket is not allowed")
 				conn.Stop(xtcp.StopImmediately)
