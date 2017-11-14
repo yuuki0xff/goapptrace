@@ -10,11 +10,11 @@ Packet is unit of encode/decode.
 Packet MUST encode to binary by the gob encoder.
 Packet can classable to _HelloPacket_ type, _HeaderPacket_ type and _DataPacket_ type.
 
+* `HeaderPacket` notify about a _DataPacket_ and _HelloPacket_ of packet type and packet length.
+  Client and Server **MUST** send that packet before each data packet sends.
 * _HelloPacket_ only use when negotiation process.
   That is two types of `ClientHelloPacket` and `ServerHelloPacket`.
   Those packet is for the purpose of sends the protocol version etc. to the partner.
-* `HeaderPacket` notify about a _DataPacket_ of packet type and packet length.
-  Client and Server **MUST** send that packet before each data packet sends.
 * _DataPacket_ is ... see the source code.
 
 For more information about those packet fields, see the source code in `packet.go`.
