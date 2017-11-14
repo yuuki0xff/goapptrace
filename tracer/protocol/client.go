@@ -16,6 +16,11 @@ import (
 	"github.com/yuuki0xff/xtcp"
 )
 
+const (
+	DefaultMaxRetries = 10
+	MinWaitTime       = 10 * time.Millisecond
+)
+
 var (
 	InvalidProtocolError = errors.New("invalid protocol")
 )
@@ -39,6 +44,7 @@ type Client struct {
 	AppName      string
 	Secret       string
 	PingInterval time.Duration
+	MaxRetries   int
 
 	initOnce     sync.Once
 	closeOnce    sync.Once
@@ -54,6 +60,10 @@ type Client struct {
 
 func (c *Client) Init() {
 	c.initOnce.Do(func() {
+		if c.MaxRetries == 0 {
+			c.MaxRetries = DefaultMaxRetries
+		}
+
 		c.negotiatedCh = make(chan interface{})
 
 		c.workerCtx, c.cancel = context.WithCancel(context.Background())
@@ -83,7 +93,23 @@ func (c *Client) Serve() error {
 	prt := &Proto{}
 	c.opt = xtcp.NewOpts(c, prt)
 	c.xtcpconn = xtcp.NewConn(c.opt)
-	return c.xtcpconn.DialAndServe(addr)
+	retries := 0
+	waitTime := MinWaitTime
+	for {
+		err := c.xtcpconn.DialAndServe(addr)
+		if err != nil {
+			// occurs error when dialing
+			if retries < c.MaxRetries {
+				retries++
+				time.Sleep(waitTime)
+				waitTime *= 2
+				continue
+			} else {
+				return err
+			}
+		}
+		return nil
+	}
 }
 
 func (c *Client) Send(data xtcp.Packet) error {
