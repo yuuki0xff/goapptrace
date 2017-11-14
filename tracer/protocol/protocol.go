@@ -80,19 +80,20 @@ func (pr Proto) Unpack(b []byte) (xtcp.Packet, int, error) {
 		log.Printf("DEBUG: Proto.Unpack(): requireSize>=4 p=%+v size=%d, err=%+v", nil, 0, nil)
 		return nil, 0, nil
 	}
-	packetSizeBin := b[:4]
-	packetSize := int(binary.BigEndian.Uint32(packetSizeBin))
+	dataPacketSizeBin := b[:4]
+	dataPacketSize := int(binary.BigEndian.Uint32(dataPacketSizeBin))
+	packetSize := 4 + dataPacketSize
 	packetData := b[4:]
-	if len(packetData) < packetSize {
+	if len(packetData) < dataPacketSize {
 		// buf size not enough for unpack
-		log.Printf("DEBUG: Proto.Unpack(): requireSize>=4+%d packetSize=%d p=%+v size=%d, err=%+v", packetSize, packetSize, nil, 0, nil)
+		log.Printf("DEBUG: Proto.Unpack(): packetSize>=%d dataPacketSize=%d p=%+v size=%d, err=%+v", packetSize, dataPacketSize, nil, 0, nil)
 		return nil, 0, nil
 	}
 
 	buf.Write(packetData)
 	dec := gob.NewDecoder(&buf)
 	if err := dec.Decode(&hp); err != nil {
-		log.Printf("DEBUG: Proto.Unpack(): p=%+v size=%d, err=%+v", nil, packetSize, err)
+		log.Printf("DEBUG: Proto.Unpack(): p=%+v size=%d, err=%+v", nil, dataPacketSize, err)
 		return nil, packetSize, err
 	}
 
@@ -101,6 +102,6 @@ func (pr Proto) Unpack(b []byte) (xtcp.Packet, int, error) {
 	if err != nil {
 		return nil, packetSize, err
 	}
-	log.Printf("DEBUG: Proto.Unpack(): p=%+v size=%d, err=%+v", p, packetSize, nil)
+	log.Printf("DEBUG: Proto.Unpack(): p=%+v size=%d, err=%+v", p, dataPacketSize, nil)
 	return p, packetSize, nil
 }
