@@ -120,8 +120,14 @@ type LogPacket struct{}
 type PingPacket struct{}
 type ShutdownPacket struct{}
 
-type StartTraceCmdPacket struct{}
-type StopTraceCmdPacket struct{}
+type StartTraceCmdPacket struct {
+	FuncID     logutil.FuncID
+	ModuleName string
+}
+type StopTraceCmdPacket struct {
+	FuncID     logutil.FuncID
+	ModuleName string
+}
 
 type SymbolPacket struct {
 	Symbols *logutil.Symbols
