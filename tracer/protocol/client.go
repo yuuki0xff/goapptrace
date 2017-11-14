@@ -11,6 +11,8 @@ import (
 
 	"fmt"
 
+	"reflect"
+
 	"github.com/xfxdev/xtcp"
 )
 
@@ -198,7 +200,7 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 				log.Println("ERROR: Client: invalid packet: RawFuncLogNewPacket is not allowed")
 				conn.Stop(xtcp.StopImmediately)
 			default:
-				panic(fmt.Sprintf("BUG: Client: Client receives a invalid Packet: %+v", pkt))
+				panic(fmt.Sprintf("BUG: Client: Client receives a invalid Packet: %+v %+v", pkt, reflect.TypeOf(pkt)))
 			}
 		}
 	case xtcp.EventSend:
