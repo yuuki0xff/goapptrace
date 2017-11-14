@@ -93,6 +93,8 @@ func (c *Client) Serve() error {
 	prt := &Proto{}
 	c.opt = xtcp.NewOpts(c, prt)
 	c.xtcpconn = xtcp.NewConn(c.opt)
+
+	// retry loop
 	retries := 0
 	waitTime := MinWaitTime
 	for {
