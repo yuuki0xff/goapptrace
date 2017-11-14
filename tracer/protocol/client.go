@@ -13,7 +13,7 @@ import (
 
 	"reflect"
 
-	"github.com/xfxdev/xtcp"
+	"github.com/yuuki0xff/xtcp"
 )
 
 var (

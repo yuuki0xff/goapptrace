@@ -6,8 +6,8 @@ import (
 
 	"reflect"
 
-	"github.com/xfxdev/xtcp"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	"github.com/yuuki0xff/xtcp"
 )
 
 type PacketType int64

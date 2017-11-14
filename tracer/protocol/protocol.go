@@ -9,7 +9,7 @@ import (
 
 	"encoding/binary"
 
-	"github.com/xfxdev/xtcp"
+	"github.com/yuuki0xff/xtcp"
 )
 
 const (
