@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"unicode"
 )
 
 type CodeEditor struct {
