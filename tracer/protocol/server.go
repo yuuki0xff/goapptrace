@@ -162,9 +162,13 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 				conn.Stop(xtcp.StopImmediately)
 				return
 			case SymbolPacket:
-				// TODO
+				if s.Handler.Symbols != nil {
+					s.Handler.Symbols(pkt.Symbols)
+				}
 			case RawFuncLogNewPacket:
-				// TODO
+				if s.Handler.RawFuncLog != nil {
+					s.Handler.RawFuncLog(pkt.FuncLog)
+				}
 			default:
 				panic(fmt.Sprintf("BUG: Server: Server receives a invalid Packet: %+v %+v", pkt, reflect.TypeOf(pkt)))
 			}
