@@ -124,13 +124,20 @@ func (ce *CodeEditor) edit(fname string, src []byte) ([]byte, error) {
 				// do not enter into function
 				return false
 			}
-
+			if node.Body == nil {
+				// node is non-Go function
+				return true
+			}
 			wantImport = true
 			nl.Add(&InsertNode{
 				Pos: node.Body.Pos(),
 				Src: ce.tmpl.render("funcStartStopStmt", nil),
 			})
 		case *ast.FuncLit:
+			if node.Body == nil {
+				// node is non-Go function
+				return true
+			}
 			wantImport = true
 			nl.Add(&InsertNode{
 				Pos: node.Body.Pos(),
