@@ -145,27 +145,27 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 			}
 		} else {
 			switch pkt := p.(type) {
-			case PingPacket:
+			case *PingPacket:
 				// do nothing
-			case ShutdownPacket:
+			case *ShutdownPacket:
 				// TODO: dummy code
 				pkt.String()
 				log.Println("INFO: Server: get a shutdown msg")
 				conn.Stop(xtcp.StopImmediately)
 				return
-			case StartTraceCmdPacket:
+			case *StartTraceCmdPacket:
 				log.Println("ERROR: Server: invalid packet: StartTraceCmdPacket is not allowed")
 				conn.Stop(xtcp.StopImmediately)
 				return
-			case StopTraceCmdPacket:
+			case *StopTraceCmdPacket:
 				log.Println("ERROR: Server: invalid packet: StopTraceCmdPacket is not allowed")
 				conn.Stop(xtcp.StopImmediately)
 				return
-			case SymbolPacket:
+			case *SymbolPacket:
 				if s.Handler.Symbols != nil {
 					s.Handler.Symbols(pkt.Symbols)
 				}
-			case RawFuncLogNewPacket:
+			case *RawFuncLogNewPacket:
 				if s.Handler.RawFuncLog != nil {
 					s.Handler.RawFuncLog(pkt.FuncLog)
 				}

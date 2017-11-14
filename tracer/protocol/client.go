@@ -181,22 +181,22 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 		} else {
 			log.Printf("DEBUG: Client: recieved a packet: %+v", p)
 			switch pkt := p.(type) {
-			case PingPacket:
+			case *PingPacket:
 				// do nothing
-			case ShutdownPacket:
+			case *ShutdownPacket:
 				// TODO: dummy code
 				pkt.String()
 				log.Println("INFO: Client: get a shutdown msg")
 				conn.Stop(xtcp.StopImmediately)
 				return
-			case StartTraceCmdPacket:
+			case *StartTraceCmdPacket:
 				// TODO
-			case StopTraceCmdPacket:
+			case *StopTraceCmdPacket:
 				// TODO
-			case SymbolPacket:
+			case *SymbolPacket:
 				log.Println("ERROR: Client: invalid packet: SymbolPacket is not allowed")
 				conn.Stop(xtcp.StopImmediately)
-			case RawFuncLogNewPacket:
+			case *RawFuncLogNewPacket:
 				log.Println("ERROR: Client: invalid packet: RawFuncLogNewPacket is not allowed")
 				conn.Stop(xtcp.StopImmediately)
 			default:
