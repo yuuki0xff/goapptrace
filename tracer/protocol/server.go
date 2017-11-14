@@ -148,8 +148,6 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 			case *PingPacket:
 				// do nothing
 			case *ShutdownPacket:
-				// TODO: dummy code
-				pkt.String()
 				log.Println("INFO: Server: get a shutdown msg")
 				conn.Stop(xtcp.StopImmediately)
 				return
