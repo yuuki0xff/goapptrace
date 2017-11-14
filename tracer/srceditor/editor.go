@@ -121,7 +121,7 @@ func (ce *CodeEditor) edit(fname string, src []byte) ([]byte, error) {
 	ast.Inspect(f, func(node_ ast.Node) bool {
 		switch node := node_.(type) {
 		case *ast.FuncDecl:
-			if ce.ExportedOnly && !isExported(node.Name.Name) {
+			if ce.ExportedOnly && !node.Name.IsExported() {
 				// do not enter into function
 				return false
 			}
@@ -150,11 +150,4 @@ func (ce *CodeEditor) edit(fname string, src []byte) ([]byte, error) {
 	}
 
 	return nl.Format()
-}
-
-func isExported(funcname string) bool {
-	for _, firstRune := range funcname {
-		return unicode.IsUpper(firstRune)
-	}
-	panic("Unreachable")
 }
