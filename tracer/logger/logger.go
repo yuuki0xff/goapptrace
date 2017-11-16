@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/bouk/monkey"
 	"github.com/yuuki0xff/goapptrace/info"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/protocol"
@@ -31,11 +32,20 @@ var (
 	lock           = sync.Mutex{}
 	symbols        = logutil.Symbols{}
 	symbolResolver = logutil.SymbolResolver{}
+	patchGuard     *monkey.PatchGuard
 )
 
 func init() {
 	symbols.Init()
 	symbolResolver.Init(&symbols)
+	patchGuard = monkey.Patch(os.Exit, func(code int) {
+		patchGuard.Unpatch()
+		defer patchGuard.Restore()
+
+		// close a file or client before exit.
+		Close()
+		os.Exit(code)
+	})
 }
 
 func sendLog(tag string, id logutil.TxID) {
