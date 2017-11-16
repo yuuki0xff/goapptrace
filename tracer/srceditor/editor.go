@@ -116,6 +116,7 @@ func (ce *CodeEditor) edit(fname string, src []byte) ([]byte, error) {
 	}
 
 	// insert tracing code into functions
+	pkgName := f.Name.Name
 	var wantImport bool
 	ast.Inspect(f, func(node_ ast.Node) bool {
 		switch node := node_.(type) {
@@ -129,10 +130,17 @@ func (ce *CodeEditor) edit(fname string, src []byte) ([]byte, error) {
 				return true
 			}
 			wantImport = true
-			nl.Add(&InsertNode{
-				Pos: node.Body.Pos(),
-				Src: ce.tmpl.render("funcStartStopStmt", nil),
-			})
+			if pkgName == "main" && node.Name.Name == "main" {
+				nl.Add(&InsertNode{
+					Pos: node.Body.Pos(),
+					Src: ce.tmpl.render("funcStartCloseStopStmt", nil),
+				})
+			} else {
+				nl.Add(&InsertNode{
+					Pos: node.Body.Pos(),
+					Src: ce.tmpl.render("funcStartStopStmt", nil),
+				})
+			}
 		case *ast.FuncLit:
 			if node.Body == nil {
 				// node is non-Go function

@@ -207,3 +207,66 @@ func ExportedFunc() {
 `),
 	})
 }
+
+func TestEditMainFunc(t *testing.T) {
+	testEdit(t, editTestCase{
+		Editor: CodeEditor{},
+		In: strings.TrimSpace(`
+package main
+
+import "fmt"
+
+func main() {
+	// comment
+	fmt.Println("Hello World!")
+}
+`),
+		Out: strings.TrimSpace(`
+package main
+
+import __goapptrace_tracer "github.com/yuuki0xff/goapptrace/tracer/logger"
+
+import "fmt"
+
+func main() {
+	__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
+	defer __goapptrace_tracer.Close()
+	defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
+
+	// comment
+	fmt.Println("Hello World!")
+}
+`),
+	})
+}
+
+func TestEditMainFuncInNonMainPackage(t *testing.T) {
+	testEdit(t, editTestCase{
+		Editor: CodeEditor{},
+		In: strings.TrimSpace(`
+package hoge
+
+import "fmt"
+
+func main() {
+	// comment
+	fmt.Println("Hello World!")
+}
+`),
+		Out: strings.TrimSpace(`
+package hoge
+
+import __goapptrace_tracer "github.com/yuuki0xff/goapptrace/tracer/logger"
+
+import "fmt"
+
+func main() {
+	__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
+	defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
+
+	// comment
+	fmt.Println("Hello World!")
+}
+`),
+	})
+}

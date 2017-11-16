@@ -50,6 +50,11 @@ func newTemplate(data TemplateData) *Template {
 		{{.VariablePrefix}}_txid := {{.ImportName}}.FuncStart()
 		defer {{.ImportName}}.FuncEnd({{.VariablePrefix}}_txid)
 	`)
+	t.add("funcStartCloseStopStmt", `
+		{{.VariablePrefix}}_txid := {{.ImportName}}.FuncStart()
+		defer {{.ImportName}}.Close()
+		defer {{.ImportName}}.FuncEnd({{.VariablePrefix}}_txid)
+	`)
 	return &t
 }
 
