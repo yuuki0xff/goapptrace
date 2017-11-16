@@ -151,6 +151,23 @@ func (ce *CodeEditor) edit(fname string, src []byte) ([]byte, error) {
 				Pos: node.Body.Pos(),
 				Src: ce.tmpl.render("funcStartStopStmt", nil),
 			})
+		case *ast.CallExpr:
+			selNode, ok := node.Fun.(*ast.SelectorExpr)
+			if !ok {
+				break
+			}
+			a, ok := selNode.X.(*ast.Ident)
+			if !ok {
+				break
+			}
+			b := selNode.Sel
+			if a.Name == "os" && b.Name == "Exit" {
+				// node means of call os.Exit()
+				nl.Add(&InsertNode{
+					Pos: a.Pos(),
+					Src: ce.tmpl.render("close", node),
+				})
+			}
 		}
 		return true
 	})

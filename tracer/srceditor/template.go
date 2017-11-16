@@ -55,6 +55,9 @@ func newTemplate(data TemplateData) *Template {
 		defer {{.ImportName}}.Close()
 		defer {{.ImportName}}.FuncEnd({{.VariablePrefix}}_txid)
 	`)
+	t.add("close", `
+		{{.ImportName}}.Close()
+	`)
 	return &t
 }
 

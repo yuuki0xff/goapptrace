@@ -270,3 +270,38 @@ func main() {
 `),
 	})
 }
+
+func TestEditCallOsExit(t *testing.T) {
+	testEdit(t, editTestCase{
+		Editor: CodeEditor{},
+		In: strings.TrimSpace(`
+package foo
+
+import "fmt"
+import "os"
+
+func bar() {
+	fmt.Println("Hello World!")
+	os.Exit(0)
+}
+`),
+		Out: strings.TrimSpace(`
+package foo
+
+import __goapptrace_tracer "github.com/yuuki0xff/goapptrace/tracer/logger"
+
+import "fmt"
+import "os"
+
+func bar() {
+	__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
+	defer __goapptrace_tracer.Close()
+	defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
+
+	fmt.Println("Hello World!")
+	__goapptrace_tracer.Close()
+	os.Exit(0)
+}
+`),
+	})
+}
