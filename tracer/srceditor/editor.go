@@ -136,12 +136,12 @@ func (ce *CodeEditor) edit(fname string, src []byte) ([]byte, error) {
 			wantImport = true
 			if pkgName == "main" && node.Name.Name == "main" {
 				nl.Add(&InsertNode{
-					Pos: node.Body.Pos(),
+					Pos: node.Body.Lbrace + 1, // "{"の直後に挿入
 					Src: ce.tmpl.render("funcStartCloseStopStmt", nil),
 				})
 			} else {
 				nl.Add(&InsertNode{
-					Pos: node.Body.Pos(),
+					Pos: node.Body.Lbrace + 1, // "{"の直後に挿入
 					Src: ce.tmpl.render("funcStartStopStmt", nil),
 				})
 			}
@@ -152,7 +152,7 @@ func (ce *CodeEditor) edit(fname string, src []byte) ([]byte, error) {
 			}
 			wantImport = true
 			nl.Add(&InsertNode{
-				Pos: node.Body.Pos(),
+				Pos: node.Body.Lbrace + 1, // "{"の直後に挿入
 				Src: ce.tmpl.render("funcStartStopStmt", nil),
 			})
 		case *ast.CallExpr:
