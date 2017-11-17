@@ -295,7 +295,6 @@ import "os"
 
 func bar() {
 	__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
-	defer __goapptrace_tracer.Close()
 	defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
 
 	fmt.Println("Hello World!")
