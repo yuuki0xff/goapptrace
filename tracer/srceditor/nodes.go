@@ -3,6 +3,7 @@ package srceditor
 import (
 	"bytes"
 	"fmt"
+	"go/ast"
 	"go/format"
 	"go/token"
 	"sort"
@@ -27,6 +28,7 @@ type DeleteNode struct {
 
 type NodeList struct {
 	OrigSrc []byte
+	File    *ast.File
 	list    []Node
 }
 
@@ -61,14 +63,14 @@ func (nl *NodeList) Add(nodes ...Node) {
 func (nl *NodeList) Format() ([]byte, error) {
 	var buf bytes.Buffer
 	var pos token.Pos
-
+	pos = 1
 	sort.Sort(NodeSorter(nl.list))
 
 	buf.Grow(len(nl.OrigSrc) + DefaultBufferCap)
 	for _, node_ := range nl.list {
 		switch node := node_.(type) {
 		case *InsertNode:
-			buf.Write(nl.OrigSrc[pos:node.Pos])
+			buf.Write(nl.srcByRange2(pos, node.Pos))
 			buf.Write(node.Src)
 			pos = node.Pos
 		case *DeleteNode:
@@ -77,7 +79,20 @@ func (nl *NodeList) Format() ([]byte, error) {
 			panic(fmt.Sprintf("Unreachable: %+v", node))
 		}
 	}
-	buf.Write(nl.OrigSrc[pos:])
+	buf.Write(nl.srcByRange1(pos))
 
 	return format.Source(buf.Bytes())
+}
+
+func (nl *NodeList) srcByRange1(a token.Pos) []byte {
+	basePos := nl.File.Pos() - 1
+	start := basePos + a - 1
+	return nl.OrigSrc[start:]
+}
+
+func (nl *NodeList) srcByRange2(a, b token.Pos) []byte {
+	basePos := nl.File.Pos() - 1
+	start := basePos + a - 1
+	end := basePos + b - 1
+	return nl.OrigSrc[start:end]
 }

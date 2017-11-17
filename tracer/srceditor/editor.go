@@ -108,11 +108,15 @@ func (ce *CodeEditor) init() {
 func (ce *CodeEditor) edit(fname string, src []byte) ([]byte, error) {
 	ce.init()
 
-	nl := NodeList{OrigSrc: src}
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, fname, src, parser.ParseComments)
 	if err != nil {
 		return nil, err
+	}
+
+	nl := NodeList{
+		File:    f,
+		OrigSrc: src,
 	}
 
 	// insert tracing code into functions
