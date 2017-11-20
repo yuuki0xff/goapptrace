@@ -197,10 +197,10 @@ func (l *Log) Close() error {
 
 	l.lock.Lock()
 	defer l.lock.Unlock()
-	l.index.Append(IndexRecord{
+	checkError("failed append IndexRecord", l.index.Append(IndexRecord{
 		Timestamp: time.Unix(l.lastTimestamp, 0),
 		Records:   l.records,
-	})
+	}))
 	checkError("failed close last func log file", l.lastFuncLog.Close())
 	checkError("failed close index file", l.index.Close())
 	checkError("failed close symbols file", l.symbols.Close())
