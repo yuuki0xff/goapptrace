@@ -161,6 +161,7 @@ func (l *Log) load(new_file bool) (err error) {
 	l.symbolResolver.Init(l.symbolsCache)
 
 	if !new_file {
+		checkError("failed load index file", l.index.Load())
 		checkError("failed load symbols file", l.loadSymbols())
 
 		reader := RawFuncLogReader{File: l.lastFuncLog.File}
