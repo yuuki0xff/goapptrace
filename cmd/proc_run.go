@@ -31,12 +31,18 @@ import (
 
 	"fmt"
 
+	"time"
+
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/info"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/protocol"
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
+)
+
+const (
+	CloseDelayDuration = 3 * time.Second
 )
 
 // procRunCmd represents the run command
@@ -151,6 +157,10 @@ func runProcRun(conf *config.Config, targets []string) error {
 		// close server when all child process was exited
 		wg.Wait()
 		log.Println("DEBUG: all child process was exited. the server is going exit")
+
+		// wait for receive all packets that staying in the network
+		time.Sleep(CloseDelayDuration)
+
 		if err := srv.Close(); err != nil {
 			lastErr = err
 		}
