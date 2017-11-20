@@ -149,6 +149,12 @@ func (l *Log) load(new_file bool) (err error) {
 	// initialize l.records
 	l.records = 0
 
+	l.symbolsCache = &logutil.Symbols{}
+	l.symbolsCache.Init()
+
+	l.symbolResolver = &logutil.SymbolResolver{}
+	l.symbolResolver.Init(l.symbolsCache)
+
 	if !new_file {
 		checkError("failed load symbols file", l.loadSymbols())
 
@@ -286,12 +292,6 @@ func (l *Log) loadSymbols() (err error) {
 	if l.symbolsCache != nil {
 		return nil
 	}
-
-	l.symbolsCache = &logutil.Symbols{}
-	l.symbolsCache.Init()
-
-	l.symbolResolver = &logutil.SymbolResolver{}
-	l.symbolResolver.Init(l.symbolsCache)
 
 	r := &SymbolsReader{
 		File:           l.Root.SymbolFile(l.ID),
