@@ -3,7 +3,6 @@ package storage
 import (
 	"encoding/gob"
 	"io"
-	"log"
 )
 
 type Encoder struct {
@@ -32,10 +31,8 @@ func (d *Decoder) Open() (err error) {
 	return
 }
 
-func (d *Decoder) Read(data interface{}) (err error) {
-	err = d.dec.Decode(data)
-	log.Printf("DEBUG: Decoder.Read: data=%+v, err=%+v\n", data, err)
-	return
+func (d *Decoder) Read(data interface{}) error {
+	return d.dec.Decode(data)
 }
 
 func (d *Decoder) Walk(newPtr func() interface{}, callback func(interface{}) error) error {
