@@ -137,7 +137,7 @@ func (l *Log) Load() error {
 // help for New()/Load() function
 func (l *Log) load() (err error) {
 	checkError := func(errprefix string, e error) {
-		if e != nil && e == nil {
+		if e != nil && err == nil {
 			err = errors.New(fmt.Sprintf("%s: %s", errprefix, e.Error()))
 		}
 	}
