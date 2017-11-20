@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"path"
 	"strings"
@@ -65,7 +64,6 @@ func (d DirLayout) RawFuncLogFile(id LogID, n int64) File {
 	return File(path.Join(d.DataDir(), fmt.Sprintf("%s.%d.rawfunc.log.gz", id.Hex(), n)))
 }
 func (d DirLayout) SymbolFile(id LogID) File {
-	log.Println("DEBUG: symbol id:", id)
 	return File(path.Join(d.DataDir(), fmt.Sprintf("%s.symbol.gz", id.Hex())))
 }
 func (d DirLayout) IndexFile(id LogID) File {
