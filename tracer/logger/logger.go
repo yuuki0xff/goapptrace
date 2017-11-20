@@ -40,6 +40,9 @@ var (
 func init() {
 	symbols.Init()
 	symbolResolver.Init(&symbols)
+
+	// os.Exitにフックを仕掛ける
+	// TODO: don't work!
 	patchGuard = monkey.Patch(os.Exit, func(code int) {
 		patchGuard.Unpatch()
 		defer patchGuard.Restore()
@@ -96,6 +99,7 @@ func sendLog(tag string, id logutil.TxID) {
 		}
 	}
 
+	// get GoroutineID (GID)
 	buf := make([]byte, backtraceSize)
 	runtime.Stack(buf, false) // First line is "goroutine xxx [running]"
 	re := regexp.MustCompile(`^goroutine (\d+)`)
