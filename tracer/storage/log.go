@@ -141,6 +141,11 @@ func (l *Log) load(new_file bool) (err error) {
 			err = errors.New(fmt.Sprintf("%s: %s", errprefix, e.Error()))
 		}
 	}
+
+	if l.Metadata == nil {
+		l.Metadata = &LogMetadata{}
+	}
+
 	checkError("failed open lasat func log file", l.lastFuncLog.Open())
 	checkError("failed open index file", l.index.Open())
 	checkError("failed open symbols file", l.symbols.Open())
@@ -179,6 +184,7 @@ func (l *Log) Close() error {
 		}
 	}
 
+	l.Metadata.Timestamp = time.Unix(l.lastTimestamp, 0)
 	w, err := l.Root.MetaFile(l.ID).OpenWriteOnly()
 	if err != nil {
 		return errors.New("can not open meta data file: " + err.Error())
