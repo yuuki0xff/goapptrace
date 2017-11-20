@@ -212,7 +212,7 @@ func (l *Log) Search(start, end time.Time, fn func(evt logutil.RawFuncLogNew) er
 		return nil
 	}); err != nil {
 		// ignore StopIteration error
-		if err == StopIteration {
+		if err != StopIteration {
 			return err
 		}
 	}
