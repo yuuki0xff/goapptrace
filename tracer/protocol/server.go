@@ -53,7 +53,7 @@ func (s *Server) Listen() error {
 
 	switch {
 	case strings.HasPrefix(s.Addr, "unix://"):
-		// TODO
+		// TODO: support unix domain socket
 		return InvalidProtocolError
 	case strings.HasPrefix(s.Addr, "tcp://"):
 		addr = strings.TrimPrefix(s.Addr, "tcp://")

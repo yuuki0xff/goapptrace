@@ -82,7 +82,7 @@ func (c *Client) Serve() error {
 	var addr string
 	switch {
 	case strings.HasPrefix(c.Addr, "unix://"):
-		// TODO
+		// TODO: support unix domain socket
 		return InvalidProtocolError
 	case strings.HasPrefix(c.Addr, "tcp://"):
 		addr = strings.TrimPrefix(c.Addr, "tcp://")
