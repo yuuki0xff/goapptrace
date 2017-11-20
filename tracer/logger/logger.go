@@ -13,6 +13,8 @@ import (
 	"regexp"
 	"strconv"
 
+	"log"
+
 	"github.com/bouk/monkey"
 	"github.com/yuuki0xff/goapptrace/info"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
@@ -100,7 +102,7 @@ func sendLog(tag string, id logutil.TxID) {
 	matches := re.FindSubmatch(buf)
 	gid, err := strconv.ParseInt(string(matches[1]), 10, 64)
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	logmsg.GID = logutil.GID(gid)
 
@@ -115,51 +117,53 @@ func sendLog(tag string, id logutil.TxID) {
 		if newSymbols != nil {
 			err := json.NewEncoder(OutputFile).Encode(newSymbols)
 			if err != nil {
-				panic(err)
+				log.Panic(err)
 			}
 		}
 		_, err = OutputFile.Write([]byte("\n"))
 		if err != nil {
-			panic(err)
+			log.Panic(err)
 		}
 
 		// write backtrace to file
 		err := json.NewEncoder(OutputFile).Encode(&logmsg)
 		if err != nil {
-			panic(err)
+			log.Panic(err)
 		}
 		_, err = OutputFile.Write([]byte("\n"))
 		if err != nil {
-			panic(err)
+			log.Panic(err)
 		}
 	} else if Client != nil {
 		// send binary log to log server
 		if newSymbols != nil {
 			if err := Client.Send(&protocol.SymbolPacket{newSymbols}); err != nil {
 				// TODO: try to reconnect
-				panic(err)
+				log.Panic(err)
 			}
 		}
 		if err := Client.Send(&protocol.RawFuncLogNewPacket{logmsg}); err != nil {
 			// TODO: try to reconnect
-			panic(err)
+			log.Panic(err)
 		}
 	} else {
-		panic(errors.New("here is unreachable, but reached"))
+		log.Panic(errors.New("here is unreachable, but reached"))
 	}
 }
 
 func Close() {
-	// 組み込み対象のアプリケーションが出力するログに、余計なものを混ぜないようにするため、
-	// 発生したエラーは無視する。
 	if OutputFile != nil {
-		OutputFile.Close() // nolint: errcheck
+		if err := OutputFile.Close(); err != nil {
+			log.Panic(err)
+		}
 		OutputFile = nil
 	} else if Client != nil {
-		Client.Close() // nolint: errcheck
+		if err := Client.Close(); err != nil {
+			log.Panic(err)
+		}
 		Client = nil
 	} else {
-		panic(errors.New("here is unreachable, but reached"))
+		log.Panic(errors.New("here is unreachable, but reached"))
 	}
 }
 
@@ -185,7 +189,7 @@ func setOutput() {
 		Client.Init()
 		go func() {
 			if err := Client.Serve(); err != nil {
-				panic(err)
+				log.Panic(err)
 			}
 		}()
 		Client.WaitNegotiation()
@@ -198,7 +202,7 @@ func setOutput() {
 		fpath := fmt.Sprintf("%s.%d.log", prefix, pid)
 		file, err := os.OpenFile(fpath, os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			panic(err)
+			log.Panic(err)
 		}
 		OutputFile = file
 	}
