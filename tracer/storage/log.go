@@ -195,6 +195,25 @@ func (l *Log) AppendSymbols(symbols *logutil.Symbols) error {
 	return nil
 }
 
+func (l *Log) Walk(fn func(evt logutil.RawFuncLogNew) error) error {
+	l.lock.RLock()
+	defer l.lock.RUnlock()
+
+	return l.index.Walk(func(i int64, _ IndexRecord) error {
+		fl := RawFuncLogReader{
+			File: l.Root.RawFuncLogFile(l.ID, i),
+		}
+		if err := fl.Open(); err != nil {
+			return err
+		}
+		defer fl.Close() // nolint: errcheck
+		if err := fl.Walk(fn); err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
 func (l *Log) Search(start, end time.Time, fn func(evt logutil.RawFuncLogNew) error) error {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
