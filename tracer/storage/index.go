@@ -16,8 +16,10 @@ type Index struct {
 }
 
 type IndexRecord struct {
-	Timestamps time.Time
-	Records    int64
+	// Timestamp of the last record.
+	Timestamp time.Time
+	// Number of records.
+	Records   int64
 }
 
 func (idx *Index) Open() error {

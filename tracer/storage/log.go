@@ -222,9 +222,9 @@ func (l *Log) Search(start, end time.Time, fn func(evt logutil.RawFuncLogNew) er
 	var endIdx int64
 
 	if err := l.index.Walk(func(i int64, ir IndexRecord) error {
-		if start.Before(ir.Timestamps) {
+		if start.Before(ir.Timestamp) {
 			startIdx = i - 1
-		} else if end.Before(ir.Timestamps) {
+		} else if end.Before(ir.Timestamp) {
 			endIdx = i - 1
 			return StopIteration
 		}
@@ -298,8 +298,8 @@ func (l *Log) autoRotate() error {
 func (l *Log) rotate() error {
 	l.lastN++
 	if err := l.index.Append(IndexRecord{
-		Records:    UnknownRecords,
-		Timestamps: time.Now(), /// TODO
+		Records:   UnknownRecords,
+		Timestamp: time.Now(), /// TODO
 	}); err != nil {
 		return errors.New(fmt.Sprintln("cannot write new index record:", err.Error()))
 	}

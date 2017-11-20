@@ -12,20 +12,20 @@ func TestIndex(t *testing.T) {
 
 	records := []IndexRecord{
 		{
-			Timestamps: time.Unix(10, 0),
-			Records:    10,
+			Timestamp: time.Unix(10, 0),
+			Records:   10,
 		}, {
-			Timestamps: time.Unix(30, 0),
-			Records:    20,
+			Timestamp: time.Unix(30, 0),
+			Records:   20,
 		}, {
-			Timestamps: time.Unix(50, 0),
-			Records:    15,
+			Timestamp: time.Unix(50, 0),
+			Records:   15,
 		}, {
-			Timestamps: time.Unix(90, 0),
-			Records:    5,
+			Timestamp: time.Unix(90, 0),
+			Records:   5,
 		}, {
-			Timestamps: time.Unix(110, 0),
-			Records:    50,
+			Timestamp: time.Unix(110, 0),
+			Records:   50,
 		},
 	}
 
@@ -48,8 +48,8 @@ func TestIndex(t *testing.T) {
 	for i := range records {
 		t.Logf("Index.records[%d] = %+v", i, index.records[i])
 
-		if records[i].Timestamps != index.records[i].Timestamps {
-			t.Errorf("Timestamps is not matched: expect %d, but %d", records[i].Timestamps, index.records[i].Timestamps)
+		if records[i].Timestamp != index.records[i].Timestamp {
+			t.Errorf("Timestamp is not matched: expect %d, but %d", records[i].Timestamp, index.records[i].Timestamp)
 		}
 		if records[i].Records != index.records[i].Records {
 			t.Errorf("Records is not matched: expect %d, but %d", records[i].Records, index.records[i].Records)
