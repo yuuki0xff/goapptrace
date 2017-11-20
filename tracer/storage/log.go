@@ -102,7 +102,7 @@ func (l *Log) New() (err error) {
 	l.index = &Index{File: l.Root.IndexFile(l.ID)}
 	l.symbols = &SymbolsWriter{File: l.Root.SymbolFile(l.ID)}
 
-	return l.load()
+	return l.load(true)
 }
 
 func (l *Log) Load() error {
@@ -131,11 +131,11 @@ func (l *Log) Load() error {
 	l.index = &Index{File: l.Root.IndexFile(l.ID)}
 	l.symbols = &SymbolsWriter{File: l.Root.SymbolFile(l.ID)}
 
-	return l.load()
+	return l.load(false)
 }
 
 // help for New()/Load() function
-func (l *Log) load() (err error) {
+func (l *Log) load(new_file bool) (err error) {
 	checkError := func(errprefix string, e error) {
 		if e != nil && err == nil {
 			err = errors.New(fmt.Sprintf("%s: %s", errprefix, e.Error()))
@@ -145,20 +145,23 @@ func (l *Log) load() (err error) {
 	checkError("failed open index file", l.index.Open())
 	checkError("failed open symbols file", l.symbols.Open())
 
-	checkError("failed load symbols file", l.loadSymbols())
-
 	l.lastTimestamp = 0
 	// initialize l.records
 	l.records = 0
-	reader := RawFuncLogReader{File: l.lastFuncLog.File}
-	checkError("failed open last func log file (read mode)", reader.Open())
-	checkError("failed read last func log file",
-		reader.Walk(func(evt logutil.RawFuncLogNew) error {
-			l.records++
-			return nil
-		}),
-	)
-	checkError("failed close last func log file (read mode)", reader.Close())
+
+	if !new_file {
+		checkError("failed load symbols file", l.loadSymbols())
+
+		reader := RawFuncLogReader{File: l.lastFuncLog.File}
+		checkError("failed open last func log file (read mode)", reader.Open())
+		checkError("failed read last func log file",
+			reader.Walk(func(evt logutil.RawFuncLogNew) error {
+				l.records++
+				return nil
+			}),
+		)
+		checkError("failed close last func log file (read mode)", reader.Close())
+	}
 	return
 }
 
