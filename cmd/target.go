@@ -24,9 +24,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const targetCmdExample = `  goapptrace target add docker ~/go/src/github.com/docker/docker-ce/components/engine
+const targetCmdExample = `  # Simplest configuration.
+  goapptrace target add app ~/go/src/example.com/app
+
+  # Specify build options of "-gcflags '-N -l'".
+  goapptrace target add          app ~/go/src/example.com/app
+  goapptrace target set-build -s app "go build -gcflags '-N -l' -o ./exe"
+
+  # Specify build process and execution process.
+  goapptrace target add       docker ~/go/src/github.com/docker/docker-ce/components/engine
   goapptrace target set-build docker make static
-  goapptrace target set-run ./components/packaging/static/build/linux/docker/dockerd`
+  goapptrace target set-run   docker ./components/packaging/static/build/linux/docker/dockerd`
 
 // targetCmd represents the target command
 var targetCmd = &cobra.Command{
