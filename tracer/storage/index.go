@@ -19,7 +19,7 @@ type IndexRecord struct {
 	// Timestamp of the last record.
 	Timestamp time.Time
 	// Number of records.
-	Records   int64
+	Records int64
 }
 
 func (idx *Index) Open() error {

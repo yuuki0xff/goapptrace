@@ -31,6 +31,10 @@ type Log struct {
 	lastFuncLog *RawFuncLogWriter
 	index       *Index
 	symbols     *SymbolsWriter
+	// timestamp of last record in current funcLog
+	lastTimestamp int64
+	// number of records in current funcLog
+	records int64
 
 	symbolsCache   *logutil.Symbols
 	symbolResolver *logutil.SymbolResolver
@@ -142,6 +146,19 @@ func (l *Log) load() (err error) {
 	checkError("failed open symbols file", l.symbols.Open())
 
 	checkError("failed load symbols file", l.loadSymbols())
+
+	l.lastTimestamp = 0
+	// initialize l.records
+	l.records = 0
+	reader := RawFuncLogReader{File: l.lastFuncLog.File}
+	checkError("failed open last func log file (read mode)", reader.Open())
+	checkError("failed read last func log file",
+		reader.Walk(func(evt logutil.RawFuncLogNew) error {
+			l.records++
+			return nil
+		}),
+	)
+	checkError("failed close last func log file (read mode)", reader.Close())
 	return
 }
 
@@ -164,6 +181,10 @@ func (l *Log) Close() error {
 
 	l.lock.Lock()
 	defer l.lock.Unlock()
+	l.index.Append(IndexRecord{
+		Timestamp: time.Unix(l.lastTimestamp, 0),
+		Records:   l.records,
+	})
 	checkError("failed close last func log file", l.lastFuncLog.Close())
 	checkError("failed close index file", l.index.Close())
 	checkError("failed close symbols file", l.symbols.Close())
@@ -181,6 +202,7 @@ func (l *Log) AppendFuncLog(raw *logutil.RawFuncLogNew) error {
 	if err := l.lastFuncLog.Append(raw); err != nil {
 		return err
 	}
+	l.lastTimestamp = raw.Timestamp
 	return nil
 }
 
@@ -296,13 +318,16 @@ func (l *Log) autoRotate() error {
 }
 
 func (l *Log) rotate() error {
-	l.lastN++
 	if err := l.index.Append(IndexRecord{
-		Records:   UnknownRecords,
-		Timestamp: time.Now(), /// TODO
+		Timestamp: time.Unix(l.lastTimestamp, 0),
+		Records:   l.records,
 	}); err != nil {
 		return errors.New(fmt.Sprintln("cannot write new index record:", err.Error()))
 	}
+
+	l.records = 0
+	l.lastTimestamp = 0
+	l.lastN++
 	l.lastFuncLog = &RawFuncLogWriter{File: l.Root.RawFuncLogFile(l.ID, l.lastN)}
 	return l.lastFuncLog.Open()
 }
