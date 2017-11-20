@@ -25,8 +25,8 @@ type Log struct {
 	MaxFileSize int64
 
 	lock sync.RWMutex
-	// -1:    log files are not exists.
-	// 0 > 0: log files are exists.
+	// -1:        log files are not exists.
+	// lastN > 0: log files are exists.
 	lastN       int64
 	lastFuncLog *RawFuncLogWriter
 	index       *Index
