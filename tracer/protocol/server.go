@@ -67,6 +67,7 @@ func (s *Server) init() error {
 		if s.PingInterval == time.Duration(0) {
 			s.PingInterval = DefaultPingInterval
 		}
+		s.connIDMap = map[*xtcp.Conn]ConnID{}
 
 		prt := &Proto{}
 		s.opt = xtcp.NewOpts(s, prt)
