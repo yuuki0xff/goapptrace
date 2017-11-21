@@ -65,16 +65,28 @@ func runProcRun(conf *config.Config, targets []string) error {
 			Root: conf.LogsDir(),
 		},
 	}
-	var logobj *storage.Log
-	defer func() {
-		if logobj != nil {
-			// セッションが異常終了した場合、disconnected eventが発生せずにサーバが終了してしまう。
-			// Close()漏れによるファイル破損を防止するため、ここでもClose()しておく
-			if err := logobj.Close(); err != nil {
-				log.Println(err)
-			}
+
+	// key: protocol.ConnID
+	// value: *storage.Log
+	var logobjs sync.Map
+	defer logobjs.Range(func(key, value interface{}) bool {
+		id := key.(protocol.ConnID)
+		logobjs.Delete(key)
+		logobj := value.(*storage.Log)
+		// セッションが異常終了した場合、disconnected eventが発生せずにサーバが終了してしまう。
+		// Close()漏れによるファイル破損を防止するため、ここでもClose()しておく
+		if err := logobj.Close(); err != nil {
+			log.Printf("failed to close Log(%s) file: %s", id, err.Error())
 		}
-	}()
+		return true
+	})
+	getLog := func(id protocol.ConnID) *storage.Log {
+		value, ok := logobjs.Load(id)
+		if ok == false {
+			log.Panicf("ERROR: Server: ConnID(%s) not found", id)
+		}
+		return value.(*storage.Log)
+	}
 
 	if err := strg.Init(); err != nil {
 		return err
@@ -87,32 +99,40 @@ func runProcRun(conf *config.Config, targets []string) error {
 		Handler: protocol.ServerHandler{
 			Connected: func(id protocol.ConnID) {
 				log.Println("INFO: Server: connected")
-				if logobj == nil {
-					var err error
-					logobj, err = strg.New()
-					if err != nil {
-						panic(err)
-					}
+
+				// create a Log object
+				logobj, err := strg.New()
+				if err != nil {
+					log.Panicf("ERROR: Server: failed to a create Log object: err=%s", err.Error())
+				}
+				if _, loaded := logobjs.LoadOrStore(id, logobj); loaded {
+					log.Panicf("ERROR: Server: failed to a store Log object. this process MUST success")
 				}
 			},
 			Disconnected: func(id protocol.ConnID) {
 				log.Println("INFO: Server: disconnected")
+
+				logobjs.Delete(id)
+				logobj := getLog(id)
 				if err := logobj.Close(); err != nil {
-					panic(err)
+					log.Panicf("ERROR: Server: failed to close a Log object: err=%s", err.Error())
 				}
-				logobj = nil
 			},
 			Error: func(id protocol.ConnID, err error) {
+				// TODO: check ConnID
 				log.Println("ERROR: Server:", err)
 			},
 			Symbols: func(id protocol.ConnID, s *logutil.Symbols) {
 				log.Printf("DEBUG: Server: add symbols: %+v\n", s)
+
+				logobj := getLog(id)
 				if err := logobj.AppendSymbols(s); err != nil {
 					panic(err)
 				}
 			},
 			RawFuncLog: func(id protocol.ConnID, f *logutil.RawFuncLogNew) {
 				log.Printf("DEBUG: Server: got RawFuncLog: %+v\n", f)
+				logobj := getLog(id)
 				if err := logobj.AppendFuncLog(f); err != nil {
 					panic(err)
 				}
