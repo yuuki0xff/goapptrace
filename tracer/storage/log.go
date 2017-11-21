@@ -300,6 +300,7 @@ func (l *Log) Symbols() *logutil.Symbols {
 	return l.symbolsCache
 }
 
+// callee MUST call "l.lock.Lock()" before call l.load().
 func (l *Log) loadSymbols() (err error) {
 	if l.symbolsCache != nil {
 		return nil
@@ -321,6 +322,7 @@ func (l *Log) loadSymbols() (err error) {
 	return
 }
 
+// callee MUST call "l.lock.Lock()" before call l.autoRotate().
 func (l *Log) autoRotate() error {
 	size, err := l.lastFuncLog.File.Size()
 	if err != nil {
@@ -332,6 +334,7 @@ func (l *Log) autoRotate() error {
 	return nil
 }
 
+// callee MUST call "l.lock.Lock()" before call l.autoRotate().
 func (l *Log) rotate() error {
 	if err := l.index.Append(IndexRecord{
 		Timestamp: time.Unix(l.lastTimestamp, 0),
