@@ -29,10 +29,19 @@ import (
 // serverLsCmd represents the ls command
 var serverLsCmd = &cobra.Command{
 	Use:   "ls",
-	Short: "Show servers",
+	Short: "Show log servers",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("ls called")
+		runServerLs()
 	},
+}
+
+func runServerLs() {
+	// try to connect to control server.
+	// if failed to connect, show empty list.
+
+	// request server list.
+	// show server list.
 }
 
 func init() {

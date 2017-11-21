@@ -32,7 +32,17 @@ var serverRunCmd = &cobra.Command{
 	Short: "Start log servers",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("run called")
+		runServerRun()
 	},
+}
+
+func runServerRun() {
+	// try to connect to control server.
+	// if failed to connect, start control server.
+
+	// add to server list.
+	// start a log server.
+	// delete a log server from server list.
 }
 
 func init() {

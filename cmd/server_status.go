@@ -32,7 +32,16 @@ var serverStatusCmd = &cobra.Command{
 	Short: "Show details of server status",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("status called")
+		runServerStatus()
 	},
+}
+
+func runServerStatus() {
+	// try to connect to control server.
+	// if failed to connect, show error message.
+
+	// request server list.
+	// show detail information.
 }
 
 func init() {

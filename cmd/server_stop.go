@@ -32,7 +32,13 @@ var serverStopCmd = &cobra.Command{
 	Short: "Stop a server",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("stop called")
+		runServerStop()
 	},
+}
+
+func runServerStop() {
+	// connect to log server.
+	// send shutdown request.
 }
 
 func init() {
