@@ -62,7 +62,7 @@ func runLogCat(strg *storage.Storage, id storage.LogID) {
 	}
 	var i int
 	if err := logobj.Walk(func(evt logutil.RawFuncLogNew) error {
-		log.Printf("%d: %+v%", i, evt)
+		log.Printf("%d: %+v", i, evt)
 		i++
 		return nil
 	}); err != nil {
