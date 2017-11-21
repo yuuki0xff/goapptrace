@@ -18,14 +18,16 @@ import (
 	"github.com/yuuki0xff/xtcp"
 )
 
+type ConnID int64
+
 type ServerHandler struct {
-	Connected    func()
-	Disconnected func()
+	Connected    func(id ConnID)
+	Disconnected func(id ConnID)
 
-	Error func(error)
+	Error func(id ConnID, err error)
 
-	Symbols    func(*logutil.Symbols)
-	RawFuncLog func(*logutil.RawFuncLogNew)
+	Symbols    func(id ConnID, symbols *logutil.Symbols)
+	RawFuncLog func(id ConnID, funclog *logutil.RawFuncLogNew)
 }
 
 type Server struct {
@@ -41,6 +43,10 @@ type Server struct {
 	listener net.Listener
 	wg       sync.WaitGroup
 	stopOnce sync.Once
+
+	connIDMap  map[*xtcp.Conn]ConnID
+	nextConnID ConnID
+	connIDLock sync.RWMutex
 
 	opt          *xtcp.Options
 	xtcpsrv      *xtcp.Server
@@ -141,7 +147,7 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 
 			log.Println("DEBUG: Server: success negotiation process")
 			if s.Handler.Connected != nil {
-				s.Handler.Connected()
+				s.Handler.Connected(s.getConnID(conn))
 			}
 		} else {
 			switch pkt := p.(type) {
@@ -161,11 +167,11 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 				return
 			case *SymbolPacket:
 				if s.Handler.Symbols != nil {
-					s.Handler.Symbols(pkt.Symbols)
+					s.Handler.Symbols(s.getConnID(conn), pkt.Symbols)
 				}
 			case *RawFuncLogNewPacket:
 				if s.Handler.RawFuncLog != nil {
-					s.Handler.RawFuncLog(pkt.FuncLog)
+					s.Handler.RawFuncLog(s.getConnID(conn), pkt.FuncLog)
 				}
 			default:
 				panic(fmt.Sprintf("BUG: Server: Server receives a invalid Packet: %+v %+v", pkt, reflect.TypeOf(pkt)))
@@ -175,7 +181,21 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 	case xtcp.EventClosed:
 		log.Println("INFO: Server: disconnected")
 		if s.Handler.Disconnected != nil {
-			s.Handler.Disconnected()
+			s.Handler.Disconnected(s.getConnID(conn))
 		}
 	}
+}
+
+func (s *Server) getConnID(conn *xtcp.Conn) ConnID {
+	s.connIDLock.Lock()
+	defer s.connIDLock.Unlock()
+	id, ok := s.connIDMap[conn]
+	if ok {
+		return id
+	}
+
+	id = s.nextConnID
+	s.connIDMap[conn] = id
+	s.nextConnID++
+	return id
 }

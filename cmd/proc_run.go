@@ -85,7 +85,7 @@ func runProcRun(conf *config.Config, targets []string) error {
 	srv := protocol.Server{
 		Addr: addr,
 		Handler: protocol.ServerHandler{
-			Connected: func() {
+			Connected: func(id protocol.ConnID) {
 				log.Println("INFO: Server: connected")
 				if logobj == nil {
 					var err error
@@ -95,23 +95,23 @@ func runProcRun(conf *config.Config, targets []string) error {
 					}
 				}
 			},
-			Disconnected: func() {
+			Disconnected: func(id protocol.ConnID) {
 				log.Println("INFO: Server: disconnected")
 				if err := logobj.Close(); err != nil {
 					panic(err)
 				}
 				logobj = nil
 			},
-			Error: func(err error) {
+			Error: func(id protocol.ConnID, err error) {
 				log.Println("ERROR: Server:", err)
 			},
-			Symbols: func(s *logutil.Symbols) {
+			Symbols: func(id protocol.ConnID, s *logutil.Symbols) {
 				log.Printf("DEBUG: Server: add symbols: %+v\n", s)
 				if err := logobj.AppendSymbols(s); err != nil {
 					panic(err)
 				}
 			},
-			RawFuncLog: func(f *logutil.RawFuncLogNew) {
+			RawFuncLog: func(id protocol.ConnID, f *logutil.RawFuncLogNew) {
 				log.Printf("DEBUG: Server: got RawFuncLog: %+v\n", f)
 				if err := logobj.AppendFuncLog(f); err != nil {
 					panic(err)
