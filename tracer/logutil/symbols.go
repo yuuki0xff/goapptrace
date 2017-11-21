@@ -28,11 +28,9 @@ func (s Symbols) ModuleName(id FuncStatusID) string {
 }
 
 func (sr *SymbolResolver) Init(symbols *Symbols) {
-	if sr.funcs == nil {
-		sr.symbols = symbols
-		sr.funcs = make(map[string]FuncID)
-		sr.funcStatus = make(map[FuncStatus]FuncStatusID)
-	}
+	sr.symbols = symbols
+	sr.funcs = make(map[string]FuncID)
+	sr.funcStatus = make(map[FuncStatus]FuncStatusID)
 }
 
 // 注意: 引数(symbols)のIDは引き継がれない。
