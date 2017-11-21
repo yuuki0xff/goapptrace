@@ -134,7 +134,8 @@ func (l *Log) Load() error {
 	return l.load(false)
 }
 
-// help for New()/Load() function
+// help for New()/Load() function.
+// callee MUST call "l.lock.Lock()" before call l.load().
 func (l *Log) load(new_file bool) (err error) {
 	checkError := func(errprefix string, e error) {
 		if e != nil && err == nil {
