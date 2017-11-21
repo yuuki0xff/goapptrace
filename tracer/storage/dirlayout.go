@@ -72,6 +72,9 @@ func (d DirLayout) IndexFile(id LogID) File {
 
 type File string
 
+func (f File) Remove() error {
+	return os.Remove(string(f))
+}
 func (f File) Exists() bool {
 	_, err := os.Stat(string(f))
 	return err == nil

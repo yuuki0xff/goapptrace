@@ -178,6 +178,26 @@ func (l *Log) load(new_file bool) (err error) {
 	return
 }
 
+func (l *Log) Remove() error {
+	if err := l.Close(); err != nil {
+		return err
+	}
+
+	if err := l.Root.MetaFile(l.ID).Remove(); err != nil {
+		return fmt.Errorf("failed to remove a meta file: %s", err.Error())
+	}
+	if err := l.index.File.Remove(); err != nil {
+		return fmt.Errorf("failed to remove a index: %s", err.Error())
+	}
+	if err := l.lastFuncLog.File.Remove(); err != nil {
+		return fmt.Errorf("failed to remove a last func log: %s", err.Error())
+	}
+	if err := l.symbols.File.Remove(); err != nil {
+		return fmt.Errorf("failed to remove a symbols file: %s", err.Error())
+	}
+	return nil
+}
+
 func (l *Log) Close() error {
 	var err error
 	checkError := func(logprefix string, e error) {
