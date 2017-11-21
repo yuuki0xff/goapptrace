@@ -93,9 +93,8 @@ func runProcRun(conf *config.Config, targets []string) error {
 	}
 
 	// use ephemeral port for communication with child process
-	addr := "tcp://:"
 	srv := protocol.Server{
-		Addr: addr,
+		Addr: "",
 		Handler: protocol.ServerHandler{
 			Connected: func(id protocol.ConnID) {
 				log.Println("INFO: Server: connected")

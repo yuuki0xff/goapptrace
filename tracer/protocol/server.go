@@ -18,6 +18,11 @@ import (
 	"github.com/yuuki0xff/xtcp"
 )
 
+const (
+	DefaultTCPPort = 8600
+	MaxListenTries = 100
+)
+
 type ConnID int64
 
 type ServerHandler struct {
@@ -58,6 +63,19 @@ func (s *Server) Listen() error {
 	var err error
 
 	switch {
+	case s.Addr == "":
+		for i := 0; i < MaxListenTries; i++ {
+			port := DefaultTCPPort + i
+			addr = fmt.Sprintf("localhost:%d", port)
+			s.Addr = "tcp://" + addr
+			s.listener, err = net.Listen("tcp", addr)
+			if err == nil {
+				break
+			}
+		}
+		if err != nil {
+			return err
+		}
 	case strings.HasPrefix(s.Addr, "unix://"):
 		// TODO: support unix domain socket
 		return InvalidProtocolError
