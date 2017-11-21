@@ -27,14 +27,14 @@ func (s Symbols) ModuleName(id FuncStatusID) string {
 	return moduleName
 }
 
-func (sr *SymbolResolver) Init(symbols *Symbols) {
+func (sr *SymbolsEditor) Init(symbols *Symbols) {
 	sr.symbols = symbols
 	sr.funcs = make(map[string]FuncID)
 	sr.funcStatus = make(map[FuncStatus]FuncStatusID)
 }
 
 // 注意: 引数(symbols)のIDは引き継がれない。
-func (sr *SymbolResolver) AddSymbols(symbols *Symbols) {
+func (sr *SymbolsEditor) AddSymbols(symbols *Symbols) {
 	for _, fsymbol := range symbols.Funcs {
 		sr.AddFunc(fsymbol)
 	}
@@ -43,7 +43,7 @@ func (sr *SymbolResolver) AddSymbols(symbols *Symbols) {
 	}
 }
 
-func (sr *SymbolResolver) AddFunc(symbol *FuncSymbol) (id FuncID, added bool) {
+func (sr *SymbolsEditor) AddFunc(symbol *FuncSymbol) (id FuncID, added bool) {
 	id, ok := sr.funcs[symbol.Name]
 	if ok {
 		// if exists, nothing to do
@@ -56,7 +56,7 @@ func (sr *SymbolResolver) AddFunc(symbol *FuncSymbol) (id FuncID, added bool) {
 	return symbol.ID, true
 }
 
-func (sr *SymbolResolver) AddFuncStatus(status *FuncStatus) (id FuncStatusID, added bool) {
+func (sr *SymbolsEditor) AddFuncStatus(status *FuncStatus) (id FuncStatusID, added bool) {
 	status.ID = 0
 	id, ok := sr.funcStatus[*status]
 	if ok {

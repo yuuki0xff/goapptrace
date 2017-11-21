@@ -13,7 +13,7 @@ type SymbolsWriter struct {
 
 type SymbolsReader struct {
 	File           File
-	SymbolResolver *logutil.SymbolResolver
+	SymbolResolver *logutil.SymbolsEditor
 	dec            Decoder
 }
 

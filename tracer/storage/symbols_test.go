@@ -8,11 +8,11 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
-func newSymbols() (*logutil.Symbols, *logutil.SymbolResolver) {
+func newSymbols() (*logutil.Symbols, *logutil.SymbolsEditor) {
 	symbols := &logutil.Symbols{}
 	symbols.Init()
 
-	sresolve := &logutil.SymbolResolver{}
+	sresolve := &logutil.SymbolsEditor{}
 	sresolve.Init(symbols)
 	return symbols, sresolve
 }
@@ -40,7 +40,7 @@ func doTestSymbolsReaderWriter(
 	{
 		symbols := &logutil.Symbols{}
 		symbols.Init()
-		sresolve := &logutil.SymbolResolver{}
+		sresolve := &logutil.SymbolsEditor{}
 		sresolve.Init(symbols)
 
 		sr := SymbolsReader{

@@ -37,7 +37,7 @@ type Log struct {
 	records int64
 
 	symbolsCache   *logutil.Symbols
-	symbolResolver *logutil.SymbolResolver
+	symbolResolver *logutil.SymbolsEditor
 }
 
 type LogMetadata struct {
@@ -157,7 +157,7 @@ func (l *Log) load(new_file bool) (err error) {
 	l.symbolsCache = &logutil.Symbols{}
 	l.symbolsCache.Init()
 
-	l.symbolResolver = &logutil.SymbolResolver{}
+	l.symbolResolver = &logutil.SymbolsEditor{}
 	l.symbolResolver.Init(l.symbolsCache)
 
 	if !new_file {

@@ -31,7 +31,7 @@ type RawLogLoader struct {
 	////////////////
 	// ↓ 初期化不要 ↓
 	Symbols        Symbols
-	SymbolResolver SymbolResolver
+	SymbolResolver SymbolsEditor
 	Records        RecordList
 	GoroutineMap   *GoroutineMap
 	TimeRangeMap   *TimeRangeMap
@@ -95,7 +95,7 @@ type FuncStatus struct {
 	PC   uintptr
 }
 
-type SymbolResolver struct {
+type SymbolsEditor struct {
 	symbols    *Symbols
 	funcs      map[string]FuncID
 	funcStatus map[FuncStatus]FuncStatusID // FuncStatus.IDは常に0

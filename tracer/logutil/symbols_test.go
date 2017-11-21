@@ -47,7 +47,7 @@ func TestSymbolResolver(t *testing.T) {
 	}
 
 	sym := Symbols{}
-	resolver := SymbolResolver{}
+	resolver := SymbolsEditor{}
 	resolver.Init(&sym)
 	fs1.Func, _ = resolver.AddFunc(&f1)
 	if f1.ID != FuncID(0) || f1.ID != fs1.Func {

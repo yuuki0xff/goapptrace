@@ -33,7 +33,7 @@ var (
 
 	lock           = sync.Mutex{}
 	symbols        = logutil.Symbols{}
-	symbolResolver = logutil.SymbolResolver{}
+	symbolResolver = logutil.SymbolsEditor{}
 	patchGuard     *monkey.PatchGuard
 )
 
