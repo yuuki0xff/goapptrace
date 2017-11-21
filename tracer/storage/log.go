@@ -274,6 +274,7 @@ func (l *Log) Search(start, end time.Time, fn func(evt logutil.RawFuncLogNew) er
 		}
 	}
 
+	var err error
 	for i := startIdx; i <= endIdx; i++ {
 		fl := RawFuncLogReader{
 			File: l.Root.RawFuncLogFile(l.ID, i),
@@ -281,12 +282,15 @@ func (l *Log) Search(start, end time.Time, fn func(evt logutil.RawFuncLogNew) er
 		if err := fl.Open(); err != nil {
 			return err
 		}
+		defer func() {
+			if err2 := fl.Close(); err2 != nil {
+				err = err2
+			}
+		}()
 
 		if err := fl.Walk(fn); err != nil {
-			fl.Close() // nolint: errcheck
 			return err
 		}
-		fl.Close() // nolint: errcheck
 	}
 	return nil
 }
