@@ -47,6 +47,7 @@ type Server struct {
 
 	listener net.Listener
 	wg       sync.WaitGroup
+	initOnce sync.Once
 	stopOnce sync.Once
 
 	connIDMap  map[*xtcp.Conn]ConnID
@@ -58,10 +59,29 @@ type Server struct {
 	isNegotiated bool
 }
 
+func (s *Server) init() error {
+	s.initOnce.Do(func() {
+		if s.MaxBufferedMsgs <= 0 {
+			s.MaxBufferedMsgs = DefaultMaxBufferedMsgs
+		}
+		if s.PingInterval == time.Duration(0) {
+			s.PingInterval = DefaultPingInterval
+		}
+
+		prt := &Proto{}
+		s.opt = xtcp.NewOpts(s, prt)
+		s.xtcpsrv = xtcp.NewServer(s.opt)
+	})
+	return nil
+}
+
 func (s *Server) Listen() error {
+	if err := s.init(); err != nil {
+		return err
+	}
+
 	var addr string
 	var err error
-
 	switch {
 	case s.Addr == "":
 		for i := 0; i < MaxListenTries; i++ {
@@ -88,13 +108,6 @@ func (s *Server) Listen() error {
 	default:
 		return InvalidProtocolError
 	}
-
-	if s.MaxBufferedMsgs <= 0 {
-		s.MaxBufferedMsgs = DefaultMaxBufferedMsgs
-	}
-	if s.PingInterval == time.Duration(0) {
-		s.PingInterval = DefaultPingInterval
-	}
 	return nil
 }
 
@@ -102,9 +115,6 @@ func (s *Server) Serve() {
 	s.wg.Add(1)
 	defer s.wg.Done()
 
-	prt := &Proto{}
-	s.opt = xtcp.NewOpts(s, prt)
-	s.xtcpsrv = xtcp.NewServer(s.opt)
 	s.xtcpsrv.Serve(s.listener)
 }
 
