@@ -186,6 +186,8 @@ func (l *Log) Close() error {
 		}
 	}
 
+	l.lock.Lock()
+	defer l.lock.Unlock()
 	l.Metadata.Timestamp = time.Unix(l.lastTimestamp, 0)
 	w, err := l.Root.MetaFile(l.ID).OpenWriteOnly()
 	if err != nil {
@@ -196,8 +198,6 @@ func (l *Log) Close() error {
 		return errors.New("can not write meta data file: " + err.Error())
 	}
 
-	l.lock.Lock()
-	defer l.lock.Unlock()
 	checkError("failed append IndexRecord", l.index.Append(IndexRecord{
 		Timestamp: time.Unix(l.lastTimestamp, 0),
 		Records:   l.records,
