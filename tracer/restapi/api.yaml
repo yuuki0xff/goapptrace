@@ -1,0 +1,432 @@
+swagger: '2.0'
+info:
+  title: Goapptrace REST API
+  description: '**WARNING**: This API specification is draft version.'
+  version: '0.1'
+  license:
+    name: MIT
+    url: 'https://opensource.org/licenses/MIT'
+basePath: /api/v0.1
+schemes:
+  - http
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+definitions:
+  server-list:
+    description: List of log server statuses.
+    type: object
+    required:
+      - servers
+    properties:
+      servers:
+        type: array
+        items:
+          $ref: '#/definitions/server'
+  server:
+    description: Status of a log server.
+    type: object
+    required:
+      - serverID
+      - version
+      - address
+    properties:
+      serverID:
+        type: integer
+        format: int64
+        minimum: 1
+        example: 10
+      version:
+        description: >-
+          Version of the status. API server should increase version field value
+          when this status was updated.
+        type: integer
+        format: int64
+        minimum: 1
+        example: 128
+      address:
+        description: Host and port.
+        type: string
+        example: 'localhost:9000'
+  log-list:
+    description: List of log file statuses.
+    type: object
+    required:
+      - logs
+    properties:
+      logs:
+        type: array
+        items:
+          $ref: '#/definitions/log'
+  log:
+    description: Status of log file.
+    type: object
+    required:
+      - logID
+      - version
+      - type
+    properties:
+      logID:
+        type: integer
+        format: int64
+        minimum: 1
+        example: 26
+      version:
+        type: integer
+        format: int64
+        minimum: 1
+        example: 13
+      type:
+        type: string
+        description: 'TODO: どのような内容を返すべきなのか検討する'
+  log-record-jsonlines:
+    description: The multiple json separated by newline character.
+    type: array
+    items:
+      $ref: '#/definitions/log-record'
+  log-record:
+    description: 'The one event. TODO: 中身を検討する。'
+    type: object
+    required:
+      - gID
+      - timestamp
+    properties:
+      gID:
+        type: integer
+        example: 62
+      timestamp:
+        type: integer
+        example: 5280
+  tracer-list:
+    description: List of tracer.
+    type: object
+    required:
+      - tracers
+    properties:
+      tracers:
+        type: array
+        items:
+          $ref: '#/definitions/tracer'
+  tracer:
+    description: Status of tracer.
+    required:
+      - tracerID
+    properties:
+      tracerID:
+        type: integer
+        format: int64
+        minimum: 1
+        example: 5
+paths:
+  /servers:
+    get:
+      description: Returns list of log servers.
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/server-list'
+  '/server/{srvID}/status':
+    get:
+      description: Returns current status of a server.
+      parameters:
+        - name: srvID
+          in: path
+          required: true
+          type: integer
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/server'
+    post:
+      description: Updates current status of a server.
+      parameters:
+        - name: version
+          in: query
+          description: Old status version.
+          required: true
+          type: integer
+        - name: status
+          in: body
+          description: New status.
+          required: true
+          schema:
+            $ref: '#/definitions/server'
+      responses:
+        '200':
+          description: Successed to update status.
+          schema:
+            $ref: '#/definitions/server'
+        '409':
+          description: >-
+            Failed to update status because of conflict. The API Server returns
+            latest status. The API client had better retry to update status.
+          schema:
+            $ref: '#/definitions/server'
+  '/server/{srvID}/watch':
+    get:
+      description: >-
+        Long-polling API for status update notification. This API will be
+        waiting for the status to change or timeout.
+      parameters:
+        - name: srvID
+          in: path
+          required: true
+          type: integer
+        - name: version
+          in: query
+          description: Status version.
+          required: true
+          type: integer
+        - name: timeout
+          in: query
+          description: The unit is seconds.
+          required: true
+          type: integer
+      responses:
+        '200':
+          description: Notify of status change.
+          schema:
+            $ref: '#/definitions/server'
+        '204':
+          description: Notify that this status was not changed until timeout.
+  /logs:
+    get:
+      description: Returns all logs list.
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/log-list'
+  '/log/{logID}':
+    delete:
+      description: Delete a log file.
+      parameters:
+        - name: logID
+          in: path
+          required: true
+          type: integer
+      responses:
+        '204':
+          description: OK
+  '/log/{logID}/status':
+    get:
+      description: Returns current status of a specified log.
+      parameters:
+        - name: logID
+          in: path
+          required: true
+          type: integer
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/log'
+    post:
+      description: Updates current status of a server.
+      parameters:
+        - name: version
+          in: query
+          description: Old status version.
+          required: true
+          type: integer
+        - name: status
+          in: body
+          description: New status.
+          schema:
+            $ref: '#/definitions/log'
+      responses:
+        '200':
+          description: Successed to update status.
+          schema:
+            $ref: '#/definitions/log'
+        '409':
+          description: >-
+            Failed to update status because of conflict. The API Server returns
+            latest status. The API client had better retry to update status.
+          schema:
+            $ref: '#/definitions/log'
+  '/log/{logID}/watch':
+    get:
+      description: >-
+        Long-polling API for status update notification. This API will be
+        waiting for the status to change or timeout.
+      parameters:
+        - name: logID
+          in: path
+          required: true
+          type: integer
+        - name: version
+          in: query
+          description: Status version.
+          required: true
+          type: integer
+        - name: timeout
+          in: query
+          description: The unit is seconds.
+          required: true
+          type: integer
+      responses:
+        '200':
+          description: Notify for status change.
+          schema:
+            $ref: '#/definitions/log'
+        '204':
+          description: Notify for non-changed in timeout.
+  '/log/{logID}/search':
+    get:
+      description: Filters log records and returns.
+      produces:
+        - application/x-jsonlines
+      parameters:
+        - name: logID
+          in: path
+          required: true
+          type: integer
+        - name: txID
+          in: query
+          description: Transaction ID.
+          type: string
+        - name: gID
+          in: query
+          description: Goroutine ID.
+          type: integer
+        - name: fID
+          in: query
+          description: Function ID.
+          type: integer
+        - name: mID
+          in: query
+          description: Module ID.
+          type: integer
+        - name: minID
+          in: query
+          description: Minimum of log ID.
+          type: integer
+        - name: maxID
+          in: query
+          description: Maximum of log ID.
+          type: integer
+        - name: minTimestamp
+          in: query
+          description: Minimum of timestamp.
+          type: integer
+        - name: maxTimestamp
+          in: query
+          description: Maximum of timestamp.
+          type: integer
+      responses:
+        '200':
+          description: Returns log records.
+          schema:
+            $ref: '#/definitions/log-record-jsonlines'
+  '/log/{logID}/stream':
+    get:
+      description: >-
+        Filters log records and returns. This API and search API are basically
+        the same. The difference point is behavior to new records received after
+        API call. Search API returns a response immediately, and the response
+        are not include new records. Stream API returns a response little by
+        little including new records.
+      produces:
+        - application/x-jsonlines
+      parameters:
+        - name: logID
+          in: path
+          required: true
+          type: integer
+      responses:
+        '200':
+          description: Returns log records forever.
+          schema:
+            $ref: '#/definitions/log-record-jsonlines'
+  /tracers:
+    get:
+      description: Returns all tracer list.
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/tracer-list'
+  '/tracer/{tracerID}':
+    delete:
+      description: Delete a tracer.
+      parameters:
+        - name: tracerID
+          in: path
+          required: true
+          type: integer
+      responses:
+        '204':
+          description: OK
+  '/tracer/{tracerID}/status':
+    get:
+      description: Returns current status of a tracer.
+      parameters:
+        - name: tracerID
+          in: path
+          required: true
+          type: integer
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/tracer'
+    post:
+      description: Updates current status of a server.
+      parameters:
+        - name: tracerID
+          in: path
+          required: true
+          type: integer
+        - name: version
+          in: query
+          description: Old status version.
+          required: true
+          type: integer
+        - name: status
+          in: body
+          description: New status.
+          schema:
+            $ref: '#/definitions/tracer'
+      responses:
+        '200':
+          description: Successed to update status.
+          schema:
+            $ref: '#/definitions/tracer'
+        '409':
+          description: >-
+            Failed to update status because of conflict. The API Server returns
+            latest status. The API client had better retry to update status.
+          schema:
+            $ref: '#/definitions/tracer'
+  '/tracer/{tracerID}/watch':
+    get:
+      description: >-
+        Long-polling API for status update notification. This API will be
+        waiting for the status to change or timeout.
+      parameters:
+        - name: tracerID
+          in: path
+          required: true
+          type: integer
+        - name: version
+          in: query
+          description: Status version.
+          required: true
+          type: integer
+        - name: timeout
+          in: query
+          description: The unit is seconds.
+          required: true
+          type: integer
+      responses:
+        '200':
+          description: Notify for status change.
+          schema:
+            $ref: '#/definitions/server'
+        '204':
+          description: Notify for non-changed in timeout.
