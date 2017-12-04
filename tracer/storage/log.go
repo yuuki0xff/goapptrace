@@ -138,6 +138,7 @@ func (lw *LogWriter) Init() error {
 		return lw.New()
 	default:
 		log.Panicf("bug: unexpected status: status=%+v", status)
+		panic("unreachable")
 	}
 }
 
