@@ -47,21 +47,21 @@ var logCatCmd = &cobra.Command{
 			Root: storage.DirLayout{Root: conf.LogsDir()},
 		}
 		if err := strg.Init(); err != nil {
-			fmt.Fprintf(stderr, "Failed Storage.Init(): %s", err.Error())
+			return fmt.Errorf("Failed Storage.Init(): %s", err.Error())
 		}
 
 		if len(args) != 1 {
-			fmt.Fprintf(stderr, "Should specify one args")
+			return fmt.Errorf("Should specify one args")
 		}
 		logID := storage.LogID{}
 		logID, err := logID.Unhex(args[0])
 		if err != nil {
-			fmt.Fprintf(stderr, "Invalid LogID: %s", err.Error())
+			return fmt.Errorf("Invalid LogID: %s", err.Error())
 		}
 
 		format, err := cmd.Flags().GetString("format")
 		if err != nil {
-			fmt.Fprintf(stderr, "Flag error: %s", err.Error())
+			return fmt.Errorf("Flag error: %s", err.Error())
 		}
 		var writer LogWriter
 		switch format {
@@ -72,7 +72,7 @@ var logCatCmd = &cobra.Command{
 		case "":
 			writer = NewTextLogWriter(stdout)
 		default:
-			fmt.Fprintf(stderr, "Invalid format: %s", format)
+			return fmt.Errorf("Invalid format: %s", format)
 		}
 
 		if err := runLogCat(strg, writer, logID); err != nil {
