@@ -41,7 +41,6 @@ var logCatCmd = &cobra.Command{
 	Short: "Show logs on console",
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
 		stdout := cmd.OutOrStdout()
-		stderr := cmd.OutOrStderr()
 
 		strg := &storage.Storage{
 			Root: storage.DirLayout{Root: conf.LogsDir()},
