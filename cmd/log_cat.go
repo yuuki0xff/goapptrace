@@ -23,6 +23,8 @@ package cmd
 import (
 	"log"
 
+	"fmt"
+
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
@@ -34,40 +36,46 @@ var logCatCmd = &cobra.Command{
 	Use:   "cat",
 	Short: "Show logs on console",
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
+		stderr := cmd.OutOrStderr()
+
 		strg := &storage.Storage{
 			Root: storage.DirLayout{Root: conf.LogsDir()},
 		}
 		if err := strg.Init(); err != nil {
-			log.Panic("Failed Storage.Init():", err)
+			fmt.Fprintf(stderr, "Failed Storage.Init(): %s", err.Error())
 		}
 
 		if len(args) != 1 {
-			log.Fatal("Should specify one args")
+			fmt.Fprintf(stderr, "Should specify one args")
 		}
 		logID := storage.LogID{}
 		logID, err := logID.Unhex(args[0])
 		if err != nil {
-			log.Fatal("Invalid LogID:", err)
+			fmt.Fprintf(stderr, "Invalid LogID: %s", err.Error())
 		}
 
-		runLogCat(strg, logID)
+		if err := runLogCat(strg, logID); err != nil {
+			fmt.Fprint(stderr, err)
+		}
 		return nil
 	}),
 }
 
-func runLogCat(strg *storage.Storage, id storage.LogID) {
+func runLogCat(strg *storage.Storage, id storage.LogID) error {
 	logobj, ok := strg.Log(id)
 	if !ok {
-		log.Fatalf("LogID(%s) not found", id.Hex())
+		return fmt.Errorf("LogID(%s) not found", id.Hex())
 	}
+
 	var i int
 	if err := logobj.Walk(func(evt logutil.RawFuncLogNew) error {
 		log.Printf("%d: %+v", i, evt)
 		i++
 		return nil
 	}); err != nil {
-		log.Panic(err)
+		return fmt.Errorf("log read error: %s", err)
 	}
+	return nil
 }
 
 func init() {
