@@ -313,7 +313,7 @@ func (l *Log) Search(start, end time.Time, fn func(evt logutil.RawFuncLogNew) er
 			return err
 		}
 	}
-	return nil
+	return err
 }
 
 func (l *Log) Symbols() *logutil.Symbols {
