@@ -12,9 +12,9 @@ type SymbolsWriter struct {
 }
 
 type SymbolsReader struct {
-	File           File
-	SymbolResolver *logutil.SymbolsEditor
-	dec            Decoder
+	File          File
+	SymbolsEditor *logutil.SymbolsEditor
+	dec           Decoder
 }
 
 func (s *SymbolsWriter) Open() error {
@@ -43,7 +43,7 @@ func (s *SymbolsReader) Load() error {
 		func(val interface{}) error {
 			symbol := val.(*logutil.Symbols)
 			log.Printf("DEBUG: add symbols: %+v\n", symbol)
-			s.SymbolResolver.AddSymbols(symbol)
+			s.SymbolsEditor.AddSymbols(symbol)
 			return nil
 		},
 	)

@@ -327,8 +327,8 @@ func (l *Log) loadSymbols() (err error) {
 	}
 
 	r := &SymbolsReader{
-		File:           l.Root.SymbolFile(l.ID),
-		SymbolResolver: l.symbolsEditor,
+		File:          l.Root.SymbolFile(l.ID),
+		SymbolsEditor: l.symbolsEditor,
 	}
 	if err = r.Open(); err != nil {
 		return

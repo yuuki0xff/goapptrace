@@ -44,8 +44,8 @@ func doTestSymbolsReaderWriter(
 		sresolve.Init(symbols)
 
 		sr := SymbolsReader{
-			File:           file,
-			SymbolResolver: sresolve,
+			File:          file,
+			SymbolsEditor: sresolve,
 		}
 		must(t, sr.Open(), "SymbolsReader.Open():")
 		must(t, sr.Load(), "SymbolsReader.Load():")
