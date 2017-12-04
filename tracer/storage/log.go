@@ -16,7 +16,13 @@ import (
 
 type LogID [16]byte
 
-type Log struct{}
+type Log struct {
+	ID          LogID
+	Root        DirLayout
+	Metadata    *LogMetadata
+	MaxFileSize int64
+}
+
 type LogReader struct{}
 
 // メタデータとログとインデックス
