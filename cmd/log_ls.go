@@ -21,7 +21,7 @@
 package cmd
 
 import (
-	"os"
+	"io"
 
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
@@ -33,11 +33,11 @@ var logLsCmd = &cobra.Command{
 	Use:   "ls",
 	Short: "Show available log names",
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
-		return runLogLs(conf, args)
+		return runLogLs(conf, cmd.OutOrStdout(), args)
 	}),
 }
 
-func runLogLs(conf *config.Config, targets []string) error {
+func runLogLs(conf *config.Config, out io.Writer, targets []string) error {
 	stg := storage.Storage{
 		Root: storage.DirLayout{
 			Root: conf.LogsDir(),
@@ -51,7 +51,7 @@ func runLogLs(conf *config.Config, targets []string) error {
 	if err != nil {
 		return err
 	}
-	tbl := defaultTable(os.Stdout)
+	tbl := defaultTable(out)
 	tbl.SetHeader([]string{
 		"ID", "Time",
 	})
