@@ -158,5 +158,5 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// logCatCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	logCatCmd.Flags().StringP("format", "f", "json or text", "Specify output format.")
+	logCatCmd.Flags().StringP("format", "f", "text", `Specify output format. You can choose "json" or "text"`)
 }
