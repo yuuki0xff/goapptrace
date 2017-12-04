@@ -52,8 +52,7 @@ var logCatCmd = &cobra.Command{
 		if len(args) != 1 {
 			return fmt.Errorf("Should specify one args")
 		}
-		logID := storage.LogID{}
-		logID, err := logID.Unhex(args[0])
+		logID, err := storage.LogID{}.Unhex(args[0])
 		if err != nil {
 			return fmt.Errorf("Invalid LogID: %s", err.Error())
 		}
