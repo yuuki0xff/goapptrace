@@ -25,6 +25,10 @@ import (
 
 	"io"
 
+	"encoding/json"
+
+	"time"
+
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
@@ -55,28 +59,95 @@ var logCatCmd = &cobra.Command{
 			fmt.Fprintf(stderr, "Invalid LogID: %s", err.Error())
 		}
 
-		if err := runLogCat(strg, stdout, logID); err != nil {
+		format, err := cmd.Flags().GetString("format")
+		if err != nil {
+			fmt.Fprintf(stderr, "Flag error: %s", err.Error())
+		}
+		var writer LogWriter
+		switch format {
+		case "json":
+			writer = NewJsonLogWriter(stdout)
+		case "text":
+			fallthrough
+		case "":
+			writer = NewTextLogWriter(stdout)
+		default:
+			fmt.Fprintf(stderr, "Invalid format: %s", format)
+		}
+
+		if err := runLogCat(strg, writer, logID); err != nil {
 			fmt.Fprint(stderr, err)
 		}
 		return nil
 	}),
 }
 
-func runLogCat(strg *storage.Storage, out io.Writer, id storage.LogID) error {
+func runLogCat(strg *storage.Storage, writer LogWriter, id storage.LogID) error {
 	logobj, ok := strg.Log(id)
 	if !ok {
 		return fmt.Errorf("LogID(%s) not found", id.Hex())
 	}
 
-	var i int
 	if err := logobj.Walk(func(evt logutil.RawFuncLogNew) error {
-		fmt.Fprintf(out, "%d: %+v\n", i, evt)
-		i++
-		return nil
+		return writer.Write(evt)
 	}); err != nil {
 		return fmt.Errorf("log read error: %s", err)
 	}
 	return nil
+}
+
+type LogWriter interface {
+	WriteHeader() error
+	Write(evt logutil.RawFuncLogNew) error
+}
+
+type JsonLogWriter struct {
+	encoder *json.Encoder
+}
+
+func NewJsonLogWriter(output io.Writer) *JsonLogWriter {
+	encoder := json.NewEncoder(output)
+	encoder.SetEscapeHTML(false)
+
+	return &JsonLogWriter{
+		encoder: encoder,
+	}
+}
+func (w *JsonLogWriter) WriteHeader() error {
+	return nil
+}
+func (w *JsonLogWriter) Write(evt logutil.RawFuncLogNew) error {
+	return w.encoder.Encode(evt)
+}
+
+type TextLogWriter struct {
+	output io.Writer
+}
+
+func NewTextLogWriter(output io.Writer) *TextLogWriter {
+	return &TextLogWriter{
+		output: output,
+	}
+}
+func (w *TextLogWriter) WriteHeader() error {
+	_, err := fmt.Fprintln(w.output, "[Tag] Timestamp ExecTime GID TxID Module.Func:Line")
+	return err
+}
+func (w *TextLogWriter) Write(evt logutil.RawFuncLogNew) error {
+	_, err := fmt.Fprintf(
+		w.output,
+		"[%s] %s %d %d %d %s.%s:%d\n",
+		evt.Tag,
+		time.Unix(evt.Timestamp, 0).String(),
+		0,
+		evt.GID,
+		evt.TxID,
+		"", // module
+		"", // func
+		0,  //line
+
+	)
+	return err
 }
 
 func init() {
@@ -91,4 +162,5 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// logCatCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	logCatCmd.Flags().StringP("format", "f", "json or text", "Specify output format.")
 }
