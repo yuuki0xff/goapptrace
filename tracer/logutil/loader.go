@@ -21,7 +21,7 @@ func NewTxID() TxID {
 
 func (rll *RawLogLoader) Init() {
 	rll.Symbols.Init()
-	rll.SymbolResolver.Init(&rll.Symbols)
+	rll.SymbolsEditor.Init(&rll.Symbols)
 }
 
 func (rll *RawLogLoader) LoadFromJsonLines(data io.Reader) error {
@@ -63,12 +63,12 @@ func (rll *RawLogLoader) LoadFromJsonLines(data io.Reader) error {
 				TxID:      oldraw.TxID,
 			}
 			for _, oldframe := range oldraw.Frames {
-				funcID, _ := rll.SymbolResolver.AddFunc(&FuncSymbol{
+				funcID, _ := rll.SymbolsEditor.AddFunc(&FuncSymbol{
 					Name:  oldframe.Function,
 					File:  oldframe.File,
 					Entry: oldframe.Entry,
 				})
-				funcStatusID, _ := rll.SymbolResolver.AddFuncStatus(&FuncStatus{
+				funcStatusID, _ := rll.SymbolsEditor.AddFuncStatus(&FuncStatus{
 					Func: funcID,
 					Line: uint64(oldframe.Line),
 					PC:   oldframe.PC,

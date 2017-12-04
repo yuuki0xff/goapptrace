@@ -101,7 +101,7 @@ func getRouter(args *ServerArgs) *mux.Router {
 		}
 		rawlog.Init()
 		log.Printf("DEBUG: logobj symbols: %+v\n", logobj.Symbols())
-		rawlog.SymbolResolver.AddSymbols(logobj.Symbols())
+		rawlog.SymbolsEditor.AddSymbols(logobj.Symbols())
 		log.Printf("DEBUG: rawlog symbols: %+v\n", &rawlog.Symbols)
 
 		// TODO: error handling

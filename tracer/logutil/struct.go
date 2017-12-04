@@ -30,11 +30,11 @@ type RawLogLoader struct {
 
 	////////////////
 	// ↓ 初期化不要 ↓
-	Symbols        Symbols
-	SymbolResolver SymbolsEditor
-	Records        RecordList
-	GoroutineMap   *GoroutineMap
-	TimeRangeMap   *TimeRangeMap
+	Symbols       Symbols
+	SymbolsEditor SymbolsEditor
+	Records       RecordList
+	GoroutineMap  *GoroutineMap
+	TimeRangeMap  *TimeRangeMap
 }
 
 type Goroutine struct {

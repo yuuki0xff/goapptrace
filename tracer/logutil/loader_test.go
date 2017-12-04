@@ -19,7 +19,7 @@ func testLoadFromIteratorHelper(t *testing.T, loader *RawLogLoader, symbols *Sym
 		}
 	}
 	loader.Init()
-	loader.SymbolResolver.AddSymbols(symbols)
+	loader.SymbolsEditor.AddSymbols(symbols)
 	var i int
 	must(loader.LoadFromIterator(func() (RawFuncLogNew, bool) {
 		if i < len(testData) {
