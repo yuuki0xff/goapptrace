@@ -21,6 +21,9 @@ type Log struct {
 	Root        DirLayout
 	Metadata    *LogMetadata
 	MaxFileSize int64
+
+	lock *sync.RWMutex
+	w    *LogWriter
 }
 
 type LogReader struct{}
@@ -75,6 +78,26 @@ func (LogID) Unhex(str string) (id LogID, err error) {
 	}
 	copy(id[:], buf)
 	return
+}
+
+func (l *Log) Reader() (*LogReader, error) {
+	// TODO
+	return nil, nil
+}
+func (l *Log) Writer() (*LogWriter, error) {
+	l.lock.Lock()
+	defer l.lock.Unlock()
+	if l.w == nil {
+		// create new writer
+		w := &LogWriter{
+		// TODO
+		}
+		if err := w.Init(); err != nil {
+			return nil, fmt.Errorf("failed to initialize LogWriter(%s): %s", l.ID.Hex(), err.Error())
+		}
+		l.w = w
+	}
+	return l.w, nil
 }
 
 // 既存のログファイルからオブジェクトを生成したときに呼び出すこと。
