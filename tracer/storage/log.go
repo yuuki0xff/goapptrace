@@ -22,7 +22,7 @@ type Log struct {
 	Metadata    *LogMetadata
 	MaxFileSize int64
 
-	lock *sync.RWMutex
+	lock sync.RWMutex
 	w    *LogWriter
 }
 
