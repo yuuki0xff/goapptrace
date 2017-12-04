@@ -77,14 +77,8 @@ func (s *Storage) log(id LogID, new bool) (*LogWriter, error) {
 		ID:   id,
 		Root: s.Root,
 	}
-	if new {
-		if err := log.New(); err != nil {
-			return nil, errors.New(fmt.Sprintf("failed create a log (%s): %s", id.Hex(), err.Error()))
-		}
-	} else {
-		if err := log.Init(); err != nil {
-			return nil, errors.New(fmt.Sprintf("failed load a log (%s): %s", id.Hex(), err.Error()))
-		}
+	if err := log.Init(); err != nil {
+		return nil, errors.New(fmt.Sprintf("failed to initialize of LogWriter(%s): %s", id.Hex(), err.Error()))
 	}
 	s.files[id] = log
 	return log, nil

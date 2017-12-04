@@ -55,7 +55,7 @@ func TestLog_withEmptyFile(t *testing.T) {
 		Root:     dirlayout,
 		Metadata: &LogMetadata{},
 	}
-	must(t, l.New(), "LogWriter.New():")
+	must(t, l.Init(), "LogWriter.Init():")
 	must(t, l.Close(), "LogWriter.Close():")
 
 	must(t, l.Load(), "LogWriter.Load() can not load empty file:")
@@ -79,7 +79,7 @@ func TestLog_AppendFuncLog(t *testing.T) {
 		Metadata:    &LogMetadata{},
 		MaxFileSize: 1,
 	}
-	must(t, l.New(), "LogWriter.New():")
+	must(t, l.Init(), "LogWriter.Init():")
 	must(t, l.AppendFuncLog(&logutil.RawFuncLogNew{}), "LogWriter.AppendFuncLog():")
 	must(t, l.AppendFuncLog(&logutil.RawFuncLogNew{}), "LogWriter.AppendFuncLog():")
 	must(t, l.Close(), "LogWriter.Close():")

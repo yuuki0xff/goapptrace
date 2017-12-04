@@ -52,6 +52,14 @@ type LogMetadata struct {
 	Timestamp time.Time
 }
 
+type LogStatus uint8
+
+const (
+	LogBroken LogStatus = iota
+	LogNotInitialized
+	LogInitialized
+)
+
 var (
 	StopIteration = errors.New("stop iteration error")
 )
@@ -94,6 +102,20 @@ func (l *Log) Writer() (*LogWriter, error) {
 	return l.w, nil
 }
 
+func (l *Log) Status() LogStatus {
+	m := l.Root.MetaFile(l.ID).Exists()
+	r := l.Root.RawFuncLogFile(l.ID, 0).Exists()
+	i := l.Root.IndexFile(l.ID).Exists()
+
+	if m && r && i {
+		return LogInitialized
+	} else if !m && !r && !i {
+		return LogNotInitialized
+	} else {
+		return LogBroken
+	}
+}
+
 func NewLogWriter(l *Log) (*LogWriter, error) {
 	w := &LogWriter{
 		l: l,
@@ -104,9 +126,19 @@ func NewLogWriter(l *Log) (*LogWriter, error) {
 	return w, nil
 }
 
-// 既存のログファイルからオブジェクトを生成したときに呼び出すこと。
+// LogWriterを初期化する。使用する前に必ず呼び出すこと。
 func (lw *LogWriter) Init() error {
-	return lw.Load()
+	status := lw.l.Status()
+	switch status {
+	case LogBroken:
+		return fmt.Errorf("Log(%s) is broken", lw.l.ID)
+	case LogInitialized:
+		return lw.Load()
+	case LogNotInitialized:
+		return lw.New()
+	default:
+		log.Panicf("bug: unexpected status: status=%+v", status)
+	}
 }
 
 // Logを新規作成する場合に呼び出すこと
@@ -141,6 +173,7 @@ func (lw *LogWriter) New() (err error) {
 	return lw.load(true)
 }
 
+// 既存のログファイルからオブジェクトを生成したときに呼び出すこと。
 func (lw *LogWriter) Load() error {
 	lw.lock.Lock()
 	defer lw.lock.Unlock()
