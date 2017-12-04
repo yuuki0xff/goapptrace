@@ -36,8 +36,8 @@ type Log struct {
 	// number of records in current funcLog
 	records int64
 
-	symbolsCache   *logutil.Symbols
-	symbolResolver *logutil.SymbolsEditor
+	symbolsCache  *logutil.Symbols
+	symbolsEditor *logutil.SymbolsEditor
 }
 
 type LogMetadata struct {
@@ -158,8 +158,8 @@ func (l *Log) load(new_file bool) (err error) {
 	l.symbolsCache = &logutil.Symbols{}
 	l.symbolsCache.Init()
 
-	l.symbolResolver = &logutil.SymbolsEditor{}
-	l.symbolResolver.Init(l.symbolsCache)
+	l.symbolsEditor = &logutil.SymbolsEditor{}
+	l.symbolsEditor.Init(l.symbolsCache)
 
 	if !new_file {
 		checkError("failed load index file", l.index.Load())
@@ -250,7 +250,7 @@ func (l *Log) AppendSymbols(symbols *logutil.Symbols) error {
 	if err := l.symbols.Append(symbols); err != nil {
 		return err
 	}
-	l.symbolResolver.AddSymbols(symbols)
+	l.symbolsEditor.AddSymbols(symbols)
 	return nil
 }
 
@@ -328,7 +328,7 @@ func (l *Log) loadSymbols() (err error) {
 
 	r := &SymbolsReader{
 		File:           l.Root.SymbolFile(l.ID),
-		SymbolResolver: l.symbolResolver,
+		SymbolResolver: l.symbolsEditor,
 	}
 	if err = r.Open(); err != nil {
 		return
