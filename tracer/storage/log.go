@@ -121,10 +121,11 @@ func (l *Log) Status() LogStatus {
 	m := l.Root.MetaFile(l.ID).Exists()
 	r := l.Root.RawFuncLogFile(l.ID, 0).Exists()
 	i := l.Root.IndexFile(l.ID).Exists()
+	s := l.Root.SymbolFile(l.ID).Exists()
 
-	if m && r && i {
+	if m && r && i && s {
 		return LogInitialized
-	} else if !m && !r && !i {
+	} else if !m && !r && !i && !s {
 		return LogNotInitialized
 	} else {
 		return LogBroken
