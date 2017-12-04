@@ -50,16 +50,16 @@ func TestLog_withEmptyFile(t *testing.T) {
 	dirlayout := DirLayout{Root: tempdir}
 	must(t, dirlayout.Init(), "DirLayout.Init():")
 
-	l := Log{
+	l := LogWriter{
 		ID:       LogID{},
 		Root:     dirlayout,
 		Metadata: &LogMetadata{},
 	}
-	must(t, l.New(), "Log.New():")
-	must(t, l.Close(), "Log.Close():")
+	must(t, l.New(), "LogWriter.New():")
+	must(t, l.Close(), "LogWriter.Close():")
 
-	must(t, l.Load(), "Log.Load() can not load empty file:")
-	must(t, l.Close(), "Log.Close():")
+	must(t, l.Load(), "LogWriter.Load() can not load empty file:")
+	must(t, l.Close(), "LogWriter.Close():")
 }
 
 func TestLog_AppendFuncLog(t *testing.T) {
@@ -73,16 +73,16 @@ func TestLog_AppendFuncLog(t *testing.T) {
 	dirlayout := DirLayout{Root: tempdir}
 	must(t, dirlayout.Init(), "DirLayout.Init():")
 
-	l := Log{
+	l := LogWriter{
 		ID:          LogID{},
 		Root:        dirlayout,
 		Metadata:    &LogMetadata{},
 		MaxFileSize: 1,
 	}
-	must(t, l.New(), "Log.New():")
-	must(t, l.AppendFuncLog(&logutil.RawFuncLogNew{}), "Log.AppendFuncLog():")
-	must(t, l.AppendFuncLog(&logutil.RawFuncLogNew{}), "Log.AppendFuncLog():")
-	must(t, l.Close(), "Log.Close():")
+	must(t, l.New(), "LogWriter.New():")
+	must(t, l.AppendFuncLog(&logutil.RawFuncLogNew{}), "LogWriter.AppendFuncLog():")
+	must(t, l.AppendFuncLog(&logutil.RawFuncLogNew{}), "LogWriter.AppendFuncLog():")
+	must(t, l.Close(), "LogWriter.Close():")
 
 	// data dir should only contains those files:
 	//   xxxx.0.rawfunc.log.gz

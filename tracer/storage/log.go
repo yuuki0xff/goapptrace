@@ -18,7 +18,7 @@ type LogID [16]byte
 
 // メタデータとログとインデックス
 //
-type Log struct {
+type LogWriter struct {
 	ID          LogID
 	Root        DirLayout
 	Metadata    *LogMetadata
@@ -69,13 +69,13 @@ func (LogID) Unhex(str string) (id LogID, err error) {
 }
 
 // 既存のログファイルからオブジェクトを生成したときに呼び出すこと。
-func (l *Log) Init() error {
+func (l *LogWriter) Init() error {
 	return l.Load()
 }
 
 // Logを新規作成する場合に呼び出すこと
 // Init()は呼び出してはいけない。
-func (l *Log) New() (err error) {
+func (l *LogWriter) New() (err error) {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
@@ -105,7 +105,7 @@ func (l *Log) New() (err error) {
 	return l.load(true)
 }
 
-func (l *Log) Load() error {
+func (l *LogWriter) Load() error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
@@ -136,7 +136,7 @@ func (l *Log) Load() error {
 
 // help for New()/Load() function.
 // callee MUST call "l.lock.Lock()" before call l.load().
-func (l *Log) load(new_file bool) (err error) {
+func (l *LogWriter) load(new_file bool) (err error) {
 	checkError := func(errprefix string, e error) {
 		if e != nil && err == nil {
 			err = errors.New(fmt.Sprintf("%s: %s", errprefix, e.Error()))
@@ -178,7 +178,7 @@ func (l *Log) load(new_file bool) (err error) {
 	return
 }
 
-func (l *Log) Remove() error {
+func (l *LogWriter) Remove() error {
 	if err := l.Close(); err != nil {
 		return err
 	}
@@ -198,7 +198,7 @@ func (l *Log) Remove() error {
 	return nil
 }
 
-func (l *Log) Close() error {
+func (l *LogWriter) Close() error {
 	var err error
 	checkError := func(logprefix string, e error) {
 		if e != nil && e == nil {
@@ -229,7 +229,7 @@ func (l *Log) Close() error {
 	return err
 }
 
-func (l *Log) AppendFuncLog(raw *logutil.RawFuncLogNew) error {
+func (l *LogWriter) AppendFuncLog(raw *logutil.RawFuncLogNew) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
@@ -243,7 +243,7 @@ func (l *Log) AppendFuncLog(raw *logutil.RawFuncLogNew) error {
 	return nil
 }
 
-func (l *Log) AppendSymbols(symbols *logutil.Symbols) error {
+func (l *LogWriter) AppendSymbols(symbols *logutil.Symbols) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
@@ -254,7 +254,7 @@ func (l *Log) AppendSymbols(symbols *logutil.Symbols) error {
 	return nil
 }
 
-func (l *Log) Walk(fn func(evt logutil.RawFuncLogNew) error) error {
+func (l *LogWriter) Walk(fn func(evt logutil.RawFuncLogNew) error) error {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
 
@@ -273,7 +273,7 @@ func (l *Log) Walk(fn func(evt logutil.RawFuncLogNew) error) error {
 	})
 }
 
-func (l *Log) Search(start, end time.Time, fn func(evt logutil.RawFuncLogNew) error) error {
+func (l *LogWriter) Search(start, end time.Time, fn func(evt logutil.RawFuncLogNew) error) error {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
 
@@ -316,12 +316,12 @@ func (l *Log) Search(start, end time.Time, fn func(evt logutil.RawFuncLogNew) er
 	return err
 }
 
-func (l *Log) Symbols() *logutil.Symbols {
+func (l *LogWriter) Symbols() *logutil.Symbols {
 	return l.symbolsCache
 }
 
 // callee MUST call "l.lock.Lock()" before call l.load().
-func (l *Log) loadSymbols() (err error) {
+func (l *LogWriter) loadSymbols() (err error) {
 	if l.symbolsCache != nil {
 		return nil
 	}
@@ -343,7 +343,7 @@ func (l *Log) loadSymbols() (err error) {
 }
 
 // callee MUST call "l.lock.Lock()" before call l.autoRotate().
-func (l *Log) autoRotate() error {
+func (l *LogWriter) autoRotate() error {
 	size, err := l.lastFuncLog.File.Size()
 	if err != nil {
 		return err
@@ -355,7 +355,7 @@ func (l *Log) autoRotate() error {
 }
 
 // callee MUST call "l.lock.Lock()" before call l.autoRotate().
-func (l *Log) rotate() error {
+func (l *LogWriter) rotate() error {
 	if err := l.index.Append(IndexRecord{
 		Timestamp: time.Unix(l.lastTimestamp, 0),
 		Records:   l.records,

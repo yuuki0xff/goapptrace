@@ -47,7 +47,7 @@ func setupStorageDir(t *testing.T) (dir DirLayout, logIDSet set.Set, cleanup fun
 	return
 }
 
-func logIDSetFromLogs(logs []*Log) (logIDSet set.Set) {
+func logIDSetFromLogs(logs []*LogWriter) (logIDSet set.Set) {
 	logIDSet = set.NewSet()
 	for _, logobj := range logs {
 		logIDSet.Add(logobj.ID)
@@ -81,10 +81,10 @@ func TestStorage(t *testing.T) {
 
 	logobj2, ok := strg.Log(logobj.ID)
 	if !ok {
-		t.Fatalf("Storage.Log(): not found %s", logobj.ID.Hex())
+		t.Fatalf("Storage.LogWriter(): not found %s", logobj.ID.Hex())
 	}
 	if logobj != logobj2 {
-		t.Fatalf("Storage.Log(): returns different object: obj1=%+v obj2=%+v", logobj, logobj2)
+		t.Fatalf("Storage.LogWriter(): returns different object: obj1=%+v obj2=%+v", logobj, logobj2)
 	}
 }
 

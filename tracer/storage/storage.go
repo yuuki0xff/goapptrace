@@ -12,11 +12,11 @@ type Storage struct {
 	Root DirLayout
 
 	lock  sync.RWMutex
-	files map[LogID]*Log
+	files map[LogID]*LogWriter
 }
 
 func (s *Storage) Init() error {
-	s.files = make(map[LogID]*Log)
+	s.files = make(map[LogID]*LogWriter)
 
 	if err := s.Root.Init(); err != nil {
 		return err
@@ -50,11 +50,11 @@ func (s *Storage) Load() error {
 }
 
 // Return all log instances
-func (s *Storage) Logs() ([]*Log, error) {
+func (s *Storage) Logs() ([]*LogWriter, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
-	logs := make([]*Log, 0, len(s.files))
+	logs := make([]*LogWriter, 0, len(s.files))
 	for _, log := range s.files {
 		logs = append(logs, log)
 	}
@@ -62,7 +62,7 @@ func (s *Storage) Logs() ([]*Log, error) {
 }
 
 // Return an exists log instance
-func (s *Storage) Log(id LogID) (log *Log, ok bool) {
+func (s *Storage) Log(id LogID) (log *LogWriter, ok bool) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -72,8 +72,8 @@ func (s *Storage) Log(id LogID) (log *Log, ok bool) {
 
 // 新しいLogインスタンスを作成する。
 // この関数を呼び出す前に、排他ロックをかける必要がある。
-func (s *Storage) log(id LogID, new bool) (*Log, error) {
-	log := &Log{
+func (s *Storage) log(id LogID, new bool) (*LogWriter, error) {
+	log := &LogWriter{
 		ID:   id,
 		Root: s.Root,
 	}
@@ -90,7 +90,7 @@ func (s *Storage) log(id LogID, new bool) (*Log, error) {
 	return log, nil
 }
 
-func (s *Storage) New() (*Log, error) {
+func (s *Storage) New() (*LogWriter, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	id := LogID{}
