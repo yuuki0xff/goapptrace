@@ -31,15 +31,15 @@ var (
 	OutputFile   *os.File
 	Client       *protocol.Client
 
-	lock           = sync.Mutex{}
-	symbols        = logutil.Symbols{}
-	symbolResolver = logutil.SymbolsEditor{}
-	patchGuard     *monkey.PatchGuard
+	lock          = sync.Mutex{}
+	symbols       = logutil.Symbols{}
+	symbolsEditor = logutil.SymbolsEditor{}
+	patchGuard    *monkey.PatchGuard
 )
 
 func init() {
 	symbols.Init()
-	symbolResolver.Init(&symbols)
+	symbolsEditor.Init(&symbols)
 
 	// os.Exitにフックを仕掛ける
 	// TODO: don't work!
@@ -73,12 +73,12 @@ func sendLog(tag string, id logutil.TxID) {
 			break
 		}
 
-		funcID, added1 := symbolResolver.AddFunc(&logutil.FuncSymbol{
+		funcID, added1 := symbolsEditor.AddFunc(&logutil.FuncSymbol{
 			Name:  frame.Function,
 			File:  frame.File,
 			Entry: frame.Entry,
 		})
-		funcStatusID, added2 := symbolResolver.AddFuncStatus(&logutil.FuncStatus{
+		funcStatusID, added2 := symbolsEditor.AddFuncStatus(&logutil.FuncStatus{
 			Func: funcID,
 			Line: uint64(frame.Line),
 			PC:   frame.PC,

@@ -12,9 +12,9 @@ func newSymbols() (*logutil.Symbols, *logutil.SymbolsEditor) {
 	symbols := &logutil.Symbols{}
 	symbols.Init()
 
-	sresolve := &logutil.SymbolsEditor{}
-	sresolve.Init(symbols)
-	return symbols, sresolve
+	editor := &logutil.SymbolsEditor{}
+	editor.Init(symbols)
+	return symbols, editor
 }
 
 func doTestSymbolsReaderWriter(
@@ -40,12 +40,12 @@ func doTestSymbolsReaderWriter(
 	{
 		symbols := &logutil.Symbols{}
 		symbols.Init()
-		sresolve := &logutil.SymbolsEditor{}
-		sresolve.Init(symbols)
+		editor := &logutil.SymbolsEditor{}
+		editor.Init(symbols)
 
 		sr := SymbolsReader{
 			File:          file,
-			SymbolsEditor: sresolve,
+			SymbolsEditor: editor,
 		}
 		must(t, sr.Open(), "SymbolsReader.Open():")
 		must(t, sr.Load(), "SymbolsReader.Load():")
