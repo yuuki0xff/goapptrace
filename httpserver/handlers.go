@@ -94,14 +94,20 @@ func getRouter(args *ServerArgs) *mux.Router {
 			http.Error(w, "not found Log", http.StatusNotFound)
 			return
 		}
-		defer logobj.Close() // nolint: errcheck
+		// TODO: Writer -> Reader
+		reader, err := logobj.Writer()
+		if err != nil {
+			http.Error(w, "failed to initialization", http.StatusInternalServerError)
+			return
+		}
+		defer reader.Close() // nolint: errcheck
 
 		rawlog := &logutil.RawLogLoader{
 			Name: strid,
 		}
 		rawlog.Init()
-		log.Printf("DEBUG: logobj symbols: %+v\n", logobj.Symbols())
-		rawlog.SymbolsEditor.AddSymbols(logobj.Symbols())
+		log.Printf("DEBUG: logobj symbols: %+v\n", reader.Symbols())
+		rawlog.SymbolsEditor.AddSymbols(reader.Symbols())
 		log.Printf("DEBUG: rawlog symbols: %+v\n", &rawlog.Symbols)
 
 		// TODO: error handling
@@ -120,7 +126,7 @@ func getRouter(args *ServerArgs) *mux.Router {
 		// TODO:
 		logChan := make(chan logutil.RawFuncLogNew, 10000)
 		go func() {
-			if err := logobj.Search(time.Unix(start, 0), time.Unix(end, 0), func(evt logutil.RawFuncLogNew) error {
+			if err := reader.Search(time.Unix(start, 0), time.Unix(end, 0), func(evt logutil.RawFuncLogNew) error {
 				logChan <- evt
 				return nil
 			}); err != nil {

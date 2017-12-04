@@ -83,8 +83,14 @@ func runLogCat(strg *storage.Storage, writer LogWriter, id storage.LogID) error 
 	if !ok {
 		return fmt.Errorf("LogID(%s) not found", id.Hex())
 	}
+	// TODO: Writer -> Reader
+	reader, err := logobj.Writer()
+	if err != nil {
+		return fmt.Errorf("log initialization error: LogWriter(%s): %s", err.Error())
+	}
+	defer reader.Close() // nolinter: errchk
 
-	if err := logobj.Walk(func(evt logutil.RawFuncLogNew) error {
+	if err := reader.Walk(func(evt logutil.RawFuncLogNew) error {
 		return writer.Write(evt)
 	}); err != nil {
 		return fmt.Errorf("log read error: %s", err)

@@ -85,7 +85,12 @@ func runProcRun(conf *config.Config, targets []string) error {
 		if ok == false {
 			log.Panicf("ERROR: Server: ConnID(%s) not found", id)
 		}
-		return value.(*storage.LogWriter)
+		l := value.(*storage.Log)
+		w, err := l.Writer()
+		if err != nil {
+			log.Panicf("cast error: %s", err.Error())
+		}
+		return w
 	}
 
 	if err := strg.Init(); err != nil {
