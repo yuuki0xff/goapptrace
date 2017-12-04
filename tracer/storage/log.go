@@ -84,6 +84,21 @@ func (LogID) Unhex(str string) (id LogID, err error) {
 	return
 }
 
+func (l *Log) Init() error {
+	l.Metadata = &LogMetadata{}
+	metaFile := l.Root.MetaFile(l.ID)
+	if metaFile.Exists() {
+		// load metadata
+		r, err := metaFile.OpenReadOnly()
+		if err != nil {
+			return fmt.Errorf("failed to open metadata file: %s", err.Error())
+		}
+		if err := json.NewDecoder(r).Decode(l.Metadata); err != nil {
+			return fmt.Errorf("failed to read metadata file: %s", err.Error())
+		}
+	}
+	return nil
+}
 func (l *Log) Reader() (*LogReader, error) {
 	// TODO
 	return nil, nil
@@ -179,17 +194,6 @@ func (lw *LogWriter) Load() error {
 	lw.lock.Lock()
 	defer lw.lock.Unlock()
 
-	// load metadata
-	meta := &LogMetadata{}
-	r, err := lw.l.Root.MetaFile(lw.l.ID).OpenReadOnly()
-	if err != nil {
-		return err
-	}
-	if err := json.NewDecoder(r).Decode(meta); err != nil {
-		return err
-	}
-	lw.l.Metadata = meta
-
 	// find last id
 	var last int64 = -1
 	for i := int64(0); lw.l.Root.RawFuncLogFile(lw.l.ID, i).Exists(); i++ {
@@ -211,10 +215,6 @@ func (lw *LogWriter) load(new_file bool) (err error) {
 		if e != nil && err == nil {
 			err = errors.New(fmt.Sprintf("%s: %s", errprefix, e.Error()))
 		}
-	}
-
-	if lw.l.Metadata == nil {
-		lw.l.Metadata = &LogMetadata{}
 	}
 
 	checkError("failed open lasat func log file", lw.lastFuncLog.Open())
