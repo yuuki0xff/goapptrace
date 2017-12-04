@@ -41,13 +41,15 @@ func setupStorageDir(t *testing.T) (dir DirLayout, logIDSet set.Set, cleanup fun
 		if logobj == nil {
 			t.Fatalf("Storage.New() should not return nil")
 		}
-		must(t, logobj.Close(), "lobobj.Close():")
+		writer, err := logobj.Writer()
+		must(t, err, "lobobj.Writer():")
+		must(t, writer.Close(), "writer.Close():")
 		logIDSet.Add(logobj.ID)
 	}
 	return
 }
 
-func logIDSetFromLogs(logs []*LogWriter) (logIDSet set.Set) {
+func logIDSetFromLogs(logs []*Log) (logIDSet set.Set) {
 	logIDSet = set.NewSet()
 	for _, logobj := range logs {
 		logIDSet.Add(logobj.ID)
