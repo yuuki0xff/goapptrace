@@ -16,6 +16,9 @@ import (
 
 type LogID [16]byte
 
+type Log struct{}
+type LogReader struct{}
+
 // メタデータとログとインデックス
 //
 type LogWriter struct {
