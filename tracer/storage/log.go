@@ -85,15 +85,23 @@ func (l *Log) Writer() (*LogWriter, error) {
 	defer l.lock.Unlock()
 	if l.w == nil {
 		// create new writer
-		w := &LogWriter{
-		// TODO
-		}
-		if err := w.Init(); err != nil {
+		w, err := NewLogWriter(l)
+		if err != nil {
 			return nil, fmt.Errorf("failed to initialize LogWriter(%s): %s", l.ID.Hex(), err.Error())
 		}
 		l.w = w
 	}
 	return l.w, nil
+}
+
+func NewLogWriter(l *Log) (*LogWriter, error) {
+	w := &LogWriter{
+		l: l,
+	}
+	if err := w.Init(); err != nil {
+		return nil, err
+	}
+	return w, nil
 }
 
 // 既存のログファイルからオブジェクトを生成したときに呼び出すこと。
