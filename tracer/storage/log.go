@@ -85,16 +85,18 @@ func (LogID) Unhex(str string) (id LogID, err error) {
 }
 
 func (l *Log) Init() error {
-	l.Metadata = &LogMetadata{}
-	metaFile := l.Root.MetaFile(l.ID)
-	if metaFile.Exists() {
-		// load metadata
-		r, err := metaFile.OpenReadOnly()
-		if err != nil {
-			return fmt.Errorf("failed to open metadata file: %s", err.Error())
-		}
-		if err := json.NewDecoder(r).Decode(l.Metadata); err != nil {
-			return fmt.Errorf("failed to read metadata file: %s", err.Error())
+	if l.Metadata == nil {
+		l.Metadata = &LogMetadata{}
+		metaFile := l.Root.MetaFile(l.ID)
+		if metaFile.Exists() {
+			// load metadata
+			r, err := metaFile.OpenReadOnly()
+			if err != nil {
+				return fmt.Errorf("failed to open metadata file: %s", err.Error())
+			}
+			if err := json.NewDecoder(r).Decode(l.Metadata); err != nil {
+				return fmt.Errorf("failed to read metadata file: %s", err.Error())
+			}
 		}
 	}
 	return nil
