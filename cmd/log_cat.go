@@ -21,9 +21,9 @@
 package cmd
 
 import (
-	"log"
-
 	"fmt"
+
+	"io"
 
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
@@ -36,6 +36,7 @@ var logCatCmd = &cobra.Command{
 	Use:   "cat",
 	Short: "Show logs on console",
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
+		stdout := cmd.OutOrStdout()
 		stderr := cmd.OutOrStderr()
 
 		strg := &storage.Storage{
@@ -54,14 +55,14 @@ var logCatCmd = &cobra.Command{
 			fmt.Fprintf(stderr, "Invalid LogID: %s", err.Error())
 		}
 
-		if err := runLogCat(strg, logID); err != nil {
+		if err := runLogCat(strg, stdout, logID); err != nil {
 			fmt.Fprint(stderr, err)
 		}
 		return nil
 	}),
 }
 
-func runLogCat(strg *storage.Storage, id storage.LogID) error {
+func runLogCat(strg *storage.Storage, out io.Writer, id storage.LogID) error {
 	logobj, ok := strg.Log(id)
 	if !ok {
 		return fmt.Errorf("LogID(%s) not found", id.Hex())
@@ -69,7 +70,7 @@ func runLogCat(strg *storage.Storage, id storage.LogID) error {
 
 	var i int
 	if err := logobj.Walk(func(evt logutil.RawFuncLogNew) error {
-		log.Printf("%d: %+v", i, evt)
+		fmt.Fprintf(out, "%d: %+v\n", i, evt)
 		i++
 		return nil
 	}); err != nil {
