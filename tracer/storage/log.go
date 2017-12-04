@@ -136,14 +136,14 @@ func NewLogWriter(l *Log) (*LogWriter, error) {
 	w := &LogWriter{
 		l: l,
 	}
-	if err := w.Init(); err != nil {
+	if err := w.init(); err != nil {
 		return nil, err
 	}
 	return w, nil
 }
 
 // LogWriterを初期化する。使用する前に必ず呼び出すこと。
-func (lw *LogWriter) Init() error {
+func (lw *LogWriter) init() error {
 	status := lw.l.Status()
 	switch status {
 	case LogBroken:
@@ -159,7 +159,7 @@ func (lw *LogWriter) Init() error {
 }
 
 // Logを新規作成する場合に呼び出すこと
-// Init()は呼び出してはいけない。
+// init()は呼び出してはいけない。
 func (lw *LogWriter) New() (err error) {
 	lw.lock.Lock()
 	defer lw.lock.Unlock()
