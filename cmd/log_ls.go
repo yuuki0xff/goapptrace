@@ -52,10 +52,10 @@ func runLogLs(conf *config.Config, targets []string) error {
 		return err
 	}
 	tbl := defaultTable(os.Stdout)
+	tbl.SetHeader([]string{
+		"ID", "Time",
+	})
 	for i := range logs {
-		tbl.SetHeader([]string{
-			"ID", "Time",
-		})
 		tbl.Append([]string{
 			logs[i].ID.Hex(),
 			logs[i].Metadata.Timestamp.String(),
