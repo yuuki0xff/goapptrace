@@ -75,10 +75,7 @@ var logCatCmd = &cobra.Command{
 			return fmt.Errorf("Invalid format: %s", format)
 		}
 
-		if err := runLogCat(strg, writer, logID); err != nil {
-			fmt.Fprint(stderr, err)
-		}
-		return nil
+		return runLogCat(strg, writer, logID)
 	}),
 }
 
