@@ -66,7 +66,7 @@ type RawFuncLogNew struct {
 	Time      Time
 	Tag       string         `json:"tag"`
 	Timestamp int64          `json:"timestamp"`
-	Frames    []FuncStatusID `json:"frames"`
+	Frames    []FuncStatusID `json:"frames"` // Frames[0] is current frame, Frames[1] is the caller of Frame[0].
 	GID       GID            `json:"gid"`
 	TxID      TxID           `json:"txid"`
 }
