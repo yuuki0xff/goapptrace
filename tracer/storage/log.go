@@ -243,7 +243,7 @@ func (lw *LogWriter) Close() error {
 	var err error
 	checkError := func(logprefix string, e error) {
 		if e != nil && e == nil {
-			err = errors.New(fmt.Sprintf("%s: %s", logprefix, e.Error()))
+			err = fmt.Errorf("%s: %s", logprefix, e.Error())
 		}
 	}
 
