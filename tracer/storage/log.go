@@ -111,8 +111,9 @@ func (l *Log) Init() error {
 	return nil
 }
 func (l *Log) Reader() (*LogReader, error) {
-	// TODO
-	return nil, nil
+	l.lock.Lock()
+	defer l.lock.Unlock()
+	return NewLogReader(l)
 }
 func (l *Log) Writer() (*LogWriter, error) {
 	l.lock.Lock()
