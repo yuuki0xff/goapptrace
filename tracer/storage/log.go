@@ -146,56 +146,39 @@ func NewLogWriter(l *Log) (*LogWriter, error) {
 
 // LogWriterを初期化する。使用する前に必ず呼び出すこと。
 func (lw *LogWriter) init() error {
+	lw.lock.Lock()
+	defer lw.lock.Unlock()
+	var needLoadFromFile bool
+
 	status := lw.l.Status()
 	switch status {
 	case LogBroken:
 		return fmt.Errorf("Log(%s) is broken", lw.l.ID)
 	case LogInitialized:
-		return lw.Load()
+		needLoadFromFile = true
 	case LogNotInitialized:
-		return lw.New()
+		needLoadFromFile = false
 	default:
 		log.Panicf("bug: unexpected status: status=%+v", status)
 		panic("unreachable")
 	}
-}
 
-// Logを新規作成する場合に呼び出すこと
-// init()は呼び出してはいけない。
-func (lw *LogWriter) New() (err error) {
-	lw.lock.Lock()
-	defer lw.lock.Unlock()
-
-	lw.lastN = 0
-	lw.lastFuncLog = &RawFuncLogWriter{File: lw.l.Root.RawFuncLogFile(lw.l.ID, lw.lastN)}
-	lw.index = &Index{File: lw.l.Root.IndexFile(lw.l.ID)}
-	lw.symbols = &SymbolsWriter{File: lw.l.Root.SymbolFile(lw.l.ID)}
-
-	return lw.load(true)
-}
-
-// 既存のログファイルからオブジェクトを生成したときに呼び出すこと。
-func (lw *LogWriter) Load() error {
-	lw.lock.Lock()
-	defer lw.lock.Unlock()
-
-	// find last id
-	var last int64 = -1
-	for i := int64(0); lw.l.Root.RawFuncLogFile(lw.l.ID, i).Exists(); i++ {
-		last = i
+	if needLoadFromFile {
+		// find last id
+		var last int64 = -1
+		for i := int64(0); lw.l.Root.RawFuncLogFile(lw.l.ID, i).Exists(); i++ {
+			last = i
+		}
+		lw.lastN = last
+	} else {
+		lw.lastN = 0
 	}
 
-	lw.lastN = last
 	lw.lastFuncLog = &RawFuncLogWriter{File: lw.l.Root.RawFuncLogFile(lw.l.ID, lw.lastN)}
 	lw.index = &Index{File: lw.l.Root.IndexFile(lw.l.ID)}
 	lw.symbols = &SymbolsWriter{File: lw.l.Root.SymbolFile(lw.l.ID)}
 
-	return lw.load(false)
-}
-
-// help for New()/Load() function.
-// callee MUST call "l.lock.Lock()" before call l.load().
-func (lw *LogWriter) load(new_file bool) (err error) {
+	var err error
 	checkError := func(errprefix string, e error) {
 		if e != nil && err == nil {
 			err = errors.New(fmt.Sprintf("%s: %s", errprefix, e.Error()))
@@ -205,6 +188,9 @@ func (lw *LogWriter) load(new_file bool) (err error) {
 	checkError("failed open lasat func log file", lw.lastFuncLog.Open())
 	checkError("failed open index file", lw.index.Open())
 	checkError("failed open symbols file", lw.symbols.Open())
+	if err != nil {
+		return err
+	}
 
 	lw.lastTimestamp = 0
 	// initialize lw.records
@@ -216,7 +202,7 @@ func (lw *LogWriter) load(new_file bool) (err error) {
 	lw.symbolsEditor = &logutil.SymbolsEditor{}
 	lw.symbolsEditor.Init(lw.symbolsCache)
 
-	if !new_file {
+	if needLoadFromFile {
 		checkError("failed load index file", lw.index.Load())
 		checkError("failed load symbols file", lw.loadSymbols())
 
@@ -230,7 +216,7 @@ func (lw *LogWriter) load(new_file bool) (err error) {
 		)
 		checkError("failed close last func log file (read mode)", reader.Close())
 	}
-	return
+	return err
 }
 
 func (lw *LogWriter) Remove() error {

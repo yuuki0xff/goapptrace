@@ -59,9 +59,6 @@ func TestLog_withEmptyFile(t *testing.T) {
 	lw, err := l.Writer()
 	must(t, err, "Log.Writer():")
 	must(t, lw.Close(), "LogWriter.Close():")
-
-	must(t, lw.Load(), "LogWriter.Load() can not load empty file:")
-	must(t, lw.Close(), "LogWriter.Close():")
 }
 
 func TestLog_AppendFuncLog(t *testing.T) {
