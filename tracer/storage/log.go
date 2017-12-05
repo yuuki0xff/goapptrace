@@ -143,6 +143,29 @@ func (l *Log) Status() LogStatus {
 		return LogBroken
 	}
 }
+func (l *Log) Remove() error {
+	if err := l.Root.MetaFile(l.ID).Remove(); err != nil {
+		return fmt.Errorf("failed to remove the Meta(%s): %s", l.ID, err.Error())
+	}
+	if err := l.Root.IndexFile(l.ID).Remove(); err != nil {
+		return fmt.Errorf("failed to remove the Index(%s): %s", l.ID, err.Error())
+	}
+	var index int64
+	for {
+		file := l.Root.RawFuncLogFile(l.ID, index)
+		if !file.Exists() {
+			break
+		}
+		if err := file.Remove(); err != nil {
+			return fmt.Errorf("failed to remove the RawFuncLog(%s): %s", l.ID, err.Error())
+		}
+		index++
+	}
+	if err := l.Root.SymbolFile(l.ID).Remove(); err != nil {
+		return fmt.Errorf("failed to remove the Symbol(%s): %s", l.ID, err.Error())
+	}
+	return nil
+}
 
 func NewLogReader(l *Log) (*LogReader, error) {
 	r := &LogReader{
@@ -277,26 +300,6 @@ func (lw *LogWriter) init() error {
 		checkError("failed close last func log file (read mode)", reader.Close())
 	}
 	return err
-}
-
-func (lw *LogWriter) Remove() error {
-	if err := lw.Close(); err != nil {
-		return err
-	}
-
-	if err := lw.l.Root.MetaFile(lw.l.ID).Remove(); err != nil {
-		return fmt.Errorf("failed to remove a meta file: %s", err.Error())
-	}
-	if err := lw.index.File.Remove(); err != nil {
-		return fmt.Errorf("failed to remove a index: %s", err.Error())
-	}
-	if err := lw.lastFuncLog.File.Remove(); err != nil {
-		return fmt.Errorf("failed to remove a last func log: %s", err.Error())
-	}
-	if err := lw.symbols.File.Remove(); err != nil {
-		return fmt.Errorf("failed to remove a symbols file: %s", err.Error())
-	}
-	return nil
 }
 
 func (lw *LogWriter) Close() error {
