@@ -78,7 +78,7 @@ var logCatCmd = &cobra.Command{
 func runLogCat(logobj *storage.Log, writer LogWriter) error {
 	reader, err := logobj.Reader()
 	if err != nil {
-		return fmt.Errorf("log initialization error: LogWriter(%s): %s", err.Error())
+		return fmt.Errorf("log initialization error: LogWriter(%s): %s", logobj.ID, err.Error())
 	}
 	defer reader.Close() // nolinter: errchk
 
