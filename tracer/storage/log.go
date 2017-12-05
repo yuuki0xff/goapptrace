@@ -273,6 +273,24 @@ func (lr *LogReader) Search(start, end time.Time, fn func(evt logutil.RawFuncLog
 func (lr *LogReader) Symbols() *logutil.Symbols {
 	return lr.symbols
 }
+func (lr *LogReader) Walk(fn func(evt logutil.RawFuncLogNew) error) error {
+	lr.lock.RLock()
+	defer lr.lock.RUnlock()
+
+	return lr.index.Walk(func(i int64, _ IndexRecord) error {
+		fl := RawFuncLogReader{
+			File: lr.l.Root.RawFuncLogFile(lr.l.ID, i),
+		}
+		if err := fl.Open(); err != nil {
+			return err
+		}
+		defer fl.Close() // nolint: errcheck
+		if err := fl.Walk(fn); err != nil {
+			return err
+		}
+		return nil
+	})
+}
 
 func NewLogWriter(l *Log) (*LogWriter, error) {
 	w := &LogWriter{
@@ -413,25 +431,6 @@ func (lw *LogWriter) AppendSymbols(symbols *logutil.Symbols) error {
 	}
 	lw.symbolsEditor.AddSymbols(symbols)
 	return nil
-}
-
-func (lw *LogWriter) Walk(fn func(evt logutil.RawFuncLogNew) error) error {
-	lw.lock.RLock()
-	defer lw.lock.RUnlock()
-
-	return lw.index.Walk(func(i int64, _ IndexRecord) error {
-		fl := RawFuncLogReader{
-			File: lw.l.Root.RawFuncLogFile(lw.l.ID, i),
-		}
-		if err := fl.Open(); err != nil {
-			return err
-		}
-		defer fl.Close() // nolint: errcheck
-		if err := fl.Walk(fn); err != nil {
-			return err
-		}
-		return nil
-	})
 }
 
 func (lw *LogWriter) Symbols() *logutil.Symbols {
