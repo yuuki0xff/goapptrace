@@ -228,6 +228,48 @@ func (lr *LogReader) Close() error {
 	}
 	return nil
 }
+func (lr *LogReader) Search(start, end time.Time, fn func(evt logutil.RawFuncLogNew) error) error {
+	lr.lock.RLock()
+	defer lr.lock.RUnlock()
+
+	var startIdx int64
+	var endIdx int64
+
+	if err := lr.index.Walk(func(i int64, ir IndexRecord) error {
+		if start.Before(ir.Timestamp) {
+			startIdx = i - 1
+		} else if end.Before(ir.Timestamp) {
+			endIdx = i - 1
+			return StopIteration
+		}
+		return nil
+	}); err != nil {
+		// ignore StopIteration error
+		if err != StopIteration {
+			return err
+		}
+	}
+
+	var err error
+	for i := startIdx; i <= endIdx; i++ {
+		fl := RawFuncLogReader{
+			File: lr.l.Root.RawFuncLogFile(lr.l.ID, i),
+		}
+		if err := fl.Open(); err != nil {
+			return err
+		}
+		defer func() {
+			if err2 := fl.Close(); err2 != nil {
+				err = err2
+			}
+		}()
+
+		if err := fl.Walk(fn); err != nil {
+			return err
+		}
+	}
+	return err
+}
 
 func NewLogWriter(l *Log) (*LogWriter, error) {
 	w := &LogWriter{
@@ -387,49 +429,6 @@ func (lw *LogWriter) Walk(fn func(evt logutil.RawFuncLogNew) error) error {
 		}
 		return nil
 	})
-}
-
-func (lw *LogWriter) Search(start, end time.Time, fn func(evt logutil.RawFuncLogNew) error) error {
-	lw.lock.RLock()
-	defer lw.lock.RUnlock()
-
-	var startIdx int64
-	var endIdx int64
-
-	if err := lw.index.Walk(func(i int64, ir IndexRecord) error {
-		if start.Before(ir.Timestamp) {
-			startIdx = i - 1
-		} else if end.Before(ir.Timestamp) {
-			endIdx = i - 1
-			return StopIteration
-		}
-		return nil
-	}); err != nil {
-		// ignore StopIteration error
-		if err != StopIteration {
-			return err
-		}
-	}
-
-	var err error
-	for i := startIdx; i <= endIdx; i++ {
-		fl := RawFuncLogReader{
-			File: lw.l.Root.RawFuncLogFile(lw.l.ID, i),
-		}
-		if err := fl.Open(); err != nil {
-			return err
-		}
-		defer func() {
-			if err2 := fl.Close(); err2 != nil {
-				err = err2
-			}
-		}()
-
-		if err := fl.Walk(fn); err != nil {
-			return err
-		}
-	}
-	return err
 }
 
 func (lw *LogWriter) Symbols() *logutil.Symbols {
