@@ -166,24 +166,6 @@ func (lw *LogWriter) New() (err error) {
 	lw.lock.Lock()
 	defer lw.lock.Unlock()
 
-	checkFileNotExists := func(file File) bool {
-		if file.Exists() {
-			err = errors.New(fmt.Sprintf(`"%s" is exists`, string(file)))
-			return true
-		}
-		return false
-	}
-
-	if checkFileNotExists(lw.l.Root.MetaFile(lw.l.ID)) {
-		return
-	}
-	if checkFileNotExists(lw.l.Root.RawFuncLogFile(lw.l.ID, 0)) {
-		return
-	}
-	if checkFileNotExists(lw.l.Root.IndexFile(lw.l.ID)) {
-		return
-	}
-
 	lw.lastN = 0
 	lw.lastFuncLog = &RawFuncLogWriter{File: lw.l.Root.RawFuncLogFile(lw.l.ID, lw.lastN)}
 	lw.index = &Index{File: lw.l.Root.IndexFile(lw.l.ID)}
