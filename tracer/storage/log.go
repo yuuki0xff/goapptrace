@@ -26,7 +26,17 @@ type Log struct {
 	w    *LogWriter
 }
 
-type LogReader struct{}
+type LogReader struct {
+	l    *Log
+	lock sync.RWMutex
+
+	// funcLogN: funcLog id
+	funcLogN      int64
+	funcLog       *RawFuncLogReader
+	index         *Index
+	symbols       *logutil.Symbols
+	symbolsReader *SymbolsReader
+}
 
 // メタデータとログとインデックス
 //
@@ -132,6 +142,56 @@ func (l *Log) Status() LogStatus {
 	} else {
 		return LogBroken
 	}
+}
+
+func NewLogReader(l *Log) (*LogReader, error) {
+	r := &LogReader{
+		l: l,
+	}
+	if err := r.init(); err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+func (lr *LogReader) init() error {
+	lr.lock.Lock()
+	defer lr.lock.Unlock()
+
+	status := lr.l.Status()
+	switch status {
+	case LogBroken:
+		return fmt.Errorf("Log(%s) is broken", lr.l.ID)
+	case LogInitialized:
+		return fmt.Errorf("Log(%s) is not found", lr.l.ID)
+	case LogNotInitialized:
+		break
+	default:
+		log.Panicf("bug: unexpected status: status=%+v", status)
+		panic("unreachable")
+	}
+
+	lr.funcLogN = 0
+	lr.funcLog = &RawFuncLogReader{
+		File: lr.l.Root.RawFuncLogFile(lr.l.ID, lr.funcLogN),
+	}
+	if err := lr.funcLog.Open(); err != nil {
+		return fmt.Errorf("failed to open RawFuncLogReader: File=%s err=%s", lr.funcLog.File, err)
+	}
+	lr.index = &Index{
+		File: lr.l.Root.IndexFile(lr.l.ID),
+	}
+	if err := lr.index.Open(); err != nil {
+		return fmt.Errorf("failed to open Index: File=%s err=%s", lr.index.File, err)
+	}
+
+	lr.symbols = &logutil.Symbols{}
+	lr.symbols.Init()
+	lr.symbolsReader = &SymbolsReader{
+		File:          lr.l.Root.SymbolFile(lr.l.ID),
+		SymbolsEditor: &logutil.SymbolsEditor{},
+	}
+	lr.symbolsReader.SymbolsEditor.Init(lr.symbols)
+	return nil
 }
 
 func NewLogWriter(l *Log) (*LogWriter, error) {
