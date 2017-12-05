@@ -49,6 +49,7 @@ var logCatCmd = &cobra.Command{
 			return fmt.Errorf("Failed Storage.Init(): %s", err.Error())
 		}
 
+		// get specify log object.
 		if len(args) != 1 {
 			return fmt.Errorf("Should specify one args")
 		}
@@ -56,32 +57,25 @@ var logCatCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("Invalid LogID: %s", err.Error())
 		}
+		logobj, ok := strg.Log(logID)
+		if !ok {
+			return fmt.Errorf("LogID(%s) not found", logID.Hex())
+		}
 
+		// initialize LogWriter with specify format.
 		format, err := cmd.Flags().GetString("format")
 		if err != nil {
 			return fmt.Errorf("Flag error: %s", err.Error())
 		}
-		var writer LogWriter
-		switch format {
-		case "json":
-			writer = NewJsonLogWriter(stdout)
-		case "text":
-			fallthrough
-		case "":
-			writer = NewTextLogWriter(stdout)
-		default:
-			return fmt.Errorf("Invalid format: %s", format)
+		writer, err := NewLogWriter(format, stdout)
+		if err != nil {
+			return fmt.Errorf("failed to initialize LogWriter(%s): %s", logID, err.Error())
 		}
-
-		return runLogCat(strg, writer, logID)
+		return runLogCat(logobj, writer)
 	}),
 }
 
-func runLogCat(strg *storage.Storage, writer LogWriter, id storage.LogID) error {
-	logobj, ok := strg.Log(id)
-	if !ok {
-		return fmt.Errorf("LogID(%s) not found", id.Hex())
-	}
+func runLogCat(logobj *storage.Log, writer LogWriter) error {
 	reader, err := logobj.Reader()
 	if err != nil {
 		return fmt.Errorf("log initialization error: LogWriter(%s): %s", err.Error())
@@ -99,6 +93,21 @@ func runLogCat(strg *storage.Storage, writer LogWriter, id storage.LogID) error 
 type LogWriter interface {
 	WriteHeader() error
 	Write(evt logutil.RawFuncLogNew) error
+}
+
+func NewLogWriter(format string, out io.Writer) (LogWriter, error) {
+	var writer LogWriter
+	switch format {
+	case "json":
+		writer = NewJsonLogWriter(out)
+	case "text":
+		fallthrough
+	case "":
+		writer = NewTextLogWriter(out)
+	default:
+		return nil, fmt.Errorf("Invalid format: %s", format)
+	}
+	return writer, nil
 }
 
 type JsonLogWriter struct {
