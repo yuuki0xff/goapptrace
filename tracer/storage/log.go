@@ -270,6 +270,9 @@ func (lr *LogReader) Search(start, end time.Time, fn func(evt logutil.RawFuncLog
 	}
 	return err
 }
+func (lr *LogReader) Symbols() *logutil.Symbols {
+	return lr.symbols
+}
 
 func NewLogWriter(l *Log) (*LogWriter, error) {
 	w := &LogWriter{
