@@ -94,8 +94,7 @@ func getRouter(args *ServerArgs) *mux.Router {
 			http.Error(w, "not found Log", http.StatusNotFound)
 			return
 		}
-		// TODO: Writer -> Reader
-		reader, err := logobj.Writer()
+		reader, err := logobj.Reader()
 		if err != nil {
 			http.Error(w, "failed to initialization", http.StatusInternalServerError)
 			return
