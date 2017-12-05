@@ -82,6 +82,8 @@ func runLogCat(logobj *storage.Log, writer LogWriter) error {
 	}
 	defer reader.Close() // nolinter: errchk
 
+	writer.SetSymbols(reader.Symbols())
+
 	if err := reader.Walk(func(evt logutil.RawFuncLogNew) error {
 		return writer.Write(evt)
 	}); err != nil {
@@ -93,6 +95,7 @@ func runLogCat(logobj *storage.Log, writer LogWriter) error {
 type LogWriter interface {
 	WriteHeader() error
 	Write(evt logutil.RawFuncLogNew) error
+	SetSymbols(symbols *logutil.Symbols)
 }
 
 func NewLogWriter(format string, out io.Writer) (LogWriter, error) {
@@ -128,9 +131,11 @@ func (w *JsonLogWriter) WriteHeader() error {
 func (w *JsonLogWriter) Write(evt logutil.RawFuncLogNew) error {
 	return w.encoder.Encode(evt)
 }
+func (w *JsonLogWriter) SetSymbols(symbols *logutil.Symbols) {}
 
 type TextLogWriter struct {
-	output io.Writer
+	output  io.Writer
+	symbols *logutil.Symbols
 }
 
 func NewTextLogWriter(output io.Writer) *TextLogWriter {
@@ -143,20 +148,26 @@ func (w *TextLogWriter) WriteHeader() error {
 	return err
 }
 func (w *TextLogWriter) Write(evt logutil.RawFuncLogNew) error {
+	currentFrame := evt.Frames[0]
+	fs := w.symbols.FuncStatus[currentFrame]
+	funcName := w.symbols.Funcs[fs.Func].Name // module.func
+	line := fs.Line
+
 	_, err := fmt.Fprintf(
 		w.output,
-		"[%s] %s %d %d %d %s.%s:%d\n",
+		"[%s] %s %d %d %d %s:%d\n",
 		evt.Tag,
 		time.Unix(evt.Timestamp, 0).String(),
 		0,
 		evt.GID,
 		evt.TxID,
-		"", // module
-		"", // func
-		0,  //line
-
+		funcName, // module.func
+		line,     // line
 	)
 	return err
+}
+func (w *TextLogWriter) SetSymbols(symbols *logutil.Symbols) {
+	w.symbols = symbols
 }
 
 func init() {
