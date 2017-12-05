@@ -116,8 +116,8 @@ func runProcRun(conf *config.Config, targets []string) error {
 			Disconnected: func(id protocol.ConnID) {
 				log.Println("INFO: Server: disconnected")
 
-				logobjs.Delete(id)
 				logobj := getLog(id)
+				logobjs.Delete(id)
 				if err := logobj.Close(); err != nil {
 					log.Panicf("ERROR: Server: failed to close a LogWriter object: err=%s", err.Error())
 				}
