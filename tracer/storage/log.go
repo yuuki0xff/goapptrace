@@ -44,18 +44,17 @@ type LogWriter struct {
 	l    *Log
 	lock sync.RWMutex
 	// -1:        log files are not exists.
-	// lastN > 0: log files are exists.
-	lastN       int64
-	lastFuncLog *RawFuncLogWriter
-	index       *Index
-	symbols     *SymbolsWriter
-	// timestamp of last record in current funcLog
+	// funcLogN > 0: log files are exists.
+	funcLogN      int64
+	funcLogWriter *RawFuncLogWriter
+	index         *Index
+	symbols       *logutil.Symbols
+	symbolsEditor *logutil.SymbolsEditor
+	symbolsWriter *SymbolsWriter
+	// timestamp of last record in current funcLogWriter
 	lastTimestamp int64
 	// number of records in current funcLog
 	records int64
-
-	symbolsCache  *logutil.Symbols
-	symbolsEditor *logutil.SymbolsEditor
 }
 
 type LogMetadata struct {
@@ -309,14 +308,14 @@ func (lw *LogWriter) init() error {
 		for i := int64(0); lw.l.Root.RawFuncLogFile(lw.l.ID, i).Exists(); i++ {
 			last = i
 		}
-		lw.lastN = last
+		lw.funcLogN = last
 	} else {
-		lw.lastN = 0
+		lw.funcLogN = 0
 	}
 
-	lw.lastFuncLog = &RawFuncLogWriter{File: lw.l.Root.RawFuncLogFile(lw.l.ID, lw.lastN)}
+	lw.funcLogWriter = &RawFuncLogWriter{File: lw.l.Root.RawFuncLogFile(lw.l.ID, lw.funcLogN)}
 	lw.index = &Index{File: lw.l.Root.IndexFile(lw.l.ID)}
-	lw.symbols = &SymbolsWriter{File: lw.l.Root.SymbolFile(lw.l.ID)}
+	lw.symbolsWriter = &SymbolsWriter{File: lw.l.Root.SymbolFile(lw.l.ID)}
 
 	var err error
 	checkError := func(errprefix string, e error) {
@@ -325,9 +324,9 @@ func (lw *LogWriter) init() error {
 		}
 	}
 
-	checkError("failed open lasat func log file", lw.lastFuncLog.Open())
+	checkError("failed open lasat func log file", lw.funcLogWriter.Open())
 	checkError("failed open index file", lw.index.Open())
-	checkError("failed open symbols file", lw.symbols.Open())
+	checkError("failed open symbolsWriter file", lw.symbolsWriter.Open())
 	if err != nil {
 		return err
 	}
@@ -336,17 +335,17 @@ func (lw *LogWriter) init() error {
 	// initialize lw.records
 	lw.records = 0
 
-	lw.symbolsCache = &logutil.Symbols{}
-	lw.symbolsCache.Init()
+	lw.symbols = &logutil.Symbols{}
+	lw.symbols.Init()
 
 	lw.symbolsEditor = &logutil.SymbolsEditor{}
-	lw.symbolsEditor.Init(lw.symbolsCache)
+	lw.symbolsEditor.Init(lw.symbols)
 
 	if needLoadFromFile {
 		checkError("failed load index file", lw.index.Load())
-		checkError("failed load symbols file", lw.loadSymbols())
+		checkError("failed load symbolsWriter file", lw.loadSymbols())
 
-		reader := RawFuncLogReader{File: lw.lastFuncLog.File}
+		reader := RawFuncLogReader{File: lw.funcLogWriter.File}
 		checkError("failed open last func log file (read mode)", reader.Open())
 		checkError("failed read last func log file",
 			reader.Walk(func(evt logutil.RawFuncLogNew) error {
@@ -383,9 +382,9 @@ func (lw *LogWriter) Close() error {
 		Timestamp: time.Unix(lw.lastTimestamp, 0),
 		Records:   lw.records,
 	}))
-	checkError("failed close last func log file", lw.lastFuncLog.Close())
+	checkError("failed close last func log file", lw.funcLogWriter.Close())
 	checkError("failed close index file", lw.index.Close())
-	checkError("failed close symbols file", lw.symbols.Close())
+	checkError("failed close symbolsWriter file", lw.symbolsWriter.Close())
 	log.Println("INFO: storage logs closed")
 	return err
 }
@@ -397,7 +396,7 @@ func (lw *LogWriter) AppendFuncLog(raw *logutil.RawFuncLogNew) error {
 	if err := lw.autoRotate(); err != nil {
 		return err
 	}
-	if err := lw.lastFuncLog.Append(raw); err != nil {
+	if err := lw.funcLogWriter.Append(raw); err != nil {
 		return err
 	}
 	lw.lastTimestamp = raw.Timestamp
@@ -408,7 +407,7 @@ func (lw *LogWriter) AppendSymbols(symbols *logutil.Symbols) error {
 	lw.lock.Lock()
 	defer lw.lock.Unlock()
 
-	if err := lw.symbols.Append(symbols); err != nil {
+	if err := lw.symbolsWriter.Append(symbols); err != nil {
 		return err
 	}
 	lw.symbolsEditor.AddSymbols(symbols)
@@ -435,12 +434,12 @@ func (lw *LogWriter) Walk(fn func(evt logutil.RawFuncLogNew) error) error {
 }
 
 func (lw *LogWriter) Symbols() *logutil.Symbols {
-	return lw.symbolsCache
+	return lw.symbols
 }
 
 // callee MUST call "l.lock.Lock()" before call l.load().
 func (lw *LogWriter) loadSymbols() (err error) {
-	if lw.symbolsCache != nil {
+	if lw.symbols != nil {
 		return nil
 	}
 
@@ -462,7 +461,7 @@ func (lw *LogWriter) loadSymbols() (err error) {
 
 // callee MUST call "l.lock.Lock()" before call l.autoRotate().
 func (lw *LogWriter) autoRotate() error {
-	size, err := lw.lastFuncLog.File.Size()
+	size, err := lw.funcLogWriter.File.Size()
 	if err != nil {
 		return err
 	}
@@ -483,7 +482,7 @@ func (lw *LogWriter) rotate() error {
 
 	lw.records = 0
 	lw.lastTimestamp = 0
-	lw.lastN++
-	lw.lastFuncLog = &RawFuncLogWriter{File: lw.l.Root.RawFuncLogFile(lw.l.ID, lw.lastN)}
-	return lw.lastFuncLog.Open()
+	lw.funcLogN++
+	lw.funcLogWriter = &RawFuncLogWriter{File: lw.l.Root.RawFuncLogFile(lw.l.ID, lw.funcLogN)}
+	return lw.funcLogWriter.Open()
 }
