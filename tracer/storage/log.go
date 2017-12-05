@@ -216,6 +216,18 @@ func (lr *LogReader) init() error {
 	lr.symbolsReader.SymbolsEditor.Init(lr.symbols)
 	return nil
 }
+func (lr *LogReader) Close() error {
+	if err := lr.funcLog.Close(); err != nil {
+		return fmt.Errorf("failed to close RawFuncLogReader: err=%s", err)
+	}
+	if err := lr.index.Close(); err != nil {
+		return fmt.Errorf("failed to close Index: err=%s", err)
+	}
+	if err := lr.symbolsReader.Close(); err != nil {
+		return fmt.Errorf("faield to close SymbolsReader: err=%s", err)
+	}
+	return nil
+}
 
 func NewLogWriter(l *Log) (*LogWriter, error) {
 	w := &LogWriter{
