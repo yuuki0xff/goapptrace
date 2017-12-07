@@ -86,9 +86,11 @@ func sendLog(tag string, id logutil.TxID) {
 		logmsg.Frames = append(logmsg.Frames, funcStatusID)
 
 		if added1 || added2 {
-			// prepare newSymbols
-			newSymbols = &logutil.Symbols{}
-			newSymbols.Init()
+			if newSymbols == nil {
+				// prepare newSymbols
+				newSymbols = &logutil.Symbols{}
+				newSymbols.Init()
+			}
 
 			if added1 {
 				newSymbols.Funcs = append(newSymbols.Funcs, symbols.Funcs[funcID])
