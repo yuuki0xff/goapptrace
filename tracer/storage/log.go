@@ -188,9 +188,9 @@ func (lr *LogReader) init() error {
 	case LogBroken:
 		return fmt.Errorf("Log(%s) is broken", lr.l.ID)
 	case LogInitialized:
-		return fmt.Errorf("Log(%s) is not found", lr.l.ID)
-	case LogNotInitialized:
 		break
+	case LogNotInitialized:
+		return fmt.Errorf("Log(%s) is not found", lr.l.ID)
 	default:
 		log.Panicf("bug: unexpected status: status=%+v", status)
 		panic("unreachable")
