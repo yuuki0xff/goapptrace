@@ -92,6 +92,9 @@ func (LogID) Unhex(str string) (id LogID, err error) {
 	copy(id[:], buf)
 	return
 }
+func (l LogID) String() string {
+	return l.Hex()
+}
 
 func (l *Log) Init() error {
 	if l.Metadata == nil {
@@ -122,7 +125,7 @@ func (l *Log) Writer() (*LogWriter, error) {
 		// create new writer
 		w, err := NewLogWriter(l)
 		if err != nil {
-			return nil, fmt.Errorf("failed to initialize LogWriter(%s): %s", l.ID.Hex(), err.Error())
+			return nil, fmt.Errorf("failed to initialize LogWriter(%s): %s", l.ID, err.Error())
 		}
 		l.w = w
 	}
