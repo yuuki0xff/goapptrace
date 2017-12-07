@@ -209,6 +209,10 @@ func (lr *LogReader) init() error {
 	if err := lr.index.Open(); err != nil {
 		return fmt.Errorf("failed to open Index: File=%s err=%s", lr.index.File, err)
 	}
+	// TODO: share index object with LogWriter object.
+	if err := lr.index.Load(); err != nil {
+		return fmt.Errorf("failed to load Index: File=%s err=%s", lr.index.File, err)
+	}
 
 	lr.symbols = &logutil.Symbols{}
 	lr.symbols.Init()
@@ -219,7 +223,11 @@ func (lr *LogReader) init() error {
 	if err := lr.symbolsReader.Open(); err != nil {
 		return err
 	}
+	// TODO: share symbols object with LogWriter object.
 	lr.symbolsReader.SymbolsEditor.Init(lr.symbols)
+	if err := lr.symbolsReader.Load(); err != nil {
+		return fmt.Errorf("failed to load Symbols: File=%s err=%s", lr.symbolsReader.File, err)
+	}
 	return nil
 }
 func (lr *LogReader) Close() error {
