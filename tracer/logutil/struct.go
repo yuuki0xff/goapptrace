@@ -96,6 +96,7 @@ type FuncStatus struct {
 }
 
 type SymbolsEditor struct {
+	KeepID     bool
 	symbols    *Symbols
 	funcs      map[string]FuncID
 	funcStatus map[FuncStatus]FuncStatusID // FuncStatus.IDは常に0

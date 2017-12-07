@@ -50,26 +50,39 @@ func (sr *SymbolsEditor) AddFunc(symbol *FuncSymbol) (id FuncID, added bool) {
 		return id, false
 	}
 
-	symbol.ID = FuncID(len(sr.symbols.Funcs))
-	sr.symbols.Funcs = append(sr.symbols.Funcs, symbol)
+	if sr.KeepID {
+		// symbol.IDの値が、配列の長さを超えている場合、配列の長さを伸ばす。
+		for symbol.ID >= FuncID(len(sr.symbols.Funcs)) {
+			sr.symbols.Funcs = append(sr.symbols.Funcs, nil)
+		}
+	} else {
+		symbol.ID = FuncID(len(sr.symbols.Funcs))
+		// increase length of Funcs array
+		sr.symbols.Funcs = append(sr.symbols.Funcs, nil)
+	}
+	sr.symbols.Funcs[symbol.ID] = symbol
 	sr.funcs[symbol.Name] = symbol.ID
 	return symbol.ID, true
 }
 
 func (sr *SymbolsEditor) AddFuncStatus(status *FuncStatus) (id FuncStatusID, added bool) {
-	status.ID = 0
 	id, ok := sr.funcStatus[*status]
 	if ok {
 		// if exists, nothing to do
 		return id, false
 	}
 
-	// NOTE: sr.funcStatusのkeyとなるFuncStatusオブジェクトは、必ずFuncStatus.ID=0
-	//       そのため、FuncStatus.IDを更新する前にsr.funcStatusへ追加する必要がある。
-	id = FuncStatusID(len(sr.symbols.FuncStatus))
-	sr.funcStatus[*status] = id
-
-	status.ID = id
-	sr.symbols.FuncStatus = append(sr.symbols.FuncStatus, status)
-	return id, true
+	if sr.KeepID {
+		// status.IDの値が配列の長さを超えている場合、配列の長さを伸ばす。
+		for status.ID >= FuncStatusID(len(sr.symbols.FuncStatus)) {
+			sr.symbols.FuncStatus = append(sr.symbols.FuncStatus, nil)
+		}
+	} else {
+		status.ID = FuncStatusID(len(sr.symbols.FuncStatus))
+		// increase length of Funcs array
+		sr.symbols.FuncStatus = append(sr.symbols.FuncStatus, status)
+	}
+	sr.symbols.FuncStatus[status.ID] = status
+	sr.funcStatus[*status] = status.ID
+	return status.ID, true
 }

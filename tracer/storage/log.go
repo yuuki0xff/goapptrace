@@ -217,8 +217,10 @@ func (lr *LogReader) init() error {
 	lr.symbols = &logutil.Symbols{}
 	lr.symbols.Init()
 	lr.symbolsReader = &SymbolsReader{
-		File:          lr.l.Root.SymbolFile(lr.l.ID),
-		SymbolsEditor: &logutil.SymbolsEditor{},
+		File: lr.l.Root.SymbolFile(lr.l.ID),
+		SymbolsEditor: &logutil.SymbolsEditor{
+			KeepID: true,
+		},
 	}
 	if err := lr.symbolsReader.Open(); err != nil {
 		return err
