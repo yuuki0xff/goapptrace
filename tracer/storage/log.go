@@ -16,6 +16,8 @@ import (
 
 type LogID [16]byte
 
+// クライアントが記録したログ。
+// このログに対し、1つのプロセスから読み書きを同時に行える。
 type Log struct {
 	ID          LogID
 	Root        DirLayout
@@ -24,18 +26,18 @@ type Log struct {
 
 	lock sync.RWMutex
 	w    *LogWriter
+	// LogReader/LogWriterとの間でIndexとSymbolsを共有する。
+	// ログの書き込みと読み込みを並行して行えるようにするための処置。
+	// これらのフィールドの初期化は、必要になるまで遅延させる。
+	loadOnce sync.Once
+	index    *Index
+	symbols  *logutil.Symbols
 }
 
 type LogReader struct {
-	l    *Log
-	lock sync.RWMutex
-
-	// funcLogN: funcLog id
-	funcLogN      int64
-	funcLog       *RawFuncLogReader
-	index         *Index
-	symbols       *logutil.Symbols
-	symbolsReader *SymbolsReader
+	l       *Log
+	lock    sync.RWMutex
+	funcLog *RawFuncLogReader
 }
 
 type LogWriter struct {
@@ -111,12 +113,80 @@ func (l *Log) Init() error {
 	}
 	return nil
 }
+func (l *Log) load() (err error) {
+	l.loadOnce.Do(func() {
+		l.lock.Lock()
+		defer l.lock.Unlock()
+
+		// check Log file status
+		status := l.Status()
+		switch status {
+		case LogBroken:
+			err = fmt.Errorf("Log(%s) is broken", l.ID)
+			return
+		case LogNotInitialized:
+		case LogInitialized:
+			break
+		default:
+			log.Panicf("bug: unexpected status: status=%+v", status)
+			panic("unreachable")
+		}
+
+		// initialize fields
+		l.index = &Index{
+			File: l.Root.IndexFile(l.ID),
+		}
+		if err = l.index.Open(); err != nil {
+			err = fmt.Errorf("failed to open Index: File=%s err=%s", l.index.File, err)
+			return
+		}
+		l.symbols = &logutil.Symbols{}
+		l.symbols.Init()
+
+		if status == LogInitialized {
+			// load Index
+			if err = l.index.Load(); err != nil {
+				err = fmt.Errorf("failed to load Index: File=%s err=%s", l.index.File, err)
+				return
+			}
+
+			// load Symbols
+			symbolsReader := &SymbolsReader{
+				File: l.Root.SymbolFile(l.ID),
+				SymbolsEditor: &logutil.SymbolsEditor{
+					KeepID: true,
+				},
+			}
+			if err = symbolsReader.Open(); err != nil {
+				return
+			}
+			symbolsReader.SymbolsEditor.Init(l.symbols)
+			if err = symbolsReader.Load(); err != nil {
+				err = fmt.Errorf("failed to load Symbols: File=%s err=%s", symbolsReader.File, err)
+				return
+			}
+			if err = symbolsReader.Close(); err != nil {
+				err = fmt.Errorf("failed to close Symbols: File=%s err=%s", symbolsReader.File, err)
+				return
+			}
+		}
+	})
+	return
+}
 func (l *Log) Reader() (*LogReader, error) {
+	if err := l.load(); err != nil {
+		return nil, err
+	}
+
 	l.lock.Lock()
 	defer l.lock.Unlock()
 	return NewLogReader(l)
 }
 func (l *Log) Writer() (*LogWriter, error) {
+	if err := l.load(); err != nil {
+		return nil, err
+	}
+
 	l.lock.Lock()
 	defer l.lock.Unlock()
 	if l.w == nil {
@@ -181,64 +251,18 @@ func (lr *LogReader) init() error {
 	lr.lock.Lock()
 	defer lr.lock.Unlock()
 
-	status := lr.l.Status()
-	switch status {
-	case LogBroken:
-		return fmt.Errorf("Log(%s) is broken", lr.l.ID)
-	case LogInitialized:
-		break
-	case LogNotInitialized:
-		return fmt.Errorf("Log(%s) is not found", lr.l.ID)
-	default:
-		log.Panicf("bug: unexpected status: status=%+v", status)
-		panic("unreachable")
-	}
-
-	lr.funcLogN = 0
+	logN := int64(0)
 	lr.funcLog = &RawFuncLogReader{
-		File: lr.l.Root.RawFuncLogFile(lr.l.ID, lr.funcLogN),
+		File: lr.l.Root.RawFuncLogFile(lr.l.ID, logN),
 	}
 	if err := lr.funcLog.Open(); err != nil {
 		return fmt.Errorf("failed to open RawFuncLogReader: File=%s err=%s", lr.funcLog.File, err)
-	}
-	lr.index = &Index{
-		File: lr.l.Root.IndexFile(lr.l.ID),
-	}
-	if err := lr.index.Open(); err != nil {
-		return fmt.Errorf("failed to open Index: File=%s err=%s", lr.index.File, err)
-	}
-	// TODO: share index object with LogWriter object.
-	if err := lr.index.Load(); err != nil {
-		return fmt.Errorf("failed to load Index: File=%s err=%s", lr.index.File, err)
-	}
-
-	lr.symbols = &logutil.Symbols{}
-	lr.symbols.Init()
-	lr.symbolsReader = &SymbolsReader{
-		File: lr.l.Root.SymbolFile(lr.l.ID),
-		SymbolsEditor: &logutil.SymbolsEditor{
-			KeepID: true,
-		},
-	}
-	if err := lr.symbolsReader.Open(); err != nil {
-		return err
-	}
-	// TODO: share symbols object with LogWriter object.
-	lr.symbolsReader.SymbolsEditor.Init(lr.symbols)
-	if err := lr.symbolsReader.Load(); err != nil {
-		return fmt.Errorf("failed to load Symbols: File=%s err=%s", lr.symbolsReader.File, err)
 	}
 	return nil
 }
 func (lr *LogReader) Close() error {
 	if err := lr.funcLog.Close(); err != nil {
 		return fmt.Errorf("failed to close RawFuncLogReader: err=%s", err)
-	}
-	if err := lr.index.Close(); err != nil {
-		return fmt.Errorf("failed to close Index: err=%s", err)
-	}
-	if err := lr.symbolsReader.Close(); err != nil {
-		return fmt.Errorf("faield to close SymbolsReader: err=%s", err)
 	}
 	return nil
 }
@@ -249,7 +273,7 @@ func (lr *LogReader) Search(start, end time.Time, fn func(evt logutil.RawFuncLog
 	var startIdx int64
 	var endIdx int64
 
-	if err := lr.index.Walk(func(i int64, ir IndexRecord) error {
+	if err := lr.l.index.Walk(func(i int64, ir IndexRecord) error {
 		if start.Before(ir.Timestamp) {
 			startIdx = i - 1
 		} else if end.Before(ir.Timestamp) {
@@ -285,13 +309,13 @@ func (lr *LogReader) Search(start, end time.Time, fn func(evt logutil.RawFuncLog
 	return err
 }
 func (lr *LogReader) Symbols() *logutil.Symbols {
-	return lr.symbols
+	return lr.l.symbols
 }
 func (lr *LogReader) Walk(fn func(evt logutil.RawFuncLogNew) error) error {
 	lr.lock.RLock()
 	defer lr.lock.RUnlock()
 
-	return lr.index.Walk(func(i int64, _ IndexRecord) error {
+	return lr.l.index.Walk(func(i int64, _ IndexRecord) error {
 		fl := RawFuncLogReader{
 			File: lr.l.Root.RawFuncLogFile(lr.l.ID, i),
 		}
