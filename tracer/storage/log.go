@@ -29,9 +29,10 @@ type Log struct {
 	// LogReader/LogWriterとの間でIndexとSymbolsを共有する。
 	// ログの書き込みと読み込みを並行して行えるようにするための処置。
 	// これらのフィールドの初期化は、必要になるまで遅延させる。
-	loadOnce sync.Once
-	index    *Index
-	symbols  *logutil.Symbols
+	loadOnce      sync.Once
+	index         *Index
+	symbols       *logutil.Symbols
+	symbolsEditor *logutil.SymbolsEditor
 }
 
 type LogReader struct {
@@ -47,8 +48,6 @@ type LogWriter struct {
 	// funcLogN > 0: log files are exists.
 	funcLogN      int64
 	funcLogWriter *RawFuncLogWriter
-	symbols       *logutil.Symbols
-	symbolsEditor *logutil.SymbolsEditor
 	symbolsWriter *SymbolsWriter
 	// timestamp of last record in current funcLogWriter
 	lastTimestamp int64
@@ -141,6 +140,9 @@ func (l *Log) load() (err error) {
 		}
 		l.symbols = &logutil.Symbols{}
 		l.symbols.Init()
+
+		l.symbolsEditor = &logutil.SymbolsEditor{}
+		l.symbolsEditor.Init(l.symbols)
 
 		if status == LogInitialized {
 			// load Index
@@ -345,30 +347,7 @@ func (lw *LogWriter) init() error {
 	defer lw.lock.Unlock()
 	var needLoadFromFile bool
 
-	status := lw.l.Status()
-	switch status {
-	case LogBroken:
-		return fmt.Errorf("Log(%s) is broken", lw.l.ID)
-	case LogInitialized:
-		needLoadFromFile = true
-	case LogNotInitialized:
-		needLoadFromFile = false
-	default:
-		log.Panicf("bug: unexpected status: status=%+v", status)
-		panic("unreachable")
-	}
-
-	if needLoadFromFile {
-		// find last id
-		var last int64 = -1
-		for i := int64(0); lw.l.Root.RawFuncLogFile(lw.l.ID, i).Exists(); i++ {
-			last = i
-		}
-		lw.funcLogN = last
-	} else {
-		lw.funcLogN = 0
-	}
-
+	lw.funcLogN = lw.l.index.Len()
 	lw.funcLogWriter = &RawFuncLogWriter{File: lw.l.Root.RawFuncLogFile(lw.l.ID, lw.funcLogN)}
 	lw.symbolsWriter = &SymbolsWriter{File: lw.l.Root.SymbolFile(lw.l.ID)}
 
@@ -388,12 +367,6 @@ func (lw *LogWriter) init() error {
 	lw.lastTimestamp = 0
 	// initialize lw.records
 	lw.records = 0
-
-	lw.symbols = &logutil.Symbols{}
-	lw.symbols.Init()
-
-	lw.symbolsEditor = &logutil.SymbolsEditor{}
-	lw.symbolsEditor.Init(lw.symbols)
 
 	if needLoadFromFile {
 		reader := RawFuncLogReader{File: lw.funcLogWriter.File}
@@ -460,12 +433,12 @@ func (lw *LogWriter) AppendSymbols(symbols *logutil.Symbols) error {
 	if err := lw.symbolsWriter.Append(symbols); err != nil {
 		return err
 	}
-	lw.symbolsEditor.AddSymbols(symbols)
+	lw.l.symbolsEditor.AddSymbols(symbols)
 	return nil
 }
 
 func (lw *LogWriter) Symbols() *logutil.Symbols {
-	return lw.symbols
+	return lw.l.symbols
 }
 
 // callee MUST call "l.lock.Lock()" before call l.autoRotate().

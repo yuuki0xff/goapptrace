@@ -68,3 +68,7 @@ func (idx *Index) Walk(fn func(i int64, ir IndexRecord) error) error {
 	}
 	return nil
 }
+
+func (idx *Index) Len() int64 {
+	return int64(len(idx.records))
+}
