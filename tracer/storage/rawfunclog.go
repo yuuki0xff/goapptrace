@@ -4,11 +4,13 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
+// 関数呼び出しに関するログを、Fileに書き込む。
 type RawFuncLogWriter struct {
 	File File
 	enc  Encoder
 }
 
+// 関数呼び出しに関するログを、Fileから読み込む。
 type RawFuncLogReader struct {
 	File File
 	dec  Decoder
