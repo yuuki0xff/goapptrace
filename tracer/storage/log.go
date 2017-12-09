@@ -38,8 +38,6 @@ type LogReader struct {
 	symbolsReader *SymbolsReader
 }
 
-// メタデータとログとインデックス
-//
 type LogWriter struct {
 	l    *Log
 	lock sync.RWMutex
