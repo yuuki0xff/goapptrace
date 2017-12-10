@@ -6,6 +6,10 @@ import (
 	"os"
 	"testing"
 
+	"errors"
+
+	"fmt"
+
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
@@ -59,6 +63,16 @@ func TestLog_withEmptyFile(t *testing.T) {
 	lw, err := l.Writer()
 	must(t, err, "Log.Writer():")
 	must(t, lw.Close(), "LogWriter.Close():")
+
+	lr, err := l.Reader()
+	must(t, err, "Log.Reader():")
+	if lr.Symbols() == nil {
+		must(t, errors.New("should returns not nil, but got nil"), "LogReader.Symbols():")
+	}
+	must(t, lr.Walk(func(evt logutil.RawFuncLogNew) error {
+		return errors.New("should not contains any log record, but found a log record")
+	}), "LogReader.Walk():")
+	must(t, lr.Close(), "LogReader.Close():")
 }
 
 func TestLog_AppendFuncLog(t *testing.T) {
@@ -90,7 +104,6 @@ func TestLog_AppendFuncLog(t *testing.T) {
 	//   xxxx.1.rawfunc.log.gz
 	//   xxxx.index.gz
 	//   xxxx.symbol.gz
-
 	files, err := ioutil.ReadDir(dirlayout.DataDir())
 	if err != nil {
 		panic(err)
@@ -101,4 +114,16 @@ func TestLog_AppendFuncLog(t *testing.T) {
 	if len(files) != 4 {
 		t.Fatal("data file count is mismatched")
 	}
+
+	lr, err := l.Reader()
+	must(t, err, "Log.Reader():")
+	var i int
+	must(t, lr.Walk(func(evt logutil.RawFuncLogNew) error {
+		i++
+		return nil
+	}), "LogReader.Walk():")
+	if i != 2 {
+		must(t, fmt.Errorf("log records: (got) %d != %d (expected)", i, 2), "LogReader.Walk():")
+	}
+
 }
