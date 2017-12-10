@@ -178,7 +178,7 @@ func (l *Log) Reader() (*LogReader, error) {
 
 	l.lock.Lock()
 	defer l.lock.Unlock()
-	return NewLogReader(l)
+	return newLogReader(l)
 }
 func (l *Log) Writer() (*LogWriter, error) {
 	if err := l.load(); err != nil {
@@ -189,7 +189,7 @@ func (l *Log) Writer() (*LogWriter, error) {
 	defer l.lock.Unlock()
 	if l.w == nil {
 		// create new writer
-		w, err := NewLogWriter(l)
+		w, err := newLogWriter(l)
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize LogWriter(%s): %s", l.ID, err.Error())
 		}
@@ -236,7 +236,7 @@ func (l *Log) Remove() error {
 	return nil
 }
 
-func NewLogReader(l *Log) (*LogReader, error) {
+func newLogReader(l *Log) (*LogReader, error) {
 	r := &LogReader{
 		l: l,
 	}
@@ -328,7 +328,7 @@ func (lr *LogReader) Walk(fn func(evt logutil.RawFuncLogNew) error) error {
 	})
 }
 
-func NewLogWriter(l *Log) (*LogWriter, error) {
+func newLogWriter(l *Log) (*LogWriter, error) {
 	w := &LogWriter{
 		l: l,
 	}
