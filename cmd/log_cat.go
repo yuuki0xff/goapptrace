@@ -159,13 +159,14 @@ func (w *TextLogWriter) Write(evt logutil.RawFuncLogNew) error {
 	fs := w.symbols.FuncStatus[currentFrame]
 	funcName := w.symbols.Funcs[fs.Func].Name // module.func
 	line := fs.Line
+	execTime := 0 // TODO: calc ExecTime
 
 	_, err := fmt.Fprintf(
 		w.output,
 		"[%s] %s %d %d %d %s:%d\n",
 		evt.Tag,
 		time.Unix(evt.Timestamp, 0).Format(DefaultTimeFormat),
-		0,
+		execTime,
 		evt.GID,
 		evt.TxID,
 		funcName, // module.func
