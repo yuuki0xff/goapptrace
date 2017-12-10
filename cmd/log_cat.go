@@ -35,6 +35,10 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
 )
 
+const (
+	DefaultTimeFormat = "15:04:05.000"
+)
+
 // logCatCmd represents the cat command
 var logCatCmd = &cobra.Command{
 	Use:   "cat",
@@ -160,7 +164,7 @@ func (w *TextLogWriter) Write(evt logutil.RawFuncLogNew) error {
 		w.output,
 		"[%s] %s %d %d %d %s:%d\n",
 		evt.Tag,
-		time.Unix(evt.Timestamp, 0).String(),
+		time.Unix(evt.Timestamp, 0).Format(DefaultTimeFormat),
 		0,
 		evt.GID,
 		evt.TxID,
