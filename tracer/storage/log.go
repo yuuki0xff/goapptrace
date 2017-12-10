@@ -42,11 +42,8 @@ type LogReader struct {
 }
 
 type LogWriter struct {
-	l    *Log
-	lock sync.RWMutex
-	// -1:        log files are not exists.
-	// funcLogN > 0: log files are exists.
-	funcLogN      int64
+	l             *Log
+	lock          sync.RWMutex
 	funcLogWriter *RawFuncLogWriter
 	symbolsWriter *SymbolsWriter
 	// timestamp of last record in current funcLogWriter
@@ -347,8 +344,8 @@ func (lw *LogWriter) init() error {
 	defer lw.lock.Unlock()
 	var needLoadFromFile bool
 
-	lw.funcLogN = lw.l.index.Len()
-	lw.funcLogWriter = &RawFuncLogWriter{File: lw.l.Root.RawFuncLogFile(lw.l.ID, lw.funcLogN)}
+	funcLogN := lw.l.index.Len()
+	lw.funcLogWriter = &RawFuncLogWriter{File: lw.l.Root.RawFuncLogFile(lw.l.ID, funcLogN)}
 	lw.symbolsWriter = &SymbolsWriter{File: lw.l.Root.SymbolFile(lw.l.ID)}
 
 	var err error
@@ -464,7 +461,7 @@ func (lw *LogWriter) rotate() error {
 
 	lw.records = 0
 	lw.lastTimestamp = 0
-	lw.funcLogN++
-	lw.funcLogWriter = &RawFuncLogWriter{File: lw.l.Root.RawFuncLogFile(lw.l.ID, lw.funcLogN)}
+	funcLogN := lw.l.index.Len()
+	lw.funcLogWriter = &RawFuncLogWriter{File: lw.l.Root.RawFuncLogFile(lw.l.ID, funcLogN)}
 	return lw.funcLogWriter.Open()
 }
