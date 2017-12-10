@@ -36,9 +36,8 @@ type Log struct {
 }
 
 type LogReader struct {
-	l       *Log
-	lock    sync.RWMutex
-	funcLog *RawFuncLogReader
+	l    *Log
+	lock sync.RWMutex
 }
 
 type LogWriter struct {
@@ -248,20 +247,9 @@ func newLogReader(l *Log) (*LogReader, error) {
 func (lr *LogReader) init() error {
 	lr.lock.Lock()
 	defer lr.lock.Unlock()
-
-	logN := int64(0)
-	lr.funcLog = &RawFuncLogReader{
-		File: lr.l.Root.RawFuncLogFile(lr.l.ID, logN),
-	}
-	if err := lr.funcLog.Open(); err != nil {
-		return fmt.Errorf("failed to open RawFuncLogReader: File=%s err=%s", lr.funcLog.File, err)
-	}
 	return nil
 }
 func (lr *LogReader) Close() error {
-	if err := lr.funcLog.Close(); err != nil {
-		return fmt.Errorf("failed to close RawFuncLogReader: err=%s", err)
-	}
 	return nil
 }
 func (lr *LogReader) Search(start, end time.Time, fn func(evt logutil.RawFuncLogNew) error) error {
