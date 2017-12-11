@@ -60,6 +60,17 @@ func TestIndex(t *testing.T) {
 	}
 
 	must(t, index2.Open(), "Index.Open():")
+	var i int
+	if err := index2.Walk(func(i int64, ir IndexRecord) error {
+		i++
+		return nil
+	}); err != nil {
+		t.Fatalf("Index.Walk() should not return any error, but %+v", err)
+	}
+	if i != len(records) {
+		t.Fatalf("mismatch record count: expect=%d actual=%d", len(records), i)
+	}
+
 	err := index2.Walk(func(i int64, ir IndexRecord) error {
 		t.Logf("Index.Walk(): i=%d, record=%+v", i, ir)
 		if i == 2 {
