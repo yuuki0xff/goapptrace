@@ -9,12 +9,15 @@ const (
 	UnknownRecords    = -1
 )
 
+// Indexは、分割されたRawFuncLogファイルの索引を提供する。
+// 範囲検索の効率化のために使用することを想定している。
 type Index struct {
 	File    File
 	records []IndexRecord
 	enc     Encoder
 }
 
+// 1つのRawFuncLogファイルに関する情報。
 type IndexRecord struct {
 	// Timestamp of the last record.
 	Timestamp time.Time
@@ -22,11 +25,14 @@ type IndexRecord struct {
 	Records int64
 }
 
+// Indexファイルを開く。すべての操作を実行する前に、Openしなければならない。
 func (idx *Index) Open() error {
 	idx.enc = Encoder{File: idx.File}
 	return idx.enc.Open()
 }
 
+// Indexファイルの内容をメモリに読み込む。
+// 追記するだけならこの関数を呼ぶ必要はない。
 func (idx *Index) Load() error {
 	dec := Decoder{File: idx.File}
 	if err := dec.Open(); err != nil {
@@ -47,6 +53,7 @@ func (idx *Index) Load() error {
 	)
 }
 
+// Indexファイルへの追記を行う。
 func (idx *Index) Append(record IndexRecord) error {
 	err := idx.enc.Append(record)
 	if err == nil {
@@ -59,6 +66,8 @@ func (idx *Index) Close() error {
 	return idx.enc.Close()
 }
 
+// Indexファイルに書き込まれているすべてのレコードに、先頭から順番にアクセスする。
+// fnが何らかのエラーを返した場合、ループを中断する。
 func (idx *Index) Walk(fn func(i int64, ir IndexRecord) error) error {
 	for i, rec := range idx.records {
 		err := fn(int64(i), rec)
@@ -69,6 +78,8 @@ func (idx *Index) Walk(fn func(i int64, ir IndexRecord) error) error {
 	return nil
 }
 
+// Indexファイルに書き込まれているレコード数を返す。
+// この関数を呼び出す前に、Index.Load()を呼び出していなければならない。
 func (idx *Index) Len() int64 {
 	return int64(len(idx.records))
 }

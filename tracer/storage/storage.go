@@ -8,6 +8,7 @@ import (
 	"sync"
 )
 
+// ログの管理を行う。
 type Storage struct {
 	Root DirLayout
 
@@ -15,6 +16,7 @@ type Storage struct {
 	files map[LogID]*Log
 }
 
+// 初期化を行う。使用前に必ず実行すること。
 func (s *Storage) Init() error {
 	s.files = make(map[LogID]*Log)
 
@@ -24,6 +26,7 @@ func (s *Storage) Init() error {
 	return s.Load()
 }
 
+// ログファイルの一覧(Storage.files)の初期化を行う。
 func (s *Storage) Load() error {
 	files, err := ioutil.ReadDir(s.Root.MetaDir())
 	if err != nil {
@@ -84,6 +87,7 @@ func (s *Storage) log(id LogID, new bool) (*Log, error) {
 	return log, nil
 }
 
+// 新しいログインスタンスを作成して返す。
 func (s *Storage) New() (*Log, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()

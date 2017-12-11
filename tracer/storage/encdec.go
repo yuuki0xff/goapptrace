@@ -5,6 +5,7 @@ import (
 	"io"
 )
 
+// gobエンコードされたデータをFileに書き込む。
 type Encoder struct {
 	File File
 
@@ -12,6 +13,7 @@ type Encoder struct {
 	enc *gob.Encoder
 }
 
+// Fileからgobエンコードされたデータを読み込む。
 type Decoder struct {
 	File File
 
@@ -31,10 +33,15 @@ func (d *Decoder) Open() (err error) {
 	return
 }
 
+// ストリームから次の値を読み込み、dataに格納する。
+// ストリームの終端に達した場合、io.EOFを返す。
 func (d *Decoder) Read(data interface{}) error {
 	return d.dec.Decode(data)
 }
 
+// Walk()は、次の値をnewPtr()が確保したメモリ領域に読み込み、callback()を呼び出す。
+// これを、ストリームの終端に達するか、callbackがエラーを返すまで繰り返し行う。
+// newPtr()とcallback()は1つの値を読み込むたびに呼び出される。
 func (d *Decoder) Walk(newPtr func() interface{}, callback func(interface{}) error) error {
 	for {
 		val := newPtr()

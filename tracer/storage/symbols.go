@@ -4,11 +4,14 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
+// Symbolファイルへの追記をする
 type SymbolsWriter struct {
 	File File
 	enc  Encoder
 }
 
+// Symbolファイルからメモリ(logutil.Symbols)へ読み込む。
+// logutil.Symbolsへの更新は、logutil.SymbolsEditor経由で行う。
 type SymbolsReader struct {
 	File          File
 	SymbolsEditor *logutil.SymbolsEditor

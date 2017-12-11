@@ -13,13 +13,17 @@ import (
 )
 
 const (
+	// 自動作成されたディレクトリの、デフォルトのパーミッション
 	DefaultDirPerm = 0777
 )
 
+// ディレクトリ構造を抽象化する。
 type DirLayout struct {
 	Root string
 }
 
+// ディレクトリを初期化する。
+// 必要なディレクトリが存在しない場合、作成する。
 func (d DirLayout) Init() error {
 	if err := os.MkdirAll(d.Root, DefaultDirPerm); err != nil {
 		return err
@@ -33,13 +37,19 @@ func (d DirLayout) Init() error {
 	return nil
 }
 
+// メタデータファイルが格納されるディレクトリのパスを返す。
 func (d DirLayout) MetaDir() string {
 	return path.Join(d.Root, "meta")
 }
+
+// ログファイル化格納されるディレクトリのパスを返す。
 func (d DirLayout) DataDir() string {
 	return path.Join(d.Root, "data")
 }
+
+// ファイル名からLogIDに変換する。
 func (d DirLayout) MetaID(fname string) (id LogID, ok bool) {
+	// TODO: fix method name
 	if !strings.HasSuffix(fname, ".meta.json.gz") {
 		return
 	}
@@ -57,28 +67,41 @@ func (d DirLayout) MetaID(fname string) (id LogID, ok bool) {
 	return
 }
 
+// 指定したLogIDのメタデータファイルを返す。
 func (d DirLayout) MetaFile(id LogID) File {
 	return File(path.Join(d.MetaDir(), id.Hex()+".meta.json.gz"))
 }
+
+// RawFuncLogファイルを返す。
 func (d DirLayout) RawFuncLogFile(id LogID, n int64) File {
 	return File(path.Join(d.DataDir(), fmt.Sprintf("%s.%d.rawfunc.log.gz", id.Hex(), n)))
 }
+
+// 指定したLogIDのSymbolファイルを返す。
 func (d DirLayout) SymbolFile(id LogID) File {
 	return File(path.Join(d.DataDir(), fmt.Sprintf("%s.symbol.gz", id.Hex())))
 }
+
+// 指定したLogIDのIndexファイルを返す。
 func (d DirLayout) IndexFile(id LogID) File {
 	return File(path.Join(d.DataDir(), fmt.Sprintf("%s.index.gz", id.Hex())))
 }
 
+// ファイル操作を抽象化する。
 type File string
 
+// このファイルを削除する。
 func (f File) Remove() error {
 	return os.Remove(string(f))
 }
+
+// このファイルが存在するならtrueを返す。
 func (f File) Exists() bool {
 	_, err := os.Stat(string(f))
 	return err == nil
 }
+
+// このファイルの実際のサイズを返す。
 func (f File) Size() (int64, error) {
 	stat, err := os.Stat(string(f))
 	if err != nil {
@@ -86,6 +109,8 @@ func (f File) Size() (int64, error) {
 	}
 	return stat.Size(), err
 }
+
+// ReadOnlyモードで開く。
 func (f File) OpenReadOnly() (io.ReadCloser, error) {
 	file, err := os.Open(string(f))
 	if err != nil {
@@ -93,6 +118,9 @@ func (f File) OpenReadOnly() (io.ReadCloser, error) {
 	}
 	return gzip.NewReader(file)
 }
+
+// WriteOnlyモードで開く。
+// 既存のデータがあった場合、開いた直後にtruncateされる。
 func (f File) OpenWriteOnly() (io.WriteCloser, error) {
 	file, err := os.OpenFile(string(f), os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
@@ -100,6 +128,8 @@ func (f File) OpenWriteOnly() (io.WriteCloser, error) {
 	}
 	return gzip.NewWriterLevel(file, gzip.BestCompression)
 }
+
+// AppendOnlyモードで開く。
 func (f File) OpenAppendOnly() (io.WriteCloser, error) {
 	file, err := os.OpenFile(string(f), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
@@ -107,6 +137,8 @@ func (f File) OpenAppendOnly() (io.WriteCloser, error) {
 	}
 	return gzip.NewWriterLevel(file, gzip.BestCompression)
 }
+
+// ファイルから全て読み込み、[]byteを返す。
 func (f File) ReadAll() ([]byte, error) {
 	file, err := f.OpenReadOnly()
 	if err != nil {

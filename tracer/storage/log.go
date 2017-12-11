@@ -16,12 +16,19 @@ import (
 
 type LogID [16]byte
 
-// クライアントが記録したログ。
-// このログに対し、1つのプロセスから読み書きを同時に行える。
+// 指定したLogIDに対応するログの作成・読み書き・削除を行う。
+// 現時点では完全なスレッドセーフではない。読み書きを複数のgoroutineから同時に行うのは推薦しない。
+// このstructは、LogReaderとLogWriterの共有キャッシュも保持している。メモリ使用量に注意。
+//
+// ログは、LogMetadataとRawFuncLogとSymbolキャッシュとIndexの4つから構成されている。
+// RawFuncLogはMaxFileSizeに収まるようにファイルをローテーションが行われる。
 type Log struct {
-	ID          LogID
-	Root        DirLayout
-	Metadata    *LogMetadata
+	ID       LogID
+	Root     DirLayout
+	Metadata *LogMetadata
+	// RawFuncLogファイルの最大のファイルサイズの目安。
+	// 実際のファイルサイズは、指定したサイズよりもやや大きくなる可能性がある。
+	// 0を指定するとローテーション機能が無効になる。
 	MaxFileSize int64
 
 	lock sync.RWMutex
@@ -52,14 +59,19 @@ type LogWriter struct {
 }
 
 type LogMetadata struct {
+	// Timestamp of the last record
 	Timestamp time.Time
 }
 
 type LogStatus uint8
 
 const (
+	// 壊れている (一部のファイルが足りないなど)
 	LogBroken LogStatus = iota
+	// まだ初期化されておらず、なんのデータも記録されていない。
 	LogNotInitialized
+	// すでに初期化されている状態。
+	// 何らかのデータが記録されており、read/writeが可能。
 	LogInitialized
 )
 
@@ -67,9 +79,13 @@ var (
 	StopIteration = errors.New("stop iteration error")
 )
 
+// LogIDを16進数表現で返す。
 func (id LogID) Hex() string {
 	return hex.EncodeToString(id[:])
 }
+
+// 16新数表現からLogIDに変換して返す。
+// 16次sン数でない文字列や、長さが一致しない文字列が与えられた場合はエラーを返す。
 func (LogID) Unhex(str string) (id LogID, err error) {
 	var buf []byte
 	buf, err = hex.DecodeString(str)
@@ -86,10 +102,16 @@ func (LogID) Unhex(str string) (id LogID, err error) {
 	copy(id[:], buf)
 	return
 }
+
+// LogIDを16進数表現で返す。
 func (l LogID) String() string {
 	return l.Hex()
 }
 
+// Logを初期化する。
+// Metadataフィールドがnilだった場合、デフォルトのメタデータで初期化する。
+//
+// 注意: Init()を実行してもLogStatusは変化しない。なぜなら、ファイルを作成しないから。
 func (l *Log) Init() error {
 	if l.Metadata == nil {
 		l.Metadata = &LogMetadata{}
@@ -107,6 +129,9 @@ func (l *Log) Init() error {
 	}
 	return nil
 }
+
+// 共有キャッシュ(IndexとSymbols)の初期化と読み込みを行う。
+// また、共有キャッシュの初期化時にファイルが作成されるため、LogStatusがLogInitializedに変化する。
 func (l *Log) load() (err error) {
 	l.loadOnce.Do(func() {
 		l.lock.Lock()
@@ -170,6 +195,8 @@ func (l *Log) load() (err error) {
 	})
 	return
 }
+
+// LogReaderを返す。
 func (l *Log) Reader() (*LogReader, error) {
 	if err := l.load(); err != nil {
 		return nil, err
@@ -179,6 +206,9 @@ func (l *Log) Reader() (*LogReader, error) {
 	defer l.lock.Unlock()
 	return newLogReader(l)
 }
+
+// LogWriterを返す。この関数は、常に同じLogWriterのインスタンスを返す。
+// なぜなら、1つのログに対してLogWriterは1つまでしか作ることができないから。
 func (l *Log) Writer() (*LogWriter, error) {
 	if err := l.load(); err != nil {
 		return nil, err
@@ -197,6 +227,7 @@ func (l *Log) Writer() (*LogWriter, error) {
 	return l.w, nil
 }
 
+// Logの状態を確認する。
 func (l *Log) Status() LogStatus {
 	m := l.Root.MetaFile(l.ID).Exists()
 	r := l.Root.RawFuncLogFile(l.ID, 0).Exists()
@@ -211,6 +242,9 @@ func (l *Log) Status() LogStatus {
 		return LogBroken
 	}
 }
+
+// ログファイルを削除する。
+// すべてのLogReaderとLogWriterをCloseした後に呼び出すこと。
 func (l *Log) Remove() error {
 	if err := l.Root.MetaFile(l.ID).Remove(); err != nil {
 		return fmt.Errorf("failed to remove the Meta(%s): %s", l.ID, err.Error())
@@ -252,6 +286,9 @@ func (lr *LogReader) init() error {
 func (lr *LogReader) Close() error {
 	return nil
 }
+
+// 指定した期間のRawFuncLogを返す。
+// この操作を実行中、他の操作はブロックされる。
 func (lr *LogReader) Search(start, end time.Time, fn func(evt logutil.RawFuncLogNew) error) error {
 	lr.lock.RLock()
 	defer lr.lock.RUnlock()
@@ -259,6 +296,7 @@ func (lr *LogReader) Search(start, end time.Time, fn func(evt logutil.RawFuncLog
 	var startIdx int64
 	var endIdx int64
 
+	// TODO: lr.l.Lock()
 	if err := lr.l.index.Walk(func(i int64, ir IndexRecord) error {
 		if start.Before(ir.Timestamp) {
 			startIdx = i - 1
@@ -294,13 +332,19 @@ func (lr *LogReader) Search(start, end time.Time, fn func(evt logutil.RawFuncLog
 	}
 	return err
 }
+
+// Symbolsを返す。
 func (lr *LogReader) Symbols() *logutil.Symbols {
 	return lr.l.symbols
 }
+
+// 関数呼び出しのログを先頭からすべて読み込む。
+// この操作を実行中、他の操作はブロックされる。
 func (lr *LogReader) Walk(fn func(evt logutil.RawFuncLogNew) error) error {
 	lr.lock.RLock()
 	defer lr.lock.RUnlock()
 
+	// TODO: lr.l.Lock()
 	return lr.l.index.Walk(func(i int64, _ IndexRecord) error {
 		fl := RawFuncLogReader{
 			File: lr.l.Root.RawFuncLogFile(lr.l.ID, i),
