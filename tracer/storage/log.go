@@ -367,8 +367,6 @@ func (lw *LogWriter) init() error {
 	// NOTE: init()の呼び出し元はnewLogWriter()である。
 	//       newLogWriter()の呼び出し元はLog.Writer()であり、そこでロックをかけている。
 	//       そのため、ここでロックをかけてはいけない。
-	var needLoadFromFile bool
-
 	funcLogN := lw.l.index.Len()
 	lw.funcLogWriter = &RawFuncLogWriter{File: lw.l.Root.RawFuncLogFile(lw.l.ID, funcLogN)}
 	lw.symbolsWriter = &SymbolsWriter{File: lw.l.Root.SymbolFile(lw.l.ID)}
@@ -389,18 +387,6 @@ func (lw *LogWriter) init() error {
 	lw.lastTimestamp = 0
 	// initialize lw.records
 	lw.records = 0
-
-	if needLoadFromFile {
-		reader := RawFuncLogReader{File: lw.funcLogWriter.File}
-		checkError("failed open last func log file (read mode)", reader.Open())
-		checkError("failed read last func log file",
-			reader.Walk(func(evt logutil.RawFuncLogNew) error {
-				lw.records++
-				return nil
-			}),
-		)
-		checkError("failed close last func log file (read mode)", reader.Close())
-	}
 	return err
 }
 
