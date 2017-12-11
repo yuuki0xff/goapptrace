@@ -35,33 +35,19 @@ func TestIndex(t *testing.T) {
 	index2 := Index{
 		File: file,
 	}
+	index3 := Index{
+		File: file,
+	}
 	must(t, index.Open(), "Index.Open():")
 	for i := range records {
 		must(t, index.Append(records[i]), "Index.Append():")
 	}
 	must(t, index.Close(), "Index.Close():")
 
-	must(t, index.Open(), "Index.Open():")
-	must(t, index.Load(), "index.Load():")
-	must(t, index.Close(), "Index.Close():")
-
-	if len(records) != len(index.records) {
-		t.Errorf("records count is mismatched: expect %d, but %d", len(records), len(index.records))
-	}
-	for i := range records {
-		t.Logf("Index.records[%d] = %+v", i, index.records[i])
-
-		if records[i].Timestamp != index.records[i].Timestamp {
-			t.Errorf("Timestamp is not matched: expect %d, but %d", records[i].Timestamp, index.records[i].Timestamp)
-		}
-		if records[i].Records != index.records[i].Records {
-			t.Errorf("Records is not matched: expect %d, but %d", records[i].Records, index.records[i].Records)
-		}
-	}
-
 	must(t, index2.Open(), "Index.Open():")
+	must(t, index2.Load(), "index.Load():")
 	var i int
-	if err := index2.Walk(func(i int64, ir IndexRecord) error {
+	if err := index3.Walk(func(i int64, ir IndexRecord) error {
 		i++
 		return nil
 	}); err != nil {
@@ -70,8 +56,24 @@ func TestIndex(t *testing.T) {
 	if i != len(records) {
 		t.Fatalf("mismatch record count: expect=%d actual=%d", len(records), i)
 	}
+	if len(records) != len(index2.records) {
+		t.Errorf("records count is mismatched: expect %d, but %d", len(records), len(index.records))
+	}
+	for i := range records {
+		t.Logf("Index.records[%d] = %+v", i, index2.records[i])
 
-	err := index2.Walk(func(i int64, ir IndexRecord) error {
+		if records[i].Timestamp != index2.records[i].Timestamp {
+			t.Errorf("Timestamp is not matched: expect %d, but %d", records[i].Timestamp, index.records[i].Timestamp)
+		}
+		if records[i].Records != index2.records[i].Records {
+			t.Errorf("Records is not matched: expect %d, but %d", records[i].Records, index.records[i].Records)
+		}
+	}
+	must(t, index2.Close(), "Index.Close():")
+
+	must(t, index3.Open(), "Index.Open():")
+	must(t, index3.Load(), "Index.Load():")
+	err := index3.Walk(func(i int64, ir IndexRecord) error {
 		t.Logf("Index.Walk(): i=%d, record=%+v", i, ir)
 		if i == 2 {
 			return StopIteration
@@ -84,5 +86,5 @@ func TestIndex(t *testing.T) {
 	if err != StopIteration {
 		t.Errorf("Index.Walk() should return StopIteration, but %+v", err)
 	}
-	must(t, index2.Close(), "Index.Close():")
+	must(t, index3.Close(), "Index.Close():")
 }
