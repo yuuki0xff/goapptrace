@@ -37,6 +37,11 @@ func (d DirLayout) Init() error {
 	return nil
 }
 
+// infoファイルを返す
+func (d DirLayout) InfoFile() File {
+	return File(path.Join(d.Root, "info.json.gz"))
+}
+
 // メタデータファイルが格納されるディレクトリのパスを返す。
 func (d DirLayout) MetaDir() string {
 	return path.Join(d.Root, "meta")
