@@ -46,15 +46,15 @@ func TestIndex(t *testing.T) {
 
 	must(t, index2.Open(), "Index.Open():")
 	must(t, index2.Load(), "index.Load():")
-	var i int
-	if err := index3.Walk(func(i int64, ir IndexRecord) error {
-		i++
+	var recordCount int
+	if err := index2.Walk(func(i int64, ir IndexRecord) error {
+		recordCount++
 		return nil
 	}); err != nil {
 		t.Fatalf("Index.Walk() should not return any error, but %+v", err)
 	}
-	if i != len(records) {
-		t.Fatalf("mismatch record count: expect=%d actual=%d", len(records), i)
+	if recordCount != len(records) {
+		t.Fatalf("mismatch record count: expect=%d actual=%d", len(records), recordCount)
 	}
 	if len(records) != len(index2.records) {
 		t.Errorf("records count is mismatched: expect %d, but %d", len(records), len(index.records))
