@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -23,6 +24,8 @@ type IndexRecord struct {
 	Timestamp time.Time
 	// Number of records.
 	Records int64
+	// このFuncLogFileが書き込み中なら、true
+	writing bool
 }
 
 // Indexファイルを開く。すべての操作を実行する前に、Openしなければならない。
@@ -53,13 +56,40 @@ func (idx *Index) Load() error {
 	)
 }
 
+// 指定したIndexのIndexRecordを返す。
+func (idx Index) Get(i int64) IndexRecord {
+	return idx.records[i]
+}
+
 // Indexファイルへの追記を行う。
 func (idx *Index) Append(record IndexRecord) error {
+	if record.writing {
+		idx.records = append(idx.records, record)
+		return nil
+	}
+
 	err := idx.enc.Append(record)
 	if err == nil {
 		idx.records = append(idx.records, record)
 	}
 	return err
+}
+
+// 最後のレコードを更新する。
+// 書き込み中フラグが立っているレコードに対しての更新のみ成功する。
+func (idx *Index) UpdateLast(record IndexRecord) error {
+	last := idx.records[len(idx.records)-1]
+	if last.writing && record.writing {
+		idx.records[len(idx.records)-1] = record
+		return nil
+	} else if last.writing && !record.writing {
+		// remove last record
+		idx.records = idx.records[:len(idx.records)-1]
+		// append to file
+		return idx.Append(record)
+	} else {
+		return fmt.Errorf("invalid state: last=%+v record=%+v", last, record)
+	}
 }
 
 func (idx *Index) Close() error {
@@ -80,6 +110,11 @@ func (idx *Index) Walk(fn func(i int64, ir IndexRecord) error) error {
 
 // Indexファイルに書き込まれているレコード数を返す。
 // この関数を呼び出す前に、Index.Load()を呼び出していなければならない。
-func (idx *Index) Len() int64 {
+func (idx Index) Len() int64 {
 	return int64(len(idx.records))
+}
+
+// 書き込み中ならtrue
+func (ir IndexRecord) IsWriting() bool {
+	return ir.writing
 }

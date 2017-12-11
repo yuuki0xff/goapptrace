@@ -10,6 +10,8 @@ import (
 
 	"fmt"
 
+	"math/rand"
+
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
@@ -125,5 +127,74 @@ func TestLog_AppendFuncLog(t *testing.T) {
 	if i != 2 {
 		must(t, fmt.Errorf("log records: (got) %d != %d (expected)", i, 2), "LogReader.Walk():")
 	}
+}
 
+// LogWriterで書き込みながら、LogReaderで正しく読み込めるかテスト。
+func TestLog_ReadDuringWriting(t *testing.T) {
+	tempdir, err := ioutil.TempDir("", ".goapptrace_storage")
+	must(t, err, "can not create a temporary directory:")
+	defer func() {
+		if err := os.RemoveAll(tempdir); err != nil {
+			panic(err)
+		}
+	}()
+	dirlayout := DirLayout{Root: tempdir}
+	must(t, dirlayout.Init(), "DirLayout.Init():")
+
+	l := Log{
+		ID:          LogID{},
+		Root:        dirlayout,
+		Metadata:    &LogMetadata{},
+		MaxFileSize: 1000,
+	}
+	must(t, l.Init(), "Log.Init():")
+	lr, err := l.Reader()
+	must(t, err, "Log.Reader():")
+	lw, err := l.Writer()
+	must(t, err, "Log.Writer():")
+
+	checkRecordCount := func(expect int64) error {
+		var actual int64
+		lr.Walk(func(evt logutil.RawFuncLogNew) error {
+			actual++
+			return nil
+		})
+		if actual != expect {
+			return fmt.Errorf("mismatch log record count: expect=%d actual=%d", expect, actual)
+		}
+		return nil
+	}
+
+	// ファイルのローテーションが2回発生するまでレコードを追加する。
+	// ローテーションをしてもRawFuncLogCacheが正しくクリアできるかテストする。
+	for i := int64(0); l.index.Len() < 3; i++ {
+		must(t, checkRecordCount(i), "checkRecordCount(0):")
+		// 書き込み先のファイルはgzip圧縮されている。
+		// 同じデータが連続していると大幅に圧縮されてしまい、いつまで経ってもファイルのローテーションが発生しない。
+		// このような自体を回避するために、乱数を使用して圧縮率を低くする。
+		randomName := string([]rune{
+			rune(rand.Int()),
+			rune(rand.Int()),
+			rune(rand.Int()),
+			rune(rand.Int()),
+			rune(rand.Int()),
+			rune(rand.Int()),
+			rune(rand.Int()),
+			rune(rand.Int()),
+		})
+		must(t, lw.AppendFuncLog(&logutil.RawFuncLogNew{
+			Time: logutil.Time(i),
+			Tag:  randomName,
+			GID:  logutil.GID(rand.Int()),
+			TxID: logutil.TxID(rand.Int()),
+		}), "LogWriter.AppendFuncLog():")
+
+		// RawFuncLogNewが1つあたり0.1バイト未満で書き込まれるのは考えにくい。
+		// 十分な回数だけ試行しても終了しない場合、テスト失敗として扱う。
+		if i > l.MaxFileSize*30 {
+			t.Fatal("loop count limit reached")
+		}
+	}
+	must(t, lw.Close(), "LogWriter.Close():")
+	must(t, lr.Close(), "LogReader.Close():")
 }
