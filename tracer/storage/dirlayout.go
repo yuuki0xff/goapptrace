@@ -3,6 +3,7 @@ package storage
 import (
 	"compress/gzip"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -25,6 +26,42 @@ type DirLayout struct {
 // ディレクトリを初期化する。
 // 必要なディレクトリが存在しない場合、作成する。
 func (d DirLayout) Init() error {
+	if d.InfoFile().Exists() {
+		// check whether that data format have compatible.
+		data, err := d.InfoFile().ReadAll()
+		if err != nil {
+			return err
+		}
+		var info Info
+		if err := json.Unmarshal(data, &info); err != nil {
+			return err
+		}
+		if !info.IsCompatible() {
+			return fmt.Errorf("data format is not compatible")
+		}
+	} else {
+		// write the current data format version.
+		info := Info{
+			MajorVersion: MajorVersion,
+			MinorVersion: MinorVersion,
+		}
+		data, err := json.Marshal(&info)
+		if err != nil {
+			return err
+		}
+
+		w, err := d.InfoFile().OpenWriteOnly()
+		if err != nil {
+			return err
+		}
+		if _, err := w.Write(data); err != nil {
+			return err
+		}
+		if err := w.Close(); err != nil {
+			return err
+		}
+	}
+
 	if err := os.MkdirAll(d.Root, DefaultDirPerm); err != nil {
 		return err
 	}
