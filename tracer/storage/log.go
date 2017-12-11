@@ -43,13 +43,11 @@ type Log struct {
 }
 
 type LogReader struct {
-	l    *Log
-	lock sync.RWMutex
+	l *Log
 }
 
 type LogWriter struct {
 	l             *Log
-	lock          sync.RWMutex
 	funcLogWriter *RawFuncLogWriter
 	symbolsWriter *SymbolsWriter
 	// timestamp of last record in current funcLogWriter
@@ -279,8 +277,6 @@ func newLogReader(l *Log) (*LogReader, error) {
 	return r, nil
 }
 func (lr *LogReader) init() error {
-	lr.lock.Lock()
-	defer lr.lock.Unlock()
 	return nil
 }
 func (lr *LogReader) Close() error {
@@ -290,13 +286,12 @@ func (lr *LogReader) Close() error {
 // 指定した期間のRawFuncLogを返す。
 // この操作を実行中、他の操作はブロックされる。
 func (lr *LogReader) Search(start, end time.Time, fn func(evt logutil.RawFuncLogNew) error) error {
-	lr.lock.RLock()
-	defer lr.lock.RUnlock()
+	lr.l.lock.RLock()
+	defer lr.l.lock.RUnlock()
 
 	var startIdx int64
 	var endIdx int64
 
-	// TODO: lr.l.Lock()
 	if err := lr.l.index.Walk(func(i int64, ir IndexRecord) error {
 		if start.Before(ir.Timestamp) {
 			startIdx = i - 1
@@ -341,10 +336,9 @@ func (lr *LogReader) Symbols() *logutil.Symbols {
 // 関数呼び出しのログを先頭からすべて読み込む。
 // この操作を実行中、他の操作はブロックされる。
 func (lr *LogReader) Walk(fn func(evt logutil.RawFuncLogNew) error) error {
-	lr.lock.RLock()
-	defer lr.lock.RUnlock()
+	lr.l.lock.RLock()
+	defer lr.l.lock.RUnlock()
 
-	// TODO: lr.l.Lock()
 	return lr.l.index.Walk(func(i int64, _ IndexRecord) error {
 		fl := RawFuncLogReader{
 			File: lr.l.Root.RawFuncLogFile(lr.l.ID, i),
@@ -372,8 +366,9 @@ func newLogWriter(l *Log) (*LogWriter, error) {
 
 // LogWriterを初期化する。使用する前に必ず呼び出すこと。
 func (lw *LogWriter) init() error {
-	lw.lock.Lock()
-	defer lw.lock.Unlock()
+	// NOTE: init()の呼び出し元はnewLogWriter()である。
+	//       newLogWriter()の呼び出し元はLog.Writer()であり、そこでロックをかけている。
+	//       そのため、ここでロックをかけてはいけない。
 	var needLoadFromFile bool
 
 	funcLogN := lw.l.index.Len()
@@ -419,8 +414,8 @@ func (lw *LogWriter) Close() error {
 		}
 	}
 
-	lw.lock.Lock()
-	defer lw.lock.Unlock()
+	lw.l.lock.Lock()
+	defer lw.l.lock.Unlock()
 	lw.l.Metadata.Timestamp = time.Unix(lw.lastTimestamp, 0)
 	w, err := lw.l.Root.MetaFile(lw.l.ID).OpenWriteOnly()
 	if err != nil {
@@ -442,8 +437,8 @@ func (lw *LogWriter) Close() error {
 }
 
 func (lw *LogWriter) AppendFuncLog(raw *logutil.RawFuncLogNew) error {
-	lw.lock.Lock()
-	defer lw.lock.Unlock()
+	lw.l.lock.Lock()
+	defer lw.l.lock.Unlock()
 
 	if err := lw.autoRotate(); err != nil {
 		return err
@@ -452,12 +447,13 @@ func (lw *LogWriter) AppendFuncLog(raw *logutil.RawFuncLogNew) error {
 		return err
 	}
 	lw.lastTimestamp = raw.Timestamp
+	// TODO: append funcLog to shared cache
 	return nil
 }
 
 func (lw *LogWriter) AppendSymbols(symbols *logutil.Symbols) error {
-	lw.lock.Lock()
-	defer lw.lock.Unlock()
+	lw.l.lock.Lock()
+	defer lw.l.lock.Unlock()
 
 	if err := lw.symbolsWriter.Append(symbols); err != nil {
 		return err
