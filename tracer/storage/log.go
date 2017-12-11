@@ -307,7 +307,6 @@ func (lr *LogReader) Search(start, end time.Time, fn func(evt logutil.RawFuncLog
 		}
 	}
 
-	var err error
 	for i := startIdx; i <= endIdx; i++ {
 		fl := RawFuncLogReader{
 			File: lr.l.Root.RawFuncLogFile(lr.l.ID, i),
@@ -315,17 +314,16 @@ func (lr *LogReader) Search(start, end time.Time, fn func(evt logutil.RawFuncLog
 		if err := fl.Open(); err != nil {
 			return err
 		}
-		defer func() {
-			if err2 := fl.Close(); err2 != nil {
-				err = err2
-			}
-		}()
 
 		if err := fl.Walk(fn); err != nil {
+			fl.Close() // nolinter: errchk
+			return err
+		}
+		if err := fl.Close(); err != nil {
 			return err
 		}
 	}
-	return err
+	return nil
 }
 
 // Symbolsを返す。
