@@ -102,8 +102,8 @@ func (LogID) Unhex(str string) (id LogID, err error) {
 }
 
 // LogIDを16進数表現で返す。
-func (l LogID) String() string {
-	return l.Hex()
+func (id LogID) String() string {
+	return id.Hex()
 }
 
 // Logを初期化する。
