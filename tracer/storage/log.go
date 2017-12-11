@@ -68,11 +68,11 @@ type LogStatus uint8
 const (
 	// 壊れている (一部のファイルが足りないなど)
 	LogBroken LogStatus = iota
-	// まだ初期化されておらず、なんのデータも記録されていない。
-	LogNotInitialized
-	// すでに初期化されている状態。
+	// まだログファイルが作成されておらず、なんのデータも記録されていない。
+	LogNotCreated
+	// すでにログファイルが作成されている状態。
 	// 何らかのデータが記録されており、read/writeが可能。
-	LogInitialized
+	LogCreated
 )
 
 var (
@@ -143,8 +143,8 @@ func (l *Log) load() (err error) {
 		case LogBroken:
 			err = fmt.Errorf("Log(%s) is broken", l.ID)
 			return
-		case LogNotInitialized:
-		case LogInitialized:
+		case LogNotCreated:
+		case LogCreated:
 			break
 		default:
 			log.Panicf("bug: unexpected status: status=%+v", status)
@@ -165,7 +165,7 @@ func (l *Log) load() (err error) {
 		l.symbolsEditor = &logutil.SymbolsEditor{}
 		l.symbolsEditor.Init(l.symbols)
 
-		if status == LogInitialized {
+		if status == LogCreated {
 			// load Index
 			if err = l.index.Load(); err != nil {
 				err = fmt.Errorf("failed to load Index: File=%s err=%s", l.index.File, err)
@@ -235,9 +235,9 @@ func (l *Log) Status() LogStatus {
 	s := l.Root.SymbolFile(l.ID).Exists()
 
 	if m && r && i && s {
-		return LogInitialized
+		return LogCreated
 	} else if !m && !r && !i && !s {
-		return LogNotInitialized
+		return LogNotCreated
 	} else {
 		return LogBroken
 	}
