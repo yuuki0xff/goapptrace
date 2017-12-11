@@ -32,6 +32,9 @@ func TestIndex(t *testing.T) {
 	index := Index{
 		File: file,
 	}
+	index2 := Index{
+		File: file,
+	}
 	must(t, index.Open(), "Index.Open():")
 	for i := range records {
 		must(t, index.Append(records[i]), "Index.Append():")
@@ -56,8 +59,8 @@ func TestIndex(t *testing.T) {
 		}
 	}
 
-	must(t, index.Open(), "Index.Open():")
-	err := index.Walk(func(i int64, ir IndexRecord) error {
+	must(t, index2.Open(), "Index.Open():")
+	err := index2.Walk(func(i int64, ir IndexRecord) error {
 		t.Logf("Index.Walk(): i=%d, record=%+v", i, ir)
 		if i == 2 {
 			return StopIteration
@@ -70,5 +73,5 @@ func TestIndex(t *testing.T) {
 	if err != StopIteration {
 		t.Errorf("Index.Walk() should return StopIteration, but %+v", err)
 	}
-	must(t, index.Close(), "Index.Close():")
+	must(t, index2.Close(), "Index.Close():")
 }
