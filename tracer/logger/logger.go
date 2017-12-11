@@ -169,7 +169,8 @@ func Close() {
 		}
 		Client = nil
 	} else {
-		log.Panic(errors.New("here is unreachable, but reached"))
+		// ignore double-closing
+		//log.Panic(errors.New("here is unreachable, but reached"))
 	}
 }
 
