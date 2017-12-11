@@ -31,12 +31,12 @@ func TestDirLayout_MetaID(t *testing.T) {
 		"INVALID.meta.json.gz",                                 // Invalid hex value
 	}
 
-	id, ok := dr.MetaID(goodFname)
+	id, ok := dr.Fname2LogID(goodFname)
 	assert.Equal(t, ok, true)
 	assert.Equal(t, id, goodLogID)
 
 	for _, badID := range badFnames {
-		id, ok = dr.MetaID(badID)
+		id, ok = dr.Fname2LogID(badID)
 		if ok != false {
 			t.Errorf("ID=%s: must be fail. but succeeded.", badID)
 		}

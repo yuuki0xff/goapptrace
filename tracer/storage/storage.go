@@ -36,7 +36,7 @@ func (s *Storage) Load() error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	for _, finfo := range files {
-		id, ok := s.Root.MetaID(finfo.Name())
+		id, ok := s.Root.Fname2LogID(finfo.Name())
 		if !ok {
 			continue
 		}

@@ -47,9 +47,8 @@ func (d DirLayout) DataDir() string {
 	return path.Join(d.Root, "data")
 }
 
-// ファイル名からLogIDに変換する。
-func (d DirLayout) MetaID(fname string) (id LogID, ok bool) {
-	// TODO: fix method name
+// ファイル名(basename)からLogIDに変換する。
+func (d DirLayout) Fname2LogID(fname string) (id LogID, ok bool) {
 	if !strings.HasSuffix(fname, ".meta.json.gz") {
 		return
 	}
