@@ -9,7 +9,10 @@ import (
 
 	"path/filepath"
 
+	"time"
+
 	"github.com/yuuki0xff/goapptrace/info"
+	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/protocol"
 )
 
@@ -46,6 +49,66 @@ func TestSetOutput_connectToLogServer(t *testing.T) {
 	srv.Close()
 	if !disconnected {
 		t.Fatal("disconnected should true, but false")
+	}
+}
+
+func TestRetrySender(t *testing.T) {
+	os.Setenv(info.DEFAULT_LOGFILE_ENV, "/tmp/.goapptrace-logger-test")
+	sender := &RetrySender{
+		Sender:        &FileSender{},
+		MaxRetry:      defaultMaxRetry,
+		RetryInterval: defaultRetryInterval,
+	}
+
+	if err := sender.Open(); err != nil {
+		t.Fatalf("failed to sender.Open(): %s", err)
+	}
+
+	// send a log.
+	if err := sender.Send(
+		&logutil.Symbols{
+			Funcs: []*logutil.FuncSymbol{
+				{logutil.FuncID(0), "module.f1", "/go/src/module/src.go", 1},
+				{logutil.FuncID(1), "module.f2", "/go/src/module/src.go", 2},
+			},
+			FuncStatus: []*logutil.FuncStatus{
+				{logutil.FuncStatusID(0), logutil.FuncID(0), 10, 100},
+				{logutil.FuncStatusID(1), logutil.FuncID(1), 20, 200},
+			},
+		},
+		&logutil.RawFuncLogNew{
+			Time:      0,
+			Tag:       "funcStart",
+			Timestamp: time.Now().Unix(),
+			Frames:    []logutil.FuncStatusID{0, 1},
+		},
+	); err != nil {
+		t.Fatalf("fialed to sender.Send(): %s", err)
+	}
+
+	// will be occur the send error. but RetrySender will handle error, and try to recovery.
+	// so sender.Send() will return the nil.
+	if err := sender.Sender.Close(); err != nil {
+		t.Fatalf("failed to FileSender.Close(): %s", err)
+	}
+	if err := sender.Send(
+		&logutil.Symbols{
+			Funcs: []*logutil.FuncSymbol{},
+			FuncStatus: []*logutil.FuncStatus{
+				{logutil.FuncStatusID(2), logutil.FuncID(1), 21, 210},
+			},
+		},
+		&logutil.RawFuncLogNew{
+			Time:      1,
+			Tag:       "funcEnd",
+			Timestamp: time.Now().Unix(),
+			Frames:    []logutil.FuncStatusID{0, 2},
+		},
+	); err != nil {
+		t.Fatalf("failed to error recovery on sender.Send(): %s", err)
+	}
+	if err := sender.Close(); err != nil {
+		t.Fatalf("failed to sender.Close(): %s", err)
 	}
 }
 
