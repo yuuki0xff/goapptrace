@@ -35,31 +35,18 @@ func TestSetOutput_connectToLogServer(t *testing.T) {
 	var connected bool
 	var disconnected bool
 
-	// start log server
-	srv := protocol.Server{
-		Addr: "",
-		Handler: protocol.ServerHandler{
-			Connected: func(id protocol.ConnID) {
-				connected = true
-			},
-			Disconnected: func(id protocol.ConnID) {
-				disconnected = true
-			},
-			Error: func(id protocol.ConnID, err error) {
-				t.Fatalf("An error occurred in LogServer: %s", err)
-			},
-		},
-		AppName: "goapptrace-logger-test",
-		Secret:  "secret",
-	}
-	if err := srv.Listen(); err != nil {
-		t.Fatalf("LogServer can not listen: %s", err)
-	}
-	defer srv.Close()
-	go srv.Serve()
-
+	srv := startLogServer(t, &connected, &disconnected)
 	os.Setenv(info.DEFAULT_LOGSRV_ENV, srv.ActualAddr())
 	checkLogServerSender(t)
+
+	if !connected {
+		t.Fatal("connected should true, but false")
+	}
+
+	srv.Close()
+	if !disconnected {
+		t.Fatal("disconnected should true, but false")
+	}
 }
 
 func checkFileSender(t *testing.T, prefix string) {
@@ -107,4 +94,28 @@ func checkLogServerSender(t *testing.T) {
 	if sender != nil {
 		t.Fatalf("sender should nil, but %+v", sender)
 	}
+}
+
+func startLogServer(t *testing.T, connected, disconnected *bool) *protocol.Server {
+	srv := &protocol.Server{
+		Addr: "",
+		Handler: protocol.ServerHandler{
+			Connected: func(id protocol.ConnID) {
+				*connected = true
+			},
+			Disconnected: func(id protocol.ConnID) {
+				*disconnected = true
+			},
+			Error: func(id protocol.ConnID, err error) {
+				t.Fatalf("An error occurred in LogServer: %s", err)
+			},
+		},
+		AppName: "goapptrace-logger-test",
+		Secret:  "secret",
+	}
+	if err := srv.Listen(); err != nil {
+		t.Fatalf("LogServer can not listen: %s", err)
+	}
+	go srv.Serve()
+	return srv
 }
