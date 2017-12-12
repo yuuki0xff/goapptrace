@@ -37,11 +37,7 @@ check-formatted:
 	)
 
 test: check-formatted
-	# TODO: Enable golint and others
-	gometalinter --exclude "${GOROOT}" \
-		--disable-all \
-		--enable errcheck \
-		./...
+	gometalinter --exclude "${GOROOT}" ./...
 	go test ./...
 
 release: test build
