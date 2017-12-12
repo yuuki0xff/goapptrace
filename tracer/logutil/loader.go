@@ -56,7 +56,7 @@ func (rll *RawLogLoader) LoadFromJsonLines(data io.Reader) error {
 			// convert format from RawFuncLog to RawFuncLogNew
 			raw = RawFuncLogNew{
 				Time:      oldraw.Time,
-				Tag:       oldraw.Tag,
+				Tag:       TagName(oldraw.Tag),
 				Timestamp: oldraw.Timestamp,
 				Frames:    []FuncStatusID{},
 				GID:       oldraw.GID,

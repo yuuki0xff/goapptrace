@@ -51,7 +51,7 @@ func init() {
 	})
 }
 
-func sendLog(tag string, id logutil.TxID) {
+func sendLog(tag logutil.TagName, id logutil.TxID) {
 	var newSymbols *logutil.Symbols
 
 	logmsg := &logutil.RawFuncLogNew{}
@@ -161,10 +161,10 @@ func setOutput() {
 
 func FuncStart() (id logutil.TxID) {
 	id = logutil.NewTxID()
-	sendLog("funcStart", id)
+	sendLog(logutil.FuncStart, id)
 	return
 }
 
 func FuncEnd(id logutil.TxID) {
-	sendLog("funcEnd", id)
+	sendLog(logutil.FuncEnd, id)
 }

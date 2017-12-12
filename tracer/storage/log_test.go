@@ -184,7 +184,7 @@ func TestLog_ReadDuringWriting(t *testing.T) {
 		})
 		must(t, lw.AppendFuncLog(&logutil.RawFuncLogNew{
 			Time: logutil.Time(i),
-			Tag:  randomName,
+			Tag:  logutil.TagName(randomName),
 			GID:  logutil.GID(rand.Int()),
 			TxID: logutil.TxID(rand.Int()),
 		}), "LogWriter.AppendFuncLog():")

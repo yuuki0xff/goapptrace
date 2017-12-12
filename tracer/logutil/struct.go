@@ -5,6 +5,9 @@ import "runtime"
 const (
 	NotEnded      = -1
 	TimeRangeStep = 5000
+
+	FuncStart = TagName("funcStart")
+	FuncEnd   = TagName("funcEnd")
 )
 
 type LoadRawLogHandler func(*RawFuncLogNew)
@@ -12,6 +15,7 @@ type LoadFuncLogHandler func(*FuncLog)
 type GID int64 // GID - Goroutine ID
 type TxID uint64
 type Time int
+type TagName string
 type TimeRange struct{ rangeID int }
 type RecordList []*FuncLog
 type GoroutineMap struct {
@@ -64,7 +68,7 @@ type RawFuncLog struct {
 
 type RawFuncLogNew struct {
 	Time      Time
-	Tag       string         `json:"tag"`
+	Tag       TagName        `json:"tag"`
 	Timestamp int64          `json:"timestamp"`
 	Frames    []FuncStatusID `json:"frames"` // Frames[0] is current frame, Frames[1] is the caller of Frame[0].
 	GID       GID            `json:"gid"`
