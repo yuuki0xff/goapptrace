@@ -5,6 +5,10 @@ import (
 	"strings"
 	"testing"
 
+	"reflect"
+
+	"path/filepath"
+
 	"github.com/yuuki0xff/goapptrace/info"
 	"github.com/yuuki0xff/goapptrace/tracer/protocol"
 )
@@ -12,38 +16,19 @@ import (
 func TestSetOutput_writeToFile_useDefaultPrefix(t *testing.T) {
 	os.Unsetenv(info.DEFAULT_LOGSRV_ENV)
 	os.Unsetenv(info.DEFAULT_LOGFILE_ENV)
-	setOutput()
-	if OutputFile == nil {
-		t.Fatal("OutputFile should not nil, but nil")
+
+	abspath, err := filepath.Abs(info.DEFAULT_LOGFILE_PREFIX)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if Client != nil {
-		t.Fatalf("Client should nil, but %+v", Client)
-	}
-	name := OutputFile.Name()
-	os.Remove(name)
-	if !(strings.HasPrefix(name, info.DEFAULT_LOGFILE_PREFIX) && strings.HasSuffix(name, ".log")) {
-		t.Fatalf("Invalid output file name: %s", OutputFile.Name())
-	}
-	Close()
+	checkFileSender(t, abspath)
 }
 
 func TestSetOutput_writeToFile_usePrefix(t *testing.T) {
 	os.Unsetenv(info.DEFAULT_LOGSRV_ENV)
 	os.Setenv(info.DEFAULT_LOGFILE_ENV, "/tmp/.goapptrace-logger-test")
 
-	setOutput()
-	if OutputFile == nil {
-		t.Fatal("OutputFile should not nil, but nil")
-	}
-	if Client != nil {
-		t.Fatalf("Client should nil, but %+v", Client)
-	}
-	name := OutputFile.Name()
-	os.Remove(name)
-	if !(strings.HasPrefix(name, "/tmp/.goapptrace-logger-test.") && strings.HasSuffix(name, ".log")) {
-		t.Fatalf("Invalid output file name: %s", OutputFile.Name())
-	}
-	Close()
+	checkFileSender(t, "/tmp/.goapptrace-logger-test.")
 }
 
 func TestSetOutput_connectToLogServer(t *testing.T) {
@@ -74,15 +59,52 @@ func TestSetOutput_connectToLogServer(t *testing.T) {
 	go srv.Serve()
 
 	os.Setenv(info.DEFAULT_LOGSRV_ENV, srv.ActualAddr())
+	checkLogServerSender(t)
+}
+
+func checkFileSender(t *testing.T, prefix string) {
 	setOutput()
-	if OutputFile != nil {
-		t.Fatalf("OutputFile should nil, but %+v", OutputFile)
+
+	// check sender type
+	retrySender, ok := sender.(*RetrySender)
+	if !ok {
+		t.Fatalf("mismatch type: expect=*RetrySender actual=%s", reflect.TypeOf(sender))
 	}
-	if Client == nil {
-		t.Fatal("Client should not nil, but nil")
+	fileSender, ok := retrySender.Sender.(*FileSender)
+	if !ok {
+		t.Fatalf("mismatch type: expect=*FileSender actual=%s", reflect.TypeOf(sender))
 	}
-	if Client.Addr != srv.ActualAddr() {
-		t.Fatalf("Mismatch address: client.Addr=%s server.ActualAddr=%s", Client.Addr, srv.ActualAddr())
+
+	// check file path
+	fpath := fileSender.logFilePath()
+	os.Remove(fpath)
+	if !(strings.HasPrefix(fpath, prefix) && strings.HasSuffix(fpath, ".log")) {
+		t.Fatalf("invalid output file fpath: %s", fpath)
 	}
+
+	// check close
 	Close()
+	if sender != nil {
+		t.Fatalf("sender should nil, but %+v", sender)
+	}
+}
+
+func checkLogServerSender(t *testing.T) {
+	setOutput()
+
+	// check sender type
+	retrySender, ok := sender.(*RetrySender)
+	if !ok {
+		t.Fatalf("mismatch type: expect=*RetrySender actual=%s", reflect.TypeOf(sender))
+	}
+	_, ok = retrySender.Sender.(*LogServerSender)
+	if !ok {
+		t.Fatalf("mismatch type: expect=*LogServerSender actual=%s", reflect.TypeOf(sender))
+	}
+
+	// check close
+	Close()
+	if sender != nil {
+		t.Fatalf("sender should nil, but %+v", sender)
+	}
 }

@@ -1,14 +1,10 @@
 package logger
 
 import (
-	"encoding/json"
-	"fmt"
 	"os"
 	"runtime"
 	"sync"
 	"time"
-
-	"errors"
 
 	"regexp"
 	"strconv"
@@ -16,25 +12,24 @@ import (
 	"log"
 
 	"github.com/bouk/monkey"
-	"github.com/yuuki0xff/goapptrace/info"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
-	"github.com/yuuki0xff/goapptrace/tracer/protocol"
 )
 
 const (
-	skips         = 3
-	backtraceSize = 1 << 16 // about 64KiB
+	defaultMaxRetry      = 50
+	defaultRetryInterval = 1 * time.Second
+	skips                = 3
+	backtraceSize        = 1 << 16 // about 64KiB
 )
 
 var (
 	MaxStackSize = 1024
-	OutputFile   *os.File
-	Client       *protocol.Client
 
 	lock          = sync.Mutex{}
 	symbols       = logutil.Symbols{}
 	symbolsEditor = logutil.SymbolsEditor{}
 	patchGuard    *monkey.PatchGuard
+	sender        Sender
 )
 
 func init() {
@@ -114,104 +109,50 @@ func sendLog(tag string, id logutil.TxID) {
 
 	lock.Lock()
 	defer lock.Unlock()
-	if OutputFile == nil && Client == nil {
+	if sender == nil {
 		setOutput()
 	}
-
-	if OutputFile != nil {
-		// write symbols to file
-		if newSymbols != nil {
-			err := json.NewEncoder(OutputFile).Encode(newSymbols)
-			if err != nil {
-				log.Panic(err)
-			}
-		}
-		_, err = OutputFile.Write([]byte("\n"))
-		if err != nil {
-			log.Panic(err)
-		}
-
-		// write backtrace to file
-		err := json.NewEncoder(OutputFile).Encode(&logmsg)
-		if err != nil {
-			log.Panic(err)
-		}
-		_, err = OutputFile.Write([]byte("\n"))
-		if err != nil {
-			log.Panic(err)
-		}
-	} else if Client != nil {
-		// send binary log to log server
-		if newSymbols != nil {
-			if err := Client.Send(&protocol.SymbolPacket{newSymbols}); err != nil {
-				// TODO: try to reconnect
-				log.Panic(err)
-			}
-		}
-		if err := Client.Send(&protocol.RawFuncLogNewPacket{logmsg}); err != nil {
-			// TODO: try to reconnect
-			log.Panic(err)
-		}
-	} else {
-		log.Panic(errors.New("here is unreachable, but reached"))
+	if err := sender.Send(newSymbols, logmsg); err != nil {
+		log.Panicf("failed to sender.Send():err=%s sender=%+v ", err, sender)
 	}
 }
 
 func Close() {
-	if OutputFile != nil {
-		if err := OutputFile.Close(); err != nil {
-			log.Panic(err)
-		}
-		OutputFile = nil
-	} else if Client != nil {
-		if err := Client.Close(); err != nil {
-			log.Panic(err)
-		}
-		Client = nil
-	} else {
-		// ignore double-closing
-		//log.Panic(errors.New("here is unreachable, but reached"))
+	lock.Lock()
+	defer lock.Unlock()
+
+	if sender == nil {
+		// sender is already closed.
+		return
 	}
+
+	if err := sender.Close(); err != nil {
+		log.Panicf("failed to sender.Close(): err=%s sender=%+v", err, sender)
+	}
+	sender = nil
 }
 
 func setOutput() {
-	pid := os.Getpid()
-	url, ok := os.LookupEnv(info.DEFAULT_LOGSRV_ENV)
-	if ok {
-		// use socket
-		Client = &protocol.Client{
-			Addr: url,
-			Handler: protocol.ClientHandler{
-				Connected:    func() {},
-				Disconnected: func() {},
-				Error: func(err error) {
-					fmt.Println("Client ERROR:", err.Error())
-				},
-				StartTrace: func(args *protocol.StartTraceCmdPacket) {},
-				StopTrace:  func(args *protocol.StopTraceCmdPacket) {},
-			},
-			AppName: "TODO", // TODO
-			Secret:  "secret",
+	if sender != nil {
+		// sender is already opened.
+		return
+	}
+
+	if CanUseLogServerSender() {
+		sender = &RetrySender{
+			Sender:        &LogServerSender{},
+			MaxRetry:      defaultMaxRetry,
+			RetryInterval: defaultRetryInterval,
 		}
-		Client.Init()
-		go func() {
-			if err := Client.Serve(); err != nil {
-				log.Panic(err)
-			}
-		}()
-		Client.WaitNegotiation()
 	} else {
-		// use log file
-		prefix, ok := os.LookupEnv(info.DEFAULT_LOGFILE_ENV)
-		if !ok {
-			prefix = info.DEFAULT_LOGFILE_PREFIX
+		sender = &RetrySender{
+			Sender:        &FileSender{},
+			MaxRetry:      defaultMaxRetry,
+			RetryInterval: defaultRetryInterval,
 		}
-		fpath := fmt.Sprintf("%s.%d.log", prefix, pid)
-		file, err := os.OpenFile(fpath, os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			log.Panic(err)
-		}
-		OutputFile = file
+	}
+	if err := sender.Open(); err != nil {
+		log.Panicf("failed to sender.Open(): err=%s sender=%+v", err, sender)
 	}
 }
 
