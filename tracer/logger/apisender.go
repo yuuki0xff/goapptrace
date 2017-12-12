@@ -57,6 +57,10 @@ func (s *LogServerSender) Open() error {
 // サーバとのセッションを切る。
 // 正常終了するまで処理をブロックする。
 func (s *LogServerSender) Close() error {
+	if s.client == nil {
+		return ClosedError
+	}
+
 	if err := s.client.Close(); err != nil {
 		return err
 	}
@@ -66,6 +70,10 @@ func (s *LogServerSender) Close() error {
 
 // send Symbols and RawFuncLog to the log server.
 func (s *LogServerSender) Send(symbols *logutil.Symbols, funclog *logutil.RawFuncLogNew) error {
+	if s.client == nil {
+		return ClosedError
+	}
+
 	if err := s.client.Send(&protocol.SymbolPacket{
 		Symbols: symbols,
 	}); err != nil {

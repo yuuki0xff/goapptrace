@@ -28,6 +28,10 @@ func (f *FileSender) Open() error {
 // close log file.
 // これ移行はSendできない。
 func (f *FileSender) Close() error {
+	if f.file == nil {
+		return ClosedError
+	}
+
 	if err := f.file.Close(); err != nil {
 		return err
 	}
@@ -37,6 +41,10 @@ func (f *FileSender) Close() error {
 
 // write Symbols and RawFuncLog to the log file.
 func (f *FileSender) Send(symbols *logutil.Symbols, funclog *logutil.RawFuncLogNew) error {
+	if f.file == nil {
+		return ClosedError
+	}
+
 	enc := json.NewEncoder(f.file)
 	// write symbols to file
 	if symbols != nil {

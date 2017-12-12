@@ -11,6 +11,8 @@ import (
 
 	"log"
 
+	"errors"
+
 	"github.com/bouk/monkey"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
@@ -24,6 +26,7 @@ const (
 
 var (
 	MaxStackSize = 1024
+	ClosedError  = errors.New("already closed")
 
 	lock          = sync.Mutex{}
 	symbols       = logutil.Symbols{}
