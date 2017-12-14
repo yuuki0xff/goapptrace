@@ -40,16 +40,7 @@ func TestSetOutput_connectToLogServer(t *testing.T) {
 
 	srv := startLogServer(t, &connected, &disconnected)
 	os.Setenv(info.DEFAULT_LOGSRV_ENV, srv.ActualAddr())
-	checkLogServerSender(t)
-
-	if !connected {
-		t.Fatal("connected should true, but false")
-	}
-
-	srv.Close()
-	if !disconnected {
-		t.Fatal("disconnected should true, but false")
-	}
+	checkLogServerSender(t, &connected, &disconnected)
 }
 
 func TestRetrySender(t *testing.T) {
@@ -145,7 +136,7 @@ func checkFileSender(t *testing.T, prefix string) {
 	}
 }
 
-func checkLogServerSender(t *testing.T) {
+func checkLogServerSender(t *testing.T, connected, disconnected *bool) {
 	setOutput()
 
 	// check sender type
@@ -164,10 +155,26 @@ func checkLogServerSender(t *testing.T) {
 	sendLog(logutil.FuncEnd, logutil.TxID(2))
 	sendLog(logutil.FuncEnd, logutil.TxID(3))
 
+	// is handled Connected event?
+	if !*connected {
+		t.Fatal("connected should true, but false")
+	}
+
 	// check close
 	Close()
 	if sender != nil {
 		t.Fatalf("sender should nil, but %+v", sender)
+	}
+
+	// is handled Disconnected event until 1000 milliseconds?
+	for i := 0; i < 100; i++ {
+		if *disconnected {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if !*disconnected {
+		t.Fatal("disconnected should true, but false")
 	}
 }
 
