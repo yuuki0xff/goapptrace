@@ -132,6 +132,12 @@ func checkFileSender(t *testing.T, prefix string) {
 		t.Fatalf("invalid output file fpath: %s", fpath)
 	}
 
+	// check sendLog()
+	sendLog(logutil.FuncStart, logutil.TxID(0))
+	sendLog(logutil.FuncStart, logutil.TxID(1))
+	sendLog(logutil.FuncEnd, logutil.TxID(2))
+	sendLog(logutil.FuncEnd, logutil.TxID(3))
+
 	// check close
 	Close()
 	if sender != nil {
@@ -151,6 +157,12 @@ func checkLogServerSender(t *testing.T) {
 	if !ok {
 		t.Fatalf("mismatch type: expect=*LogServerSender actual=%s", reflect.TypeOf(sender))
 	}
+
+	// check sendLog()
+	sendLog(logutil.FuncStart, logutil.TxID(0))
+	sendLog(logutil.FuncStart, logutil.TxID(1))
+	sendLog(logutil.FuncEnd, logutil.TxID(2))
+	sendLog(logutil.FuncEnd, logutil.TxID(3))
 
 	// check close
 	Close()
