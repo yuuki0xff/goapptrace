@@ -32,7 +32,7 @@ type ServerHandler struct {
 	Error func(id ConnID, err error)
 
 	Symbols    func(id ConnID, symbols *logutil.Symbols)
-	RawFuncLog func(id ConnID, funclog *logutil.RawFuncLogNew)
+	RawFuncLog func(id ConnID, funclog *logutil.RawFuncLog)
 }
 
 type Server struct {

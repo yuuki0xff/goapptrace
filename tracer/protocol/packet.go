@@ -133,7 +133,7 @@ type SymbolPacket struct {
 	Symbols *logutil.Symbols
 }
 type RawFuncLogNewPacket struct {
-	FuncLog *logutil.RawFuncLogNew
+	FuncLog *logutil.RawFuncLog
 }
 
 func (p LogPacket) String() string           { return "<LogPacket>" }

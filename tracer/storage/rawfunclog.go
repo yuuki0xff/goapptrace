@@ -21,7 +21,7 @@ func (flw *RawFuncLogWriter) Open() error {
 	return flw.enc.Open()
 }
 
-func (flw *RawFuncLogWriter) Append(raw *logutil.RawFuncLogNew) error {
+func (flw *RawFuncLogWriter) Append(raw *logutil.RawFuncLog) error {
 	return flw.enc.Append(raw)
 }
 
@@ -34,13 +34,13 @@ func (flr *RawFuncLogReader) Open() error {
 	return flr.dec.Open()
 }
 
-func (flr *RawFuncLogReader) Walk(fn func(logutil.RawFuncLogNew) error) error {
+func (flr *RawFuncLogReader) Walk(fn func(logutil.RawFuncLog) error) error {
 	return flr.dec.Walk(
 		func() interface{} {
-			return &logutil.RawFuncLogNew{}
+			return &logutil.RawFuncLog{}
 		},
 		func(val interface{}) error {
-			data := val.(*logutil.RawFuncLogNew)
+			data := val.(*logutil.RawFuncLog)
 			return fn(*data)
 		},
 	)

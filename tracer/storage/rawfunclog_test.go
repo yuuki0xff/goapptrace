@@ -10,15 +10,15 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
-func newRawFuncLogNew(startTime, endTime int64, frames []logutil.FuncStatusID) (start, end *logutil.RawFuncLogNew) {
-	start = &logutil.RawFuncLogNew{
+func newRawFuncLogNew(startTime, endTime int64, frames []logutil.FuncStatusID) (start, end *logutil.RawFuncLog) {
+	start = &logutil.RawFuncLog{
 		Time:      logutil.Time(startTime),
 		Tag:       "funcStart",
 		Timestamp: startTime,
 		Frames:    frames,
 		TxID:      logutil.NewTxID(),
 	}
-	end = &logutil.RawFuncLogNew{
+	end = &logutil.RawFuncLog{
 		Time:      logutil.Time(endTime),
 		Tag:       "funcEnd",
 		Timestamp: endTime,
@@ -31,7 +31,7 @@ func newRawFuncLogNew(startTime, endTime int64, frames []logutil.FuncStatusID) (
 func doTestRawFunclogReaderWriter(
 	t *testing.T,
 	writeFunc func(writer *RawFuncLogWriter),
-	checkFunc func(funclog logutil.RawFuncLogNew) error,
+	checkFunc func(funclog logutil.RawFuncLog) error,
 ) {
 	file := createTempFile()
 	defer must(t, os.Remove(string(file)), "Delete tmpfile:")
@@ -61,7 +61,7 @@ func TestRawFunclogReaderWriter_emptyFile(t *testing.T) {
 	doTestRawFunclogReaderWriter(
 		t,
 		func(writer *RawFuncLogWriter) {},
-		func(funclog logutil.RawFuncLogNew) error {
+		func(funclog logutil.RawFuncLog) error {
 			t.Fatalf("This func should not call, but called with funclog=%+v", funclog)
 			return nil
 		},
@@ -80,7 +80,7 @@ func TestRawFunclogReaderWriter_data(t *testing.T) {
 	flog3, flog4 := newRawFuncLogNew(3, 4, frames4)
 	flog5, flog6 := newRawFuncLogNew(5, 6, frames5)
 
-	funcLogs := []*logutil.RawFuncLogNew{
+	funcLogs := []*logutil.RawFuncLog{
 		flog0,
 		flog1,
 		flog2,
@@ -101,7 +101,7 @@ func TestRawFunclogReaderWriter_data(t *testing.T) {
 				must(t, writer.Append(funcLogs[i]), "writer.Append():")
 			}
 		},
-		func(funclog logutil.RawFuncLogNew) error {
+		func(funclog logutil.RawFuncLog) error {
 			expectedFuncLog, err := json.Marshal(funcLogs[nextReadIdx])
 			must(t, err, "json.Marshall():")
 			readedFuncLog, err := json.Marshal(funclog)
@@ -110,7 +110,7 @@ func TestRawFunclogReaderWriter_data(t *testing.T) {
 			t.Logf("funcLogs[%d] = %s", nextReadIdx, string(expectedFuncLog))
 
 			if bytes.Compare(expectedFuncLog, readedFuncLog) != 0 {
-				t.Errorf("expected RawFuncLogNew is %s, but %s", string(expectedFuncLog), string(readedFuncLog))
+				t.Errorf("expected RawFuncLog is %s, but %s", string(expectedFuncLog), string(readedFuncLog))
 			}
 			nextReadIdx++
 			return nil

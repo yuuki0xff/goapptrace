@@ -69,7 +69,7 @@ func (s *LogServerSender) Close() error {
 }
 
 // send Symbols and RawFuncLog to the log server.
-func (s *LogServerSender) Send(symbols *logutil.Symbols, funclog *logutil.RawFuncLogNew) error {
+func (s *LogServerSender) Send(symbols *logutil.Symbols, funclog *logutil.RawFuncLog) error {
 	if s.client == nil {
 		return ClosedError
 	}

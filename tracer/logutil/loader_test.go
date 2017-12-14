@@ -11,17 +11,17 @@ func must(err error) {
 	}
 }
 
-func testLoadFromIteratorHelper(t *testing.T, loader *RawLogLoader, symbols *Symbols, testData []RawFuncLogNew) {
+func testLoadFromIteratorHelper(t *testing.T, loader *RawLogLoader, symbols *Symbols, testData []RawFuncLog) {
 	if loader == nil {
 		loader = &RawLogLoader{
-			RawLogHandler:  func(raw *RawFuncLogNew) {},
+			RawLogHandler:  func(raw *RawFuncLog) {},
 			FuncLogHandler: func(flog *FuncLog) {},
 		}
 	}
 	loader.Init()
 	loader.SymbolsEditor.AddSymbols(symbols)
 	var i int
-	must(loader.LoadFromIterator(func() (RawFuncLogNew, bool) {
+	must(loader.LoadFromIterator(func() (RawFuncLog, bool) {
 		if i < len(testData) {
 			defer func() {
 				i++
@@ -29,7 +29,7 @@ func testLoadFromIteratorHelper(t *testing.T, loader *RawLogLoader, symbols *Sym
 			log.Println(i)
 			return testData[i], true
 		}
-		return RawFuncLogNew{}, false
+		return RawFuncLog{}, false
 	}))
 }
 
@@ -45,7 +45,7 @@ func TestRawLogLoader_LoadFromIterator_startStopFuncs(t *testing.T) {
 			{ID: 0, Func: 0},
 		},
 	}
-	testData := []RawFuncLogNew{
+	testData := []RawFuncLog{
 		// main() start
 		{
 			Time:      Time(1),
@@ -93,7 +93,7 @@ func TestRawLogLoader_LoadFromIterator_withNestedCall(t *testing.T) {
 			{ID: 3, Func: 3},
 		},
 	}
-	testData := []RawFuncLogNew{
+	testData := []RawFuncLog{
 		// main() start
 		{
 			Time:      Time(1),
@@ -186,7 +186,7 @@ func TestRawLogLoader_LoadFromIterator_startStopNewGoroutines(t *testing.T) {
 			{ID: 1, Func: 1},
 		},
 	}
-	testData := []RawFuncLogNew{
+	testData := []RawFuncLog{
 		// main() start
 		{
 			Time:      Time(1),
@@ -250,7 +250,7 @@ func TestRawLogLoader_LoadFromIterator_handlerIsNil(t *testing.T) {
 			{ID: 0, Func: 0},
 		},
 	}
-	testData := []RawFuncLogNew{
+	testData := []RawFuncLog{
 		// main() start
 		{
 			Time:      Time(1),
@@ -293,7 +293,7 @@ func TestRawLogLoader_LoadFromIterator_endlessFuncs(t *testing.T) {
 			{ID: 0, Func: 0},
 		},
 	}
-	testData := []RawFuncLogNew{
+	testData := []RawFuncLog{
 		// main() start
 		{
 			Time:      Time(1),
@@ -311,7 +311,7 @@ func TestRawLogLoader_LoadFromIterator_endlessFuncs(t *testing.T) {
 
 func TestRawLogLoader_LoadFromJsonLines(t *testing.T) {
 	loader := RawLogLoader{
-		RawLogHandler:  func(raw *RawFuncLogNew) {},
+		RawLogHandler:  func(raw *RawFuncLog) {},
 		FuncLogHandler: func(flog *FuncLog) {},
 	}
 	loader.Init()

@@ -40,7 +40,7 @@ func (f *FileSender) Close() error {
 }
 
 // write Symbols and RawFuncLog to the log file.
-func (f *FileSender) Send(symbols *logutil.Symbols, funclog *logutil.RawFuncLogNew) error {
+func (f *FileSender) Send(symbols *logutil.Symbols, funclog *logutil.RawFuncLog) error {
 	if f.file == nil {
 		return ClosedError
 	}

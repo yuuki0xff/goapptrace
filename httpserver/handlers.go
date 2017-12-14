@@ -123,9 +123,9 @@ func getRouter(args *ServerArgs) *mux.Router {
 		colors, _ := strconv.ParseInt(vars["colors"], 10, BIT_SIZE)
 
 		// TODO:
-		logChan := make(chan logutil.RawFuncLogNew, 10000)
+		logChan := make(chan logutil.RawFuncLog, 10000)
 		go func() {
-			if err := reader.Search(time.Unix(start, 0), time.Unix(end, 0), func(evt logutil.RawFuncLogNew) error {
+			if err := reader.Search(time.Unix(start, 0), time.Unix(end, 0), func(evt logutil.RawFuncLog) error {
 				logChan <- evt
 				return nil
 			}); err != nil {
@@ -133,7 +133,7 @@ func getRouter(args *ServerArgs) *mux.Router {
 			}
 			close(logChan)
 		}()
-		if err := rawlog.LoadFromIterator(func() (raw logutil.RawFuncLogNew, ok bool) {
+		if err := rawlog.LoadFromIterator(func() (raw logutil.RawFuncLog, ok bool) {
 			raw, ok = <-logChan
 			if !ok {
 				return

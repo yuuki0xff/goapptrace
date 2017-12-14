@@ -44,7 +44,7 @@ type Log struct {
 	// LogWriterとLogReaderが、同時に読み書きするためのキャッシュ。
 	// 書き込み中のファイルへの読み込みアクセスは失敗する可能性がある。
 	// これを回避するために、現在書き込んでるファイルの内容をメモリにも保持しておく。
-	lastFuncLogFileCache []*logutil.RawFuncLogNew
+	lastFuncLogFileCache []*logutil.RawFuncLog
 }
 
 type LogReader struct {
@@ -287,7 +287,7 @@ func (lr *LogReader) Close() error {
 
 // 指定した期間のRawFuncLogを返す。
 // この操作を実行中、他の操作はブロックされる。
-func (lr *LogReader) Search(start, end time.Time, fn func(evt logutil.RawFuncLogNew) error) error {
+func (lr *LogReader) Search(start, end time.Time, fn func(evt logutil.RawFuncLog) error) error {
 	lr.l.lock.RLock()
 	defer lr.l.lock.RUnlock()
 
@@ -322,7 +322,7 @@ func (lr *LogReader) Symbols() *logutil.Symbols {
 
 // 関数呼び出しのログを先頭からすべて読み込む。
 // この操作を実行中、他の操作はブロックされる。
-func (lr *LogReader) Walk(fn func(evt logutil.RawFuncLogNew) error) error {
+func (lr *LogReader) Walk(fn func(evt logutil.RawFuncLog) error) error {
 	lr.l.lock.RLock()
 	defer lr.l.lock.RUnlock()
 
@@ -331,7 +331,7 @@ func (lr *LogReader) Walk(fn func(evt logutil.RawFuncLogNew) error) error {
 	})
 }
 
-func (lr *LogReader) walkRawFuncLogFile(i int64, fn func(evt logutil.RawFuncLogNew) error) error {
+func (lr *LogReader) walkRawFuncLogFile(i int64, fn func(evt logutil.RawFuncLog) error) error {
 	if lr.l.index.Get(i).IsWriting() {
 		// 書き込み中のファイルからすべてのレコードを読み出すことはできない。
 		// そのため、キャッシュを使用する。
@@ -414,7 +414,7 @@ func (lw *LogWriter) Close() error {
 	return err
 }
 
-func (lw *LogWriter) AppendFuncLog(raw *logutil.RawFuncLogNew) error {
+func (lw *LogWriter) AppendFuncLog(raw *logutil.RawFuncLog) error {
 	lw.l.lock.Lock()
 	defer lw.l.lock.Unlock()
 
@@ -507,6 +507,6 @@ func (lw *LogWriter) closeRawFuncLog() error {
 	}
 
 	// RawFuncLogFileのキャッシュをクリア
-	lw.l.lastFuncLogFileCache = make([]*logutil.RawFuncLogNew, 0)
+	lw.l.lastFuncLogFileCache = make([]*logutil.RawFuncLog, 0)
 	return nil
 }

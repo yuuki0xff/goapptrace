@@ -29,7 +29,7 @@ func (rll *RawLogLoader) LoadFromJsonLines(data io.Reader) error {
 	lineno := 0
 
 	var ioError error
-	loadErr := rll.LoadFromIterator(func() (funclog RawFuncLogNew, ok bool) {
+	loadErr := rll.LoadFromIterator(func() (funclog RawFuncLog, ok bool) {
 		var line1, line2 []byte
 		if line1, _, ioError = r.ReadLine(); ioError != nil {
 			if ioError == io.EOF {
@@ -65,7 +65,7 @@ func (rll *RawLogLoader) LoadFromJsonLines(data io.Reader) error {
 	return loadErr
 }
 
-func (rll *RawLogLoader) LoadFromIterator(next func() (raw RawFuncLogNew, ok bool)) error {
+func (rll *RawLogLoader) LoadFromIterator(next func() (raw RawFuncLog, ok bool)) error {
 	rll.Records = make([]*FuncLog, 0)
 	rll.GoroutineMap = NewGoroutineMap()
 	rll.TimeRangeMap = NewTimeRangeMap()
@@ -273,7 +273,7 @@ func (fl *FuncLog) Parents() int {
 	return parents
 }
 
-func (rll RawLogLoader) compareCaller(fl *FuncLog, log *RawFuncLogNew) bool {
+func (rll RawLogLoader) compareCaller(fl *FuncLog, log *RawFuncLog) bool {
 	f1 := fl.Frames[1:]
 	f2 := log.Frames[1:]
 
@@ -288,7 +288,7 @@ func (rll RawLogLoader) compareCaller(fl *FuncLog, log *RawFuncLogNew) bool {
 	return true
 }
 
-func (rll RawLogLoader) compareCallee(fl *FuncLog, log *RawFuncLogNew) bool {
+func (rll RawLogLoader) compareCallee(fl *FuncLog, log *RawFuncLog) bool {
 	funcID1 := rll.Symbols.FuncStatus[fl.Frames[0]].Func
 	funcID2 := rll.Symbols.FuncStatus[log.Frames[0]].Func
 	return funcID1 == funcID2

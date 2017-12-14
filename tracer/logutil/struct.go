@@ -8,7 +8,7 @@ const (
 	FuncEnd   = TagName("funcEnd")
 )
 
-type LoadRawLogHandler func(*RawFuncLogNew)
+type LoadRawLogHandler func(*RawFuncLog)
 type LoadFuncLogHandler func(*FuncLog)
 type GID int64 // GID - Goroutine ID
 type TxID uint64
@@ -55,7 +55,7 @@ type FuncLog struct {
 	GID    GID
 }
 
-type RawFuncLogNew struct {
+type RawFuncLog struct {
 	Time      Time
 	Tag       TagName        `json:"tag"`
 	Timestamp int64          `json:"timestamp"`

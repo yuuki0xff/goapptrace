@@ -71,7 +71,7 @@ func TestLog_withEmptyFile(t *testing.T) {
 	if lr.Symbols() == nil {
 		must(t, errors.New("should returns not nil, but got nil"), "LogReader.Symbols():")
 	}
-	must(t, lr.Walk(func(evt logutil.RawFuncLogNew) error {
+	must(t, lr.Walk(func(evt logutil.RawFuncLog) error {
 		return errors.New("should not contains any log record, but found a log record")
 	}), "LogReader.Walk():")
 	must(t, lr.Close(), "LogReader.Close():")
@@ -97,8 +97,8 @@ func TestLog_AppendFuncLog(t *testing.T) {
 	must(t, l.Init(), "Log.Init():")
 	lw, err := l.Writer()
 	must(t, err, "Log.Writer():")
-	must(t, lw.AppendFuncLog(&logutil.RawFuncLogNew{}), "LogWriter.AppendFuncLog():")
-	must(t, lw.AppendFuncLog(&logutil.RawFuncLogNew{}), "LogWriter.AppendFuncLog():")
+	must(t, lw.AppendFuncLog(&logutil.RawFuncLog{}), "LogWriter.AppendFuncLog():")
+	must(t, lw.AppendFuncLog(&logutil.RawFuncLog{}), "LogWriter.AppendFuncLog():")
 	must(t, lw.Close(), "LogWriter.Close():")
 
 	// data dir should only contains those files:
@@ -120,7 +120,7 @@ func TestLog_AppendFuncLog(t *testing.T) {
 	lr, err := l.Reader()
 	must(t, err, "Log.Reader():")
 	var i int
-	must(t, lr.Walk(func(evt logutil.RawFuncLogNew) error {
+	must(t, lr.Walk(func(evt logutil.RawFuncLog) error {
 		i++
 		return nil
 	}), "LogReader.Walk():")
@@ -155,7 +155,7 @@ func TestLog_ReadDuringWriting(t *testing.T) {
 
 	checkRecordCount := func(expect int64) error {
 		var actual int64
-		lr.Walk(func(evt logutil.RawFuncLogNew) error {
+		lr.Walk(func(evt logutil.RawFuncLog) error {
 			actual++
 			return nil
 		})
@@ -182,7 +182,7 @@ func TestLog_ReadDuringWriting(t *testing.T) {
 			rune(rand.Int()),
 			rune(rand.Int()),
 		})
-		must(t, lw.AppendFuncLog(&logutil.RawFuncLogNew{
+		must(t, lw.AppendFuncLog(&logutil.RawFuncLog{
 			Time: logutil.Time(i),
 			Tag:  logutil.TagName(randomName),
 			GID:  logutil.GID(rand.Int()),

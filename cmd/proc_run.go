@@ -134,7 +134,7 @@ func runProcRun(conf *config.Config, targets []string) error {
 					panic(err)
 				}
 			},
-			RawFuncLog: func(id protocol.ConnID, f *logutil.RawFuncLogNew) {
+			RawFuncLog: func(id protocol.ConnID, f *logutil.RawFuncLog) {
 				log.Printf("DEBUG: Server: got RawFuncLog: %+v\n", f)
 				logobj := getLog(id)
 				if err := logobj.AppendFuncLog(f); err != nil {

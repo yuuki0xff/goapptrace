@@ -54,7 +54,7 @@ func init() {
 func sendLog(tag logutil.TagName, id logutil.TxID) {
 	var newSymbols *logutil.Symbols
 
-	logmsg := &logutil.RawFuncLogNew{}
+	logmsg := &logutil.RawFuncLog{}
 	logmsg.Timestamp = time.Now().Unix()
 	logmsg.Tag = tag
 	logmsg.Frames = make([]logutil.FuncStatusID, 0, MaxStackSize)
