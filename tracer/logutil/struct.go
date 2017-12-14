@@ -1,7 +1,5 @@
 package logutil
 
-import "runtime"
-
 const (
 	NotEnded      = -1
 	TimeRangeStep = 5000
@@ -55,15 +53,6 @@ type FuncLog struct {
 
 	Frames []FuncStatusID
 	GID    GID
-}
-
-type RawFuncLog struct {
-	Time      Time
-	Tag       string          `json:"tag"`
-	Timestamp int64           `json:"timestamp"`
-	Frames    []runtime.Frame `json:"frames"`
-	GID       GID             `json:"gid"`
-	TxID      TxID            `json:"txid"`
 }
 
 type RawFuncLogNew struct {
