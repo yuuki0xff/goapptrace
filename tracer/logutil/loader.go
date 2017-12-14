@@ -29,56 +29,34 @@ func (rll *RawLogLoader) LoadFromJsonLines(data io.Reader) error {
 	lineno := 0
 
 	var ioError error
-	loadErr := rll.LoadFromIterator(func() (raw RawFuncLogNew, ok bool) {
-		for {
-			var line []byte
-			line, _, ioError = r.ReadLine()
-			if ioError != nil {
-				if ioError == io.EOF {
-					ioError = nil
-				}
-				return
+	loadErr := rll.LoadFromIterator(func() (funclog RawFuncLogNew, ok bool) {
+		var line1, line2 []byte
+		if line1, _, ioError = r.ReadLine(); ioError != nil {
+			if ioError == io.EOF {
+				ioError = nil
 			}
-
-			// ignore blank lines
-			if len(line) == 0 {
-				continue
-			}
-
-			var oldraw RawFuncLog
-			ioError = json.Unmarshal(line, &oldraw)
-			if ioError != nil {
-				return
-			}
-			oldraw.Time = Time(lineno)
-			lineno++
-
-			// convert format from RawFuncLog to RawFuncLogNew
-			raw = RawFuncLogNew{
-				Time:      oldraw.Time,
-				Tag:       TagName(oldraw.Tag),
-				Timestamp: oldraw.Timestamp,
-				Frames:    []FuncStatusID{},
-				GID:       oldraw.GID,
-				TxID:      oldraw.TxID,
-			}
-			for _, oldframe := range oldraw.Frames {
-				funcID, _ := rll.SymbolsEditor.AddFunc(&FuncSymbol{
-					Name:  oldframe.Function,
-					File:  oldframe.File,
-					Entry: oldframe.Entry,
-				})
-				funcStatusID, _ := rll.SymbolsEditor.AddFuncStatus(&FuncStatus{
-					Func: funcID,
-					Line: uint64(oldframe.Line),
-					PC:   oldframe.PC,
-				})
-				raw.Frames = append(raw.Frames, funcStatusID)
-			}
-
-			ok = true
 			return
 		}
+		if line2, _, ioError = r.ReadLine(); ioError != nil {
+			return
+		}
+
+		var symbols Symbols
+		ioError = json.Unmarshal(line1, &symbols)
+		if ioError != nil {
+			return
+		}
+		ioError = json.Unmarshal(line2, &funclog)
+		if ioError != nil {
+			return
+		}
+		funclog.Time = Time(lineno)
+
+		rll.SymbolsEditor.AddSymbols(&symbols)
+
+		lineno++
+		ok = true
+		return
 	})
 
 	if ioError != nil {

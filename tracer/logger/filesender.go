@@ -48,14 +48,15 @@ func (f *FileSender) Send(symbols *logutil.Symbols, funclog *logutil.RawFuncLogN
 	enc := json.NewEncoder(f.file)
 	// write symbols to file
 	if symbols != nil {
-		err := enc.Encode(symbols)
-		if err != nil {
-			return err
-		}
+		symbols = &logutil.Symbols{}
+	}
+	err := enc.Encode(symbols)
+	if err != nil {
+		return err
 	}
 
 	// write backtrace to file
-	err := enc.Encode(funclog)
+	err = enc.Encode(funclog)
 	if err != nil {
 		return err
 	}
