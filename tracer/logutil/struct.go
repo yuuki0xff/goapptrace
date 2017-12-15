@@ -19,6 +19,9 @@ type RecordList []*FuncLog
 type GoroutineMap struct {
 	m map[GID]*Goroutine
 }
+
+// 生存しているGoroutineを時間帯別に集計して保持する。
+// 粒度が小さくなってしまうものの、同等の機能は storage.IndexRecord にフィールドを追加することで可能。
 type TimeRangeMap struct {
 	m map[TimeRange]*GoroutineMap
 }
@@ -34,11 +37,15 @@ type RawLogLoader struct {
 	// ↓ 初期化不要 ↓
 	Symbols       Symbols
 	SymbolsEditor SymbolsEditor
-	Records       RecordList
-	GoroutineMap  *GoroutineMap
-	TimeRangeMap  *TimeRangeMap
+	// 関数の生存期間を記録したレコードのリスト。
+	Records RecordList
+	// トレース開始から現在までに存在していた全てのgoroutine
+	GoroutineMap *GoroutineMap
+	// 指定した時間帯に存在していたgoroutine
+	TimeRangeMap *TimeRangeMap
 }
 
+// Goroutineの生存期間、およびそのGoroutine内で行われたアクションを保持する。
 type Goroutine struct {
 	GID       GID
 	Records   RecordList
@@ -46,6 +53,7 @@ type Goroutine struct {
 	EndTime   Time
 }
 
+// 関数の生存期間、呼び出し元の関数のログなど
 type FuncLog struct {
 	StartTime Time
 	EndTime   Time
