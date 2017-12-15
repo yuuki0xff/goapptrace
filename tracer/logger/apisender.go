@@ -26,7 +26,6 @@ func CanUseLogServerSender() bool {
 func (s *LogServerSender) Open() error {
 	url, ok := os.LookupEnv(info.DEFAULT_LOGSRV_ENV)
 	if !ok {
-		// TODO: returns the error
 		return fmt.Errorf("not found %s environment value", info.DEFAULT_LOGSRV_ENV)
 	}
 
