@@ -16,8 +16,6 @@ func NewTxID() TxID {
 }
 
 func (s *StateSimulator) Init() {
-	s.Symbols.Init()
-	s.SymbolsEditor.Init(&s.Symbols)
 	s.Records = make([]*FuncLog, 0)
 	s.GoroutineMap = NewGoroutineMap()
 	s.gmap = make(map[GID][]*FuncLog)

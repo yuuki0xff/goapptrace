@@ -28,10 +28,11 @@ type TimeRangeMap struct {
 
 // TODO: 要リファクタ
 type StateSimulator struct {
+	Symbols *Symbols
+
 	////////////////
 	// ↓ 初期化不要 ↓
-	Symbols       Symbols
-	SymbolsEditor SymbolsEditor
+
 	// 関数の生存期間を記録したレコードのリスト。
 	Records RecordList
 	// トレース開始から現在までに存在していた全てのgoroutine

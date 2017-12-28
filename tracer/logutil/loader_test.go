@@ -14,8 +14,12 @@ func testStateSimulatorHelper(t *testing.T, s *StateSimulator, symbols *Symbols,
 	if s == nil {
 		s = &StateSimulator{}
 	}
+	s.Symbols = &Symbols{}
+	se := SymbolsEditor{}
+	se.Init(s.Symbols)
+	se.AddSymbols(symbols)
+
 	s.Init()
-	s.SymbolsEditor.AddSymbols(symbols)
 	for _, data := range testData {
 		s.Next(data)
 	}
