@@ -15,16 +15,16 @@ func NewTxID() TxID {
 	return TxID(rand.Int63())
 }
 
-func (rll *StateSimulator) Init() {
-	rll.Symbols.Init()
-	rll.SymbolsEditor.Init(&rll.Symbols)
+func (s *StateSimulator) Init() {
+	s.Symbols.Init()
+	s.SymbolsEditor.Init(&s.Symbols)
 }
 
 // TODO: NextStateメソッドなどを用意して、イベントのコールバックなどで追加できるようにする
-func (rll *StateSimulator) LoadFromIterator(next func() (raw RawFuncLog, ok bool)) error {
-	rll.Records = make([]*FuncLog, 0)
-	rll.GoroutineMap = NewGoroutineMap()
-	rll.TimeRangeMap = NewTimeRangeMap()
+func (s *StateSimulator) LoadFromIterator(next func() (raw RawFuncLog, ok bool)) error {
+	s.Records = make([]*FuncLog, 0)
+	s.GoroutineMap = NewGoroutineMap()
+	s.TimeRangeMap = NewTimeRangeMap()
 	gmap := make(map[GID][]*FuncLog)
 
 	for raw, ok := next(); ok; raw, ok = next() {
@@ -50,13 +50,13 @@ func (rll *StateSimulator) LoadFromIterator(next func() (raw RawFuncLog, ok bool
 			for i := len(gmap[raw.GID]) - 1; i >= 0; i-- {
 				fl := gmap[raw.GID][i]
 				log.Printf("DEBUG: loader.LoadFromIterator: funcEnd: raw=%+v, fl=%+v", raw, fl)
-				if rll.compareCallee(fl, &raw) && rll.compareCaller(fl, &raw) {
+				if s.compareCallee(fl, &raw) && s.compareCaller(fl, &raw) {
 					// detect EndTime
 					fl.EndTime = raw.Time
 					// add to records
-					rll.Records = append(rll.Records, fl)
-					rll.GoroutineMap.Add(fl)
-					rll.TimeRangeMap.Add(fl)
+					s.Records = append(s.Records, fl)
+					s.GoroutineMap.Add(fl)
+					s.TimeRangeMap.Add(fl)
 
 					if i != len(gmap[raw.GID])-1 {
 						log.Printf("WARN: missing funcEnd log: %+v\n", gmap[raw.GID][i:])
@@ -80,9 +80,9 @@ func (rll *StateSimulator) LoadFromIterator(next func() (raw RawFuncLog, ok bool
 	// end-less funcs
 	for gid := range gmap {
 		for _, fl := range gmap[gid] {
-			rll.Records = append(rll.Records, fl)
-			rll.GoroutineMap.Add(fl)
-			rll.TimeRangeMap.Add(fl)
+			s.Records = append(s.Records, fl)
+			s.GoroutineMap.Add(fl)
+			s.TimeRangeMap.Add(fl)
 		}
 	}
 	return nil
@@ -227,7 +227,7 @@ func (fl *FuncLog) Parents() int {
 	return parents
 }
 
-func (rll StateSimulator) compareCaller(fl *FuncLog, log *RawFuncLog) bool {
+func (s StateSimulator) compareCaller(fl *FuncLog, log *RawFuncLog) bool {
 	f1 := fl.Frames[1:]
 	f2 := log.Frames[1:]
 
@@ -242,8 +242,8 @@ func (rll StateSimulator) compareCaller(fl *FuncLog, log *RawFuncLog) bool {
 	return true
 }
 
-func (rll StateSimulator) compareCallee(fl *FuncLog, log *RawFuncLog) bool {
-	funcID1 := rll.Symbols.FuncStatus[fl.Frames[0]].Func
-	funcID2 := rll.Symbols.FuncStatus[log.Frames[0]].Func
+func (s StateSimulator) compareCallee(fl *FuncLog, log *RawFuncLog) bool {
+	funcID1 := s.Symbols.FuncStatus[fl.Frames[0]].Func
+	funcID2 := s.Symbols.FuncStatus[log.Frames[0]].Func
 	return funcID1 == funcID2
 }
