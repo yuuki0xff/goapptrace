@@ -21,7 +21,7 @@ func testStateSimulatorHelper(t *testing.T, s *StateSimulator, symbols *Symbols,
 	}
 }
 
-func TestRawLogLoader_LoadFromIterator_startStopFuncs(t *testing.T) {
+func TestStateSimulator_Next_startStopFuncs(t *testing.T) {
 	txids := []TxID{
 		NewTxID(),
 	}
@@ -61,7 +61,7 @@ func TestRawLogLoader_LoadFromIterator_startStopFuncs(t *testing.T) {
 	testStateSimulatorHelper(t, nil, symbols, testData)
 }
 
-func TestRawLogLoader_LoadFromIterator_withNestedCall(t *testing.T) {
+func TestStateSimulator_Next_withNestedCall(t *testing.T) {
 	txids := []TxID{
 		NewTxID(),
 		NewTxID(),
@@ -159,7 +159,7 @@ func TestRawLogLoader_LoadFromIterator_withNestedCall(t *testing.T) {
 	testStateSimulatorHelper(t, nil, symbols, testData)
 }
 
-func TestRawLogLoader_LoadFromIterator_startStopNewGoroutines(t *testing.T) {
+func TestStateSimulator_Next_startStopNewGoroutines(t *testing.T) {
 	txids := []TxID{
 		NewTxID(),
 		NewTxID(),
@@ -226,7 +226,7 @@ func TestRawLogLoader_LoadFromIterator_startStopNewGoroutines(t *testing.T) {
 	testStateSimulatorHelper(t, nil, symbols, testData)
 }
 
-func TestRawLogLoader_LoadFromIterator_handlerIsNil(t *testing.T) {
+func TestStateSimulator_Next_handlerIsNil(t *testing.T) {
 	txids := []TxID{
 		NewTxID(),
 	}
@@ -266,7 +266,7 @@ func TestRawLogLoader_LoadFromIterator_handlerIsNil(t *testing.T) {
 	testStateSimulatorHelper(t, &StateSimulator{}, symbols, testData)
 }
 
-func TestRawLogLoader_LoadFromIterator_endlessFuncs(t *testing.T) {
+func TestStateSimulator_Next_endlessFuncs(t *testing.T) {
 	txids := []TxID{
 		NewTxID(),
 	}
@@ -294,7 +294,7 @@ func TestRawLogLoader_LoadFromIterator_endlessFuncs(t *testing.T) {
 	testStateSimulatorHelper(t, nil, symbols, testData)
 }
 
-func TestRawLogLoader_LoadFromJsonLines(t *testing.T) {
+func TestStateSimulator_LoadFromJsonLines(t *testing.T) {
 	loader := StateSimulator{}
 	loader.Init()
 	// TODO: LoadFromJsonLinesをテストする。
