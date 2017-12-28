@@ -20,7 +20,6 @@ func (s *StateSimulator) Init() {
 	s.SymbolsEditor.Init(&s.Symbols)
 	s.Records = make([]*FuncLog, 0)
 	s.GoroutineMap = NewGoroutineMap()
-	s.TimeRangeMap = NewTimeRangeMap()
 	s.gmap = make(map[GID][]*FuncLog)
 }
 
@@ -56,7 +55,6 @@ func (s *StateSimulator) Next(fl RawFuncLog) {
 				// add to records
 				s.Records = append(s.Records, caller)
 				s.GoroutineMap.Add(caller)
-				s.TimeRangeMap.Add(caller)
 
 				if i != len(s.gmap[fl.GID])-1 {
 					log.Printf("WARN: missing funcEnd log: %+v\n", s.gmap[fl.GID][i:])
@@ -82,7 +80,6 @@ func (s *StateSimulator) Next(fl RawFuncLog) {
 		for _, fl := range s.gmap[gid] {
 			s.Records = append(s.Records, fl)
 			s.GoroutineMap.Add(fl)
-			s.TimeRangeMap.Add(fl)
 		}
 	}
 }
