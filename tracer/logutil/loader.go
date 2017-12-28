@@ -8,7 +8,6 @@ import (
 )
 
 const (
-	BufferSize           = 1 << 16
 	DefaultCallstackSize = 1024
 )
 
