@@ -31,7 +31,7 @@ func (s *StateSimulator) Next(raw RawFuncLog) {
 	}
 
 	switch raw.Tag {
-	case "funcStart":
+	case FuncStart:
 		var parent *FuncLog
 		if len(s.gmap[raw.GID]) > 0 {
 			parent = s.gmap[raw.GID][len(s.gmap[raw.GID])-1]
@@ -43,7 +43,7 @@ func (s *StateSimulator) Next(raw RawFuncLog) {
 			Frames:    raw.Frames,
 			GID:       raw.GID,
 		})
-	case "funcEnd":
+	case FuncEnd:
 		for i := len(s.gmap[raw.GID]) - 1; i >= 0; i-- {
 			fl := s.gmap[raw.GID][i]
 			log.Printf("DEBUG: loader.LoadFromIterator: funcEnd: raw=%+v, fl=%+v", raw, fl)
