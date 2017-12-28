@@ -46,7 +46,6 @@ func (s *StateSimulator) Next(raw RawFuncLog) {
 	case FuncEnd:
 		for i := len(s.gmap[raw.GID]) - 1; i >= 0; i-- {
 			fl := s.gmap[raw.GID][i]
-			log.Printf("DEBUG: loader.LoadFromIterator: funcEnd: raw=%+v, fl=%+v", raw, fl)
 			if s.compareCallee(fl, &raw) && s.compareCaller(fl, &raw) {
 				// detect EndTime
 				fl.EndTime = raw.Time
