@@ -29,11 +29,6 @@ func (rll *StateSimulator) LoadFromIterator(next func() (raw RawFuncLog, ok bool
 	gmap := make(map[GID][]*FuncLog)
 
 	for raw, ok := next(); ok; raw, ok = next() {
-		// call an event handler
-		if rll.RawLogHandler != nil {
-			rll.RawLogHandler(&raw)
-		}
-
 		if _, ok := gmap[raw.GID]; !ok {
 			// create new goroutine
 			gmap[raw.GID] = make([]*FuncLog, 0, DefaultCallstackSize)
@@ -63,10 +58,6 @@ func (rll *StateSimulator) LoadFromIterator(next func() (raw RawFuncLog, ok bool
 					rll.Records = append(rll.Records, fl)
 					rll.GoroutineMap.Add(fl)
 					rll.TimeRangeMap.Add(fl)
-					// call an event handler
-					if rll.FuncLogHandler != nil {
-						rll.FuncLogHandler(fl)
-					}
 
 					if i != len(gmap[raw.GID])-1 {
 						log.Printf("WARN: missing funcEnd log: %+v\n", gmap[raw.GID][i:])

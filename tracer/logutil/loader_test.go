@@ -13,10 +13,7 @@ func must(err error) {
 
 func testLoadFromIteratorHelper(t *testing.T, loader *StateSimulator, symbols *Symbols, testData []RawFuncLog) {
 	if loader == nil {
-		loader = &StateSimulator{
-			RawLogHandler:  func(raw *RawFuncLog) {},
-			FuncLogHandler: func(flog *FuncLog) {},
-		}
+		loader = &StateSimulator{}
 	}
 	loader.Init()
 	loader.SymbolsEditor.AddSymbols(symbols)
@@ -275,10 +272,7 @@ func TestRawLogLoader_LoadFromIterator_handlerIsNil(t *testing.T) {
 		},
 	}
 
-	testLoadFromIteratorHelper(t, &StateSimulator{
-		RawLogHandler:  nil,
-		FuncLogHandler: nil,
-	}, symbols, testData)
+	testLoadFromIteratorHelper(t, &StateSimulator{}, symbols, testData)
 }
 
 func TestRawLogLoader_LoadFromIterator_endlessFuncs(t *testing.T) {
@@ -310,10 +304,7 @@ func TestRawLogLoader_LoadFromIterator_endlessFuncs(t *testing.T) {
 }
 
 func TestRawLogLoader_LoadFromJsonLines(t *testing.T) {
-	loader := StateSimulator{
-		RawLogHandler:  func(raw *RawFuncLog) {},
-		FuncLogHandler: func(flog *FuncLog) {},
-	}
+	loader := StateSimulator{}
 	loader.Init()
 	// TODO: LoadFromJsonLinesをテストする。
 	//must(loader.LoadFromJsonLines(nil))

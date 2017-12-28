@@ -30,9 +30,6 @@ type TimeRangeMap struct {
 type StateSimulator struct {
 	Name string
 
-	RawLogHandler  LoadRawLogHandler
-	FuncLogHandler LoadFuncLogHandler
-
 	////////////////
 	// ↓ 初期化不要 ↓
 	Symbols       Symbols
