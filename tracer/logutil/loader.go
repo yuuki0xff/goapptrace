@@ -18,22 +18,22 @@ func NewTxID() TxID {
 func (s *StateSimulator) Init() {
 	s.Records = make([]*FuncLog, 0)
 	s.GoroutineMap = NewGoroutineMap()
-	s.gmap = make(map[GID][]*FuncLog)
+	s.stacks = make(map[GID][]*FuncLog)
 }
 
 func (s *StateSimulator) Next(fl RawFuncLog) {
-	if _, ok := s.gmap[fl.GID]; !ok {
+	if _, ok := s.stacks[fl.GID]; !ok {
 		// create new goroutine
-		s.gmap[fl.GID] = make([]*FuncLog, 0, DefaultCallstackSize)
+		s.stacks[fl.GID] = make([]*FuncLog, 0, DefaultCallstackSize)
 	}
 
 	switch fl.Tag {
 	case FuncStart:
 		var parent *FuncLog
-		if len(s.gmap[fl.GID]) > 0 {
-			parent = s.gmap[fl.GID][len(s.gmap[fl.GID])-1]
+		if len(s.stacks[fl.GID]) > 0 {
+			parent = s.stacks[fl.GID][len(s.stacks[fl.GID])-1]
 		}
-		s.gmap[fl.GID] = append(s.gmap[fl.GID], &FuncLog{
+		s.stacks[fl.GID] = append(s.stacks[fl.GID], &FuncLog{
 			StartTime: fl.Time,
 			EndTime:   NotEnded,
 			Parent:    parent,
@@ -43,8 +43,8 @@ func (s *StateSimulator) Next(fl RawFuncLog) {
 	case FuncEnd:
 		// 最後に呼び出した関数から順番にチェックしていく。
 		// 関数の終了がログに記録できなかった場合への対策。
-		for i := len(s.gmap[fl.GID]) - 1; i >= 0; i-- {
-			caller := s.gmap[fl.GID][i]
+		for i := len(s.stacks[fl.GID]) - 1; i >= 0; i-- {
+			caller := s.stacks[fl.GID][i]
 			if s.compareCallee(caller, &fl) && s.compareCaller(caller, &fl) {
 				// caller is the caller of fl
 
@@ -54,16 +54,16 @@ func (s *StateSimulator) Next(fl RawFuncLog) {
 				s.Records = append(s.Records, caller)
 				s.GoroutineMap.Add(caller)
 
-				if i != len(s.gmap[fl.GID])-1 {
-					log.Printf("WARN: missing funcEnd log: %+v\n", s.gmap[fl.GID][i:])
+				if i != len(s.stacks[fl.GID])-1 {
+					log.Printf("WARN: missing funcEnd log: %+v\n", s.stacks[fl.GID][i:])
 				}
-				// update s.gmap
+				// update s.stacks
 				if i == 0 {
 					// remove a goroutine
-					delete(s.gmap, fl.GID)
+					delete(s.stacks, fl.GID)
 				} else {
 					// remove older FuncLog
-					s.gmap[fl.GID] = s.gmap[fl.GID][:i]
+					s.stacks[fl.GID] = s.stacks[fl.GID][:i]
 				}
 				break
 			}
@@ -74,8 +74,8 @@ func (s *StateSimulator) Next(fl RawFuncLog) {
 
 	// TODO: 関数が終了しないかどうかの判定は、別の場所で行う
 	// end-less funcs
-	for gid := range s.gmap {
-		for _, fl := range s.gmap[gid] {
+	for gid := range s.stacks {
+		for _, fl := range s.stacks[gid] {
 			s.Records = append(s.Records, fl)
 			s.GoroutineMap.Add(fl)
 		}

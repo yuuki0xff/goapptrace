@@ -40,7 +40,7 @@ type StateSimulator struct {
 
 	// goroutine別の、現在のスタックの状態。
 	// ログから推測しているので、実際の状態とは異なるかもしれない。
-	gmap map[GID][]*FuncLog
+	stacks map[GID][]*FuncLog
 }
 
 // Goroutineの生存期間、およびそのGoroutine内で行われたアクションを保持する。
