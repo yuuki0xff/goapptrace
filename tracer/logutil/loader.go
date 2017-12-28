@@ -1,11 +1,8 @@
 package logutil
 
 import (
-	"bufio"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"math/rand"
 )
@@ -22,48 +19,6 @@ func NewTxID() TxID {
 func (rll *StateSimulator) Init() {
 	rll.Symbols.Init()
 	rll.SymbolsEditor.Init(&rll.Symbols)
-}
-
-// TODO: 使用されていないので削除可能
-func (rll *StateSimulator) LoadFromJsonLines(data io.Reader) error {
-	r := bufio.NewReaderSize(data, BufferSize)
-	lineno := 0
-
-	var ioError error
-	loadErr := rll.LoadFromIterator(func() (funclog RawFuncLog, ok bool) {
-		var line1, line2 []byte
-		if line1, _, ioError = r.ReadLine(); ioError != nil {
-			if ioError == io.EOF {
-				ioError = nil
-			}
-			return
-		}
-		if line2, _, ioError = r.ReadLine(); ioError != nil {
-			return
-		}
-
-		var symbols Symbols
-		ioError = json.Unmarshal(line1, &symbols)
-		if ioError != nil {
-			return
-		}
-		ioError = json.Unmarshal(line2, &funclog)
-		if ioError != nil {
-			return
-		}
-		funclog.Time = Time(lineno)
-
-		rll.SymbolsEditor.AddSymbols(&symbols)
-
-		lineno++
-		ok = true
-		return
-	})
-
-	if ioError != nil {
-		return ioError
-	}
-	return loadErr
 }
 
 // TODO: NextStateメソッドなどを用意して、イベントのコールバックなどで追加できるようにする

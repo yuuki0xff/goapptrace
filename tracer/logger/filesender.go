@@ -2,65 +2,46 @@ package logger
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
 
-	"encoding/json"
-
 	"github.com/yuuki0xff/goapptrace/info"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	"github.com/yuuki0xff/goapptrace/tracer/storage"
 )
 
 // FileSender writes Symbols and FuncLog to log file.
 type FileSender struct {
-	file io.WriteCloser
+	w *storage.CompactLogWriter
 }
 
 // open log file.
 func (f *FileSender) Open() error {
-	var err error
-	f.file, err = os.OpenFile(f.logFilePath(), os.O_CREATE|os.O_WRONLY, 0644)
-	return err
+	clog := storage.CompactLog{
+		File: storage.File(f.logFilePath()),
+	}
+	f.w = clog.Writer()
+	return f.w.Open()
 }
 
 // close log file.
 // これ移行はSendできない。
 func (f *FileSender) Close() error {
-	if f.file == nil {
+	if f.w == nil {
 		return ClosedError
 	}
-
-	if err := f.file.Close(); err != nil {
-		return err
-	}
-	f.file = nil
-	return nil
+	err := f.w.Close()
+	f.w = nil
+	return err
 }
 
 // write Symbols and RawFuncLog to the log file.
 func (f *FileSender) Send(symbols *logutil.Symbols, funclog *logutil.RawFuncLog) error {
-	if f.file == nil {
+	if f.w == nil {
 		return ClosedError
 	}
-
-	enc := json.NewEncoder(f.file)
-	// write symbols to file
-	if symbols != nil {
-		symbols = &logutil.Symbols{}
-	}
-	err := enc.Encode(symbols)
-	if err != nil {
-		return err
-	}
-
-	// write backtrace to file
-	err = enc.Encode(funclog)
-	if err != nil {
-		return err
-	}
-	return nil
+	return f.w.Write(symbols, funclog)
 }
 
 // returns absolute path of log file.
