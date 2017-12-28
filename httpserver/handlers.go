@@ -122,26 +122,14 @@ func getRouter(args *ServerArgs) *mux.Router {
 		colorRule := render.ColorRuleNames[vars["color-rule"]]
 		colors, _ := strconv.ParseInt(vars["colors"], 10, BIT_SIZE)
 
-		// TODO:
-		logChan := make(chan logutil.RawFuncLog, 10000)
 		go func() {
 			if err := reader.Search(time.Unix(start, 0), time.Unix(end, 0), func(evt logutil.RawFuncLog) error {
-				logChan <- evt
+				rawlog.Next(evt)
 				return nil
 			}); err != nil {
 				panic(err)
 			}
-			close(logChan)
 		}()
-		if err := rawlog.LoadFromIterator(func() (raw logutil.RawFuncLog, ok bool) {
-			raw, ok = <-logChan
-			if !ok {
-				return
-			}
-			return
-		}); err != nil {
-			panic(err)
-		}
 		rnd := render.SVGRender{
 			StartTime: logutil.Time(start),
 			EndTime:   logutil.Time(end),

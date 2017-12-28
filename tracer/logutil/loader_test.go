@@ -1,7 +1,6 @@
 package logutil
 
 import (
-	"log"
 	"testing"
 )
 
@@ -17,17 +16,9 @@ func testLoadFromIteratorHelper(t *testing.T, loader *StateSimulator, symbols *S
 	}
 	loader.Init()
 	loader.SymbolsEditor.AddSymbols(symbols)
-	var i int
-	must(loader.LoadFromIterator(func() (RawFuncLog, bool) {
-		if i < len(testData) {
-			defer func() {
-				i++
-			}()
-			log.Println(i)
-			return testData[i], true
-		}
-		return RawFuncLog{}, false
-	}))
+	for _, data := range testData {
+		loader.Next(data)
+	}
 }
 
 func TestRawLogLoader_LoadFromIterator_startStopFuncs(t *testing.T) {
