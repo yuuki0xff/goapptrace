@@ -21,25 +21,24 @@ func (s *StateSimulator) Init() {
 	s.Records = make([]*FuncLog, 0)
 	s.GoroutineMap = NewGoroutineMap()
 	s.TimeRangeMap = NewTimeRangeMap()
+	s.gmap = make(map[GID][]*FuncLog)
 }
 
 // TODO: NextStateメソッドなどを用意して、イベントのコールバックなどで追加できるようにする
 func (s *StateSimulator) LoadFromIterator(next func() (raw RawFuncLog, ok bool)) error {
-	gmap := make(map[GID][]*FuncLog)
-
 	for raw, ok := next(); ok; raw, ok = next() {
-		if _, ok := gmap[raw.GID]; !ok {
+		if _, ok := s.gmap[raw.GID]; !ok {
 			// create new goroutine
-			gmap[raw.GID] = make([]*FuncLog, 0, DefaultCallstackSize)
+			s.gmap[raw.GID] = make([]*FuncLog, 0, DefaultCallstackSize)
 		}
 
 		switch raw.Tag {
 		case "funcStart":
 			var parent *FuncLog
-			if len(gmap[raw.GID]) > 0 {
-				parent = gmap[raw.GID][len(gmap[raw.GID])-1]
+			if len(s.gmap[raw.GID]) > 0 {
+				parent = s.gmap[raw.GID][len(s.gmap[raw.GID])-1]
 			}
-			gmap[raw.GID] = append(gmap[raw.GID], &FuncLog{
+			s.gmap[raw.GID] = append(s.gmap[raw.GID], &FuncLog{
 				StartTime: raw.Time,
 				EndTime:   NotEnded,
 				Parent:    parent,
@@ -47,8 +46,8 @@ func (s *StateSimulator) LoadFromIterator(next func() (raw RawFuncLog, ok bool))
 				GID:       raw.GID,
 			})
 		case "funcEnd":
-			for i := len(gmap[raw.GID]) - 1; i >= 0; i-- {
-				fl := gmap[raw.GID][i]
+			for i := len(s.gmap[raw.GID]) - 1; i >= 0; i-- {
+				fl := s.gmap[raw.GID][i]
 				log.Printf("DEBUG: loader.LoadFromIterator: funcEnd: raw=%+v, fl=%+v", raw, fl)
 				if s.compareCallee(fl, &raw) && s.compareCaller(fl, &raw) {
 					// detect EndTime
@@ -58,16 +57,16 @@ func (s *StateSimulator) LoadFromIterator(next func() (raw RawFuncLog, ok bool))
 					s.GoroutineMap.Add(fl)
 					s.TimeRangeMap.Add(fl)
 
-					if i != len(gmap[raw.GID])-1 {
-						log.Printf("WARN: missing funcEnd log: %+v\n", gmap[raw.GID][i:])
+					if i != len(s.gmap[raw.GID])-1 {
+						log.Printf("WARN: missing funcEnd log: %+v\n", s.gmap[raw.GID][i:])
 					}
 					// add to goroutines
 					if i == 0 {
 						// remove a goroutine
-						delete(gmap, raw.GID)
+						delete(s.gmap, raw.GID)
 					} else {
 						// remove older FuncLog
-						gmap[raw.GID] = gmap[raw.GID][:i]
+						s.gmap[raw.GID] = s.gmap[raw.GID][:i]
 					}
 					break
 				}
@@ -78,8 +77,8 @@ func (s *StateSimulator) LoadFromIterator(next func() (raw RawFuncLog, ok bool))
 	}
 
 	// end-less funcs
-	for gid := range gmap {
-		for _, fl := range gmap[gid] {
+	for gid := range s.gmap {
+		for _, fl := range s.gmap[gid] {
 			s.Records = append(s.Records, fl)
 			s.GoroutineMap.Add(fl)
 			s.TimeRangeMap.Add(fl)

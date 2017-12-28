@@ -40,6 +40,8 @@ type StateSimulator struct {
 	GoroutineMap *GoroutineMap
 	// 指定した時間帯に存在していたgoroutine
 	TimeRangeMap *TimeRangeMap
+
+	gmap map[GID][]*FuncLog
 }
 
 // Goroutineの生存期間、およびそのGoroutine内で行われたアクションを保持する。
