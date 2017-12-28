@@ -47,16 +47,16 @@ func (s *StateSimulator) Next(raw RawFuncLog) {
 		// 最後に呼び出した関数から順番にチェックしていく。
 		// 関数の終了がログに記録できなかった場合への対策。
 		for i := len(s.gmap[raw.GID]) - 1; i >= 0; i-- {
-			fl := s.gmap[raw.GID][i]
-			if s.compareCallee(fl, &raw) && s.compareCaller(fl, &raw) {
-				// fl is the caller of raw
+			caller := s.gmap[raw.GID][i]
+			if s.compareCallee(caller, &raw) && s.compareCaller(caller, &raw) {
+				// caller is the caller of raw
 
 				// detect EndTime
-				fl.EndTime = raw.Time
+				caller.EndTime = raw.Time
 				// add to records
-				s.Records = append(s.Records, fl)
-				s.GoroutineMap.Add(fl)
-				s.TimeRangeMap.Add(fl)
+				s.Records = append(s.Records, caller)
+				s.GoroutineMap.Add(caller)
+				s.TimeRangeMap.Add(caller)
 
 				if i != len(s.gmap[raw.GID])-1 {
 					log.Printf("WARN: missing funcEnd log: %+v\n", s.gmap[raw.GID][i:])
