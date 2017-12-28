@@ -27,8 +27,7 @@ type TimeRangeMap struct {
 }
 
 // TODO: 要リファクタ
-// TODO: 名称変更。名前が不適切。
-type RawLogLoader struct {
+type StateSimulator struct {
 	Name string
 
 	RawLogHandler  LoadRawLogHandler

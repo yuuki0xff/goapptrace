@@ -101,7 +101,7 @@ func getRouter(args *ServerArgs) *mux.Router {
 		}
 		defer reader.Close() // nolint: errcheck
 
-		rawlog := &logutil.RawLogLoader{
+		rawlog := &logutil.StateSimulator{
 			Name: strid,
 		}
 		rawlog.Init()

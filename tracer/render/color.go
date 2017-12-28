@@ -29,7 +29,7 @@ var (
 type Colors struct {
 	ColorRule ColorRule
 	NColors   int
-	Log       *logutil.RawLogLoader
+	Log       *logutil.StateSimulator
 	strColors []string
 	hash      hash.Hash64
 }

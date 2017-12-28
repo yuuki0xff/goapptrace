@@ -19,13 +19,13 @@ func NewTxID() TxID {
 	return TxID(rand.Int63())
 }
 
-func (rll *RawLogLoader) Init() {
+func (rll *StateSimulator) Init() {
 	rll.Symbols.Init()
 	rll.SymbolsEditor.Init(&rll.Symbols)
 }
 
 // TODO: 使用されていないので削除可能
-func (rll *RawLogLoader) LoadFromJsonLines(data io.Reader) error {
+func (rll *StateSimulator) LoadFromJsonLines(data io.Reader) error {
 	r := bufio.NewReaderSize(data, BufferSize)
 	lineno := 0
 
@@ -67,7 +67,7 @@ func (rll *RawLogLoader) LoadFromJsonLines(data io.Reader) error {
 }
 
 // TODO: NextStateメソッドなどを用意して、イベントのコールバックなどで追加できるようにする
-func (rll *RawLogLoader) LoadFromIterator(next func() (raw RawFuncLog, ok bool)) error {
+func (rll *StateSimulator) LoadFromIterator(next func() (raw RawFuncLog, ok bool)) error {
 	rll.Records = make([]*FuncLog, 0)
 	rll.GoroutineMap = NewGoroutineMap()
 	rll.TimeRangeMap = NewTimeRangeMap()
@@ -282,7 +282,7 @@ func (fl *FuncLog) Parents() int {
 	return parents
 }
 
-func (rll RawLogLoader) compareCaller(fl *FuncLog, log *RawFuncLog) bool {
+func (rll StateSimulator) compareCaller(fl *FuncLog, log *RawFuncLog) bool {
 	f1 := fl.Frames[1:]
 	f2 := log.Frames[1:]
 
@@ -297,7 +297,7 @@ func (rll RawLogLoader) compareCaller(fl *FuncLog, log *RawFuncLog) bool {
 	return true
 }
 
-func (rll RawLogLoader) compareCallee(fl *FuncLog, log *RawFuncLog) bool {
+func (rll StateSimulator) compareCallee(fl *FuncLog, log *RawFuncLog) bool {
 	funcID1 := rll.Symbols.FuncStatus[fl.Frames[0]].Func
 	funcID2 := rll.Symbols.FuncStatus[log.Frames[0]].Func
 	return funcID1 == funcID2

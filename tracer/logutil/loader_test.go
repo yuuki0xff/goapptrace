@@ -11,9 +11,9 @@ func must(err error) {
 	}
 }
 
-func testLoadFromIteratorHelper(t *testing.T, loader *RawLogLoader, symbols *Symbols, testData []RawFuncLog) {
+func testLoadFromIteratorHelper(t *testing.T, loader *StateSimulator, symbols *Symbols, testData []RawFuncLog) {
 	if loader == nil {
-		loader = &RawLogLoader{
+		loader = &StateSimulator{
 			RawLogHandler:  func(raw *RawFuncLog) {},
 			FuncLogHandler: func(flog *FuncLog) {},
 		}
@@ -275,7 +275,7 @@ func TestRawLogLoader_LoadFromIterator_handlerIsNil(t *testing.T) {
 		},
 	}
 
-	testLoadFromIteratorHelper(t, &RawLogLoader{
+	testLoadFromIteratorHelper(t, &StateSimulator{
 		RawLogHandler:  nil,
 		FuncLogHandler: nil,
 	}, symbols, testData)
@@ -310,7 +310,7 @@ func TestRawLogLoader_LoadFromIterator_endlessFuncs(t *testing.T) {
 }
 
 func TestRawLogLoader_LoadFromJsonLines(t *testing.T) {
-	loader := RawLogLoader{
+	loader := StateSimulator{
 		RawLogHandler:  func(raw *RawFuncLog) {},
 		FuncLogHandler: func(flog *FuncLog) {},
 	}
