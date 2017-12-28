@@ -5,16 +5,10 @@ import (
 
 	"encoding/json"
 
-	"strconv"
-
-	"time"
-
 	"log"
 
 	"github.com/gorilla/mux"
 	"github.com/yuuki0xff/goapptrace/info"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
-	"github.com/yuuki0xff/goapptrace/tracer/render"
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
 )
 
@@ -80,79 +74,6 @@ func getRouter(args *ServerArgs) *mux.Router {
 			panic(err)
 		}
 	})
-	api.HandleFunc("/log/{id:[0-9a-f]+}.svg", func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		strid := vars["id"]
-		id, err := storage.LogID{}.Unhex(strid)
-		if err != nil {
-			http.Error(w, "invalid id", http.StatusBadRequest)
-			return
-		}
-
-		logobj, ok := args.Storage.Log(id)
-		if !ok {
-			http.Error(w, "not found Log", http.StatusNotFound)
-			return
-		}
-		reader, err := logobj.Reader()
-		if err != nil {
-			http.Error(w, "failed to initialization", http.StatusInternalServerError)
-			return
-		}
-		defer reader.Close() // nolint: errcheck
-
-		rawlog := &logutil.StateSimulator{
-			Name: strid,
-		}
-		rawlog.Init()
-		log.Printf("DEBUG: logobj symbols: %+v\n", reader.Symbols())
-		rawlog.SymbolsEditor.AddSymbols(reader.Symbols())
-		log.Printf("DEBUG: rawlog symbols: %+v\n", &rawlog.Symbols)
-
-		// TODO: error handling
-		// TODO: scaleパラメータに対する処理を実装する
-		width, _ := strconv.ParseInt(vars["width"], 10, BIT_SIZE)
-		height, _ := strconv.ParseInt(vars["height"], 10, BIT_SIZE)
-		scale, _ := strconv.ParseFloat(vars["scale"], BIT_SIZE)
-
-		start, _ := strconv.ParseInt(vars["start"], 10, BIT_SIZE)
-		end := start + int64(float64(width)*scale)
-
-		layout := render.LayoutTypeNames[vars["layout"]]
-		colorRule := render.ColorRuleNames[vars["color-rule"]]
-		colors, _ := strconv.ParseInt(vars["colors"], 10, BIT_SIZE)
-
-		go func() {
-			if err := reader.Search(time.Unix(start, 0), time.Unix(end, 0), func(evt logutil.RawFuncLog) error {
-				rawlog.Next(evt)
-				return nil
-			}); err != nil {
-				panic(err)
-			}
-		}()
-		rnd := render.SVGRender{
-			StartTime: logutil.Time(start),
-			EndTime:   logutil.Time(end),
-			Layout:    layout,
-			Log:       rawlog,
-			Height:    int(height),
-			Colors: render.Colors{
-				ColorRule: colorRule,
-				NColors:   int(colors),
-			},
-		}
-		w.Header().Add("Content-Type", "image/svg+xml")
-		rnd.Render(w)
-	}).Queries(
-		"width", "{width:[0-9]+}",
-		"height", "{height:[0-9]+}",
-
-		"layout", "{layout:[a-z]+}",
-		"color-rule", "{color-rule:[a-z]+}",
-		"colors", "{colors:[0-9]+}",
-		"start", "{start:[0-9]+}",
-		"scale", "{scale:[0-9.]+}",
-	)
 
 	router.PathPrefix("/").Methods("GET").Handler(
 		http.FileServer(http.Dir(info.DocRootAbsPath)))
