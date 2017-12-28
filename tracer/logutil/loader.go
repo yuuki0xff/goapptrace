@@ -24,6 +24,7 @@ func (rll *RawLogLoader) Init() {
 	rll.SymbolsEditor.Init(&rll.Symbols)
 }
 
+// TODO: 使用されていないので削除可能
 func (rll *RawLogLoader) LoadFromJsonLines(data io.Reader) error {
 	r := bufio.NewReaderSize(data, BufferSize)
 	lineno := 0
@@ -65,6 +66,7 @@ func (rll *RawLogLoader) LoadFromJsonLines(data io.Reader) error {
 	return loadErr
 }
 
+// TODO: NextStateメソッドなどを用意して、イベントのコールバックなどで追加できるようにする
 func (rll *RawLogLoader) LoadFromIterator(next func() (raw RawFuncLog, ok bool)) error {
 	rll.Records = make([]*FuncLog, 0)
 	rll.GoroutineMap = NewGoroutineMap()
@@ -140,6 +142,13 @@ func (rll *RawLogLoader) LoadFromIterator(next func() (raw RawFuncLog, ok bool))
 	}
 	return nil
 }
+
+// TODO: シリアライズ、デシリアライズ出来るようにする
+// TODO: add GobDecode([]byte) error
+// TODO: add GobEncode() ([]byte, error)
+// TODO: 現在の状態を取得するメソッド
+// TODO: add Goroutines() []*Goroutine
+// TODO: add FunctionCalls() []*Goroutine
 
 func NewTimeRange(time Time) TimeRange {
 	if time == NotEnded {
