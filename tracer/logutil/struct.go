@@ -28,8 +28,6 @@ type TimeRangeMap struct {
 
 // TODO: 要リファクタ
 type StateSimulator struct {
-	Name string
-
 	////////////////
 	// ↓ 初期化不要 ↓
 	Symbols       Symbols
