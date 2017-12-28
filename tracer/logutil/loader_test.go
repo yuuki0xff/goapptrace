@@ -10,14 +10,14 @@ func must(err error) {
 	}
 }
 
-func testStateSimulatorHelper(t *testing.T, loader *StateSimulator, symbols *Symbols, testData []RawFuncLog) {
-	if loader == nil {
-		loader = &StateSimulator{}
+func testStateSimulatorHelper(t *testing.T, s *StateSimulator, symbols *Symbols, testData []RawFuncLog) {
+	if s == nil {
+		s = &StateSimulator{}
 	}
-	loader.Init()
-	loader.SymbolsEditor.AddSymbols(symbols)
+	s.Init()
+	s.SymbolsEditor.AddSymbols(symbols)
 	for _, data := range testData {
-		loader.Next(data)
+		s.Next(data)
 	}
 }
 
