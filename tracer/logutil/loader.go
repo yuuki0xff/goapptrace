@@ -44,9 +44,13 @@ func (s *StateSimulator) Next(raw RawFuncLog) {
 			GID:       raw.GID,
 		})
 	case FuncEnd:
+		// 最後に呼び出した関数から順番にチェックしていく。
+		// 関数の終了がログに記録できなかった場合への対策。
 		for i := len(s.gmap[raw.GID]) - 1; i >= 0; i-- {
 			fl := s.gmap[raw.GID][i]
 			if s.compareCallee(fl, &raw) && s.compareCaller(fl, &raw) {
+				// fl is the caller of raw
+
 				// detect EndTime
 				fl.EndTime = raw.Time
 				// add to records
@@ -57,7 +61,7 @@ func (s *StateSimulator) Next(raw RawFuncLog) {
 				if i != len(s.gmap[raw.GID])-1 {
 					log.Printf("WARN: missing funcEnd log: %+v\n", s.gmap[raw.GID][i:])
 				}
-				// add to goroutines
+				// update s.gmap
 				if i == 0 {
 					// remove a goroutine
 					delete(s.gmap, raw.GID)
