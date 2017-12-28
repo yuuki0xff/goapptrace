@@ -293,10 +293,3 @@ func TestStateSimulator_Next_endlessFuncs(t *testing.T) {
 	}
 	testStateSimulatorHelper(t, nil, symbols, testData)
 }
-
-func TestStateSimulator_LoadFromJsonLines(t *testing.T) {
-	loader := StateSimulator{}
-	loader.Init()
-	// TODO: LoadFromJsonLinesをテストする。
-	//must(loader.LoadFromJsonLines(nil))
-}
