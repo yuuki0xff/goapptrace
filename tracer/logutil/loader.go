@@ -24,56 +24,56 @@ func (s *StateSimulator) Init() {
 	s.gmap = make(map[GID][]*FuncLog)
 }
 
-func (s *StateSimulator) Next(raw RawFuncLog) {
-	if _, ok := s.gmap[raw.GID]; !ok {
+func (s *StateSimulator) Next(fl RawFuncLog) {
+	if _, ok := s.gmap[fl.GID]; !ok {
 		// create new goroutine
-		s.gmap[raw.GID] = make([]*FuncLog, 0, DefaultCallstackSize)
+		s.gmap[fl.GID] = make([]*FuncLog, 0, DefaultCallstackSize)
 	}
 
-	switch raw.Tag {
+	switch fl.Tag {
 	case FuncStart:
 		var parent *FuncLog
-		if len(s.gmap[raw.GID]) > 0 {
-			parent = s.gmap[raw.GID][len(s.gmap[raw.GID])-1]
+		if len(s.gmap[fl.GID]) > 0 {
+			parent = s.gmap[fl.GID][len(s.gmap[fl.GID])-1]
 		}
-		s.gmap[raw.GID] = append(s.gmap[raw.GID], &FuncLog{
-			StartTime: raw.Time,
+		s.gmap[fl.GID] = append(s.gmap[fl.GID], &FuncLog{
+			StartTime: fl.Time,
 			EndTime:   NotEnded,
 			Parent:    parent,
-			Frames:    raw.Frames,
-			GID:       raw.GID,
+			Frames:    fl.Frames,
+			GID:       fl.GID,
 		})
 	case FuncEnd:
 		// 最後に呼び出した関数から順番にチェックしていく。
 		// 関数の終了がログに記録できなかった場合への対策。
-		for i := len(s.gmap[raw.GID]) - 1; i >= 0; i-- {
-			caller := s.gmap[raw.GID][i]
-			if s.compareCallee(caller, &raw) && s.compareCaller(caller, &raw) {
-				// caller is the caller of raw
+		for i := len(s.gmap[fl.GID]) - 1; i >= 0; i-- {
+			caller := s.gmap[fl.GID][i]
+			if s.compareCallee(caller, &fl) && s.compareCaller(caller, &fl) {
+				// caller is the caller of fl
 
 				// detect EndTime
-				caller.EndTime = raw.Time
+				caller.EndTime = fl.Time
 				// add to records
 				s.Records = append(s.Records, caller)
 				s.GoroutineMap.Add(caller)
 				s.TimeRangeMap.Add(caller)
 
-				if i != len(s.gmap[raw.GID])-1 {
-					log.Printf("WARN: missing funcEnd log: %+v\n", s.gmap[raw.GID][i:])
+				if i != len(s.gmap[fl.GID])-1 {
+					log.Printf("WARN: missing funcEnd log: %+v\n", s.gmap[fl.GID][i:])
 				}
 				// update s.gmap
 				if i == 0 {
 					// remove a goroutine
-					delete(s.gmap, raw.GID)
+					delete(s.gmap, fl.GID)
 				} else {
 					// remove older FuncLog
-					s.gmap[raw.GID] = s.gmap[raw.GID][:i]
+					s.gmap[fl.GID] = s.gmap[fl.GID][:i]
 				}
 				break
 			}
 		}
 	default:
-		panic(errors.New(fmt.Sprintf("Unsupported tag: %s", raw.Tag)))
+		panic(errors.New(fmt.Sprintf("Unsupported tag: %s", fl.Tag)))
 	}
 
 	// TODO: 関数が終了しないかどうかの判定は、別の場所で行う
