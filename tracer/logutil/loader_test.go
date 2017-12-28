@@ -10,7 +10,7 @@ func must(err error) {
 	}
 }
 
-func testLoadFromIteratorHelper(t *testing.T, loader *StateSimulator, symbols *Symbols, testData []RawFuncLog) {
+func testStateSimulatorHelper(t *testing.T, loader *StateSimulator, symbols *Symbols, testData []RawFuncLog) {
 	if loader == nil {
 		loader = &StateSimulator{}
 	}
@@ -58,7 +58,7 @@ func TestRawLogLoader_LoadFromIterator_startStopFuncs(t *testing.T) {
 		},
 	}
 
-	testLoadFromIteratorHelper(t, nil, symbols, testData)
+	testStateSimulatorHelper(t, nil, symbols, testData)
 }
 
 func TestRawLogLoader_LoadFromIterator_withNestedCall(t *testing.T) {
@@ -156,7 +156,7 @@ func TestRawLogLoader_LoadFromIterator_withNestedCall(t *testing.T) {
 		},
 	}
 
-	testLoadFromIteratorHelper(t, nil, symbols, testData)
+	testStateSimulatorHelper(t, nil, symbols, testData)
 }
 
 func TestRawLogLoader_LoadFromIterator_startStopNewGoroutines(t *testing.T) {
@@ -223,7 +223,7 @@ func TestRawLogLoader_LoadFromIterator_startStopNewGoroutines(t *testing.T) {
 		},
 	}
 
-	testLoadFromIteratorHelper(t, nil, symbols, testData)
+	testStateSimulatorHelper(t, nil, symbols, testData)
 }
 
 func TestRawLogLoader_LoadFromIterator_handlerIsNil(t *testing.T) {
@@ -263,7 +263,7 @@ func TestRawLogLoader_LoadFromIterator_handlerIsNil(t *testing.T) {
 		},
 	}
 
-	testLoadFromIteratorHelper(t, &StateSimulator{}, symbols, testData)
+	testStateSimulatorHelper(t, &StateSimulator{}, symbols, testData)
 }
 
 func TestRawLogLoader_LoadFromIterator_endlessFuncs(t *testing.T) {
@@ -291,7 +291,7 @@ func TestRawLogLoader_LoadFromIterator_endlessFuncs(t *testing.T) {
 			TxID: txids[0],
 		},
 	}
-	testLoadFromIteratorHelper(t, nil, symbols, testData)
+	testStateSimulatorHelper(t, nil, symbols, testData)
 }
 
 func TestRawLogLoader_LoadFromJsonLines(t *testing.T) {
