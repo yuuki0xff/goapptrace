@@ -38,8 +38,6 @@ type StateSimulator struct {
 	Records RecordList
 	// トレース開始から現在までに存在していた全てのgoroutine
 	GoroutineMap *GoroutineMap
-	// 指定した時間帯に存在していたgoroutine
-	TimeRangeMap *TimeRangeMap
 
 	// goroutine別の、現在のスタックの状態。
 	// ログから推測しているので、実際の状態とは異なるかもしれない。
