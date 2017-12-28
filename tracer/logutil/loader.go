@@ -18,13 +18,13 @@ func NewTxID() TxID {
 func (s *StateSimulator) Init() {
 	s.Symbols.Init()
 	s.SymbolsEditor.Init(&s.Symbols)
+	s.Records = make([]*FuncLog, 0)
+	s.GoroutineMap = NewGoroutineMap()
+	s.TimeRangeMap = NewTimeRangeMap()
 }
 
 // TODO: NextStateメソッドなどを用意して、イベントのコールバックなどで追加できるようにする
 func (s *StateSimulator) LoadFromIterator(next func() (raw RawFuncLog, ok bool)) error {
-	s.Records = make([]*FuncLog, 0)
-	s.GoroutineMap = NewGoroutineMap()
-	s.TimeRangeMap = NewTimeRangeMap()
 	gmap := make(map[GID][]*FuncLog)
 
 	for raw, ok := next(); ok; raw, ok = next() {
