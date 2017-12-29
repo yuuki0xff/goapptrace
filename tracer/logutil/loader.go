@@ -121,3 +121,13 @@ func (s *StateSimulator) Goroutines() []*Goroutine {
 	}
 	return goroutines
 }
+
+// 実行が終了した関数についてのログを削除する
+func (s *StateSimulator) Clear() {
+	for id, fl := range s.funcLogs {
+		if fl.EndTime == NotEnded {
+			continue
+		}
+		delete(s.funcLogs, id)
+	}
+}
