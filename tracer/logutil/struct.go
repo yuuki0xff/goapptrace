@@ -21,8 +21,6 @@ type GoroutineMap struct {
 // 仕様上、監視対象外のコードで生成されたgoroutineの終了タイミングは正確でない。
 // 一度終了したと判定したgoroutineが、後になってまた動いていると判定されることがある。
 type StateSimulator struct {
-	// TODO: 要リファクタ
-
 	Symbols *Symbols
 
 	funcLogs []*FuncLog
