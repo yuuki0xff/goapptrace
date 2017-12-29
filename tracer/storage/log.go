@@ -230,13 +230,14 @@ func (l *Log) Writer() (*LogWriter, error) {
 // Logの状態を確認する。
 func (l *Log) Status() LogStatus {
 	m := l.Root.MetaFile(l.ID).Exists()
+	f := l.Root.FuncLogFile(l.ID, 0).Exists()
 	r := l.Root.RawFuncLogFile(l.ID, 0).Exists()
 	i := l.Root.IndexFile(l.ID).Exists()
 	s := l.Root.SymbolFile(l.ID).Exists()
 
-	if m && r && i && s {
+	if m && f && r && i && s {
 		return LogCreated
-	} else if !m && !r && !i && !s {
+	} else if !m && !f && !r && !i && !s {
 		return LogNotCreated
 	} else {
 		return LogBroken
