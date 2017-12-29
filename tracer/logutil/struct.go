@@ -19,8 +19,13 @@ type GoroutineMap struct {
 	m map[GID]*Goroutine
 }
 
-// TODO: 要リファクタ
+// RawFuncLogから実行時の状態を推測し、FuncLogとGoroutineオブジェクトを構築する。
+// 具体的には、関数やgoroutineの開始・終了のタイミングの推測を行う。
+// 仕様上、監視対象外のコードで生成されたgoroutineの終了タイミングは正確でない。
+// 一度終了したと判定したgoroutineが、後になってまた動いていると判定されることがある。
 type StateSimulator struct {
+	// TODO: 要リファクタ
+
 	Symbols *Symbols
 
 	////////////////
