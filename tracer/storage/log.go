@@ -262,6 +262,12 @@ func (l *Log) Remove() error {
 		if err := file.Remove(); err != nil {
 			return fmt.Errorf("failed to remove the RawFuncLog(%s): %s", l.ID, err.Error())
 		}
+
+		file = l.Root.FuncLogFile(l.ID, index)
+		if err := file.Remove(); err != nil {
+			return fmt.Errorf("failed to remove the FuncLog(%s): %s", l.ID, err.Error())
+		}
+
 		index++
 	}
 	if err := l.Root.SymbolFile(l.ID).Remove(); err != nil {
