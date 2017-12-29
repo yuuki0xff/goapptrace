@@ -25,9 +25,6 @@ type StateSimulator struct {
 
 	Symbols *Symbols
 
-	////////////////
-	// ↓ 初期化不要 ↓
-
 	funcLogs []*FuncLog
 	// トレース開始から現在までに存在していた全てのgoroutine
 	goroutineMap *GoroutineMap
