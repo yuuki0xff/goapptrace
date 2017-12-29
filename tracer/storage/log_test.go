@@ -77,7 +77,7 @@ func TestLog_withEmptyFile(t *testing.T) {
 	must(t, lr.Close(), "LogReader.Close():")
 }
 
-func TestLog_AppendFuncLog(t *testing.T) {
+func TestLog_AppendRawFuncLog(t *testing.T) {
 	tempdir, err := ioutil.TempDir("", ".goapptrace_storage")
 	must(t, err, "can not create a temporary directory:")
 	defer func() {
@@ -97,8 +97,8 @@ func TestLog_AppendFuncLog(t *testing.T) {
 	must(t, l.Init(), "Log.Init():")
 	lw, err := l.Writer()
 	must(t, err, "Log.Writer():")
-	must(t, lw.AppendFuncLog(&logutil.RawFuncLog{}), "LogWriter.AppendFuncLog():")
-	must(t, lw.AppendFuncLog(&logutil.RawFuncLog{}), "LogWriter.AppendFuncLog():")
+	must(t, lw.AppendRawFuncLog(&logutil.RawFuncLog{}), "LogWriter.AppendRawFuncLog():")
+	must(t, lw.AppendRawFuncLog(&logutil.RawFuncLog{}), "LogWriter.AppendRawFuncLog():")
 	must(t, lw.Close(), "LogWriter.Close():")
 
 	// data dir should only contains those files:
@@ -184,12 +184,12 @@ func TestLog_ReadDuringWriting(t *testing.T) {
 			rune(rand.Int()),
 			rune(rand.Int()),
 		})
-		must(t, lw.AppendFuncLog(&logutil.RawFuncLog{
+		must(t, lw.AppendRawFuncLog(&logutil.RawFuncLog{
 			Time: logutil.Time(i),
 			Tag:  logutil.TagName(randomName),
 			GID:  logutil.GID(rand.Int()),
 			TxID: logutil.TxID(rand.Int()),
-		}), "LogWriter.AppendFuncLog():")
+		}), "LogWriter.AppendRawFuncLog():")
 
 		// RawFuncLogNewが1つあたり0.1バイト未満で書き込まれるのは考えにくい。
 		// 十分な回数だけ試行しても終了しない場合、テスト失敗として扱う。

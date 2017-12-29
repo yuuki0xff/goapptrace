@@ -423,7 +423,7 @@ func (lw *LogWriter) Close() error {
 	return err
 }
 
-func (lw *LogWriter) AppendFuncLog(raw *logutil.RawFuncLog) error {
+func (lw *LogWriter) AppendRawFuncLog(raw *logutil.RawFuncLog) error {
 	lw.l.lock.Lock()
 	defer lw.l.lock.Unlock()
 
