@@ -113,7 +113,7 @@ func (d DirLayout) MetaFile(id LogID) File {
 	return File(path.Join(d.MetaDir(), id.Hex()+".meta.json.gz"))
 }
 
-// RawFuncLogファイルを返す。
+// 指定したLogIDのRawFuncLogファイルを返す。
 func (d DirLayout) RawFuncLogFile(id LogID, n int64) File {
 	return File(path.Join(d.DataDir(), fmt.Sprintf("%s.%d.rawfunc.log.gz", id.Hex(), n)))
 }
