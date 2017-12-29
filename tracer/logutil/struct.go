@@ -14,7 +14,6 @@ type GID int64 // GID - Goroutine ID
 type TxID uint64
 type Time int
 type TagName string
-type TimeRange struct{ rangeID int }
 type RecordList []*FuncLog
 type GoroutineMap struct {
 	m map[GID]*Goroutine

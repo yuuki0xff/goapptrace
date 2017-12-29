@@ -89,40 +89,6 @@ func (s *StateSimulator) Next(fl RawFuncLog) {
 // TODO: add Goroutines() []*Goroutine
 // TODO: add FunctionCalls() []*Goroutine
 
-func NewTimeRange(time Time) TimeRange {
-	if time == NotEnded {
-		return TimeRange{NotEnded}
-	}
-	return TimeRange{int(time) / TimeRangeStep}
-}
-
-func (tr TimeRange) Prev() TimeRange {
-	tr.rangeID--
-	return tr
-}
-
-func (tr TimeRange) Next() TimeRange {
-	tr.rangeID++
-	return tr
-}
-
-func NewTimeRanges(startTime Time, endTime Time) []TimeRange {
-	ranges := []TimeRange{}
-	sid := NewTimeRange(startTime).rangeID
-	eid := NewTimeRange(endTime).rangeID
-
-	if eid == NotEnded {
-		return []TimeRange{
-			{NotEnded},
-		}
-	}
-
-	for id := sid; id <= eid; id++ {
-		ranges = append(ranges, TimeRange{id})
-	}
-	return ranges
-}
-
 func NewGoroutineMap() *GoroutineMap {
 	return &GoroutineMap{
 		m: make(map[GID]*Goroutine),
