@@ -17,7 +17,7 @@ func NewTxID() TxID {
 
 func (s *StateSimulator) Init() {
 	s.FuncLogs = make([]*FuncLog, 0)
-	s.GoroutineMap = NewGoroutineMap()
+	s.goroutineMap = NewGoroutineMap()
 	s.stacks = make(map[GID][]*FuncLog)
 }
 
@@ -52,7 +52,7 @@ func (s *StateSimulator) Next(fl RawFuncLog) {
 				caller.EndTime = fl.Time
 				// add to records
 				s.FuncLogs = append(s.FuncLogs, caller)
-				s.GoroutineMap.Add(caller)
+				s.goroutineMap.Add(caller)
 
 				if i != len(s.stacks[fl.GID])-1 {
 					log.Printf("WARN: missing funcEnd log: %+v\n", s.stacks[fl.GID][i:])
@@ -77,7 +77,7 @@ func (s *StateSimulator) Next(fl RawFuncLog) {
 	for gid := range s.stacks {
 		for _, fl := range s.stacks[gid] {
 			s.FuncLogs = append(s.FuncLogs, fl)
-			s.GoroutineMap.Add(fl)
+			s.goroutineMap.Add(fl)
 		}
 	}
 }

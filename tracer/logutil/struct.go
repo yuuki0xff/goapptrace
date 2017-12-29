@@ -30,7 +30,7 @@ type StateSimulator struct {
 
 	FuncLogs []*FuncLog
 	// トレース開始から現在までに存在していた全てのgoroutine
-	GoroutineMap *GoroutineMap
+	goroutineMap *GoroutineMap
 
 	// goroutine別の、現在のスタックの状態。
 	// ログから推測しているので、実際の状態とは異なるかもしれない。
