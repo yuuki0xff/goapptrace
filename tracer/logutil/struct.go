@@ -10,42 +10,47 @@ const (
 
 type GID int64 // GID - Goroutine ID
 type TxID uint64
+type FuncLogID int
 type Time int
 type TagName string
-type GoroutineMap struct {
-	m map[GID]*Goroutine
-}
 
 // RawFuncLogから実行時の状態を推測し、FuncLogとGoroutineオブジェクトを構築する。
 // 具体的には、関数やgoroutineの開始・終了のタイミングの推測を行う。
 // 仕様上、監視対象外のコードで生成されたgoroutineの終了タイミングは正確でない。
 // 一度終了したと判定したgoroutineが、後になってまた動いていると判定されることがある。
 type StateSimulator struct {
-	Symbols *Symbols
-
-	funcLogs []*FuncLog
-	// トレース開始から現在までに存在していた全てのgoroutine
-	goroutineMap *GoroutineMap
-
-	// goroutine別の、現在のスタックの状態。
-	// ログから推測しているので、実際の状態とは異なるかもしれない。
-	stacks map[GID][]*FuncLog
+	// 次に追加するFuncLogのID
+	nextID FuncLogID
+	// 実行中か実行が終了した関数についてのログ
+	funcLogs map[FuncLogID]*FuncLog
+	// RawFuncLog.TxIDに対応するFuncLogIDを保持する。
+	// 関数の実行が終了したら、そのTxIDを削除すること。
+	txids map[TxID]FuncLogID
+	// goroutineごとの、スタックトップのFuncLogID
+	// キーの存在チェックを行っていないため、goroutineの実行終了後も削除してはならない。
+	stacks map[GID]FuncLogID
+	// 実行中か実行が終わったgoroutine
+	// 実行終了したと判断したgoroutineを動作中に変更することがあるので、
+	// 実行が終了しても削除してはならない。
+	goroutines map[GID]*Goroutine
 }
 
 // Goroutineの生存期間、およびそのGoroutine内で行われたアクションを保持する。
+// 実行終了後も、変更されることがある。
 type Goroutine struct {
 	GID       GID
-	FuncLogs  []*FuncLog
 	StartTime Time
 	EndTime   Time
 }
 
 // 1回の関数呼び出しに関する情報。
-// 関数の生存期間、呼び出し元の関数など
+// 関数の生存期間、呼び出し元の関数など。
+// 関数の実行終了後は、フィールドの値は変更されない。
 type FuncLog struct {
+	ID        FuncLogID
 	StartTime Time
 	EndTime   Time
-	Parent    *FuncLog
+	ParentID  FuncLogID
 
 	Frames []FuncStatusID
 	GID    GID
