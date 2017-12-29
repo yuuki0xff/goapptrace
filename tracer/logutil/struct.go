@@ -12,7 +12,6 @@ type GID int64 // GID - Goroutine ID
 type TxID uint64
 type Time int
 type TagName string
-type RecordList []*FuncLog
 type GoroutineMap struct {
 	m map[GID]*Goroutine
 }
@@ -30,7 +29,7 @@ type StateSimulator struct {
 	// ↓ 初期化不要 ↓
 
 	// 関数の生存期間を記録したレコードのリスト。
-	Records RecordList
+	Records []*FuncLog
 	// トレース開始から現在までに存在していた全てのgoroutine
 	GoroutineMap *GoroutineMap
 
@@ -42,7 +41,7 @@ type StateSimulator struct {
 // Goroutineの生存期間、およびそのGoroutine内で行われたアクションを保持する。
 type Goroutine struct {
 	GID       GID
-	Records   RecordList
+	Records   []*FuncLog
 	StartTime Time
 	EndTime   Time
 }
