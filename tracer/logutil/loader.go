@@ -97,7 +97,7 @@ func NewGoroutineMap() *GoroutineMap {
 
 func (gm *GoroutineMap) Add(fl *FuncLog) {
 	if gr, ok := gm.m[fl.GID]; ok {
-		gr.Records = append(gr.Records, fl)
+		gr.FuncLogs = append(gr.FuncLogs, fl)
 
 		// update StartTime
 		if fl.StartTime < gr.StartTime {
@@ -113,7 +113,7 @@ func (gm *GoroutineMap) Add(fl *FuncLog) {
 		// create new goroutine
 		gm.m[fl.GID] = &Goroutine{
 			GID:       fl.GID,
-			Records:   []*FuncLog{fl},
+			FuncLogs:  []*FuncLog{fl},
 			StartTime: fl.StartTime,
 			EndTime:   fl.EndTime,
 		}

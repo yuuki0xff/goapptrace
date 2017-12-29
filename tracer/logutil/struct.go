@@ -40,7 +40,7 @@ type StateSimulator struct {
 // Goroutineの生存期間、およびそのGoroutine内で行われたアクションを保持する。
 type Goroutine struct {
 	GID       GID
-	Records   []*FuncLog
+	FuncLogs  []*FuncLog
 	StartTime Time
 	EndTime   Time
 }
