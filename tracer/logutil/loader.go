@@ -82,9 +82,9 @@ func (s *StateSimulator) Next(fl RawFuncLog) {
 	}
 }
 
-// TODO: 現在の状態を取得するメソッド
+// TODO: この期間で行われた全操作を一括取得する
 // TODO: add Goroutines() []*Goroutine
-// TODO: add FunctionCalls() []*Goroutine
+// TODO: add FuncLogs() []*FuncLog
 
 func NewGoroutineMap() *GoroutineMap {
 	return &GoroutineMap{
