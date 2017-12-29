@@ -389,7 +389,7 @@ func (lw *LogWriter) init() error {
 		}
 	}
 
-	checkError("failed open lasat func log file", lw.openRawFuncLog())
+	checkError("failed open last func log file", lw.openRawFuncLog())
 
 	lw.symbolsWriter = &SymbolsWriter{File: lw.l.Root.SymbolFile(lw.l.ID)}
 	checkError("failed open symbolsWriter file", lw.symbolsWriter.Open())
