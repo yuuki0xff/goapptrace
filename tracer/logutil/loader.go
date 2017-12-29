@@ -16,7 +16,7 @@ func NewTxID() TxID {
 }
 
 func (s *StateSimulator) Init() {
-	s.Records = make([]*FuncLog, 0)
+	s.FuncLogs = make([]*FuncLog, 0)
 	s.GoroutineMap = NewGoroutineMap()
 	s.stacks = make(map[GID][]*FuncLog)
 }
@@ -51,7 +51,7 @@ func (s *StateSimulator) Next(fl RawFuncLog) {
 				// detect EndTime
 				caller.EndTime = fl.Time
 				// add to records
-				s.Records = append(s.Records, caller)
+				s.FuncLogs = append(s.FuncLogs, caller)
 				s.GoroutineMap.Add(caller)
 
 				if i != len(s.stacks[fl.GID])-1 {
@@ -76,7 +76,7 @@ func (s *StateSimulator) Next(fl RawFuncLog) {
 	// end-less funcs
 	for gid := range s.stacks {
 		for _, fl := range s.stacks[gid] {
-			s.Records = append(s.Records, fl)
+			s.FuncLogs = append(s.FuncLogs, fl)
 			s.GoroutineMap.Add(fl)
 		}
 	}

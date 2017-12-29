@@ -28,8 +28,7 @@ type StateSimulator struct {
 	////////////////
 	// ↓ 初期化不要 ↓
 
-	// 関数の生存期間を記録したレコードのリスト。
-	Records []*FuncLog
+	FuncLogs []*FuncLog
 	// トレース開始から現在までに存在していた全てのgoroutine
 	GoroutineMap *GoroutineMap
 
@@ -46,7 +45,8 @@ type Goroutine struct {
 	EndTime   Time
 }
 
-// 関数の生存期間、呼び出し元の関数のログなど
+// 1回の関数呼び出しに関する情報。
+// 関数の生存期間、呼び出し元の関数など
 type FuncLog struct {
 	StartTime Time
 	EndTime   Time
