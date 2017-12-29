@@ -53,6 +53,7 @@ type LogReader struct {
 
 type LogWriter struct {
 	l                *Log
+	funcLogWriter    *FuncLogWriter
 	rawFuncLogWriter *RawFuncLogWriter
 	symbolsWriter    *SymbolsWriter
 	lastIndexRecord  IndexRecord
@@ -389,8 +390,8 @@ func (lw *LogWriter) init() error {
 		}
 	}
 
-	checkError("failed open last func log file", lw.openRawFuncLog())
-
+	checkError("failed open last log files", lw.openRotatedLogs())
+	checkError("failed add a index record", lw.appendNewIndexRecord())
 	lw.symbolsWriter = &SymbolsWriter{File: lw.l.Root.SymbolFile(lw.l.ID)}
 	checkError("failed open symbolsWriter file", lw.symbolsWriter.Open())
 	return err
@@ -415,7 +416,8 @@ func (lw *LogWriter) Close() error {
 		return errors.New("can not write meta data file: " + err.Error())
 	}
 
-	checkError("failed close last func log file", lw.closeRawFuncLog())
+	checkError("failed close last log files", lw.closeRotatedLogs())
+	checkError("failed close index file", lw.closeIndexRecord())
 	checkError("failed close symbolsWriter file", lw.symbolsWriter.Close())
 	log.Println("INFO: storage logs closed")
 	return err
@@ -475,23 +477,54 @@ func (lw *LogWriter) autoRotate() error {
 // RawFuncLogファイルのローテーションを行う。
 // callee MUST call "l.lock.Lock()" before call l.autoRotate().
 func (lw *LogWriter) rotate() error {
-	if err := lw.closeRawFuncLog(); err != nil {
+	if err := lw.closeRotatedLogs(); err != nil {
 		return fmt.Errorf("failed rotate: %s", err)
 	}
-	if err := lw.openRawFuncLog(); err != nil {
+	if err := lw.openRotatedLogs(); err != nil {
+		return fmt.Errorf("failed rotate: %s", err)
+	}
+	if err := lw.closeIndexRecord(); err != nil {
+		return fmt.Errorf("failed rotate: %s", err)
+	}
+	if err := lw.appendNewIndexRecord(); err != nil {
 		return fmt.Errorf("failed rotate: %s", err)
 	}
 	return nil
 }
 
-// 新しいRawFuncLogFileを作り、開く。
-func (lw *LogWriter) openRawFuncLog() error {
+// 新しいRawFuncLogFileとFuncLogFileを作り、開く。
+func (lw *LogWriter) openRotatedLogs() error {
 	funcLogN := lw.l.index.Len()
+
 	lw.rawFuncLogWriter = &RawFuncLogWriter{File: lw.l.Root.RawFuncLogFile(lw.l.ID, funcLogN)}
 	if err := lw.rawFuncLogWriter.Open(); err != nil {
-		return fmt.Errorf("cannot open FuncLogWriter(file=%s): %s", lw.rawFuncLogWriter.File, err)
+		return fmt.Errorf("cannot open RawFuncLogWriter(file=%s): %s", lw.rawFuncLogWriter.File, err)
 	}
 
+	lw.funcLogWriter = &FuncLogWriter{File: lw.l.Root.FuncLogFile(lw.l.ID, funcLogN)}
+	if err := lw.funcLogWriter.Open(); err != nil {
+		return fmt.Errorf("cannot open FuncLogWriter(file=%s): %s", lw.funcLogWriter.File, err)
+	}
+	return nil
+}
+
+// 現在開いているRawFuncLogFileとFuncLogWriterを閉じる。
+func (lw *LogWriter) closeRotatedLogs() error {
+	if err := lw.rawFuncLogWriter.Close(); err != nil {
+		return fmt.Errorf("cannot close RawFuncLogWriter: %s", err)
+	}
+	if err := lw.funcLogWriter.Close(); err != nil {
+		return fmt.Errorf("cannot close FuncLogWriter: %s", err)
+	}
+
+	// RawFuncLogFileのキャッシュをクリア
+	lw.l.lastFuncLogFileCache = make([]*logutil.RawFuncLog, 0)
+	return nil
+}
+
+// IndexRecordを追加する。
+// ログローテーションが完了した直後に呼び出すこと。
+func (lw *LogWriter) appendNewIndexRecord() error {
 	lw.lastIndexRecord = IndexRecord{
 		Timestamp: time.Unix(0, 0),
 		Records:   0,
@@ -503,17 +536,10 @@ func (lw *LogWriter) openRawFuncLog() error {
 	return nil
 }
 
-// 現在開いているRawFuncLogFileを閉じる。
-func (lw *LogWriter) closeRawFuncLog() error {
-	if err := lw.rawFuncLogWriter.Close(); err != nil {
-		return fmt.Errorf("cannot close FuncLogWriter: %s", err)
-	}
+func (lw *LogWriter) closeIndexRecord() error {
 	lw.lastIndexRecord.writing = false
 	if err := lw.l.index.UpdateLast(lw.lastIndexRecord); err != nil {
 		return fmt.Errorf("cannot write index record: %s", err)
 	}
-
-	// RawFuncLogFileのキャッシュをクリア
-	lw.l.lastFuncLogFileCache = make([]*logutil.RawFuncLog, 0)
 	return nil
 }

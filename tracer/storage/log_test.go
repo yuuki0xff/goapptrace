@@ -102,7 +102,9 @@ func TestLog_AppendFuncLog(t *testing.T) {
 	must(t, lw.Close(), "LogWriter.Close():")
 
 	// data dir should only contains those files:
+	//   xxxx.0.func.log.gz
 	//   xxxx.0.rawfunc.log.gz
+	//   xxxx.1.func.log.gz
 	//   xxxx.1.rawfunc.log.gz
 	//   xxxx.index.gz
 	//   xxxx.symbol.gz
@@ -113,7 +115,7 @@ func TestLog_AppendFuncLog(t *testing.T) {
 	for i := range files {
 		t.Logf("files[%d] = %s", i, files[i].Name())
 	}
-	if len(files) != 4 {
+	if len(files) != 6 {
 		t.Fatal("data file count is mismatched")
 	}
 
