@@ -144,6 +144,7 @@ func (gm *GoroutineMap) Add(fl *FuncLog) {
 			gr.EndTime = fl.EndTime
 		}
 	} else {
+		// create new goroutine
 		gm.m[fl.GID] = &Goroutine{
 			GID:       fl.GID,
 			Records:   []*FuncLog{fl},
