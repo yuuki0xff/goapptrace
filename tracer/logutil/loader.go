@@ -132,10 +132,12 @@ func NewGoroutineMap() *GoroutineMap {
 func (gm *GoroutineMap) Add(fl *FuncLog) {
 	if gr, ok := gm.m[fl.GID]; ok {
 		gr.Records = append(gr.Records, fl)
+
+		// update StartTime
 		if fl.StartTime < gr.StartTime {
 			gr.StartTime = fl.StartTime
 		}
-
+		// update EndTime
 		if fl.EndTime == NotEnded {
 			gr.EndTime = NotEnded
 		} else if gr.EndTime != NotEnded && gr.EndTime < fl.EndTime {
