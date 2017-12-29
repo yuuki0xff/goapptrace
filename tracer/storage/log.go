@@ -52,10 +52,10 @@ type LogReader struct {
 }
 
 type LogWriter struct {
-	l               *Log
-	funcLogWriter   *RawFuncLogWriter
-	symbolsWriter   *SymbolsWriter
-	lastIndexRecord IndexRecord
+	l                *Log
+	rawFuncLogWriter *RawFuncLogWriter
+	symbolsWriter    *SymbolsWriter
+	lastIndexRecord  IndexRecord
 }
 
 type LogMetadata struct {
@@ -428,7 +428,7 @@ func (lw *LogWriter) AppendFuncLog(raw *logutil.RawFuncLog) error {
 	if err := lw.autoRotate(); err != nil {
 		return err
 	}
-	if err := lw.funcLogWriter.Append(raw); err != nil {
+	if err := lw.rawFuncLogWriter.Append(raw); err != nil {
 		return err
 	}
 
@@ -462,7 +462,7 @@ func (lw *LogWriter) Symbols() *logutil.Symbols {
 // RawFuncLogファイルんサイズがMaxFileSizeよりも大きい場合、ファイルのローテーションを行う。。
 // callee MUST call "l.lock.Lock()" before call l.autoRotate().
 func (lw *LogWriter) autoRotate() error {
-	size, err := lw.funcLogWriter.File.Size()
+	size, err := lw.rawFuncLogWriter.File.Size()
 	if err != nil {
 		return err
 	}
@@ -487,9 +487,9 @@ func (lw *LogWriter) rotate() error {
 // 新しいRawFuncLogFileを作り、開く。
 func (lw *LogWriter) openRawFuncLog() error {
 	funcLogN := lw.l.index.Len()
-	lw.funcLogWriter = &RawFuncLogWriter{File: lw.l.Root.RawFuncLogFile(lw.l.ID, funcLogN)}
-	if err := lw.funcLogWriter.Open(); err != nil {
-		return fmt.Errorf("cannot open FuncLogWriter(file=%s): %s", lw.funcLogWriter.File, err)
+	lw.rawFuncLogWriter = &RawFuncLogWriter{File: lw.l.Root.RawFuncLogFile(lw.l.ID, funcLogN)}
+	if err := lw.rawFuncLogWriter.Open(); err != nil {
+		return fmt.Errorf("cannot open FuncLogWriter(file=%s): %s", lw.rawFuncLogWriter.File, err)
 	}
 
 	lw.lastIndexRecord = IndexRecord{
@@ -505,7 +505,7 @@ func (lw *LogWriter) openRawFuncLog() error {
 
 // 現在開いているRawFuncLogFileを閉じる。
 func (lw *LogWriter) closeRawFuncLog() error {
-	if err := lw.funcLogWriter.Close(); err != nil {
+	if err := lw.rawFuncLogWriter.Close(); err != nil {
 		return fmt.Errorf("cannot close FuncLogWriter: %s", err)
 	}
 	lw.lastIndexRecord.writing = false
