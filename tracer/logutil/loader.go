@@ -160,57 +160,6 @@ func (gm *GoroutineMap) Walk(fn func(gr *Goroutine) error) error {
 	return nil
 }
 
-func NewTimeRangeMap() *TimeRangeMap {
-	return &TimeRangeMap{
-		m: make(map[TimeRange]*GoroutineMap),
-	}
-}
-
-func (trm *TimeRangeMap) Add(fl *FuncLog) {
-	if fl.EndTime == NotEnded {
-		// add end-less func
-		tr := NewTimeRange(NotEnded)
-		if _, ok := trm.m[tr]; !ok {
-			trm.m[tr] = NewGoroutineMap()
-		}
-		trm.m[tr].Add(fl)
-	} else {
-		for _, tr := range NewTimeRanges(fl.StartTime, fl.EndTime) {
-			if _, ok := trm.m[tr]; !ok {
-				trm.m[tr] = NewGoroutineMap()
-			}
-			trm.m[tr].Add(fl)
-		}
-	}
-}
-
-func (trm *TimeRangeMap) Walk(fn func(tr TimeRange, grm *GoroutineMap) error) error {
-	for tr, grm := range trm.m {
-		if err := fn(tr, grm); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (trm *TimeRangeMap) Get(start Time, end Time) *GoroutineMap {
-	grm := NewGoroutineMap()
-	timeRanges := append(NewTimeRanges(start, end), TimeRange{NotEnded})
-	for _, tr := range timeRanges {
-		if _, ok := trm.m[tr]; ok {
-			if err := trm.m[tr].Walk(func(gr *Goroutine) error {
-				for _, fl := range gr.Records {
-					grm.Add(fl)
-				}
-				return nil
-			}); err != nil {
-				panic(err)
-			}
-		}
-	}
-	return grm
-}
-
 func (fl *FuncLog) Parents() int {
 	parents := 0
 	f := fl

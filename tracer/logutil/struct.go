@@ -20,12 +20,6 @@ type GoroutineMap struct {
 	m map[GID]*Goroutine
 }
 
-// 生存しているGoroutineを時間帯別に集計して保持する。
-// 粒度が小さくなってしまうものの、同等の機能は storage.IndexRecord にフィールドを追加することで可能。
-type TimeRangeMap struct {
-	m map[TimeRange]*GoroutineMap
-}
-
 // TODO: 要リファクタ
 type StateSimulator struct {
 	Symbols *Symbols
