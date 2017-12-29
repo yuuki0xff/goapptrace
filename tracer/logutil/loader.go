@@ -82,9 +82,6 @@ func (s *StateSimulator) Next(fl RawFuncLog) {
 	}
 }
 
-// TODO: シリアライズ、デシリアライズ出来るようにする
-// TODO: add GobDecode([]byte) error
-// TODO: add GobEncode() ([]byte, error)
 // TODO: 現在の状態を取得するメソッド
 // TODO: add Goroutines() []*Goroutine
 // TODO: add FunctionCalls() []*Goroutine
