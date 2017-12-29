@@ -1,8 +1,7 @@
 package logutil
 
 const (
-	NotEnded      = -1
-	TimeRangeStep = 5000
+	NotEnded = -1
 
 	FuncStart = TagName("funcStart")
 	FuncEnd   = TagName("funcEnd")
