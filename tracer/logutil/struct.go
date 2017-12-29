@@ -28,7 +28,7 @@ type StateSimulator struct {
 	////////////////
 	// ↓ 初期化不要 ↓
 
-	FuncLogs []*FuncLog
+	funcLogs []*FuncLog
 	// トレース開始から現在までに存在していた全てのgoroutine
 	goroutineMap *GoroutineMap
 

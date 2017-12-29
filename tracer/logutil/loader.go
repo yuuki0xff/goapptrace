@@ -16,7 +16,7 @@ func NewTxID() TxID {
 }
 
 func (s *StateSimulator) Init() {
-	s.FuncLogs = make([]*FuncLog, 0)
+	s.funcLogs = make([]*FuncLog, 0)
 	s.goroutineMap = NewGoroutineMap()
 	s.stacks = make(map[GID][]*FuncLog)
 }
@@ -51,7 +51,7 @@ func (s *StateSimulator) Next(fl RawFuncLog) {
 				// detect EndTime
 				caller.EndTime = fl.Time
 				// add to records
-				s.FuncLogs = append(s.FuncLogs, caller)
+				s.funcLogs = append(s.funcLogs, caller)
 				s.goroutineMap.Add(caller)
 
 				if i != len(s.stacks[fl.GID])-1 {
@@ -76,15 +76,23 @@ func (s *StateSimulator) Next(fl RawFuncLog) {
 	// end-less funcs
 	for gid := range s.stacks {
 		for _, fl := range s.stacks[gid] {
-			s.FuncLogs = append(s.FuncLogs, fl)
+			s.funcLogs = append(s.funcLogs, fl)
 			s.goroutineMap.Add(fl)
 		}
 	}
 }
 
-// TODO: この期間で行われた全操作を一括取得する
-// TODO: add Goroutines() []*Goroutine
-// TODO: add FuncLogs() []*FuncLog
+// この期間で発生した全ての関数についてのログを返す
+func (s *StateSimulator) FuncLogs() []*FuncLog {
+	newfls := make([]*FuncLog, len(s.funcLogs))
+	copy(newfls, s.funcLogs)
+	return newfls
+}
+
+// この期間に動作していた全てのgoroutineについてのログを返す
+func (s *StateSimulator) Goroutines() []*Goroutine {
+	return s.goroutineMap.ToSlice()
+}
 
 func NewGoroutineMap() *GoroutineMap {
 	return &GoroutineMap{
@@ -115,6 +123,14 @@ func (gm *GoroutineMap) Add(fl *FuncLog) {
 			EndTime:   fl.EndTime,
 		}
 	}
+}
+
+func (gm *GoroutineMap) ToSlice() []*Goroutine {
+	slice := make([]*Goroutine, 0, len(gm.m))
+	for _, g := range gm.m {
+		slice = append(slice, g)
+	}
+	return slice
 }
 
 func (gm *GoroutineMap) Walk(fn func(gr *Goroutine) error) error {
