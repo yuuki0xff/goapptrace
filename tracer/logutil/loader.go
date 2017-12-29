@@ -21,6 +21,8 @@ func (s *StateSimulator) Init() {
 	s.stacks = make(map[GID][]*FuncLog)
 }
 
+// 新しいRawFuncLogを受け取り、シミュレータの状態を更新する。
+// Next()を呼び出す前に、Symbolsに必要なシンボルを全て追加しておくこと。
 func (s *StateSimulator) Next(fl RawFuncLog) {
 	if _, ok := s.stacks[fl.GID]; !ok {
 		// create new goroutine
