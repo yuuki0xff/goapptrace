@@ -413,6 +413,11 @@ func (l *Log) Symbols() *logutil.Symbols {
 // RawFuncLogファイルサイズがMaxFileSizeよりも大きい場合、ファイルのローテーションを行う。。
 // callee MUST call "l.lock.Lock()" before call l.autoRotate().
 func (l *Log) autoRotate() error {
+	if l.rawFuncLog.SplitCount() == 0 {
+		// まだファイルが存在しないので、rotateの必要なし
+		return nil
+	}
+
 	last, err := l.rawFuncLog.LastFile()
 	if err != nil {
 		return err
