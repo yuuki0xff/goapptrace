@@ -36,7 +36,7 @@ func TestLogID_Unhex(t *testing.T) {
 		if err != nil {
 			t.Fatal("LogID.Unhex() should not raise error for valid id")
 		}
-		if bytes.Compare(id[:], []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}) != 0 {
+		if !bytes.Equal(id[:], []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}) {
 			t.Fatal("LogID.Unhex() returns wrong id")
 		}
 	}
