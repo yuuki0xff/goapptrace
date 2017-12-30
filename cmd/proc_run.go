@@ -188,7 +188,7 @@ func runProcRun(conf *config.Config, targets []string) error {
 	}()
 	go func() {
 		// close server when a signal was received
-		c := make(chan os.Signal)
+		c := make(chan os.Signal, 1)
 		signal.Notify(c, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT)
 		<-c
 		log.Println("DEBUG: signal was received. the server is going exit")
