@@ -174,6 +174,7 @@ func (srw *SplitReadWriter) LastFile() (*ParallelReadWriter, error) {
 type ParallelReadWriter struct {
 	// 読み書きする対象のファイル
 	File File
+	// TODO: UseCacheを実装する。
 	// オンメモリキャッシュを使用する場合は、true
 	// なお、書き込み可能な場合、この値に関わらず常にキャッシュされる。
 	UseCache bool
