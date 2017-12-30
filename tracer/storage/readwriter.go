@@ -38,8 +38,7 @@ func (srw *SplitReadWriter) Open() error {
 
 	// initialize files
 	srw.files = make([]*ParallelReadWriter, 0, DefaultBufferSize)
-	var i int
-	for {
+	for i := 0; ; i++ {
 		f := srw.FileNamePattern(i)
 		if !f.Exists() {
 			break
