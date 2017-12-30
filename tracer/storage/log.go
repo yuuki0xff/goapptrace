@@ -160,7 +160,9 @@ func (l *Log) init() error {
 		l.symbolsWriter = &SymbolsWriter{
 			File: l.Root.SymbolFile(l.ID),
 		}
-		l.symbolsWriter.Open()
+		if err := l.symbolsWriter.Open(); err != nil {
+			return fmt.Errorf("failed to open SymbolsWriter: File=%s err=%s", l.symbolsWriter.File, err)
+		}
 	}
 	if status == LogCreated {
 		// load Index
