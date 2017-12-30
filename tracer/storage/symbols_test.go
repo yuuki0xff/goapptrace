@@ -98,34 +98,43 @@ func TestSymbolsReaderWriter_emptySymbols(t *testing.T) {
 	)
 }
 func TestSymbolsReaderWrieter_data(t *testing.T) {
-	var funcID1, funcID2 logutil.FuncID
-	var funcStatusID1, funcStatusID2 logutil.FuncStatusID
+	var fIDs [2]logutil.FuncID
+	var fsIDs [2]logutil.FuncStatusID
+	funcSymbols := []*logutil.FuncSymbol{
+		{
+			Name:  "github.com/yuuki0xff/dummyModuleName.main",
+			File:  "/src/github.com/yuuki0xff/dummyModuleName/main.go",
+			Entry: 1,
+		}, {
+			Name:  "github.com/yuuki0xff/dummyModuleName.OtherFunc",
+			File:  "/src/github.com/yuuki0xff/dummyModuleName/util.go",
+			Entry: 100,
+		},
+	}
+	funcStatuses := []*logutil.FuncStatus{
+		{
+			//Func: fIDs[0],
+			Line: 10,
+			PC:   11,
+		}, {
+			//Func: fIDs[1],
+			Line: 110,
+			PC:   111,
+		},
+	}
 
 	doTestSymbolsReaderWriter(
 		t,
 		// write
 		func(sw *SymbolsWriter) {
 			s, se := newSymbols()
-			funcID1, _ = se.AddFunc(&logutil.FuncSymbol{
-				Name:  "github.com/yuuki0xff/dummyModuleName.main",
-				File:  "/src/github.com/yuuki0xff/dummyModuleName/main.go",
-				Entry: 1,
-			})
-			funcStatusID1, _ = se.AddFuncStatus(&logutil.FuncStatus{
-				Func: funcID1,
-				Line: 10,
-				PC:   11,
-			})
-			funcID2, _ = se.AddFunc(&logutil.FuncSymbol{
-				Name:  "github.com/yuuki0xff/dummyModuleName.OtherFunc",
-				File:  "/src/github.com/yuuki0xff/dummyModuleName/util.go",
-				Entry: 100,
-			})
-			funcStatusID2, _ = se.AddFuncStatus(&logutil.FuncStatus{
-				Func: funcID2,
-				Line: 110,
-				PC:   111,
-			})
+			fIDs[0], _ = se.AddFunc(funcSymbols[0])
+			funcStatuses[0].Func = fIDs[0]
+			fsIDs[0], _ = se.AddFuncStatus(funcStatuses[0])
+
+			fIDs[1], _ = se.AddFunc(funcSymbols[1])
+			funcStatuses[1].Func = fIDs[1]
+			fsIDs[1], _ = se.AddFuncStatus(funcStatuses[1])
 			sw.Append(s)
 		},
 		// check data
@@ -140,8 +149,14 @@ func TestSymbolsReaderWrieter_data(t *testing.T) {
 			if len(symbols.Funcs) != 2 {
 				t.Errorf("Mismatched length of Funcs array: len(Funcs)=%d != 2", len(symbols.Funcs))
 			}
+			if !(*symbols.Funcs[fIDs[0]] == *funcSymbols[0] && *symbols.Funcs[fIDs[1]] == *funcSymbols[1]) {
+				t.Errorf("Mismatched FuncSymbol object")
+			}
 			if len(symbols.FuncStatus) != 2 {
 				t.Errorf("Mismatched length of FuncStatus array: len(FuncStatus)=%d != 2", len(symbols.FuncStatus))
+			}
+			if !(*symbols.FuncStatus[fsIDs[0]] == *funcStatuses[0] && *symbols.FuncStatus[fsIDs[1]] == *funcStatuses[1]) {
+				t.Errorf("Mismatched FuncStatus object")
 			}
 		},
 	)
