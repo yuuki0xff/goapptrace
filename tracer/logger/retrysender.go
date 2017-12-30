@@ -26,9 +26,8 @@ func (s *RetrySender) Close() error {
 // if occur the any error, retry to send after re-open.
 func (s *RetrySender) Send(symbols *logutil.Symbols, funclog *logutil.RawFuncLog) error {
 	return s.autoretry(func() error {
-		var err error
 		// try to send
-		err = s.Sender.Send(symbols, funclog)
+		err := s.Sender.Send(symbols, funclog)
 		if err == nil {
 			return nil
 		}
