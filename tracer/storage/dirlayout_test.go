@@ -40,7 +40,7 @@ func TestDirLayout_MetaID(t *testing.T) {
 	assert.Equal(t, id, goodLogID)
 
 	for _, badID := range badFnames {
-		id, ok = dr.Fname2LogID(badID)
+		_, ok = dr.Fname2LogID(badID)
 		if ok != false {
 			t.Errorf("ID=%s: must be fail. but succeeded.", badID)
 		}

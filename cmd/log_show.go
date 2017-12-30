@@ -42,6 +42,9 @@ var logShowCmd = &cobra.Command{
 			return err
 		}
 		listen, err := cmd.Flags().GetString("listen")
+		if err != nil {
+			return err
+		}
 		return runLogShow(conf, args, notOpenBrowser, listen)
 	}),
 }
