@@ -81,10 +81,10 @@ func (LogID) Unhex(str string) (id LogID, err error) {
 		return
 	}
 	if len(buf) != len(id) {
-		err = errors.New(fmt.Sprintf(
+		err = fmt.Errorf(
 			"missmatch id length. expect %d charactors, but %d",
 			2*len(id), 2*len(buf),
-		))
+		)
 		return
 	}
 	copy(id[:], buf)

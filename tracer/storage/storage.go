@@ -94,7 +94,7 @@ func (s *Storage) log(id LogID, new bool) (*Log, error) {
 		Root: s.Root,
 	}
 	if err := log.Open(); err != nil {
-		return nil, errors.New(fmt.Sprintf("failed to open of Log(%s): %s", id.Hex(), err.Error()))
+		return nil, fmt.Errorf("failed to open of Log(%s): %s", id.Hex(), err.Error())
 	}
 	s.files[id] = log
 	return log, nil

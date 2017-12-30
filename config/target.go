@@ -1,7 +1,6 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 )
 
@@ -27,7 +26,7 @@ func NewTargets() *Targets {
 
 func (tt *Targets) Add(t *Target) error {
 	if _, exists := tt.Targets[t.Name]; exists {
-		return errors.New(fmt.Sprintf(`"%s" is already exists`, t.Name))
+		return fmt.Errorf(`"%s" is already exists`, t.Name)
 	}
 	tt.Targets[t.Name] = t
 	return nil
@@ -36,14 +35,14 @@ func (tt *Targets) Add(t *Target) error {
 func (tt *Targets) Get(name TargetName) (*Target, error) {
 	t, exists := tt.Targets[name]
 	if !exists {
-		return nil, errors.New(fmt.Sprintf(`"%s" is not found`, name))
+		return nil, fmt.Errorf(`"%s" is not found`, name)
 	}
 	return t, nil
 }
 
 func (tt *Targets) Delete(name TargetName) error {
 	if _, exists := tt.Targets[name]; !exists {
-		return errors.New(fmt.Sprintf(`"%s" is not found`, name))
+		return fmt.Errorf(`"%s" is not found`, name)
 	}
 	delete(tt.Targets, name)
 	return nil

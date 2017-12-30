@@ -1,7 +1,6 @@
 package logutil
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -82,7 +81,7 @@ func (s *StateSimulator) Next(fl RawFuncLog) {
 			s.goroutines[fl.GID].EndTime = fl.Time
 		}
 	default:
-		panic(errors.New(fmt.Sprintf("Unsupported tag: %s", fl.Tag)))
+		panic(fmt.Errorf("Unsupported tag: %s", fl.Tag))
 	}
 }
 
