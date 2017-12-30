@@ -15,7 +15,7 @@ type BuildProcess struct {
 // This method wait for exit build process.
 func (bp *BuildProcess) Run() (*exec.Cmd, error) {
 	args := bp.Args
-	if args == nil || len(args) == 0 {
+	if len(args) == 0 {
 		args = []string{"go", "build", "-o", info.DEFAULT_EXE_NAME}
 	}
 

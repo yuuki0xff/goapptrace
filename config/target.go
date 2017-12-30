@@ -49,7 +49,7 @@ func (tt *Targets) Delete(name TargetName) error {
 }
 
 func (tt *Targets) Walk(names []string, fn func(*Target) error) error {
-	if names == nil || len(names) == 0 {
+	if len(names) == 0 {
 		// iterate all targets
 		for _, t := range tt.Targets {
 			if err := fn(t); err != nil {
@@ -77,7 +77,7 @@ func (tt *Targets) Names() []string {
 }
 
 func (t *Target) WalkTraces(files []string, fn func(fname string, trace *Trace, created bool) error) error {
-	if files == nil || len(files) == 0 {
+	if len(files) == 0 {
 		files = t.Files
 	}
 

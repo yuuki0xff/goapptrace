@@ -15,7 +15,7 @@ type ExecProcess struct {
 // Start execute a command but does not wait for exit
 func (ep *ExecProcess) Start() (*exec.Cmd, error) {
 	args := ep.Args
-	if args == nil || len(args) == 0 {
+	if len(args) == 0 {
 		args = []string{
 			// NOTE: filepath.Join() will strip of "./"
 			"." + string(filepath.Separator) + info.DEFAULT_EXE_NAME,
