@@ -251,9 +251,14 @@ func (rw *ParallelReadWriter) Walk(newPtr func() interface{}, callback func(inte
 		if err := dec.Open(); err != nil {
 			return err
 		}
-		defer dec.Close() // nolint: errchk
+		err1 := dec.Walk(newPtr, callback)
+		err2 := dec.Close()
 
-		return dec.Walk(newPtr, callback)
+		if err1 != nil {
+			return err1
+		}
+		return err2
+
 	}
 }
 

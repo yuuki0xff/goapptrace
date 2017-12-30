@@ -73,14 +73,11 @@ func AtomicReadWrite(fname string, fn func(r io.Reader, w io.Writer) error) erro
 	if err != nil {
 		return err
 	}
-	defer w.Close() // nolint: errcheck
 
 	if err = fn(r, w); err != nil {
+		w.Close() // nolint: errcheck
 		// the original file was kept, and tmp file will be remove.
-		if err = os.Remove(tmpfname); err != nil {
-			return err
-		}
-		return err
+		return os.Remove(tmpfname)
 	}
 
 	// the original file was atomically replaced by a tmp file.

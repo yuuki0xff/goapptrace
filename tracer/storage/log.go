@@ -121,7 +121,7 @@ func (l *Log) init() error {
 		if metaFile.Exists() {
 			// load metadata
 			r, err := metaFile.OpenReadOnly()
-			defer r.Close()
+			defer r.Close() // nolint: errcheck
 			if err != nil {
 				return fmt.Errorf("failed to open metadata file: %s", err.Error())
 			}
@@ -212,21 +212,29 @@ func (l *Log) Close() error {
 	defer l.lock.Unlock()
 	l.closed = true
 
-	l.index.Close()
-	l.symbolsWriter.Close()
-	l.funcLog.Close()
-	l.rawFuncLog.Close()
+	if err := l.index.Close(); err != nil {
+		return err
+	}
+	if err := l.symbolsWriter.Close(); err != nil {
+		return err
+	}
+	if err := l.funcLog.Close(); err != nil {
+		return err
+	}
+	if err := l.rawFuncLog.Close(); err != nil {
+		return err
+	}
 
 	// write MetaData
 	w, err := l.Root.MetaFile(l.ID).OpenWriteOnly()
 	if err != nil {
 		return errors.New("can not open meta data file: " + err.Error())
 	}
-	defer w.Close() // nolint: errcheck
 	if err := json.NewEncoder(w).Encode(l.Metadata); err != nil {
+		w.Close() // nolint: errcheck
 		return errors.New("can not write meta data file: " + err.Error())
 	}
-	return nil
+	return w.Close()
 }
 
 // Logの状態を確認する。
@@ -420,19 +428,24 @@ func (l *Log) autoRotate() error {
 // RawFuncLogファイルのローテーションを行う。
 // callee MUST call "l.lock.Lock()" before call l.autoRotate().
 func (l *Log) rotate() error {
-	l.funcLog.Rotate()
-	l.rawFuncLog.Rotate()
+	if err := l.funcLog.Rotate(); err != nil {
+		return err
+	}
+	if err := l.rawFuncLog.Rotate(); err != nil {
+		return err
+	}
 
 	if l.index.Len() > 0 {
 		last := l.index.Last()
 		last.writing = false
-		l.index.UpdateLast(last)
+		if err := l.index.UpdateLast(last); err != nil {
+			return err
+		}
 	}
 
-	l.index.Append(IndexRecord{
+	return l.index.Append(IndexRecord{
 		Timestamp: time.Unix(0, 0),
 		Records:   0,
 		writing:   true,
 	})
-	return nil
 }
