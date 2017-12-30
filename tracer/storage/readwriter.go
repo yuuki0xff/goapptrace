@@ -1,0 +1,296 @@
+package storage
+
+import (
+	"errors"
+	"os"
+	"sync"
+)
+
+var (
+	ErrFileNamePatternIsNull = errors.New("FileNamePattern should not null, but null")
+	ErrFileisReadOnly        = errors.New("cannot write to read-only file")
+)
+
+// 分割されたファイルに対して、読み書きを平行して行える。
+type SplitReadWriter struct {
+	FileNamePattern func(index int) File
+	ReadOnly        bool
+
+	lock sync.Mutex
+	// 分割されたファイルのリスト
+	files []*ParallelReadWriter
+	// Close()実行後はtrue
+	// アクセスする前にlockを獲得しておくこと。
+	closed bool
+}
+
+// ファイルを開く
+func (srw *SplitReadWriter) Open() error {
+	srw.lock.Lock()
+	defer srw.lock.Unlock()
+
+	if srw.FileNamePattern == nil {
+		return ErrFileNamePatternIsNull
+	}
+
+	srw.closed = false
+
+	// initialize files
+	srw.files = make([]*ParallelReadWriter, 0, DefaultBufferSize)
+	var i int
+	for {
+		f := srw.FileNamePattern(i)
+		if !f.Exists() {
+			break
+		}
+		rw := &ParallelReadWriter{
+			File:     f,
+			UseCache: false,
+			ReadOnly: true,
+		}
+		srw.files = append(srw.files, rw)
+	}
+	if len(srw.files) > 0 {
+		// 最後以外はReadOnly modeで開く。
+		for i := 0; i < len(srw.files)-1; i++ {
+			if err := srw.files[i].Open(); err != nil {
+				return err
+			}
+		}
+		// 最後がReadOnly modeになるかは、設定に依存
+		last := srw.files[len(srw.files)-1]
+		last.ReadOnly = srw.ReadOnly
+		if err := last.Open(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// 最後のファイルに対して追記する。
+func (srw *SplitReadWriter) Append(data interface{}) error {
+	if srw.ReadOnly {
+		return ErrFileisReadOnly
+	}
+	f, err := srw.LastFile()
+	if err != nil {
+		return err
+	}
+	return f.Append(data)
+}
+
+// ファイルの分割数を返す。
+// まだファイルが存在しなければ、0を返す。
+func (srw *SplitReadWriter) SplitCount() int {
+	srw.lock.Lock()
+	defer srw.lock.Unlock()
+	return len(srw.files)
+}
+
+// 指定したindexのファイルのReadWriterを返す。
+func (srw *SplitReadWriter) Index(index int) *ParallelReadWriter {
+	srw.lock.Lock()
+	defer srw.lock.Unlock()
+	return srw.files[index]
+}
+
+// 追記先のファイルを新しくする。
+// これ以降の書き込みは、新しいファイルに追記される。
+func (srw *SplitReadWriter) Rotate() error {
+	srw.lock.Lock()
+	defer srw.lock.Unlock()
+	return srw.rotateNoLock()
+}
+
+// 追記先のファイルを新しくする。
+// lockは呼び出し元が書けること。
+func (srw *SplitReadWriter) rotateNoLock() error {
+	if srw.ReadOnly {
+		return ErrFileisReadOnly
+	}
+	if srw.closed {
+		return os.ErrClosed
+	}
+	if len(srw.files) > 0 {
+		f := srw.files[len(srw.files)-1]
+		if err := f.setReadOnlyNoLock(); err != nil {
+			return err
+		}
+	}
+	rw := &ParallelReadWriter{
+		File:     srw.FileNamePattern(len(srw.files)),
+		UseCache: false,
+		ReadOnly: srw.ReadOnly,
+	}
+	srw.files = append(srw.files, rw)
+	return rw.Open()
+}
+
+// 管理下にある全てのファイルを閉じる。
+// これ以降、全ての読み書きには失敗する。
+func (srw *SplitReadWriter) Close() error {
+	srw.lock.Lock()
+	defer srw.lock.Unlock()
+	if srw.closed {
+		return nil
+	}
+
+	// close all files
+	errs := make([]error, 0, len(srw.files))
+	for _, f := range srw.files {
+		errs = append(errs, f.Close())
+	}
+	srw.closed = true
+
+	// returns first error
+	for _, err := range errs {
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// 最後のファイルを返す
+func (srw *SplitReadWriter) LastFile() (*ParallelReadWriter, error) {
+	srw.lock.Lock()
+	defer srw.lock.Unlock()
+	if srw.closed {
+		return nil, os.ErrClosed
+	}
+
+	if len(srw.files) == 0 {
+		// 書き込み先ファイルを作る
+		if err := srw.rotateNoLock(); err != nil {
+			return nil, err
+		}
+	}
+	return srw.files[len(srw.files)-1], nil
+}
+
+// 読み書きを並行して行える。
+// Encoder/Decoder likeなメソッドを備える。
+type ParallelReadWriter struct {
+	// 読み書きする対象のファイル
+	File File
+	// オンメモリキャッシュを使用する場合は、true
+	// なお、書き込み可能な場合、この値に関わらず常にキャッシュされる。
+	UseCache bool
+	ReadOnly bool
+
+	lock sync.RWMutex
+	// Close()実行後はtrue
+	closed bool
+	// 書き込み可能ならtrue
+	writable bool
+	// ファイルの内容をキャッシュする。
+	cache []interface{}
+
+	// エンコーダ。
+	// writable==trueならキャッシュを保持している。
+	// writable==falseするタイミングで、closeすること。
+	enc Encoder
+}
+
+// ファイルを開く。
+func (rw *ParallelReadWriter) Open() error {
+	rw.lock.Lock()
+	defer rw.lock.Unlock()
+
+	rw.closed = false
+	if rw.ReadOnly {
+		rw.writable = false
+		rw.cache = nil
+		return nil
+	} else {
+		rw.writable = true
+		rw.cache = make([]interface{}, 0, DefaultBufferSize)
+		// TODO: 追記モードで開いている。これ大丈夫か？
+		rw.enc.File = rw.File
+		return rw.enc.Open()
+	}
+}
+
+// ファイルに追記する
+func (rw *ParallelReadWriter) Append(data interface{}) error {
+	rw.lock.Lock()
+	defer rw.lock.Unlock()
+	if rw.closed {
+		return os.ErrClosed
+	}
+
+	if rw.writable {
+		rw.cache = append(rw.cache, data)
+		return rw.enc.Append(data)
+	}
+	return os.ErrClosed
+}
+
+// ファイルの先頭からデータを読み込む。
+// callbackが受け取ったデータは、変更してはいけない。変更するとキャッシュの内容が変化してしまう。
+func (rw *ParallelReadWriter) Walk(newPtr func() interface{}, callback func(interface{}) error) error {
+	rw.lock.RLock()
+	defer rw.lock.RUnlock()
+	if rw.closed {
+		return os.ErrClosed
+	}
+
+	if rw.cache != nil {
+		// キャッシュが利用できるので、キャッシュを返す
+		for _, data := range rw.cache {
+			if err := callback(data); err != nil {
+				return err
+			}
+		}
+		return nil
+	} else {
+		// キャッシュが利用できないので、ファイルから読み込む
+		dec := Decoder{
+			File: rw.File,
+		}
+		if err := dec.Open(); err != nil {
+			return err
+		}
+		defer dec.Close() // nolint: errchk
+
+		return dec.Walk(newPtr, callback)
+	}
+}
+
+// 読み込み専用にする。
+// これ以降、Append()は常に失敗する。
+func (rw *ParallelReadWriter) SetReadOnly() error {
+	rw.lock.Lock()
+	defer rw.lock.Unlock()
+	if rw.closed {
+		return os.ErrClosed
+	}
+	return rw.setReadOnlyNoLock()
+}
+
+// 読み込み専用にする。
+// lockの獲得は呼び出し元が行うこと。
+func (rw *ParallelReadWriter) setReadOnlyNoLock() error {
+	rw.writable = false
+	if !rw.UseCache {
+		// キャッシュを破棄する。
+		rw.cache = nil
+	}
+	return rw.enc.Close()
+}
+
+// ファイルを閉じる。
+// これ以降、全ての読み書きには失敗する。
+func (rw *ParallelReadWriter) Close() error {
+	rw.lock.Lock()
+	defer rw.lock.Unlock()
+	if rw.closed {
+		return nil
+	}
+
+	err := rw.setReadOnlyNoLock()
+	rw.closed = true
+	// 無条件にキャッシュを破棄する
+	rw.cache = nil
+	return err
+}

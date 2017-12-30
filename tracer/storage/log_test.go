@@ -2,15 +2,12 @@ package storage
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"testing"
-
-	"errors"
-
-	"fmt"
-
-	"math/rand"
 
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
@@ -61,20 +58,17 @@ func TestLog_withEmptyFile(t *testing.T) {
 		Root:     dirlayout,
 		Metadata: &LogMetadata{},
 	}
-	must(t, l.Init(), "Log.Init():")
-	lw, err := l.Writer()
+	must(t, l.Open(), "Log.Open():")
 	must(t, err, "Log.Writer():")
-	must(t, lw.Close(), "LogWriter.Close():")
+	must(t, l.Close(), "Log.Close():")
 
-	lr, err := l.Reader()
-	must(t, err, "Log.Reader():")
-	if lr.Symbols() == nil {
-		must(t, errors.New("should returns not nil, but got nil"), "LogReader.Symbols():")
+	if l.Symbols() == nil {
+		must(t, errors.New("should returns not nil, but got nil"), "Log.Symbols():")
 	}
-	must(t, lr.Walk(func(evt logutil.RawFuncLog) error {
+	must(t, l.Walk(func(evt logutil.RawFuncLog) error {
 		return errors.New("should not contains any log record, but found a log record")
-	}), "LogReader.Walk():")
-	must(t, lr.Close(), "LogReader.Close():")
+	}), "Log.Walk():")
+	must(t, l.Close(), "Log.Close():")
 }
 
 func TestLog_AppendRawFuncLog(t *testing.T) {
@@ -94,12 +88,10 @@ func TestLog_AppendRawFuncLog(t *testing.T) {
 		Metadata:    &LogMetadata{},
 		MaxFileSize: 1,
 	}
-	must(t, l.Init(), "Log.Init():")
-	lw, err := l.Writer()
-	must(t, err, "Log.Writer():")
-	must(t, lw.AppendRawFuncLog(&logutil.RawFuncLog{}), "LogWriter.AppendRawFuncLog():")
-	must(t, lw.AppendRawFuncLog(&logutil.RawFuncLog{}), "LogWriter.AppendRawFuncLog():")
-	must(t, lw.Close(), "LogWriter.Close():")
+	must(t, l.Open(), "Log.Open():")
+	must(t, l.AppendRawFuncLog(&logutil.RawFuncLog{}), "Log.AppendRawFuncLog():")
+	must(t, l.AppendRawFuncLog(&logutil.RawFuncLog{}), "Log.AppendRawFuncLog():")
+	must(t, l.Close(), "Log.Close():")
 
 	// data dir should only contains those files:
 	//   xxxx.0.func.log.gz
@@ -116,22 +108,20 @@ func TestLog_AppendRawFuncLog(t *testing.T) {
 		t.Logf("files[%d] = %s", i, files[i].Name())
 	}
 	if len(files) != 6 {
-		t.Fatal("data file count is mismatched")
+		t.Fatalf("data file count: (god) %d != %d (expected)", len(files), 6)
 	}
 
-	lr, err := l.Reader()
-	must(t, err, "Log.Reader():")
 	var i int
-	must(t, lr.Walk(func(evt logutil.RawFuncLog) error {
+	must(t, l.Walk(func(evt logutil.RawFuncLog) error {
 		i++
 		return nil
-	}), "LogReader.Walk():")
+	}), "Log.Walk():")
 	if i != 2 {
-		must(t, fmt.Errorf("log records: (got) %d != %d (expected)", i, 2), "LogReader.Walk():")
+		must(t, fmt.Errorf("log records: (got) %d != %d (expected)", i, 2), "Log.Walk():")
 	}
 }
 
-// LogWriterで書き込みながら、LogReaderで正しく読み込めるかテスト。
+// Logで書き込みながら、Logで正しく読み込めるかテスト。
 func TestLog_ReadDuringWriting(t *testing.T) {
 	tempdir, err := ioutil.TempDir("", ".goapptrace_storage")
 	must(t, err, "can not create a temporary directory:")
@@ -149,15 +139,11 @@ func TestLog_ReadDuringWriting(t *testing.T) {
 		Metadata:    &LogMetadata{},
 		MaxFileSize: 1000,
 	}
-	must(t, l.Init(), "Log.Init():")
-	lr, err := l.Reader()
-	must(t, err, "Log.Reader():")
-	lw, err := l.Writer()
-	must(t, err, "Log.Writer():")
+	must(t, l.Open(), "Log.Open():")
 
 	checkRecordCount := func(expect int64) error {
 		var actual int64
-		lr.Walk(func(evt logutil.RawFuncLog) error {
+		l.Walk(func(evt logutil.RawFuncLog) error {
 			actual++
 			return nil
 		})
@@ -184,12 +170,12 @@ func TestLog_ReadDuringWriting(t *testing.T) {
 			rune(rand.Int()),
 			rune(rand.Int()),
 		})
-		must(t, lw.AppendRawFuncLog(&logutil.RawFuncLog{
+		must(t, l.AppendRawFuncLog(&logutil.RawFuncLog{
 			Time: logutil.Time(i),
 			Tag:  logutil.TagName(randomName),
 			GID:  logutil.GID(rand.Int()),
 			TxID: logutil.TxID(rand.Int()),
-		}), "LogWriter.AppendRawFuncLog():")
+		}), "Log.AppendRawFuncLog():")
 
 		// RawFuncLogNewが1つあたり0.1バイト未満で書き込まれるのは考えにくい。
 		// 十分な回数だけ試行しても終了しない場合、テスト失敗として扱う。
@@ -197,6 +183,5 @@ func TestLog_ReadDuringWriting(t *testing.T) {
 			t.Fatal("loop count limit reached")
 		}
 	}
-	must(t, lw.Close(), "LogWriter.Close():")
-	must(t, lr.Close(), "LogReader.Close():")
+	must(t, l.Close(), "Log.Close():")
 }

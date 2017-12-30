@@ -67,30 +67,26 @@ func runProcRun(conf *config.Config, targets []string) error {
 	}
 
 	// key: protocol.ConnID
-	// value: *storage.LogWriter
+	// value: *storage.Log
 	var logobjs sync.Map
 	defer logobjs.Range(func(key, value interface{}) bool {
 		id := key.(protocol.ConnID)
 		logobjs.Delete(key)
-		logobj := value.(*storage.LogWriter)
+		logobj := value.(*storage.Log)
 		// セッションが異常終了した場合、disconnected eventが発生せずにサーバが終了してしまう。
 		// Close()漏れによるファイル破損を防止するため、ここでもClose()しておく
 		if err := logobj.Close(); err != nil {
-			log.Printf("failed to close LogWriter(%s) file: %s", id, err.Error())
+			log.Printf("failed to close Log(%s) file: %s", id, err.Error())
 		}
 		return true
 	})
-	getLog := func(id protocol.ConnID) *storage.LogWriter {
+	getLog := func(id protocol.ConnID) *storage.Log {
 		value, ok := logobjs.Load(id)
 		if ok == false {
 			log.Panicf("ERROR: Server: ConnID(%s) not found", id)
 		}
 		l := value.(*storage.Log)
-		w, err := l.Writer()
-		if err != nil {
-			log.Panicf("cast error: %s", err.Error())
-		}
-		return w
+		return l
 	}
 
 	if err := strg.Init(); err != nil {
@@ -104,13 +100,13 @@ func runProcRun(conf *config.Config, targets []string) error {
 			Connected: func(id protocol.ConnID) {
 				log.Println("INFO: Server: connected")
 
-				// create a LogWriter object
+				// create a storage.Log object
 				logobj, err := strg.New()
 				if err != nil {
-					log.Panicf("ERROR: Server: failed to a create LogWriter object: err=%s", err.Error())
+					log.Panicf("ERROR: Server: failed to a create Log object: err=%s", err.Error())
 				}
 				if _, loaded := logobjs.LoadOrStore(id, logobj); loaded {
-					log.Panicf("ERROR: Server: failed to a store LogWriter object. this process MUST success")
+					log.Panicf("ERROR: Server: failed to a store Log object. this process MUST success")
 				}
 			},
 			Disconnected: func(id protocol.ConnID) {
@@ -119,7 +115,7 @@ func runProcRun(conf *config.Config, targets []string) error {
 				logobj := getLog(id)
 				logobjs.Delete(id)
 				if err := logobj.Close(); err != nil {
-					log.Panicf("ERROR: Server: failed to close a LogWriter object: err=%s", err.Error())
+					log.Panicf("ERROR: Server: failed to close a Log object: err=%s", err.Error())
 				}
 			},
 			Error: func(id protocol.ConnID, err error) {

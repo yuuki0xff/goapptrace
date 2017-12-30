@@ -41,9 +41,6 @@ func setupStorageDir(t *testing.T) (dir DirLayout, logIDSet set.Set, cleanup fun
 		if logobj == nil {
 			t.Fatalf("Storage.New() should not return nil")
 		}
-		writer, err := logobj.Writer()
-		must(t, err, "lobobj.Writer():")
-		must(t, writer.Close(), "writer.Close():")
 		logIDSet.Add(logobj.ID)
 	}
 	return
@@ -83,10 +80,10 @@ func TestStorage(t *testing.T) {
 
 	logobj2, ok := strg.Log(logobj.ID)
 	if !ok {
-		t.Fatalf("Storage.LogWriter(): not found %s", logobj.ID.Hex())
+		t.Fatalf("Storage.Log(): not found %s", logobj.ID.Hex())
 	}
 	if logobj != logobj2 {
-		t.Fatalf("Storage.LogWriter(): returns different object: obj1=%+v obj2=%+v", logobj, logobj2)
+		t.Fatalf("Storage.Log(): returns different object: obj1=%+v obj2=%+v", logobj, logobj2)
 	}
 }
 

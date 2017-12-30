@@ -65,6 +65,7 @@ var logCatCmd = &cobra.Command{
 		if !ok {
 			return fmt.Errorf("LogID(%s) not found", logID.Hex())
 		}
+		defer logobj.Close() // nolinter: errchk
 
 		// initialize LogWriter with specify format.
 		format, err := cmd.Flags().GetString("format")
@@ -80,18 +81,12 @@ var logCatCmd = &cobra.Command{
 }
 
 func runLogCat(logobj *storage.Log, writer LogWriter) error {
-	reader, err := logobj.Reader()
-	if err != nil {
-		return fmt.Errorf("log initialization error: LogWriter(%s): %s", logobj.ID, err.Error())
-	}
-	defer reader.Close() // nolinter: errchk
-
-	writer.SetSymbols(reader.Symbols())
+	writer.SetSymbols(logobj.Symbols())
 
 	if err := writer.WriteHeader(); err != nil {
 		return err
 	}
-	if err := reader.Walk(func(evt logutil.RawFuncLog) error {
+	if err := logobj.Walk(func(evt logutil.RawFuncLog) error {
 		return writer.Write(evt)
 	}); err != nil {
 		return fmt.Errorf("log read error: %s", err)

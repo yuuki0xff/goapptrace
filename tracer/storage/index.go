@@ -75,6 +75,11 @@ func (idx *Index) Append(record IndexRecord) error {
 	return err
 }
 
+// 最後のIndexRecordを返す。
+func (idx *Index) Last() IndexRecord {
+	return idx.records[len(idx.records)-1]
+}
+
 // 最後のレコードを更新する。
 // 書き込み中フラグが立っているレコードに対しての更新のみ成功する。
 func (idx *Index) UpdateLast(record IndexRecord) error {

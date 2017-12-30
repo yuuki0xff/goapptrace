@@ -80,8 +80,8 @@ func (s *Storage) log(id LogID, new bool) (*Log, error) {
 		ID:   id,
 		Root: s.Root,
 	}
-	if err := log.Init(); err != nil {
-		return nil, errors.New(fmt.Sprintf("failed to initialize of LogWriter(%s): %s", id.Hex(), err.Error()))
+	if err := log.Open(); err != nil {
+		return nil, errors.New(fmt.Sprintf("failed to open of Log(%s): %s", id.Hex(), err.Error()))
 	}
 	s.files[id] = log
 	return log, nil
