@@ -91,7 +91,6 @@ func TestLog_AppendRawFuncLog(t *testing.T) {
 	must(t, l.Open(), "Log.Open():")
 	must(t, l.AppendRawFuncLog(&logutil.RawFuncLog{}), "Log.AppendRawFuncLog():")
 	must(t, l.AppendRawFuncLog(&logutil.RawFuncLog{}), "Log.AppendRawFuncLog():")
-	must(t, l.Close(), "Log.Close():")
 
 	// data dir should only contains those files:
 	//   xxxx.0.func.log.gz
@@ -119,6 +118,8 @@ func TestLog_AppendRawFuncLog(t *testing.T) {
 	if i != 2 {
 		must(t, fmt.Errorf("log records: (got) %d != %d (expected)", i, 2), "Log.Walk():")
 	}
+
+	must(t, l.Close(), "Log.Close():")
 }
 
 // Logで書き込みながら、Logで正しく読み込めるかテスト。
