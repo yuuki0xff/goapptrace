@@ -41,7 +41,7 @@ func TestDirLayout_MetaID(t *testing.T) {
 
 	for _, badID := range badFnames {
 		_, ok = dr.Fname2LogID(badID)
-		if ok != false {
+		if ok {
 			t.Errorf("ID=%s: must be fail. but succeeded.", badID)
 		}
 	}
