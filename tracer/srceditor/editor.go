@@ -12,9 +12,9 @@ import (
 
 type CodeEditor struct {
 	ExportedOnly bool
+	Overwrite    bool
 	Prefix       string
 	Files        []string
-	Overwrite    bool
 
 	tmpl *Template
 }

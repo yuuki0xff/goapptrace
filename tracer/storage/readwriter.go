@@ -16,12 +16,13 @@ type SplitReadWriter struct {
 	FileNamePattern func(index int) File
 	ReadOnly        bool
 
-	lock sync.Mutex
-	// 分割されたファイルのリスト
-	files []*ParallelReadWriter
 	// Close()実行後はtrue
 	// アクセスする前にlockを獲得しておくこと。
 	closed bool
+
+	lock sync.Mutex
+	// 分割されたファイルのリスト
+	files []*ParallelReadWriter
 }
 
 // ファイルを開く
