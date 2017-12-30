@@ -105,23 +105,23 @@ func TestSymbolsReaderWrieter_data(t *testing.T) {
 		t,
 		// write
 		func(sw *SymbolsWriter) {
-			s, sr := newSymbols()
-			funcID1, _ = sr.AddFunc(&logutil.FuncSymbol{
+			s, se := newSymbols()
+			funcID1, _ = se.AddFunc(&logutil.FuncSymbol{
 				Name:  "github.com/yuuki0xff/dummyModuleName.main",
 				File:  "/src/github.com/yuuki0xff/dummyModuleName/main.go",
 				Entry: 1,
 			})
-			funcStatusID1, _ = sr.AddFuncStatus(&logutil.FuncStatus{
+			funcStatusID1, _ = se.AddFuncStatus(&logutil.FuncStatus{
 				Func: funcID1,
 				Line: 10,
 				PC:   11,
 			})
-			funcID2, _ = sr.AddFunc(&logutil.FuncSymbol{
+			funcID2, _ = se.AddFunc(&logutil.FuncSymbol{
 				Name:  "github.com/yuuki0xff/dummyModuleName.OtherFunc",
 				File:  "/src/github.com/yuuki0xff/dummyModuleName/util.go",
 				Entry: 100,
 			})
-			funcStatusID2, _ = sr.AddFuncStatus(&logutil.FuncStatus{
+			funcStatusID2, _ = se.AddFuncStatus(&logutil.FuncStatus{
 				Func: funcID2,
 				Line: 110,
 				PC:   111,
