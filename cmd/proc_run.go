@@ -82,7 +82,7 @@ func runProcRun(conf *config.Config, targets []string) error {
 	})
 	getLog := func(id protocol.ConnID) *storage.Log {
 		value, ok := logobjs.Load(id)
-		if ok == false {
+		if !ok {
 			log.Panicf("ERROR: Server: ConnID(%s) not found", id)
 		}
 		l := value.(*storage.Log)

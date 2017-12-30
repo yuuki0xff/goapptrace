@@ -67,7 +67,7 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 	frames := runtime.CallersFrames(pc)
 	for {
 		frame, more := frames.Next()
-		if more == false {
+		if !more {
 			break
 		}
 
