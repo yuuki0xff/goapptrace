@@ -121,10 +121,10 @@ func (l *Log) init() error {
 		if metaFile.Exists() {
 			// load metadata
 			r, err := metaFile.OpenReadOnly()
-			defer r.Close() // nolint: errcheck
 			if err != nil {
 				return fmt.Errorf("failed to open metadata file: %s", err.Error())
 			}
+			defer r.Close() // nolint: errcheck
 			if err := json.NewDecoder(r).Decode(l.Metadata); err != nil {
 				return fmt.Errorf("failed to read metadata file: %s", err.Error())
 			}
