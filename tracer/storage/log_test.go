@@ -46,7 +46,7 @@ func TestLog_withEmptyFile(t *testing.T) {
 	tempdir, err := ioutil.TempDir("", ".goapptrace_storage")
 	must(t, err, "can not create a temporary directory:")
 	defer func() {
-		if err := os.RemoveAll(tempdir); err != nil {
+		if err = os.RemoveAll(tempdir); err != nil {
 			panic(err)
 		}
 	}()
@@ -75,7 +75,7 @@ func TestLog_AppendRawFuncLog(t *testing.T) {
 	tempdir, err := ioutil.TempDir("", ".goapptrace_storage")
 	must(t, err, "can not create a temporary directory:")
 	defer func() {
-		if err := os.RemoveAll(tempdir); err != nil {
+		if err = os.RemoveAll(tempdir); err != nil {
 			panic(err)
 		}
 	}()

@@ -77,7 +77,7 @@ func AtomicReadWrite(fname string, fn func(r io.Reader, w io.Writer) error) erro
 
 	if err = fn(r, w); err != nil {
 		// the original file was kept, and tmp file will be remove.
-		if err := os.Remove(tmpfname); err != nil {
+		if err = os.Remove(tmpfname); err != nil {
 			return err
 		}
 		return err
