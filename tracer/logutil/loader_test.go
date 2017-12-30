@@ -4,12 +4,6 @@ import (
 	"testing"
 )
 
-func must(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-
 func testStateSimulatorHelper(t *testing.T, s *StateSimulator, symbols *Symbols, testData []RawFuncLog) {
 	if s == nil {
 		s = &StateSimulator{}
