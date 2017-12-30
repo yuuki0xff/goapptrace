@@ -64,6 +64,15 @@ func (srw *SplitReadWriter) Open() error {
 		if err := last.Open(); err != nil {
 			return err
 		}
+	} else if !srw.ReadOnly {
+		// 書き込み先となる、空のファイルを作っておく
+		rw := &ParallelReadWriter{
+			File:     srw.FileNamePattern(len(srw.files)),
+			UseCache: false,
+			ReadOnly: srw.ReadOnly,
+		}
+		srw.files = append(srw.files, rw)
+		return rw.Open()
 	}
 	return nil
 }
