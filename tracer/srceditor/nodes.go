@@ -62,8 +62,8 @@ func (nl *NodeList) Add(nodes ...Node) {
 
 func (nl *NodeList) Format() ([]byte, error) {
 	var buf bytes.Buffer
-	var pos token.Pos
-	pos = 1
+	pos := token.Pos(1)
+
 	sort.Sort(NodeSorter(nl.list))
 
 	buf.Grow(len(nl.OrigSrc) + DefaultBufferCap)
