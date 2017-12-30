@@ -46,6 +46,7 @@ func runLogLs(conf *config.Config, out io.Writer, targets []string) error {
 	if err := stg.Init(); err != nil {
 		return err
 	}
+	defer stg.Close() // nolint: errcheck
 
 	logs, err := stg.Logs()
 	if err != nil {

@@ -56,6 +56,7 @@ func runLogShow(conf *config.Config, targets []string, notOpenBrowser bool, list
 	if err := strg.Init(); err != nil {
 		return err
 	}
+	defer strg.Close() // nolint: errcheck
 
 	srvArgs := &httpserver.ServerArgs{
 		Storage: strg,

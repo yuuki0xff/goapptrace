@@ -52,6 +52,19 @@ func (s *Storage) Load() error {
 	return nil
 }
 
+// 全てのログを閉じる。
+// これ以降、管理下のログへのアクセスは出来ない。
+func (s *Storage) Close() error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	for _, log := range s.files {
+		if err := log.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Return all log instances
 func (s *Storage) Logs() ([]*Log, error) {
 	s.lock.RLock()

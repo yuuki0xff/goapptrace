@@ -92,6 +92,7 @@ func runProcRun(conf *config.Config, targets []string) error {
 	if err := strg.Init(); err != nil {
 		return err
 	}
+	defer strg.Close() // nolint: errcheck
 
 	// use ephemeral port for communication with child process
 	srv := protocol.Server{

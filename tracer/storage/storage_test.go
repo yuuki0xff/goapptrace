@@ -43,6 +43,8 @@ func setupStorageDir(t *testing.T) (dir DirLayout, logIDSet set.Set, cleanup fun
 		}
 		logIDSet.Add(logobj.ID)
 	}
+
+	must(t, strg.Close(), "Storage.Cloes():")
 	return
 }
 
@@ -85,6 +87,8 @@ func TestStorage(t *testing.T) {
 	if logobj != logobj2 {
 		t.Fatalf("Storage.Log(): returns different object: obj1=%+v obj2=%+v", logobj, logobj2)
 	}
+
+	must(t, strg.Close(), "Storage.Close():")
 }
 
 func TestStorage_Load(t *testing.T) {
@@ -105,4 +109,6 @@ func TestStorage_Load(t *testing.T) {
 	if !logIDSet.Equal(newLogIDSet) {
 		t.Fatalf("Missmatch logs: expect %+v, but %+v", logIDSet, newLogIDSet)
 	}
+
+	must(t, strg.Close(), "Storage.Close():")
 }
