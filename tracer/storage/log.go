@@ -39,8 +39,8 @@ type Log struct {
 
 	index         *Index
 	symbols       *logutil.Symbols
-	symbolsEditor *logutil.SymbolsEditor
-	symbolsWriter *SymbolsWriter
+	symbolsEditor *logutil.SymbolsEditor // readonlyならnil
+	symbolsWriter *SymbolsWriter         // readonlyならnil
 
 	funcLog    SplitReadWriter
 	rawFuncLog SplitReadWriter
@@ -154,12 +154,14 @@ func (l *Log) init() error {
 	}
 	l.symbols = &logutil.Symbols{}
 	l.symbols.Init()
-	l.symbolsEditor = &logutil.SymbolsEditor{}
-	l.symbolsEditor.Init(l.symbols)
-	l.symbolsWriter = &SymbolsWriter{
-		File: l.Root.SymbolFile(l.ID),
+	if !l.readonly {
+		l.symbolsEditor = &logutil.SymbolsEditor{}
+		l.symbolsEditor.Init(l.symbols)
+		l.symbolsWriter = &SymbolsWriter{
+			File: l.Root.SymbolFile(l.ID),
+		}
+		l.symbolsWriter.Open()
 	}
-
 	if status == LogCreated {
 		// load Index
 		if err := l.index.Load(); err != nil {
