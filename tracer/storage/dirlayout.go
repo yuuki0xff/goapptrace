@@ -25,6 +25,11 @@ type DirLayout struct {
 // ディレクトリを初期化する。
 // 必要なディレクトリが存在しない場合、作成する。
 func (d DirLayout) Init() error {
+	// create Root dir
+	if err := os.MkdirAll(d.Root, DefaultDirPerm); err != nil {
+		return err
+	}
+
 	if d.InfoFile().Exists() {
 		// check whether that data format have compatible.
 		data, err := d.InfoFile().ReadAll()
@@ -61,9 +66,7 @@ func (d DirLayout) Init() error {
 		}
 	}
 
-	if err := os.MkdirAll(d.Root, DefaultDirPerm); err != nil {
-		return err
-	}
+	// create subdirectories
 	if err := os.MkdirAll(d.MetaDir(), DefaultDirPerm); err != nil {
 		return err
 	}
