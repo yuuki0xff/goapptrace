@@ -10,7 +10,8 @@ import (
 
 // ログの管理を行う。
 type Storage struct {
-	Root DirLayout
+	Root     DirLayout
+	ReadOnly bool
 
 	lock  sync.RWMutex
 	files map[LogID]*Log
@@ -90,8 +91,9 @@ func (s *Storage) Log(id LogID) (log *Log, ok bool) {
 // この関数を呼び出す前に、排他ロックをかける必要がある。
 func (s *Storage) log(id LogID, new bool) (*Log, error) {
 	log := &Log{
-		ID:   id,
-		Root: s.Root,
+		ID:       id,
+		Root:     s.Root,
+		ReadOnly: s.ReadOnly,
 	}
 	if err := log.Open(); err != nil {
 		return nil, fmt.Errorf("failed to open of Log(%s): %s", id.Hex(), err.Error())
@@ -102,6 +104,9 @@ func (s *Storage) log(id LogID, new bool) (*Log, error) {
 
 // 新しいログインスタンスを作成して返す。
 func (s *Storage) New() (*Log, error) {
+	if s.ReadOnly {
+		return nil, errors.New("cannot create a log on read-only storage")
+	}
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	id := LogID{}
