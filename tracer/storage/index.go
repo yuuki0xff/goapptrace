@@ -98,6 +98,16 @@ func (idx *Index) UpdateLast(record IndexRecord) error {
 }
 
 func (idx *Index) Close() error {
+	if idx.Len() > 0 {
+		last := idx.Last()
+		if last.writing {
+			// write last record to file.
+			last.writing = false
+			if err := idx.UpdateLast(last); err != nil {
+				return err
+			}
+		}
+	}
 	return idx.enc.Close()
 }
 
