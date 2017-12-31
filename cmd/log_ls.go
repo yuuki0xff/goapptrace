@@ -42,6 +42,7 @@ func runLogLs(conf *config.Config, out io.Writer, targets []string) error {
 		Root: storage.DirLayout{
 			Root: conf.LogsDir(),
 		},
+		ReadOnly: true,
 	}
 	if err := stg.Init(); err != nil {
 		return err

@@ -47,7 +47,8 @@ var logCatCmd = &cobra.Command{
 		stdout := cmd.OutOrStdout()
 
 		strg := &storage.Storage{
-			Root: storage.DirLayout{Root: conf.LogsDir()},
+			Root:     storage.DirLayout{Root: conf.LogsDir()},
+			ReadOnly: true,
 		}
 		if err := strg.Init(); err != nil {
 			return fmt.Errorf("Failed Storage.Init(): %s", err.Error())
