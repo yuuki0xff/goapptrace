@@ -32,10 +32,10 @@ type Log struct {
 	// 実際のファイルサイズは、指定したサイズよりもやや大きくなる可能性がある。
 	// 0を指定するとローテーション機能が無効になる。
 	MaxFileSize int64
+	ReadOnly    bool
 
-	lock     sync.RWMutex
-	readonly bool
-	closed   bool
+	lock   sync.RWMutex
+	closed bool
 
 	index         *Index
 	symbols       *logutil.Symbols
@@ -96,21 +96,9 @@ func (id LogID) String() string {
 	return id.Hex()
 }
 
-// このログをRead-Only modeで開く。
-func (l *Log) OpenReadOnly() error {
-	l.readonly = true
-	return l.init()
-}
-
 // このログを開く。読み書きが可能。
+// Openするとファイルが作成されるため、LogStatusがLogInitializedに変化する。
 func (l *Log) Open() error {
-	l.readonly = false
-	return l.init()
-}
-
-// 共有キャッシュ(IndexとSymbols)の初期化と読み込みを行う。
-// また、共有キャッシュの初期化時にファイルが作成されるため、LogStatusがLogInitializedに変化する。
-func (l *Log) init() error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
@@ -154,7 +142,7 @@ func (l *Log) init() error {
 	}
 	l.symbols = &logutil.Symbols{}
 	l.symbols.Init()
-	if !l.readonly {
+	if !l.ReadOnly {
 		l.symbolsEditor = &logutil.SymbolsEditor{}
 		l.symbolsEditor.Init(l.symbols)
 		l.symbolsWriter = &SymbolsWriter{
@@ -194,13 +182,13 @@ func (l *Log) init() error {
 		FileNamePattern: func(index int) File {
 			return l.Root.FuncLogFile(l.ID, int64(index))
 		},
-		ReadOnly: l.readonly,
+		ReadOnly: l.ReadOnly,
 	}
 	l.rawFuncLog = SplitReadWriter{
 		FileNamePattern: func(index int) File {
 			return l.Root.RawFuncLogFile(l.ID, int64(index))
 		},
-		ReadOnly: l.readonly,
+		ReadOnly: l.ReadOnly,
 	}
 	if err := l.funcLog.Open(); err != nil {
 		return err
