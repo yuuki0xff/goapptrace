@@ -135,7 +135,8 @@ func (l *Log) Open() error {
 	// initialize fields
 	l.closed = false
 	l.index = &Index{
-		File: l.Root.IndexFile(l.ID),
+		File:     l.Root.IndexFile(l.ID),
+		ReadOnly: l.ReadOnly,
 	}
 	if err := l.index.Open(); err != nil {
 		return fmt.Errorf("failed to open Index: File=%s err=%s", l.index.File, err)

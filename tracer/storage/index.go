@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
@@ -13,9 +14,11 @@ const (
 // Indexは、分割されたRawFuncLogファイルの索引を提供する。
 // 範囲検索の効率化のために使用することを想定している。
 type Index struct {
-	File    File
+	File     File
+	ReadOnly bool
+
 	records []IndexRecord
-	enc     Encoder
+	enc     Encoder // readonlyならnil
 }
 
 // 1つのRawFuncLogファイルに関する情報。
@@ -30,6 +33,10 @@ type IndexRecord struct {
 
 // Indexファイルを開く。すべての操作を実行する前に、Openしなければならない。
 func (idx *Index) Open() error {
+	if idx.ReadOnly {
+		// 読み込み専用の場合、Encoderを初期化しなくてよい。
+		return nil
+	}
 	idx.enc = Encoder{File: idx.File}
 	return idx.enc.Open()
 }
@@ -63,6 +70,10 @@ func (idx Index) Get(i int64) IndexRecord {
 
 // Indexファイルへの追記を行う。
 func (idx *Index) Append(record IndexRecord) error {
+	if idx.ReadOnly {
+		return errors.New("cannot update read-only index")
+	}
+
 	if record.writing {
 		idx.records = append(idx.records, record)
 		return nil
@@ -83,6 +94,10 @@ func (idx *Index) Last() IndexRecord {
 // 最後のレコードを更新する。
 // 書き込み中フラグが立っているレコードに対しての更新のみ成功する。
 func (idx *Index) UpdateLast(record IndexRecord) error {
+	if idx.ReadOnly {
+		return errors.New("cannot update read-only index")
+	}
+
 	last := idx.records[len(idx.records)-1]
 	if last.writing && record.writing {
 		idx.records[len(idx.records)-1] = record
@@ -98,6 +113,11 @@ func (idx *Index) UpdateLast(record IndexRecord) error {
 }
 
 func (idx *Index) Close() error {
+	if idx.ReadOnly {
+		// 読み込み専用なら何もする必要がない。
+		return nil
+	}
+
 	if idx.Len() > 0 {
 		last := idx.Last()
 		if last.writing {
