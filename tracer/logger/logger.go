@@ -64,6 +64,10 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 	pclen := runtime.Callers(skips, pc)
 	pc = pc[:pclen]
 
+	// TODO: improve performance
+	//       CallersFrames()で全てのフレームをframeを取得 & symbolsに追加するのは非効率。
+	//       symbols.FindFunStatusIDByPC(pc)をまず試す。
+	//       idを取得できなかったら、runtime.FuncForPC()でframeが取得後、symbolsに追加する。
 	frames := runtime.CallersFrames(pc)
 	for {
 		frame, more := frames.Next()
