@@ -207,8 +207,12 @@ func (l *Log) Close() error {
 	if err := l.index.Close(); err != nil {
 		return err
 	}
-	if err := l.symbolsWriter.Close(); err != nil {
-		return err
+	// 書き込み可能ならClose()する。
+	// 読み込み専用のときは、l.symbolsWriter==nilなのでClose()しない。
+	if !l.ReadOnly {
+		if err := l.symbolsWriter.Close(); err != nil {
+			return err
+		}
 	}
 	if err := l.funcLog.Close(); err != nil {
 		return err

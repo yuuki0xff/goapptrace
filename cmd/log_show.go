@@ -51,7 +51,7 @@ var logShowCmd = &cobra.Command{
 
 func runLogShow(conf *config.Config, targets []string, notOpenBrowser bool, listen string) error {
 	strg := &storage.Storage{
-		Root: storage.DirLayout{Root: conf.LogsDir()},
+		Root:     storage.DirLayout{Root: conf.LogsDir()},
 		ReadOnly: true,
 	}
 	if err := strg.Init(); err != nil {
