@@ -3,7 +3,7 @@ base=$(dirname $(readlink -f "$0"))
 
 {
     sleep 2
-    xdg-open 'http://localhost:8080/?url=./spec/api.yaml'
+    xdg-open 'http://localhost:8080/?url=http://localhost:8080/spec/api.yaml'
 } &
 
 exec docker run -it --rm \
