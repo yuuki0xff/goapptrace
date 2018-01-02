@@ -14,7 +14,6 @@ import (
 //   $dir/logs/               - managed under tracer.storage
 
 type Config struct {
-	// TODO
 	dir      string
 	Targets  Targets
 	Servers  Servers
