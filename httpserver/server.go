@@ -9,6 +9,16 @@ import (
 	"syscall"
 )
 
+// 任意のタイミングで終了可能なサーバ。
+//
+// Usage
+//   srv := NewHttpServer("0.0.0.0:8080", ServerArgs{})
+//   srv.Start()
+//   go func() {
+//   	time.Sleep(time.Second)
+//   	srv.Stop()
+//   }
+//   err := srv.Wait()
 type HttpServer struct {
 	server *http.Server
 	ctx    context.Context
