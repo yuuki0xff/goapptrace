@@ -15,11 +15,10 @@ import (
 const BIT_SIZE = 64
 
 type ServerArgs struct {
-	// TODO:
 	Storage *storage.Storage
 }
 
-// TODO: define schema for API response
+// TODO: impl REST API server
 func getRouter(args *ServerArgs) *mux.Router {
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api").Subrouter()
