@@ -11,7 +11,7 @@ import (
 
 // Directory Layout
 //   $dir/targets.json        - includes target, trace, build
-//   $dir/data/               - managed under tracer.storage
+//   $dir/logs/               - managed under tracer.storage
 
 type Config struct {
 	// TODO
