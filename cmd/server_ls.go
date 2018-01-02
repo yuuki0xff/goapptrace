@@ -22,26 +22,56 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/spf13/cobra"
+	"github.com/yuuki0xff/goapptrace/config"
 )
 
 // serverLsCmd represents the ls command
 var serverLsCmd = &cobra.Command{
 	Use:   "ls",
 	Short: "Show log servers",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("ls called")
-		runServerLs()
-	},
+	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
+		return runServerLs(conf, cmd.OutOrStdout())
+	}),
 }
 
-func runServerLs() {
-	// try to connect to control server.
-	// if failed to connect, show empty list.
+func runServerLs(conf *config.Config, stdout io.Writer) error {
+	fmt.Fprintln(stdout, "API Servers")
+	fmt.Fprintln(stdout, "================")
+	if len(conf.Servers.ApiServer) > 0 {
+		apiTbl := defaultTable(stdout)
+		apiTbl.SetHeader([]string{"ID", "Address"})
+		for id, s := range conf.Servers.ApiServer {
+			apiTbl.Append([]string{
+				fmt.Sprint(id),
+				s.Addr,
+			})
+		}
+		apiTbl.Render()
+	} else {
+		fmt.Fprintln(stdout, "API Server is not running")
+	}
 
-	// request server list.
-	// show server list.
+	fmt.Fprintln(stdout)
+
+	fmt.Fprintln(stdout, "Log Servers")
+	fmt.Fprintln(stdout, "================")
+	if len(conf.Servers.LogServer) > 0 {
+		logTbl := defaultTable(stdout)
+		logTbl.SetHeader([]string{"ID", "Address"})
+		for id, s := range conf.Servers.ApiServer {
+			logTbl.Append([]string{
+				fmt.Sprint(id),
+				s.Addr,
+			})
+		}
+		logTbl.Render()
+	} else {
+		fmt.Fprintln(stdout, "Log Server is not running")
+	}
+	return nil
 }
 
 func init() {
