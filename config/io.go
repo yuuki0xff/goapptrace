@@ -17,6 +17,7 @@ type Config struct {
 	// TODO
 	dir      string
 	Targets  Targets
+	Servers  Servers
 	wantSave bool
 }
 
@@ -63,6 +64,14 @@ func (c *Config) Save() error {
 	if err := ioutil.WriteFile(c.targetsPath(), js, os.ModePerm^0111); err != nil {
 		return err
 	}
+
+	js, err = json.Marshal(c.Servers)
+	if err != nil {
+		return err
+	}
+	if err := ioutil.WriteFile(c.serversPath(), js, os.ModePerm^0111); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -75,6 +84,9 @@ func (c *Config) SaveIfWant() error {
 
 func (c Config) targetsPath() string {
 	return path.Join(c.dir, "targets.json")
+}
+func (c Config) serversPath() string {
+	return path.Join(c.dir, "servers.json")
 }
 
 func (c Config) LogsDir() string {
