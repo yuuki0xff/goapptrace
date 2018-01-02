@@ -1,5 +1,10 @@
 package config
 
+const (
+	DefaultLogServerAddr = "localhost:8600"
+	DefaultApiServerAddr = "localhost:8700"
+)
+
 type ServerID int64
 type Servers struct {
 	LogServer map[ServerID]*LogServerConfig

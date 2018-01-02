@@ -22,27 +22,107 @@ package cmd
 
 import (
 	"fmt"
+	"io"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/spf13/cobra"
+	"github.com/yuuki0xff/goapptrace/config"
+	"github.com/yuuki0xff/goapptrace/httpserver"
+	"github.com/yuuki0xff/goapptrace/tracer/protocol"
 )
 
 // serverRunCmd represents the run command
 var serverRunCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Start log servers",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("run called")
-		runServerRun()
-	},
+	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
+
+		apiAddr, _ := cmd.Flags().GetString("listen-api")
+		logAddr, _ := cmd.Flags().GetString("listen-log")
+		return runServerRun(
+			conf, cmd.OutOrStdout(), cmd.OutOrStderr(),
+			apiAddr, logAddr,
+		)
+	}),
 }
 
-func runServerRun() {
-	// try to connect to control server.
-	// if failed to connect, start control server.
+func runServerRun(conf *config.Config, stdout io.Writer, stderr io.Writer, apiAddr, logAddr string) error {
+	if len(conf.Servers.ApiServer) > 0 {
+		// API server SHOULD one instance.
+		fmt.Fprintln(stderr, "ERROR: API server is already running")
+		return nil
+	}
+	if len(conf.Servers.LogServer) > 0 {
+		// Log server SHOULD one instance.
+		fmt.Fprintln(stderr, "ERROR: Log server is already running")
+		return nil
+	}
 
-	// add to server list.
-	// start a log server.
-	// delete a log server from server list.
+	if apiAddr == "" {
+		apiAddr = config.DefaultApiServerAddr
+	}
+	if logAddr == "" {
+		logAddr = config.DefaultLogServerAddr
+	}
+
+	// start API Server
+	apiSrv := httpserver.NewHttpServer(apiAddr, nil)
+	if err := apiSrv.Start(); err != nil {
+		fmt.Fprintln(stderr, "ERROR: failed to start the API server:", err)
+		return err
+	}
+	defer func() {
+		apiSrv.Stop()
+		if err := apiSrv.Wait(); err != nil {
+			fmt.Fprintln(stderr, "ERROR: failed to stop the API server:", err)
+		}
+	}()
+
+	// start Log Server
+	logSrv := protocol.Server{
+		Addr:    "tcp://" + logAddr,
+		Handler: protocol.ServerHandler{},
+		AppName: "TODO",
+		Secret:  "",
+	}
+	if err := logSrv.Listen(); err != nil {
+		fmt.Fprintln(stderr, "ERROR: failed to start the Log server:", err)
+		return err
+	}
+	go logSrv.Serve()
+	defer func() {
+		defer logSrv.Wait()
+		if err := logSrv.Close(); err != nil {
+			fmt.Fprintln(stderr, "ERROR: failed to stop the Log server:", err)
+		}
+	}()
+
+	// add servers to config, and save
+	conf.Servers.ApiServer[1] = &config.ApiServerConfg{
+		Addr: apiSrv.Addr(),
+	}
+	conf.Servers.LogServer[1] = &config.LogServerConfig{
+		Addr: logSrv.ActualAddr(),
+	}
+	conf.WantSave()
+	if err := conf.Save(); err != nil {
+		fmt.Fprintln(stderr, "ERROR: cannot write to the config file:", err)
+	}
+
+	// wait until a signal is received
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGHUP, syscall.SIGTERM)
+	<-sigCh
+
+	// remove servers from config
+	conf.Servers = *config.NewServers()
+	conf.WantSave()
+	if err := conf.Save(); err != nil {
+		fmt.Fprintln(stderr, "ERROR: cannot write to the config file:", err)
+	}
+	return nil
 }
 
 func init() {
@@ -57,4 +137,6 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// serverRunCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	serverRunCmd.Flags().StringP("listen-api", "p", "", "Address and port for REST API Server")
+	serverRunCmd.Flags().StringP("listen-log", "P", "", "Address and port for Log Server")
 }
