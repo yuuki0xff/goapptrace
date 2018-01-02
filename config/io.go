@@ -9,6 +9,10 @@ import (
 	"github.com/yuuki0xff/goapptrace/info"
 )
 
+const (
+	ConfigFilePerm = os.ModePerm ^ 0111
+)
+
 // Directory Layout
 //   $dir/targets.json        - includes target, trace, build
 //   $dir/logs/               - managed under tracer.storage
@@ -34,11 +38,14 @@ func (c *Config) Load() error {
 	if _, err := os.Stat(c.targetsPath()); os.IsNotExist(err) {
 		c.Targets = *NewTargets()
 	} else {
-		js, err := ioutil.ReadFile(c.targetsPath())
-		if err != nil {
+		if err := readFromJsonFile(c.targetsPath(), &c.Targets); err != nil {
 			return err
 		}
-		if err := json.Unmarshal(js, &c.Targets); err != nil {
+	}
+	if _, err := os.Stat(c.serversPath()); os.IsNotExist(err) {
+		c.Servers = *NewServers()
+	} else {
+		if err := readFromJsonFile(c.serversPath(), &c.Servers); err != nil {
 			return err
 		}
 	}
@@ -55,23 +62,10 @@ func (c *Config) Save() error {
 			return err
 		}
 	}
-
-	js, err := json.Marshal(c.Targets)
-	if err != nil {
+	if err := writeToJsonFile(c.targetsPath(), c.Targets); err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(c.targetsPath(), js, os.ModePerm^0111); err != nil {
-		return err
-	}
-
-	js, err = json.Marshal(c.Servers)
-	if err != nil {
-		return err
-	}
-	if err := ioutil.WriteFile(c.serversPath(), js, os.ModePerm^0111); err != nil {
-		return err
-	}
-	return nil
+	return writeToJsonFile(c.serversPath(), c.Servers)
 }
 
 func (c *Config) SaveIfWant() error {
@@ -90,4 +84,19 @@ func (c Config) serversPath() string {
 
 func (c Config) LogsDir() string {
 	return path.Join(c.dir, "logs")
+}
+
+func readFromJsonFile(filepath string, data interface{}) error {
+	js, err := ioutil.ReadFile(filepath)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(js, data)
+}
+func writeToJsonFile(filepath string, data interface{}) error {
+	js, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(filepath, js, ConfigFilePerm)
 }

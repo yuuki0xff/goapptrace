@@ -6,6 +6,13 @@ type Servers struct {
 	ApiServer map[ServerID]*ApiServerConfg
 }
 
+func NewServers() *Servers {
+	return &Servers{
+		LogServer: map[ServerID]*LogServerConfig{},
+		ApiServer: map[ServerID]*ApiServerConfg{},
+	}
+}
+
 // configuration for Log server.
 type LogServerConfig struct {
 	Addr string
