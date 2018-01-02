@@ -49,6 +49,19 @@ type Log struct {
 type LogMetadata struct {
 	// Timestamp of the last record
 	Timestamp time.Time
+
+	// The configuration of user interface
+	UI UIConfig
+}
+
+type UIConfig struct {
+	Funcs      map[logutil.FuncID]UIItemConfig
+	Goroutines map[logutil.GID]UIItemConfig
+}
+type UIItemConfig struct {
+	Pinned  bool
+	Masked  bool
+	Comment string
 }
 
 type LogStatus uint8
