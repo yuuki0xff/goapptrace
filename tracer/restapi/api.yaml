@@ -29,11 +29,11 @@ definitions:
     description: Status of a log server.
     type: object
     required:
-      - serverID
+      - server-id
       - version
       - address
     properties:
-      serverID:
+      server-id:
         type: integer
         format: int64
         minimum: 1
@@ -49,6 +49,7 @@ definitions:
       address:
         description: Host and port.
         type: string
+        pattern: '^[a-zA-Z0-9\-]+:\d+$'
         example: 'localhost:9000'
   log-list:
     description: List of log file statuses.
@@ -64,41 +65,195 @@ definitions:
     description: Status of log file.
     type: object
     required:
-      - logID
+      - log-id
       - version
       - type
     properties:
-      logID:
+      log-id:
         type: integer
         format: int64
         minimum: 1
         example: 26
+        description: LogID
       version:
         type: integer
         format: int64
         minimum: 1
         example: 13
-      type:
+      metadata:
+        $ref: '#/definitions/log-metadata'
+  log-metadata:
+    description: Log metadata
+    type: object
+    properties:
+      timestamp:
+        type: integer
+        format: int64
+        example: 5900
+        description: Last update time
+      ui:
+        type: object
+        description: User interface settings
+        properties:
+          funcs:
+            type: object
+            description: Pinned items
+            additionalProperties:
+              $ref: '#/definitions/log-metadata-item-setting'
+            example:
+              '32':
+                pinned: true
+                comment: This function is pinned.
+              '33':
+                masked: true
+                comment: This function is masked. Should not display this function.
+          goroutines:
+            type: object
+            description: Lookup settings by Goroutine ID
+            additionalProperties:
+              $ref: '#/definitions/log-metadata-item-setting'
+            example:
+              '62':
+                comment: This goroutine seems to be leaked !!!
+  log-metadata-item-setting:
+    type: object
+    properties:
+      pinned:
+        type: boolean
+      masked:
+        type: boolean
+      comment:
         type: string
-        description: 'TODO: どのような内容を返すべきなのか検討する'
-  log-record-jsonlines:
+  func-call-jsonlines:
     description: The multiple json separated by newline character.
     type: array
     items:
-      $ref: '#/definitions/log-record'
-  log-record:
-    description: 'The one event. TODO: 中身を検討する。'
+      $ref: '#/definitions/func-call'
+  func-call:
+    description: Detail of one function call event
     type: object
     required:
-      - gID
-      - timestamp
+      - id
+      - start-time
+      - end-time
+      - parent-id
+      - frames
+      - gid
     properties:
-      gID:
+      id:
         type: integer
-        example: 62
-      timestamp:
+        format: int64
+        example: 32
+        description: evnet ID
+      start-time:
         type: integer
+        format: int64
         example: 5280
+        description: Unix time at the start of function execution.
+      end-time:
+        type: integer
+        format: int64
+        example: 5900
+        description: Unix time at the end of function execution.
+      frames:
+        type: array
+        items:
+          $ref: '#/definitions/symbol-func-status'
+        example:
+          - id: 20
+            func: 15
+            line: 137
+          - id: 15
+            func: 13
+            line: 199
+          - id: 11
+            func: 11
+            line: 216
+        description: >-
+          It is stacktrace. First item is current executing function. next item
+          is caller of the first item.
+      gid:
+        type: integer
+        format: int64
+        example: 62
+        description: Goroutine ID
+  goroutine-list:
+    description: List of goroutines
+    type: array
+    items:
+      $ref: '#/definitions/goroutine'
+  goroutine:
+    description: Detail of thegoroutine
+    type: object
+    required:
+      - goroutine-id
+      - start-time
+      - end-time
+    properties:
+      goroutine-id:
+        type: integer
+        format: int64
+        example: 62
+        description: Goroutine ID
+      start-time:
+        type: integer
+        format: int64
+        example: 5280
+        description: Unix time at the start of goroutine.
+      end-time:
+        type: integer
+        format: int64
+        example: 5900
+        description: Unix time at the end of goroutine.
+  symbol-func:
+    description: Details of the function.
+    type: object
+    required:
+      - func-id
+      - name
+      - file
+      - entry
+    properties:
+      func-id:
+        type: integer
+        format: int64
+        example: 15
+        description: FuncID
+      name:
+        type: string
+        example: github.com/yuuki0xff/goapptrace.main
+        description: Function name
+      file:
+        type: string
+        example: /go/src/github.com/yuuki0xff/goapptrace/goapptrace.go
+        description: Path to source file.
+      entry:
+        type: integer
+        format: int64
+        description: Entry point address of this function.
+  symbol-func-status:
+    description: Details of function execution status
+    type: object
+    required:
+      - func-status-id
+      - func-id
+      - line
+    properties:
+      func-status-id:
+        type: integer
+        format: int64
+        example: 20
+        description: FuncStatusID
+      func-id:
+        type: integer
+        format: int64
+        example: 15
+        description: FuncID
+      line:
+        type: integer
+        format: int64
+        example: 137
+        description: The line number of currently executing.
   tracer-list:
     description: List of tracer.
     type: object
@@ -112,13 +267,28 @@ definitions:
   tracer:
     description: Status of tracer.
     required:
-      - tracerID
+      - tracer-id
+      - server-id
+      - log-id
     properties:
-      tracerID:
+      tracer-id:
         type: integer
         format: int64
         minimum: 1
         example: 5
+        description: TracerID
+      server-id:
+        type: integer
+        format: int64
+        minimum: 1
+        example: 3
+        description: The log server is being received logs from this tracer.
+      log-id:
+        type: integer
+        format: int64
+        minimum: 1
+        example: 15
+        description: The log is being written events that have occurred on this tracer.
 paths:
   /servers:
     get:
@@ -128,20 +298,20 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/server-list'
-  '/server/{srvID}/status':
+  '/server/{server-id}/status':
+    parameters:
+      - name: server-id
+        in: path
+        required: true
+        type: integer
     get:
       description: Returns current status of a server.
-      parameters:
-        - name: srvID
-          in: path
-          required: true
-          type: integer
       responses:
         '200':
           description: OK
           schema:
             $ref: '#/definitions/server'
-    post:
+    put:
       description: Updates current status of a server.
       parameters:
         - name: version
@@ -166,13 +336,13 @@ paths:
             latest status. The API client had better retry to update status.
           schema:
             $ref: '#/definitions/server'
-  '/server/{srvID}/watch':
+  '/server/{server-id}/watch':
     get:
       description: >-
         Long-polling API for status update notification. This API will be
         waiting for the status to change or timeout.
       parameters:
-        - name: srvID
+        - name: server-id
           in: path
           required: true
           type: integer
@@ -201,31 +371,31 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/log-list'
-  '/log/{logID}':
+  '/log/{log-id}':
     delete:
       description: Delete a log file.
       parameters:
-        - name: logID
+        - name: log-id
           in: path
           required: true
           type: integer
       responses:
         '204':
           description: OK
-  '/log/{logID}/status':
+  '/log/{log-id}/status':
+    parameters:
+      - name: log-id
+        in: path
+        required: true
+        type: integer
     get:
       description: Returns current status of a specified log.
-      parameters:
-        - name: logID
-          in: path
-          required: true
-          type: integer
       responses:
         '200':
           description: OK
           schema:
             $ref: '#/definitions/log'
-    post:
+    put:
       description: Updates current status of a server.
       parameters:
         - name: version
@@ -249,13 +419,13 @@ paths:
             latest status. The API client had better retry to update status.
           schema:
             $ref: '#/definitions/log'
-  '/log/{logID}/watch':
+  '/log/{log-id}/watch':
     get:
       description: >-
         Long-polling API for status update notification. This API will be
         waiting for the status to change or timeout.
       parameters:
-        - name: logID
+        - name: log-id
           in: path
           required: true
           type: integer
@@ -276,73 +446,160 @@ paths:
             $ref: '#/definitions/log'
         '204':
           description: Notify for non-changed in timeout.
-  '/log/{logID}/search':
+  '/log/{log-id}/func-call/search':
     get:
-      description: Filters log records and returns.
+      description: Filters the function call log records.
       produces:
         - application/x-jsonlines
       parameters:
-        - name: logID
+        - name: log-id
           in: path
           required: true
           type: integer
-        - name: txID
+        - name: txid
           in: query
           description: Transaction ID.
           type: string
-        - name: gID
+        - name: gid
           in: query
           description: Goroutine ID.
           type: integer
-        - name: fID
+        - name: fid
           in: query
           description: Function ID.
           type: integer
-        - name: mID
+        - name: mid
           in: query
           description: Module ID.
           type: integer
-        - name: minID
+        - name: min-id
           in: query
           description: Minimum of log ID.
           type: integer
-        - name: maxID
+        - name: max-id
           in: query
           description: Maximum of log ID.
           type: integer
-        - name: minTimestamp
+        - name: min-timestamp
           in: query
           description: Minimum of timestamp.
           type: integer
-        - name: maxTimestamp
+        - name: max-timestamp
           in: query
           description: Maximum of timestamp.
           type: integer
       responses:
         '200':
-          description: Returns log records.
+          description: Returns function call log records.
           schema:
-            $ref: '#/definitions/log-record-jsonlines'
-  '/log/{logID}/stream':
+            $ref: '#/definitions/func-call-jsonlines'
+  '/log/{log-id}/func-call/stream':
     get:
       description: >-
-        Filters log records and returns. This API and search API are basically
-        the same. The difference point is behavior to new records received after
-        API call. Search API returns a response immediately, and the response
-        are not include new records. Stream API returns a response little by
-        little including new records.
+        ilters the function call log records. This API and search API are
+        basically the same. The difference point is behavior to new records
+        received after API call. Search API returns a response immediately, and
+        the response are not include new records. Stream API sending a response
+        little by little including new records.
       produces:
         - application/x-jsonlines
       parameters:
-        - name: logID
+        - name: log-id
           in: path
           required: true
+          type: integer
+        - name: txid
+          in: query
+          description: Transaction ID.
+          type: string
+        - name: gid
+          in: query
+          description: Goroutine ID.
+          type: integer
+        - name: fid
+          in: query
+          description: Function ID.
+          type: integer
+        - name: mid
+          in: query
+          description: Module ID.
+          type: integer
+        - name: min-id
+          in: query
+          description: Minimum of log ID.
+          type: integer
+        - name: max-id
+          in: query
+          description: Maximum of log ID.
+          type: integer
+        - name: min-timestamp
+          in: query
+          description: Minimum of timestamp.
+          type: integer
+        - name: max-timestamp
+          in: query
+          description: Maximum of timestamp.
           type: integer
       responses:
         '200':
           description: Returns log records forever.
           schema:
-            $ref: '#/definitions/log-record-jsonlines'
+            $ref: '#/definitions/func-call-jsonlines'
+  '/log/{log-id}/goroutines/search':
+    get:
+      description: Returns
+      parameters:
+        - name: log-id
+          in: path
+          required: true
+          type: integer
+        - name: min-timestamp
+          in: query
+          description: Minimum of timestamp.
+          type: integer
+        - name: max-timestamp
+          in: query
+          description: Maximum of timestamp.
+          type: integer
+      responses:
+        '200':
+          description: success
+          schema:
+            $ref: '#/definitions/goroutine-list'
+  '/log/{log-id}/symbol/func/{func-id}':
+    get:
+      description: Returns detail of the function.
+      parameters:
+        - name: log-id
+          in: path
+          required: true
+          type: integer
+        - name: func-id
+          in: path
+          required: true
+          type: integer
+      responses:
+        '200':
+          description: success
+          schema:
+            $ref: '#/definitions/symbol-func'
+  '/log/{log-id}/symbol/func-status/{func-status-id}':
+    get:
+      description: Returns the execution status of the function.
+      parameters:
+        - name: log-id
+          in: path
+          required: true
+          type: integer
+        - name: func-status-id
+          in: path
+          required: true
+          type: integer
+      responses:
+        '200':
+          description: success
+          schema:
+            $ref: '#/definitions/symbol-func-status'
   /tracers:
     get:
       description: Returns all tracer list.
@@ -351,22 +608,24 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/tracer-list'
-  '/tracer/{tracerID}':
+  '/tracer/{tracer-id}':
     delete:
-      description: Delete a tracer.
+      description: Delete a tracer. This tracer will stop forcibly.
       parameters:
-        - name: tracerID
+        - name: tracer-id
           in: path
           required: true
           type: integer
       responses:
-        '204':
-          description: OK
-  '/tracer/{tracerID}/status':
+        '202':
+          description: >-
+            Request is accepted. This response do not guarantee that this tracer
+            is stopped.
+  '/tracer/{tracer-id}/status':
     get:
       description: Returns current status of a tracer.
       parameters:
-        - name: tracerID
+        - name: tracer-id
           in: path
           required: true
           type: integer
@@ -375,10 +634,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/tracer'
-    post:
+    put:
       description: Updates current status of a server.
       parameters:
-        - name: tracerID
+        - name: tracer-id
           in: path
           required: true
           type: integer
@@ -403,13 +662,13 @@ paths:
             latest status. The API client had better retry to update status.
           schema:
             $ref: '#/definitions/tracer'
-  '/tracer/{tracerID}/watch':
+  '/tracer/{tracer-id}/watch':
     get:
       description: >-
         Long-polling API for status update notification. This API will be
         waiting for the status to change or timeout.
       parameters:
-        - name: tracerID
+        - name: tracer-id
           in: path
           required: true
           type: integer
