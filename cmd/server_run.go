@@ -31,6 +31,7 @@ import (
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/httpserver"
 	"github.com/yuuki0xff/goapptrace/tracer/protocol"
+	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 )
 
 // serverRunCmd represents the run command
@@ -68,7 +69,7 @@ func runServerRun(conf *config.Config, stdout io.Writer, stderr io.Writer, apiAd
 	}
 
 	// start API Server
-	apiSrv := httpserver.NewHttpServer(apiAddr, nil)
+	apiSrv := httpserver.NewHttpServer(apiAddr, restapi.NewRouter(restapi.RouterArgs{}))
 	if err := apiSrv.Start(); err != nil {
 		fmt.Fprintln(stderr, "ERROR: failed to start the API server:", err)
 		return err

@@ -1,25 +1,21 @@
-package httpserver
+package restapi
 
 import (
-	"net/http"
-
 	"encoding/json"
-
 	"log"
+	"net/http"
 
 	"github.com/gorilla/mux"
 	"github.com/yuuki0xff/goapptrace/info"
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
 )
 
-const BIT_SIZE = 64
-
-type ServerArgs struct {
+type RouterArgs struct {
 	Storage *storage.Storage
 }
 
 // TODO: impl REST API server
-func getRouter(args *ServerArgs) *mux.Router {
+func NewRouter(args RouterArgs) *mux.Router {
 	router := mux.NewRouter()
 	api := router.PathPrefix("/api").Subrouter()
 	api.HandleFunc("/logs", func(w http.ResponseWriter, r *http.Request) {
