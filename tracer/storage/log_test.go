@@ -65,9 +65,9 @@ func TestLog_withEmptyFile(t *testing.T) {
 	if l.Symbols() == nil {
 		must(t, errors.New("should returns not nil, but got nil"), "Log.Symbols():")
 	}
-	must(t, l.Walk(func(evt logutil.RawFuncLog) error {
+	must(t, l.WalkRawFuncLog(func(evt logutil.RawFuncLog) error {
 		return errors.New("should not contains any log record, but found a log record")
-	}), "Log.Walk():")
+	}), "Log.WalkRawFuncLog():")
 	must(t, l.Close(), "Log.Close():")
 }
 
@@ -111,12 +111,12 @@ func TestLog_AppendRawFuncLog(t *testing.T) {
 	}
 
 	var i int
-	must(t, l.Walk(func(evt logutil.RawFuncLog) error {
+	must(t, l.WalkRawFuncLog(func(evt logutil.RawFuncLog) error {
 		i++
 		return nil
-	}), "Log.Walk():")
+	}), "Log.WalkRawFuncLog():")
 	if i != 2 {
-		must(t, fmt.Errorf("log records: (got) %d != %d (expected)", i, 2), "Log.Walk():")
+		must(t, fmt.Errorf("log records: (got) %d != %d (expected)", i, 2), "Log.WalkRawFuncLog():")
 	}
 
 	must(t, l.Close(), "Log.Close():")
@@ -144,7 +144,7 @@ func TestLog_ReadDuringWriting(t *testing.T) {
 
 	checkRecordCount := func(expect int64) error {
 		var actual int64
-		l.Walk(func(evt logutil.RawFuncLog) error {
+		l.WalkRawFuncLog(func(evt logutil.RawFuncLog) error {
 			actual++
 			return nil
 		})

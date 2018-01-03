@@ -328,7 +328,7 @@ func (l *Log) Search(start, end time.Time, fn func(evt logutil.RawFuncLog) error
 
 // 関数呼び出しのログを先頭からすべて読み込む。
 // この操作を実行中、他の操作はブロックされる。
-func (l *Log) Walk(fn func(evt logutil.RawFuncLog) error) error {
+func (l *Log) WalkRawFuncLog(fn func(evt logutil.RawFuncLog) error) error {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
 

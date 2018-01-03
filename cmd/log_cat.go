@@ -87,7 +87,7 @@ func runLogCat(logobj *storage.Log, writer LogWriter) error {
 	if err := writer.WriteHeader(); err != nil {
 		return err
 	}
-	if err := logobj.Walk(func(evt logutil.RawFuncLog) error {
+	if err := logobj.WalkRawFuncLog(func(evt logutil.RawFuncLog) error {
 		return writer.Write(evt)
 	}); err != nil {
 		return fmt.Errorf("log read error: %s", err)
