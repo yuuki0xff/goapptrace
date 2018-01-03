@@ -39,7 +39,6 @@ var serverRunCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Start log servers",
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
-
 		apiAddr, _ := cmd.Flags().GetString("listen-api")
 		logAddr, _ := cmd.Flags().GetString("listen-log")
 		return runServerRun(
@@ -69,7 +68,10 @@ func runServerRun(conf *config.Config, stdout io.Writer, stderr io.Writer, apiAd
 	}
 
 	// start API Server
-	apiSrv := httpserver.NewHttpServer(apiAddr, restapi.NewRouter(restapi.RouterArgs{}))
+	apiSrv := httpserver.NewHttpServer(apiAddr, restapi.NewRouter(restapi.RouterArgs{
+		Config:  conf,
+		Storage: nil, // TODO
+	}))
 	if err := apiSrv.Start(); err != nil {
 		fmt.Fprintln(stderr, "ERROR: failed to start the API server:", err)
 		return err
