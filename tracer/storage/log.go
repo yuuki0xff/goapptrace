@@ -321,7 +321,7 @@ func (l *Log) Search(start, end time.Time, fn func(evt logutil.RawFuncLog) error
 	}
 
 	for i := startIdx; i <= endIdx; i++ {
-		return l.walkRawFuncLogFile(i, fn)
+		return l.WalkRawFuncLogFile(i, fn)
 	}
 	return nil
 }
@@ -333,12 +333,12 @@ func (l *Log) WalkRawFuncLog(fn func(evt logutil.RawFuncLog) error) error {
 	defer l.lock.RUnlock()
 
 	return l.index.Walk(func(i int64, _ IndexRecord) error {
-		return l.walkRawFuncLogFile(i, fn)
+		return l.WalkRawFuncLogFile(i, fn)
 	})
 }
 
 // 指定したindexのファイルの内容を全てcallbackする
-func (l *Log) walkRawFuncLogFile(i int64, fn func(evt logutil.RawFuncLog) error) error {
+func (l *Log) WalkRawFuncLogFile(i int64, fn func(evt logutil.RawFuncLog) error) error {
 	return l.rawFuncLog.Index(int(i)).Walk(
 		func() interface{} {
 			return &logutil.RawFuncLog{}
