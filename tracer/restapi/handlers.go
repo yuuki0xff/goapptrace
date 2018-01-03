@@ -88,6 +88,7 @@ func (api APIv0) write(w io.Writer, data []byte) {
 	}
 }
 
+// TODO: テストを書く
 func (api APIv0) servers(w http.ResponseWriter, r *http.Request) {
 	srvList := make([]*config.LogServerConfig, len(api.Config.Servers.LogServer))
 	for _, srv := range api.Config.Servers.LogServer {
@@ -105,6 +106,8 @@ func (api APIv0) servers(w http.ResponseWriter, r *http.Request) {
 	}
 	api.write(w, js)
 }
+
+// TODO: テストを書く
 func (api APIv0) serverStatus(w http.ResponseWriter, r *http.Request) {
 	strId := mux.Vars(r)["server-id"]
 	id, err := strconv.Atoi(strId)
@@ -131,6 +134,8 @@ func (api APIv0) serverStatus(w http.ResponseWriter, r *http.Request) {
 		api.notImpl(w, r)
 	}
 }
+
+// TODO: テストを書く
 func (api APIv0) logs(w http.ResponseWriter, r *http.Request) {
 	logs, err := api.Storage.Logs()
 	if err != nil {
@@ -149,6 +154,8 @@ func (api APIv0) logs(w http.ResponseWriter, r *http.Request) {
 	}
 	api.write(w, js)
 }
+
+// TODO: テストを書く
 func (api APIv0) log(w http.ResponseWriter, r *http.Request) {
 	logobj, ok := api.getLog(w, r)
 	if !ok {
@@ -169,6 +176,8 @@ func (api APIv0) log(w http.ResponseWriter, r *http.Request) {
 		api.notImpl(w, r)
 	}
 }
+
+// TODO: テストを書く
 func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 	logobj, ok := api.getLog(w, r)
 	if !ok {
