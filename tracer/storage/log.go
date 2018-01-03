@@ -339,6 +339,8 @@ func (l *Log) WalkFuncLog(fn func(evt logutil.FuncLog) error) error {
 
 // 指定したindexのファイルの内容を全てcallbackする
 func (l *Log) WalkFuncLogFile(i int64, fn func(evt logutil.FuncLog) error) error {
+	// SplitReadWriterのIndex()やWalk()は排他制御されているため、、
+	// ここでl.lock.RLock()をする必要がない。
 	return l.rawFuncLog.Index(int(i)).Walk(
 		func() interface{} {
 			return &logutil.FuncLog{}
@@ -363,6 +365,8 @@ func (l *Log) WalkRawFuncLog(fn func(evt logutil.RawFuncLog) error) error {
 
 // 指定したindexのファイルの内容を全てcallbackする
 func (l *Log) WalkRawFuncLogFile(i int64, fn func(evt logutil.RawFuncLog) error) error {
+	// SplitReadWriterのIndex()やWalk()は排他制御されているため、、
+	// ここでl.lock.RLock()をする必要がない。
 	return l.rawFuncLog.Index(int(i)).Walk(
 		func() interface{} {
 			return &logutil.RawFuncLog{}
