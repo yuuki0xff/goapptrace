@@ -386,6 +386,18 @@ func (l *Log) WalkRawFuncLogFile(i int64, fn func(evt logutil.RawFuncLog) error)
 	)
 }
 
+// IndexRecordの内容を全てcallbackする。
+func (l *Log) WalkIndexRecord(fn func(i int64, ir IndexRecord) error) error {
+	l.lock.RLock()
+	defer l.lock.RUnlock()
+	return l.index.Walk(fn)
+}
+func (l *Log) IndexLen() int64 {
+	l.lock.RLock()
+	defer l.lock.RUnlock()
+	return l.index.Len()
+}
+
 // FuncLogを追加する。
 // ファイルが閉じられていた場合、os.ErrClosedを返す。
 func (l *Log) AppendFuncLog(funcLog *logutil.FuncLog) error {

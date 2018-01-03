@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"strconv"
@@ -11,6 +12,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/yuuki0xff/goapptrace/config"
+	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
 )
 
@@ -173,9 +175,121 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// suppress compile error
-	_ = logobj
-	// TODO: storage.LogにFuncLogの検索機能をつける
+	q := r.URL.Query()
+	var gid int64
+	var fid int64
+	//var mid int64
+	var minId int64
+	var maxId int64
+	var minTs int64
+	var maxTs int64
+	var err error
+
+	gid, err = parseInt(q.Get("gid"), -1)
+	if err != nil {
+		http.Error(w, "invaid gid", http.StatusBadRequest)
+		return
+	}
+	fid, err = parseInt(q.Get("fid"), -1)
+	if err != nil {
+		http.Error(w, "invalid fid", http.StatusBadRequest)
+		return
+	}
+	minId, err = parseInt(q.Get("min-id"), -1)
+	if err != nil {
+		http.Error(w, "invalid min-id", http.StatusBadRequest)
+		return
+	}
+	maxId, err = parseInt(q.Get("max-id"), math.MaxInt64)
+	if err != nil {
+		http.Error(w, "invalid max-id", http.StatusBadRequest)
+		return
+	}
+	minTs, err = parseInt(q.Get("min-timestamp"), -1)
+	if err != nil {
+		http.Error(w, "invalid min-timestamp", http.StatusBadRequest)
+		return
+	}
+	maxTs, err = parseInt(q.Get("max-timestamp"), math.MaxInt64)
+	if err != nil {
+		http.Error(w, "invalid max-timestamp", http.StatusBadRequest)
+		return
+	}
+
+	minIdx := int64(0)              // inclusive
+	maxIdx := logobj.IndexLen() - 1 // inclusive
+
+	// narrow the search range by ID and Timestamp.
+	if minId >= 0 || maxId >= 0 || minTs >= 0 || maxTs >= 0 {
+		var total int64
+		var lowerTs int64 // inclusive
+		err = logobj.WalkIndexRecord(func(i int64, ir storage.IndexRecord) error {
+			lowerID := total // exclusive if i != 0, else inclusive
+			total += ir.Records
+			upperID := total // inclusive
+
+			upperTs := ir.Timestamp.Unix() // inclusive
+
+			// by ID
+			if minIdx < i && lowerID < minId {
+				minIdx = i
+			}
+			if i < maxIdx && maxId <= upperID {
+				maxIdx = i
+			}
+
+			// by Timestamp
+			if minIdx < i && lowerTs <= minTs {
+				minIdx = i
+			}
+			if i < maxIdx && maxTs <= upperTs {
+				maxIdx = i
+			}
+			lowerTs = upperTs
+			return nil
+		})
+		if err != nil {
+			api.serverError(w, err, "failed to WalkIndexRecord()")
+			return
+		}
+	}
+
+	// read all records in the search range, and filter by gid and fid.
+	ch := make(chan logutil.FuncLog, 1<<20) // buffer size is 1M records
+	go func() {
+		defer close(ch)
+		for i := minIdx; i <= maxIdx; i++ {
+			err = logobj.WalkFuncLogFile(i, func(evt logutil.FuncLog) error {
+				if gid >= 0 && evt.GID != logutil.GID(gid) {
+					return nil
+				}
+				if fid >= 0 && logobj.Symbols().FuncID(evt.Frames[0]) != logutil.FuncID(fid) {
+					return nil
+				}
+				ch <- evt
+				return nil
+			})
+			if err != nil {
+				api.Logger.Println(errors.Wrap(err, "failed to read FuncLogFile"))
+				return
+			}
+		}
+	}()
+
+	defer func() {
+		// in order to stop the background goroutine, we consume all items from ch.
+		for range ch {
+		}
+	}()
+
+	// encode and send records to client.
+	enc := json.NewEncoder(w)
+	for evt := range ch {
+		err = enc.Encode(&evt)
+		if err != nil {
+			api.Logger.Println(errors.Wrap(err, "failed to json.Encoder.Encode()"))
+		}
+	}
 }
 func (api APIv0) goroutineSearch(w http.ResponseWriter, r *http.Request) {
 	logobj, ok := api.getLog(w, r)
@@ -257,4 +371,15 @@ func (api APIv0) getLog(w http.ResponseWriter, r *http.Request) (*storage.Log, b
 		return nil, false
 	}
 	return logobj, true
+}
+
+func parseInt(value string, defaultValue int64) (int64, error) {
+	if value == "" {
+		return defaultValue, nil
+	}
+	intValue, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, err
+	}
+	return int64(intValue), nil
 }
