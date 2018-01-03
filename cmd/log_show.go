@@ -21,14 +21,9 @@
 package cmd
 
 import (
-	"fmt"
-
-	"log"
-
-	"github.com/skratchdot/open-golang/open"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
-	"github.com/yuuki0xff/goapptrace/httpserver"
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
 )
 
@@ -50,6 +45,8 @@ var logShowCmd = &cobra.Command{
 }
 
 func runLogShow(conf *config.Config, targets []string, notOpenBrowser bool, listen string) error {
+	// TODO: show logs on TUI
+
 	strg := &storage.Storage{
 		Root:     storage.DirLayout{Root: conf.LogsDir()},
 		ReadOnly: true,
@@ -59,25 +56,7 @@ func runLogShow(conf *config.Config, targets []string, notOpenBrowser bool, list
 	}
 	defer strg.Close() // nolint: errcheck
 
-	srvArgs := &httpserver.ServerArgs{
-		Storage: strg,
-	}
-	srv := httpserver.NewHttpServer(listen, srvArgs)
-	if err := srv.Start(); err != nil {
-		return err
-	}
-	log.Printf("INFO: Started HTTP server on %s\n", srv.Addr())
-
-	if !notOpenBrowser {
-		if err := open.Run(fmt.Sprintf("http://%s", srv.Addr())); err != nil {
-			return err
-		}
-	}
-
-	if err := srv.Wait(); err != nil {
-		return err
-	}
-	return nil
+	return errors.New("not implemented")
 }
 
 func init() {
