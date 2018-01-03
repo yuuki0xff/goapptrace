@@ -326,6 +326,30 @@ func (l *Log) Search(start, end time.Time, fn func(evt logutil.RawFuncLog) error
 	return nil
 }
 
+// 関数呼び出しに関するログを先頭から全て読み込む。
+// この操作を実行中、他の操作はブロックされる
+func (l *Log) WalkFuncLog(fn func(evt logutil.FuncLog) error) error {
+	l.lock.RLock()
+	defer l.lock.RUnlock()
+
+	return l.index.Walk(func(i int64, _ IndexRecord) error {
+		return l.WalkFuncLogFile(i, fn)
+	})
+}
+
+// 指定したindexのファイルの内容を全てcallbackする
+func (l *Log) WalkFuncLogFile(i int64, fn func(evt logutil.FuncLog) error) error {
+	return l.rawFuncLog.Index(int(i)).Walk(
+		func() interface{} {
+			return &logutil.FuncLog{}
+		},
+		func(val interface{}) error {
+			data := val.(*logutil.FuncLog)
+			return fn(*data)
+		},
+	)
+}
+
 // 関数呼び出しのログを先頭からすべて読み込む。
 // この操作を実行中、他の操作はブロックされる。
 func (l *Log) WalkRawFuncLog(fn func(evt logutil.RawFuncLog) error) error {
