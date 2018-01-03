@@ -330,11 +330,15 @@ func (l *Log) Search(start, end time.Time, fn func(evt logutil.RawFuncLog) error
 // この操作を実行中、他の操作はブロックされる
 func (l *Log) WalkFuncLog(fn func(evt logutil.FuncLog) error) error {
 	l.lock.RLock()
-	defer l.lock.RUnlock()
+	size := l.index.Len()
+	l.lock.RUnlock()
 
-	return l.index.Walk(func(i int64, _ IndexRecord) error {
-		return l.WalkFuncLogFile(i, fn)
-	})
+	for i := int64(0); i < size; i++ {
+		if err := l.WalkFuncLogFile(i, fn); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // 指定したindexのファイルの内容を全てcallbackする
@@ -356,11 +360,15 @@ func (l *Log) WalkFuncLogFile(i int64, fn func(evt logutil.FuncLog) error) error
 // この操作を実行中、他の操作はブロックされる。
 func (l *Log) WalkRawFuncLog(fn func(evt logutil.RawFuncLog) error) error {
 	l.lock.RLock()
-	defer l.lock.RUnlock()
+	size := l.index.Len()
+	l.lock.RUnlock()
 
-	return l.index.Walk(func(i int64, _ IndexRecord) error {
-		return l.WalkRawFuncLogFile(i, fn)
-	})
+	for i := int64(0); i < size; i++ {
+		if err := l.WalkRawFuncLogFile(i, fn); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // 指定したindexのファイルの内容を全てcallbackする
