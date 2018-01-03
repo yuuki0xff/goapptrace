@@ -297,6 +297,7 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 		err = enc.Encode(&evt)
 		if err != nil {
 			api.Logger.Println(errors.Wrap(err, "failed to json.Encoder.Encode()"))
+			return
 		}
 	}
 }
