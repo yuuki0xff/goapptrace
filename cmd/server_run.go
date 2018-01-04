@@ -171,7 +171,7 @@ func init() {
 func getServerHandler(strg *storage.Storage) protocol.ServerHandler {
 	// workerとの通信用。
 	// close()されたら、workerは終了するべき。
-	var chMap map[protocol.ConnID]chan interface{}
+	chMap := make(map[protocol.ConnID]chan interface{})
 	// chanの追加、削除、close()するときはLock()を、chanへの送受信はRLock()をかける。
 	var chMapLock sync.RWMutex
 
