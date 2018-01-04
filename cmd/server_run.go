@@ -175,9 +175,25 @@ func getServerHandler(strg *storage.Storage) protocol.ServerHandler {
 				log.Panicf("failed to close a Log(%s): connID=%d err=%s", logobj.ID, id, err.Error())
 			}
 		}()
-		// TODO: rotateする前に、ssのfunclogsとgoroutinesを書き出す。書き出した後にClear()する
+
 		ss := logutil.StateSimulator{}
 		ss.Init()
+
+		// このlogobjに対する書き込みを行うのは、worker()のみな。
+		// このイベント実行中に他から書き込まれることは考慮しなくてよい。
+		logobj.BeforeRotateEventHandler = func() {
+			for _, fl := range ss.FuncLogs() {
+				if err := logobj.AppendFuncLog(fl); err != nil {
+					log.Panicln("ERROR: failed to append FuncLog during rotating:", err.Error())
+				}
+			}
+			for _, g := range ss.Goroutines() {
+				// TODO: goroutinesを書き込むメソッドを用意する。
+				// suppress compile error
+				_ = g
+			}
+			ss.Clear()
+		}
 
 		for rawobj := range ch {
 			switch obj := rawobj.(type) {

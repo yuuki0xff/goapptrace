@@ -28,13 +28,22 @@ type Log struct {
 	ID       LogID
 	Root     DirLayout
 	Metadata *LogMetadata
+	// 書き込み先ファイルが変更される直前に呼び出される。
+	// このイベント実行中はロックが外れるため、他のスレッドから随時書き込まれる可能性がある。
+	BeforeRotateEventHandler func()
 	// RawFuncLogファイルの最大のファイルサイズの目安。
 	// 実際のファイルサイズは、指定したサイズよりもやや大きくなる可能性がある。
 	// 0を指定するとローテーション機能が無効になる。
 	MaxFileSize int64
 	ReadOnly    bool
 
-	lock   sync.RWMutex
+	lock sync.RWMutex
+	// rotate()を実行中ならtrue。
+	// rotate()内部で発生するBeforeRotate eventの実行中は、ロックを外さなければならない。
+	// そのイベント実行中に、並行してrotate()が実行されないように排他制御するためのフラグ。
+	rotating bool
+	// フィアルがcloseされていたらtrue。
+	// trueなら全ての操作を受け付けてはならない。
 	closed bool
 
 	index         *Index
@@ -414,8 +423,6 @@ func (l *Log) AppendFuncLog(funcLog *logutil.FuncLog) error {
 // ファイルサイズが上限に達していた場合、ファイルを分割する。
 // ファイルが閉じられていた場合、os.ErrClosedを返す。
 func (l *Log) AppendRawFuncLog(raw *logutil.RawFuncLog) error {
-	l.lock.Lock()
-	defer l.lock.Unlock()
 	if l.closed {
 		return os.ErrClosed
 	}
@@ -423,6 +430,9 @@ func (l *Log) AppendRawFuncLog(raw *logutil.RawFuncLog) error {
 	if err := l.autoRotate(); err != nil {
 		return err
 	}
+
+	l.lock.Lock()
+	defer l.lock.Unlock()
 	if err := l.rawFuncLog.Append(raw); err != nil {
 		return err
 	}
@@ -467,8 +477,15 @@ func (l *Log) Symbols() *logutil.Symbols {
 }
 
 // RawFuncLogファイルサイズがMaxFileSizeよりも大きい場合、ファイルのローテーションを行う。。
-// callee MUST call "l.lock.Lock()" before call l.autoRotate().
+// 呼び出し元でロックを取得していてはいけない。
 func (l *Log) autoRotate() error {
+	l.lock.RLock()
+	unlockOnce := sync.Once{}
+	unlock := func() {
+		unlockOnce.Do(l.lock.RUnlock)
+	}
+	defer unlock()
+
 	if l.rawFuncLog.SplitCount() == 0 {
 		// まだファイルが存在しないので、rotateの必要なし
 		return nil
@@ -483,14 +500,36 @@ func (l *Log) autoRotate() error {
 		return err
 	}
 	if l.MaxFileSize != 0 && size > l.MaxFileSize {
+		// l.rotate()を呼び出す前に、ロックを解除しなければならない。
+		unlock()
 		return l.rotate()
 	}
 	return nil
 }
 
-// RawFuncLogファイルのローテーションを行う。
-// callee MUST call "l.lock.Lock()" before call l.autoRotate().
+// 書き込み先ファイルのローテーションを行う。
+// 並行して実行しているrotate()が存在することを検出した場合、ローテーションが中断される。
+// 実行中には、BeforeRotateイベントが発生する。
+// 呼び出し元でロックを取得していてはいけない。
 func (l *Log) rotate() error {
+	l.lock.Lock()
+	if l.rotating {
+		// 他のgoroutineでrotate()が実行中だったため、ローテーションをしない。
+		l.lock.Unlock()
+		return nil
+	}
+	l.rotating = true
+	l.lock.Unlock()
+
+	l.raiseBeforeRotateEvent()
+
+	l.lock.Lock()
+	defer l.lock.Unlock()
+	// Unlockする前にrotatingフラグを元に戻す。
+	defer func() {
+		l.rotating = false
+	}()
+
 	if err := l.funcLog.Rotate(); err != nil {
 		return err
 	}
@@ -511,4 +550,11 @@ func (l *Log) rotate() error {
 		Records:   0,
 		writing:   true,
 	})
+}
+
+// BeforeRotateEventHandlerを呼び出す。
+func (l *Log) raiseBeforeRotateEvent() {
+	if l.BeforeRotateEventHandler != nil {
+		l.BeforeRotateEventHandler()
+	}
 }
