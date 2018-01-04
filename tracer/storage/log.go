@@ -91,6 +91,7 @@ const (
 
 var (
 	StopIteration = errors.New("stop iteration error")
+	ErrConflict   = errors.New("failed to update because conflict")
 )
 
 // LogIDを16進数表現で返す。
@@ -534,6 +535,18 @@ func (l *Log) AppendGoroutine(g *logutil.Goroutine) error {
 
 func (l *Log) Symbols() *logutil.Symbols {
 	return l.symbols
+}
+
+// Metadataフィールドを更新して、Versionをインクリメントする。
+func (l *Log) UpdateMetadata(currentVer int, metadata *LogMetadata) error {
+	l.lock.Lock()
+	defer l.lock.Unlock()
+	if l.Version != currentVer {
+		return ErrConflict
+	}
+	l.Version++
+	l.Metadata = metadata
+	return nil
 }
 
 // RawFuncLogファイルサイズがMaxFileSizeよりも大きい場合、ファイルのローテーションを行う。。

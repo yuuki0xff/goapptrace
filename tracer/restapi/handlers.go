@@ -3,6 +3,7 @@ package restapi
 import (
 	"encoding/json"
 	"io"
+	"io/ioutil"
 	"log"
 	"math"
 	"net/http"
@@ -189,7 +190,51 @@ func (api APIv0) log(w http.ResponseWriter, r *http.Request) {
 		}
 		api.write(w, js)
 	case http.MethodPut:
-		api.notImpl(w, r)
+		js, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			api.serverError(w, err, "failed to read from request body")
+			return
+		}
+
+		l := storage.Log{}
+		if err = json.Unmarshal(js, &l); err != nil {
+			http.Error(w, "invalid json", http.StatusBadRequest)
+			return
+		}
+
+		currentVer, err := strconv.Atoi(r.URL.Query().Get("version"))
+		if err != nil {
+			http.Error(w, "invalid version number", http.StatusBadRequest)
+			return
+		}
+
+		if err = logobj.UpdateMetadata(currentVer, l.Metadata); err != nil {
+			if err == storage.ErrConflict {
+				// バージョン番号が異なるため、Metadataを更新できない。
+				// 現在の状態を返す。
+				js, err := logobj.ToJson()
+				if err != nil {
+					api.serverError(w, err, "failed to json.Marshal()")
+					return
+				}
+				w.WriteHeader(http.StatusConflict)
+				api.write(w, js)
+				return
+			} else {
+				// よく分からんエラー
+				api.serverError(w, err, "failed to Log.UpdateMetadata")
+				return
+			}
+		}
+
+		// 更新に成功。
+		// 新しい状態を返す。
+		js, err = logobj.ToJson()
+		if err != nil {
+			api.serverError(w, err, "failed to json.Marshal()")
+			return
+		}
+		api.write(w, js)
 	}
 }
 
