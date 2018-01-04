@@ -90,7 +90,7 @@ func (api APIv0) write(w io.Writer, data []byte) {
 
 // TODO: テストを書く
 func (api APIv0) servers(w http.ResponseWriter, r *http.Request) {
-	srvList := make([]*config.LogServerConfig, len(api.Config.Servers.LogServer))
+	srvList := make([]*config.LogServerConfig, 0, len(api.Config.Servers.LogServer))
 	for _, srv := range api.Config.Servers.LogServer {
 		srvList = append(srvList, srv)
 	}
