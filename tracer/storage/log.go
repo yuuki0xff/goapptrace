@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -114,6 +115,33 @@ func (LogID) Unhex(str string) (id LogID, err error) {
 	}
 	copy(id[:], buf)
 	return
+}
+
+// 16進数化した文字列として出力する。
+func (id LogID) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	buf.WriteByte('"')
+	buf.Write([]byte(id.Hex()))
+	buf.WriteByte('"')
+	return buf.Bytes(), nil
+}
+
+// 16進数値のような文字列からLogIDに変換する。
+func (id *LogID) UnmarshalJSON(data []byte) error {
+	if len(data) != len(id)*2+2 {
+		return errors.New("mismatch id length")
+	}
+
+	if data[0] != '"' || data[len(data)-1] != '"' {
+		return errors.New("missing '\"'")
+	}
+
+	newId, err := id.Unhex(string(data[1 : len(data)-1]))
+	if err != nil {
+		return err
+	}
+	*id = newId
+	return nil
 }
 
 // LogIDを16進数表現で返す。

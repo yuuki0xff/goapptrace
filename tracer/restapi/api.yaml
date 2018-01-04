@@ -71,31 +71,11 @@ definitions:
       - read-only
     properties:
       log-id:
-        type: array
-        items:
-          type: integer
-          format: int64
-          minimum: 1
-        example:
-          - 244
-          - 89
-          - 168
-          - 73
-          - 89
-          - 226
-          - 61
-          - 100
-          - 55
-          - 5
-          - 200
-          - 214
-          - 223
-          - 25
-          - 244
-          - 208
-        minItems: 16
-        maxItems: 16
-        description: LogID is the binary data of 16 byte in length.
+        type: string
+        example: f459a84959e23d643705c8d6df19f4d0
+        minLength: 32
+        maxLength: 32
+        description: LogID is string like hex value.
       version:
         type: integer
         format: int64
