@@ -137,17 +137,28 @@ func (api APIv0) serverStatus(w http.ResponseWriter, r *http.Request) {
 
 // TODO: テストを書く
 func (api APIv0) logs(w http.ResponseWriter, r *http.Request) {
+	res := struct {
+		Logs []json.RawMessage `json:"logs"`
+	}{
+		Logs: []json.RawMessage{},
+	}
+
 	logs, err := api.Storage.Logs()
 	if err != nil {
 		api.serverError(w, err, "failed to load logs from storage")
 		return
 	}
+	for _, l := range logs {
+		var js []byte
+		js, err = l.ToJson()
+		if err != nil {
+			api.serverError(w, err, "failed to json.Marshal()")
+			return
+		}
+		res.Logs = append(res.Logs, json.RawMessage(js))
+	}
 
-	js, err := json.Marshal(struct {
-		Logs []*storage.Log `json:"logs"`
-	}{
-		logs,
-	})
+	js, err := json.Marshal(res)
 	if err != nil {
 		api.serverError(w, err, "failed to json.Marshal")
 		return
