@@ -39,7 +39,6 @@ type ServerHandler struct {
 }
 
 // トレース対象との通信を行うサーバ。
-// 現状、1台のクライアントとの通信のみサポートしている。
 // プロトコルの詳細は、README.mdに記載している。
 //
 // Usage:
@@ -70,8 +69,17 @@ type Server struct {
 	nextConnID ConnID
 	connIDLock sync.RWMutex
 
-	opt          *xtcp.Options
-	xtcpsrv      *xtcp.Server
+	connMap     map[ConnID]*ServerConn
+	connMapLock sync.RWMutex
+
+	opt     *xtcp.Options
+	xtcpsrv *xtcp.Server
+}
+
+// Serverが管理しているコネクションの状態を管理と、イベントハンドラの呼び出しを行う。
+type ServerConn struct {
+	ID           ConnID
+	Handler      *ServerHandler
 	isNegotiated bool
 }
 
@@ -84,6 +92,7 @@ func (s *Server) init() error {
 			s.PingInterval = DefaultPingInterval
 		}
 		s.connIDMap = map[*xtcp.Conn]ConnID{}
+		s.connMap = map[ConnID]*ServerConn{}
 
 		prt := &Proto{}
 		s.opt = xtcp.NewOpts(s, prt)
@@ -155,8 +164,14 @@ func (s *Server) Wait() {
 	s.wg.Wait()
 }
 
-// p will be nil when event is EventAccept/EventConnected/EventClosed
 func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
+	connID := s.getConnID(conn)
+	sc := s.getServerConn(connID)
+	sc.OnEvent(et, conn, p)
+}
+
+// p will be nil when event is EventAccept/EventConnected/EventClosed
+func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 	switch et {
 	case xtcp.EventAccept:
 		log.Println("DEBUG: Server: accepted a connection. wait for receives a ClientHelloPacket")
@@ -192,7 +207,7 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 
 			log.Println("DEBUG: Server: success negotiation process")
 			if s.Handler.Connected != nil {
-				s.Handler.Connected(s.getConnID(conn))
+				s.Handler.Connected(s.ID)
 			}
 		} else {
 			switch pkt := p.(type) {
@@ -212,11 +227,11 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 				return
 			case *SymbolPacket:
 				if s.Handler.Symbols != nil {
-					s.Handler.Symbols(s.getConnID(conn), pkt.Symbols)
+					s.Handler.Symbols(s.ID, pkt.Symbols)
 				}
 			case *RawFuncLogNewPacket:
 				if s.Handler.RawFuncLog != nil {
-					s.Handler.RawFuncLog(s.getConnID(conn), pkt.FuncLog)
+					s.Handler.RawFuncLog(s.ID, pkt.FuncLog)
 				}
 			default:
 				log.Panicf("BUG: Server: Server receives a invalid Packet: %+v %+v", pkt, reflect.TypeOf(pkt))
@@ -226,7 +241,7 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 	case xtcp.EventClosed:
 		log.Println("INFO: Server: disconnected")
 		if s.Handler.Disconnected != nil {
-			s.Handler.Disconnected(s.getConnID(conn))
+			s.Handler.Disconnected(s.ID)
 		}
 	}
 }
@@ -243,4 +258,20 @@ func (s *Server) getConnID(conn *xtcp.Conn) ConnID {
 	s.connIDMap[conn] = id
 	s.nextConnID++
 	return id
+}
+
+func (s *Server) getServerConn(id ConnID) *ServerConn {
+	s.connMapLock.Lock()
+	defer s.connMapLock.Unlock()
+	srvConn, ok := s.connMap[id]
+	if ok {
+		return srvConn
+	}
+
+	srvConn = &ServerConn{
+		ID:      id,
+		Handler: &s.Handler,
+	}
+	s.connMap[id] = srvConn
+	return srvConn
 }
