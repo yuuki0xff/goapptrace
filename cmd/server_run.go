@@ -86,9 +86,9 @@ func runServerRun(conf *config.Config, stdout io.Writer, stderr io.Writer, apiAd
 	// start Log Server
 	logSrv := protocol.Server{
 		Addr:    "tcp://" + logAddr,
-		Handler: protocol.ServerHandler{},
-		AppName: "TODO",
-		Secret:  "",
+		Handler: protocol.ServerHandler{}, // TODO
+		AppName: "TODO",                   // TODO
+		Secret:  "",                       // TODO
 	}
 	if err := logSrv.Listen(); err != nil {
 		fmt.Fprintln(stderr, "ERROR: failed to start the Log server:", err)
