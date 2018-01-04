@@ -67,7 +67,8 @@ definitions:
     required:
       - log-id
       - version
-      - type
+      - max-file-size
+      - read-only
     properties:
       log-id:
         type: array
@@ -100,6 +101,12 @@ definitions:
         format: int64
         minimum: 1
         example: 13
+      max-file-size:
+        type: integer
+        format: int64
+        description: separate the log file when file size exceeds max-file-size.
+      read-only:
+        type: boolean
       metadata:
         $ref: '#/definitions/log-metadata'
   log-metadata:
