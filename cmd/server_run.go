@@ -38,6 +38,12 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
 )
 
+const (
+	// クライアントから受信したアイテムのバッファサイズ。
+	// 単位はメッセージの個数。
+	DefaultReceiveBufferSize = 1 << 16
+)
+
 // serverRunCmd represents the run command
 var serverRunCmd = &cobra.Command{
 	Use:   "run",
@@ -216,7 +222,7 @@ func getServerHandler(strg *storage.Storage) protocol.ServerHandler {
 		Connected: func(id protocol.ConnID) {
 			log.Println("INFO: Server: connected")
 
-			ch := make(chan interface{})
+			ch := make(chan interface{}, DefaultReceiveBufferSize)
 			go worker(ch, id)
 
 			chMapLock.Lock()
