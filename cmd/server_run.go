@@ -32,6 +32,7 @@ import (
 	"github.com/yuuki0xff/goapptrace/httpserver"
 	"github.com/yuuki0xff/goapptrace/tracer/protocol"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
+	"github.com/yuuki0xff/goapptrace/tracer/storage"
 )
 
 // serverRunCmd represents the run command
@@ -60,6 +61,16 @@ func runServerRun(conf *config.Config, stdout io.Writer, stderr io.Writer, apiAd
 		return nil
 	}
 
+	strg := storage.Storage{
+		Root: storage.DirLayout{
+			Root: conf.LogsDir(),
+		},
+	}
+	if err := strg.Init(); err != nil {
+		fmt.Fprintln(stderr, "ERROR: failed to initialize the storage")
+		return err
+	}
+
 	if apiAddr == "" {
 		apiAddr = config.DefaultApiServerAddr
 	}
@@ -70,7 +81,7 @@ func runServerRun(conf *config.Config, stdout io.Writer, stderr io.Writer, apiAd
 	// start API Server
 	apiSrv := httpserver.NewHttpServer(apiAddr, restapi.NewRouter(restapi.RouterArgs{
 		Config:  conf,
-		Storage: nil, // TODO
+		Storage: &strg,
 	}))
 	if err := apiSrv.Start(); err != nil {
 		fmt.Fprintln(stderr, "ERROR: failed to start the API server:", err)
