@@ -537,6 +537,7 @@ func (l *Log) Symbols() *logutil.Symbols {
 	return l.symbols
 }
 
+// TODO: テストを書く
 // Metadataフィールドを更新して、Versionをインクリメントする。
 func (l *Log) UpdateMetadata(currentVer int, metadata *LogMetadata) error {
 	l.lock.Lock()
@@ -635,6 +636,7 @@ func (l *Log) raiseBeforeRotateEvent() {
 	}
 }
 
+// TODO: テストを書く
 // ロックをかけた上で、JSONに変換する
 func (l *Log) ToJson() ([]byte, error) {
 	l.lock.RLock()
