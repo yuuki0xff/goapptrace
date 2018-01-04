@@ -70,11 +70,31 @@ definitions:
       - type
     properties:
       log-id:
-        type: integer
-        format: int64
-        minimum: 1
-        example: 26
-        description: LogID
+        type: array
+        items:
+          type: integer
+          format: int64
+          minimum: 1
+        example:
+          - 244
+          - 89
+          - 168
+          - 73
+          - 89
+          - 226
+          - 61
+          - 100
+          - 55
+          - 5
+          - 200
+          - 214
+          - 223
+          - 25
+          - 244
+          - 208
+        minItems: 16
+        maxItems: 16
+        description: LogID is the binary data of 16 byte in length.
       version:
         type: integer
         format: int64
