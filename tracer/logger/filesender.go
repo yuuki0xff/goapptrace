@@ -51,7 +51,7 @@ func (f *FileSender) logFilePath() string {
 	if !ok {
 		prefix = info.DEFAULT_LOGFILE_PREFIX
 	}
-	relativePath := fmt.Sprintf("%s.%d.log", prefix, pid)
+	relativePath := fmt.Sprintf("%s.%d.log.gz", prefix, pid)
 	absPath, err := filepath.Abs(relativePath)
 	if err != nil {
 		log.Panic(err)

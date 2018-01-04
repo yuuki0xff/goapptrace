@@ -119,7 +119,7 @@ func checkFileSender(t *testing.T, prefix string) {
 	// check file path
 	fpath := fileSender.logFilePath()
 	os.Remove(fpath)
-	if !(strings.HasPrefix(fpath, prefix) && strings.HasSuffix(fpath, ".log")) {
+	if !(strings.HasPrefix(fpath, prefix) && strings.HasSuffix(fpath, ".log.gz")) {
 		t.Fatalf("invalid output file fpath: %s", fpath)
 	}
 
