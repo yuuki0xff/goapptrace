@@ -127,6 +127,11 @@ func (l *Log) Open() error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
+	// initialize Version
+	if l.Version < 1 {
+		l.Version = 1
+	}
+
 	// initialize Metadata
 	if l.Metadata == nil {
 		l.Metadata = &LogMetadata{}
