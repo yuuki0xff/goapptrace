@@ -124,10 +124,14 @@ func runServerRun(conf *config.Config, stdout io.Writer, stderr io.Writer, apiAd
 
 	// add servers to config, and save
 	conf.Servers.ApiServer[1] = &config.ApiServerConfg{
-		Addr: apiSrv.Addr(),
+		ServerID: 1,
+		Version:  1,
+		Addr:     apiSrv.Addr(),
 	}
 	conf.Servers.LogServer[1] = &config.LogServerConfig{
-		Addr: logSrv.ActualAddr(),
+		ServerID: 1,
+		Version:  1,
+		Addr:     logSrv.ActualAddr(),
 	}
 	conf.WantSave()
 	if err := conf.Save(); err != nil {

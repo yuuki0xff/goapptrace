@@ -20,10 +20,14 @@ func NewServers() *Servers {
 
 // configuration for Log server.
 type LogServerConfig struct {
-	Addr string
+	ServerID ServerID `json:"server-id"`
+	Version  int      `json:"version"`
+	Addr     string   `json:"address"`
 }
 
 // configuration for the REST API server.
 type ApiServerConfg struct {
-	Addr string
+	ServerID ServerID `json:"server-id"`
+	Version  int      `json:"version"`
+	Addr     string   `json:"address"`
 }
