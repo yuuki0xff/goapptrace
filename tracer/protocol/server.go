@@ -203,7 +203,7 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 					s.Handler.RawFuncLog(s.getConnID(conn), pkt.FuncLog)
 				}
 			default:
-				panic(fmt.Sprintf("BUG: Server: Server receives a invalid Packet: %+v %+v", pkt, reflect.TypeOf(pkt)))
+				log.Panicf("BUG: Server: Server receives a invalid Packet: %+v %+v", pkt, reflect.TypeOf(pkt))
 			}
 		}
 	case xtcp.EventSend:
