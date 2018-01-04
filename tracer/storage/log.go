@@ -25,17 +25,19 @@ type LogID [16]byte
 //  * Symbolキャッシュ
 //  * Index
 type Log struct {
-	ID       LogID
-	Root     DirLayout
-	Metadata *LogMetadata
+	ID LogID `json:"log-id"`
+	// メタデータを更新するたびにインクリメントされる値
+	Version  int          `json:"version"`
+	Root     DirLayout    `json:"-"`
+	Metadata *LogMetadata `json:"metadata"`
 	// 書き込み先ファイルが変更される直前に呼び出される。
 	// このイベント実行中はロックが外れるため、他のスレッドから随時書き込まれる可能性がある。
-	BeforeRotateEventHandler func()
+	BeforeRotateEventHandler func() `json:"-"`
 	// RawFuncLogファイルの最大のファイルサイズの目安。
 	// 実際のファイルサイズは、指定したサイズよりもやや大きくなる可能性がある。
 	// 0を指定するとローテーション機能が無効になる。
-	MaxFileSize int64
-	ReadOnly    bool
+	MaxFileSize int64 `json:"max-file-size"`
+	ReadOnly    bool  `json:"read-only"`
 
 	lock sync.RWMutex
 	// rotate()を実行中ならtrue。
@@ -58,20 +60,20 @@ type Log struct {
 
 type LogMetadata struct {
 	// Timestamp of the last record
-	Timestamp time.Time
+	Timestamp time.Time `json:"timestamp"`
 
 	// The configuration of user interface
-	UI UIConfig
+	UI UIConfig `json:"ui"`
 }
 
 type UIConfig struct {
-	Funcs      map[logutil.FuncID]UIItemConfig
-	Goroutines map[logutil.GID]UIItemConfig
+	Funcs      map[logutil.FuncID]UIItemConfig `json:"funcs"`
+	Goroutines map[logutil.GID]UIItemConfig    `json:"goroutines"`
 }
 type UIItemConfig struct {
-	Pinned  bool
-	Masked  bool
-	Comment string
+	Pinned  bool   `json:"pinned"`
+	Masked  bool   `json:"masked"`
+	Comment string `json:"comment"`
 }
 
 type LogStatus uint8
