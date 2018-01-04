@@ -188,9 +188,9 @@ func getServerHandler(strg *storage.Storage) protocol.ServerHandler {
 				}
 			}
 			for _, g := range ss.Goroutines() {
-				// TODO: goroutinesを書き込むメソッドを用意する。
-				// suppress compile error
-				_ = g
+				if err := logobj.AppendGoroutine(g); err != nil {
+					log.Panicln("ERROR: failed to append Goroutine during rotating:", err.Error())
+				}
 			}
 			ss.Clear()
 		}
