@@ -125,6 +125,11 @@ func (d DirLayout) FuncLogFile(id LogID, n int64) File {
 	return File(path.Join(d.DataDir(), fmt.Sprintf("%s.%d.func.log.gz", id.Hex(), n)))
 }
 
+// 指定したLogIDのGoroutineLogファイルを返す。
+func (d DirLayout) GoroutineLogFile(id LogID, n int64) File {
+	return File(path.Join(d.DataDir(), fmt.Sprintf("%s.%d.goroutine.log.gz", id.Hex(), n)))
+}
+
 // 指定したLogIDのSymbolファイルを返す。
 func (d DirLayout) SymbolFile(id LogID) File {
 	return File(path.Join(d.DataDir(), fmt.Sprintf("%s.symbol.gz", id.Hex())))

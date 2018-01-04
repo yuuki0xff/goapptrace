@@ -51,8 +51,9 @@ type Log struct {
 	symbolsEditor *logutil.SymbolsEditor // readonlyならnil
 	symbolsWriter *SymbolsWriter         // readonlyならnil
 
-	funcLog    SplitReadWriter
-	rawFuncLog SplitReadWriter
+	funcLog      SplitReadWriter
+	rawFuncLog   SplitReadWriter
+	goroutineLog SplitReadWriter
 }
 
 type LogMetadata struct {
@@ -213,10 +214,20 @@ func (l *Log) Open() error {
 		},
 		ReadOnly: l.ReadOnly,
 	}
+	l.goroutineLog = SplitReadWriter{
+		FileNamePattern: func(index int) File {
+			return l.Root.GoroutineLogFile(l.ID, int64(index))
+		},
+		ReadOnly: l.ReadOnly,
+	}
+
 	if err := l.funcLog.Open(); err != nil {
 		return err
 	}
 	if err := l.rawFuncLog.Open(); err != nil {
+		return err
+	}
+	if err := l.goroutineLog.Open(); err != nil {
 		return err
 	}
 	return nil
@@ -241,6 +252,9 @@ func (l *Log) Close() error {
 		return err
 	}
 	if err := l.rawFuncLog.Close(); err != nil {
+		return err
+	}
+	if err := l.goroutineLog.Close(); err != nil {
 		return err
 	}
 
@@ -472,6 +486,17 @@ func (l *Log) AppendSymbols(symbols *logutil.Symbols) error {
 	return nil
 }
 
+// Goroutineのステータスを書き込む
+func (l *Log) AppendGoroutine(g *logutil.Goroutine) error {
+	l.lock.Lock()
+	defer l.lock.Unlock()
+	if l.closed {
+		return os.ErrClosed
+	}
+
+	return l.goroutineLog.Append(g)
+}
+
 func (l *Log) Symbols() *logutil.Symbols {
 	return l.symbols
 }
@@ -534,6 +559,9 @@ func (l *Log) rotate() error {
 		return err
 	}
 	if err := l.rawFuncLog.Rotate(); err != nil {
+		return err
+	}
+	if err := l.goroutineLog.Rotate(); err != nil {
 		return err
 	}
 

@@ -4,6 +4,7 @@ info.json
 ./meta/<name>.meta.json.gz
 ./data/<name>.<number>.rawfunc.log.gz
 ./data/<name>.<number>.func.log.gz
+./data/<name>.<number>.goroutine.log.gz
 ./data/<name>.symbol.gz
 ./data/<name>.index.gz
 ```

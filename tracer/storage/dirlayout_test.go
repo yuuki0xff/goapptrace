@@ -61,6 +61,11 @@ func TestDirLayout_FuncLogFile(t *testing.T) {
 	assert.Equal(t, File("/tmp/.goapptrace/logs/data/"+goodStrID+".10.func.log.gz"), dr.FuncLogFile(goodLogID, 10))
 }
 
+func TestDirLayout_GoroutineLogFile(t *testing.T) {
+	assert.Equal(t, File("/tmp/.goapptrace/logs/data/"+goodStrID+".0.goroutine.log.gz"), dr.GoroutineLogFile(goodLogID, 0))
+	assert.Equal(t, File("/tmp/.goapptrace/logs/data/"+goodStrID+".10.goroutine.log.gz"), dr.GoroutineLogFile(goodLogID, 10))
+}
+
 func TestDirLayout_SymbolFile(t *testing.T) {
 	assert.Equal(t, File("/tmp/.goapptrace/logs/data/"+goodStrID+".symbol.gz"), dr.SymbolFile(goodLogID))
 }

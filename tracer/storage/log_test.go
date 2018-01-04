@@ -95,8 +95,10 @@ func TestLog_AppendRawFuncLog(t *testing.T) {
 	// data dir should only contains those files:
 	//   xxxx.0.func.log.gz
 	//   xxxx.0.rawfunc.log.gz
+	//   xxxx.0.goroutine.log.gz
 	//   xxxx.1.func.log.gz
 	//   xxxx.1.rawfunc.log.gz
+	//   xxxx.1.goroutine.log.gz
 	//   xxxx.index.gz
 	//   xxxx.symbol.gz
 	files, err := ioutil.ReadDir(dirlayout.DataDir())
@@ -106,7 +108,7 @@ func TestLog_AppendRawFuncLog(t *testing.T) {
 	for i := range files {
 		t.Logf("files[%d] = %s", i, files[i].Name())
 	}
-	if len(files) != 6 {
+	if len(files) != 8 {
 		t.Fatalf("data file count: (god) %d != %d (expected)", len(files), 6)
 	}
 
