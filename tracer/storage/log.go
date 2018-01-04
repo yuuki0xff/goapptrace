@@ -588,3 +588,10 @@ func (l *Log) raiseBeforeRotateEvent() {
 		l.BeforeRotateEventHandler()
 	}
 }
+
+// ロックをかけた上で、JSONに変換する
+func (l *Log) ToJson() ([]byte, error) {
+	l.lock.RLock()
+	defer l.lock.RUnlock()
+	return json.Marshal(l)
+}

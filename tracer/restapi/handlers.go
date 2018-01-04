@@ -171,7 +171,12 @@ func (api APIv0) log(w http.ResponseWriter, r *http.Request) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	case http.MethodGet:
-		api.notImpl(w, r)
+		js, err := logobj.ToJson()
+		if err != nil {
+			api.serverError(w, err, "failed to json.Marshal()")
+			return
+		}
+		api.write(w, js)
 	case http.MethodPut:
 		api.notImpl(w, r)
 	}
