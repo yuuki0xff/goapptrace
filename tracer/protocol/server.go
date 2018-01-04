@@ -23,8 +23,11 @@ const (
 	MaxListenTries = 100
 )
 
+// TCPコネクションを一意に識別するID
 type ConnID int64
 
+// サーバで発生したイベントのイベントハンドラ。
+// 不要なフィールドはnilにすることが可能。
 type ServerHandler struct {
 	Connected    func(id ConnID)
 	Disconnected func(id ConnID)
@@ -35,6 +38,19 @@ type ServerHandler struct {
 	RawFuncLog func(id ConnID, funclog *logutil.RawFuncLog)
 }
 
+// トレース対象との通信を行うサーバ。
+// 現状、1台のクライアントとの通信のみサポートしている。
+// プロトコルの詳細は、README.mdに記載している。
+//
+// Usage:
+//   srv.Listen()
+//   go srv.Serve()
+//
+//   // wait for stop signal
+//   time.Sleep(time.Second)
+//
+//   srv.Close()
+//   srv.Wait()
 type Server struct {
 	// "unix:///path/to/socket/file" or "tcp://host:port"
 	Addr    string

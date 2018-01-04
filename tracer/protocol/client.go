@@ -25,6 +25,8 @@ var (
 	InvalidProtocolError = errors.New("invalid protocol")
 )
 
+// クライアントで発生したイベントのイベントハンドラ。
+// 不要なフィールドはnilにすることが可能。
 type ClientHandler struct {
 	Connected    func()
 	Disconnected func()
@@ -35,6 +37,8 @@ type ClientHandler struct {
 	StopTrace  func(*StopTraceCmdPacket)
 }
 
+// ログサーバとの通信を行うクライアントの実装。
+// 再接続機能が無いので、この実装を使用する側で適宜再接続を行うこと。
 type Client struct {
 	// Addr is "tcp://host:port"
 	// 現在は、"unix:///path/to/socket/file" 形式のアドレスはサポートしていない。
