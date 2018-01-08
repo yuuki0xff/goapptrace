@@ -22,12 +22,14 @@ func NewServers() *Servers {
 type LogServerConfig struct {
 	ServerID ServerID `json:"server-id"`
 	Version  int      `json:"version"`
-	Addr     string   `json:"address"`
+	// server address like "tcp://x.x.x.x:xxxx".
+	Addr string `json:"address"`
 }
 
 // configuration for the REST API server.
 type ApiServerConfg struct {
 	ServerID ServerID `json:"server-id"`
 	Version  int      `json:"version"`
-	Addr     string   `json:"address"`
+	// server address like "http://x.x.x.x:xxxx".
+	Addr string `json:"address"`
 }

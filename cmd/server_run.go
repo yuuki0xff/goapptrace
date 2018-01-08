@@ -126,7 +126,7 @@ func runServerRun(conf *config.Config, stdout io.Writer, stderr io.Writer, apiAd
 	conf.Servers.ApiServer[1] = &config.ApiServerConfg{
 		ServerID: 1,
 		Version:  1,
-		Addr:     apiSrv.Addr(),
+		Addr:     apiSrv.Url(),
 	}
 	conf.Servers.LogServer[1] = &config.LogServerConfig{
 		ServerID: 1,

@@ -97,6 +97,12 @@ func (srv *HttpServer) Stop() {
 	srv.cancel()                 // stop all handlers
 }
 
+// Addr returns binded address of this server.
 func (srv *HttpServer) Addr() string {
 	return srv.server.Addr
+}
+
+// Url returns complete URL with prefix "http://".
+func (srv *HttpServer) Url() string {
+	return "http://" + srv.Addr()
 }
