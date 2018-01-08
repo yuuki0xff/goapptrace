@@ -89,11 +89,11 @@ func (s *Storage) Log(id LogID) (log *Log, ok bool) {
 
 // 新しいLogインスタンスを作成する。
 // この関数を呼び出す前に、排他ロックをかける必要がある。
-func (s *Storage) log(id LogID, new bool) (*Log, error) {
+func (s *Storage) log(id LogID, writable bool) (*Log, error) {
 	log := &Log{
 		ID:       id,
 		Root:     s.Root,
-		ReadOnly: s.ReadOnly,
+		ReadOnly: !writable,
 	}
 	if err := log.Open(); err != nil {
 		return nil, fmt.Errorf("failed to open of Log(%s): %s", id.Hex(), err.Error())
