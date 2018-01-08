@@ -96,10 +96,8 @@ func (api APIv0) servers(w http.ResponseWriter, r *http.Request) {
 		srvList = append(srvList, srv)
 	}
 
-	js, err := json.Marshal(struct {
-		Servers []*config.LogServerConfig `json:"servers"`
-	}{
-		srvList,
+	js, err := json.Marshal(ServersResponse{
+		Servers: srvList,
 	})
 	if err != nil {
 		api.serverError(w, err, "failed to json.Marshal")
@@ -138,9 +136,7 @@ func (api APIv0) serverStatus(w http.ResponseWriter, r *http.Request) {
 
 // TODO: テストを書く
 func (api APIv0) logs(w http.ResponseWriter, r *http.Request) {
-	res := struct {
-		Logs []json.RawMessage `json:"logs"`
-	}{
+	res := LogsResponse{
 		Logs: []json.RawMessage{},
 	}
 
