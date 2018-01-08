@@ -61,7 +61,7 @@ func runServerLs(conf *config.Config, stdout io.Writer) error {
 	if len(conf.Servers.LogServer) > 0 {
 		logTbl := defaultTable(stdout)
 		logTbl.SetHeader([]string{"ID", "Address"})
-		for id, s := range conf.Servers.ApiServer {
+		for id, s := range conf.Servers.LogServer {
 			logTbl.Append([]string{
 				fmt.Sprint(id),
 				s.Addr,
