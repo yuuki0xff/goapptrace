@@ -189,9 +189,7 @@ func getServerHandler(strg *storage.Storage) protocol.ServerHandler {
 		ss := logutil.StateSimulator{}
 		ss.Init()
 
-		// このlogobjに対する書き込みを行うのは、worker()のみな。
-		// このイベント実行中に他から書き込まれることは考慮しなくてよい。
-		logobj.BeforeRotateEventHandler = func() {
+		writeCurrentState := func() {
 			for _, fl := range ss.FuncLogs() {
 				if err := logobj.AppendFuncLog(fl); err != nil {
 					log.Panicln("ERROR: failed to append FuncLog during rotating:", err.Error())
@@ -204,6 +202,11 @@ func getServerHandler(strg *storage.Storage) protocol.ServerHandler {
 			}
 			ss.Clear()
 		}
+		// ログを閉じる前に、現在のStateSimulatorの状態を保存する。
+		defer writeCurrentState()
+		// このlogobjに対する書き込みを行うのは、worker()のみ。
+		// このイベント実行中に他から書き込まれることは考慮しなくてよい。
+		logobj.BeforeRotateEventHandler = writeCurrentState
 
 		for rawobj := range ch {
 			switch obj := rawobj.(type) {
