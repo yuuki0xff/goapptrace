@@ -184,6 +184,10 @@ func getServerHandler(strg *storage.Storage) protocol.ServerHandler {
 			if err = logobj.Close(); err != nil {
 				log.Panicf("failed to close a Log(%s): connID=%d err=%s", logobj.ID, id, err.Error())
 			}
+			logobj.ReadOnly = true
+			if err = logobj.Open(); err != nil {
+				log.Panicf("failed to reopen a Log(%s): connID=%d err=%d", logobj.ID, id, err.Error())
+			}
 		}()
 
 		ss := logutil.StateSimulator{}
