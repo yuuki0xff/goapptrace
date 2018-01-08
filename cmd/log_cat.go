@@ -24,6 +24,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
+	"strconv"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -77,7 +79,20 @@ func runLogCat(conf *config.Config, stderr io.Writer, logID string, logw LogWrit
 		}
 	}()
 
-	logw.SetSymbols(nil) // TODO
+	logw.SetFuncStatusInfoGetter(func(id logutil.FuncStatusID) restapi.FuncStatusInfo {
+		s, err := api.FuncStatus(logID, strconv.Itoa(int(id)))
+		if err != nil {
+			log.Panic(err)
+		}
+		return s
+	})
+	logw.SetFuncInfoGetter(func(id logutil.FuncID) restapi.FuncInfo {
+		f, err := api.Func(logID, strconv.Itoa(int(id)))
+		if err != nil {
+			log.Panic(err)
+		}
+		return f
+	})
 	if err := logw.WriteHeader(); err != nil {
 		return err
 	}
@@ -92,7 +107,8 @@ func runLogCat(conf *config.Config, stderr io.Writer, logID string, logw LogWrit
 type LogWriter interface {
 	WriteHeader() error
 	Write(evt restapi.FuncCall) error
-	SetSymbols(symbols *logutil.Symbols)
+	SetFuncInfoGetter(func(id logutil.FuncID) restapi.FuncInfo)
+	SetFuncStatusInfoGetter(func(id logutil.FuncStatusID) restapi.FuncStatusInfo)
 }
 
 func NewLogWriter(format string, out io.Writer) (LogWriter, error) {
@@ -128,11 +144,16 @@ func (w *JsonLogWriter) WriteHeader() error {
 func (w *JsonLogWriter) Write(evt restapi.FuncCall) error {
 	return w.encoder.Encode(evt)
 }
-func (w *JsonLogWriter) SetSymbols(symbols *logutil.Symbols) {}
+
+func (w *JsonLogWriter) SetFuncInfoGetter(func(id logutil.FuncID) restapi.FuncInfo) {
+}
+func (w *JsonLogWriter) SetFuncStatusInfoGetter(func(id logutil.FuncStatusID) restapi.FuncStatusInfo) {
+}
 
 type TextLogWriter struct {
-	output  io.Writer
-	symbols *logutil.Symbols
+	output     io.Writer
+	funcInfo   func(id logutil.FuncID) restapi.FuncInfo
+	funcStatus func(id logutil.FuncStatusID) restapi.FuncStatusInfo
 }
 
 func NewTextLogWriter(output io.Writer) *TextLogWriter {
@@ -146,8 +167,8 @@ func (w *TextLogWriter) WriteHeader() error {
 }
 func (w *TextLogWriter) Write(evt restapi.FuncCall) error {
 	currentFrame := evt.Frames[0]
-	fs := w.symbols.FuncStatus[currentFrame]
-	funcName := w.symbols.Funcs[fs.Func].Name // module.func
+	fs := w.funcStatus(currentFrame)
+	funcName := w.funcInfo(fs.Func).Name // module.func
 	line := fs.Line
 	execTime := evt.EndTime - evt.StartTime
 
@@ -162,8 +183,11 @@ func (w *TextLogWriter) Write(evt restapi.FuncCall) error {
 	)
 	return err
 }
-func (w *TextLogWriter) SetSymbols(symbols *logutil.Symbols) {
-	w.symbols = symbols
+func (w *TextLogWriter) SetFuncInfoGetter(f func(id logutil.FuncID) restapi.FuncInfo) {
+	w.funcInfo = f
+}
+func (w *TextLogWriter) SetFuncStatusInfoGetter(f func(id logutil.FuncStatusID) restapi.FuncStatusInfo) {
+	w.funcStatus = f
 }
 
 func init() {
