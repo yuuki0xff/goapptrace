@@ -212,7 +212,7 @@ func (api APIv0) log(w http.ResponseWriter, r *http.Request) {
 			if err == storage.ErrConflict {
 				// バージョン番号が異なるため、Metadataを更新できない。
 				// 現在の状態を返す。
-				js, err := logobj.ToJson()
+				js, err = logobj.ToJson()
 				if err != nil {
 					api.serverError(w, err, "failed to json.Marshal()")
 					return

@@ -46,7 +46,7 @@ func (c *CompactLogWriter) Open() error {
 // symbolsとfunclogはnon-nullでなければならない。
 func (c *CompactLogWriter) Write(symbols *logutil.Symbols, funclog *logutil.RawFuncLog) error {
 	if symbols == nil || funclog == nil {
-		log.Panicf("symbols or funclog is null: symbols=%s, funclog=%s", symbols, funclog)
+		log.Panicf("symbols or funclog is null: symbols=%+v, funclog=%+v", symbols, funclog)
 	}
 	if err := c.enc.Encode(symbols); err != nil {
 		return err

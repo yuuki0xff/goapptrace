@@ -76,14 +76,14 @@ func runProcRun(conf *config.Config, targets []string) error {
 		// セッションが異常終了した場合、disconnected eventが発生せずにサーバが終了してしまう。
 		// Close()漏れによるファイル破損を防止するため、ここでもClose()しておく
 		if err := logobj.Close(); err != nil {
-			log.Printf("failed to close Log(%s) file: %s", id, err.Error())
+			log.Printf("failed to close Log(%d) file: %s", id, err.Error())
 		}
 		return true
 	})
 	getLog := func(id protocol.ConnID) *storage.Log {
 		value, ok := logobjs.Load(id)
 		if !ok {
-			log.Panicf("ERROR: Server: ConnID(%s) not found", id)
+			log.Panicf("ERROR: Server: ConnID(%d) not found", id)
 		}
 		l := value.(*storage.Log)
 		return l
