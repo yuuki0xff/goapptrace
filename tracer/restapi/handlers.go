@@ -368,16 +368,22 @@ func (api APIv0) funcSymbol(w http.ResponseWriter, r *http.Request) {
 	strFid := mux.Vars(r)["func-id"]
 	fid, err := strconv.Atoi(strFid)
 	if err != nil {
-		http.Error(w, "invalid func-id", http.StatusBadRequest)
+		http.Error(w, "invalid func-id because id is not integer", http.StatusBadRequest)
 		return
 	}
 
-	// suppress compile error
-	_ = logobj
-	_ = fid
-	// TODO: SymbolsからFuncSymbolを取得するメソッドを追加する
-	//logutil.FuncID(fid)
-	//logobj.Symbols().
+	if fid < 0 || len(logobj.Symbols().Funcs) <= fid {
+		http.Error(w, "invalid func-id because id is out-of-range", http.StatusBadRequest)
+		return
+	}
+	f := logobj.Symbols().Funcs[fid]
+
+	js, err := json.Marshal(f)
+	if err != nil {
+		api.serverError(w, err, "failed to json.Marshal")
+		return
+	}
+	api.write(w, js)
 }
 func (api APIv0) funcStatusSymbol(w http.ResponseWriter, r *http.Request) {
 	logobj, ok := api.getLog(w, r)
@@ -388,16 +394,21 @@ func (api APIv0) funcStatusSymbol(w http.ResponseWriter, r *http.Request) {
 	strFsid := mux.Vars(r)["func-status-id"]
 	fsid, err := strconv.Atoi(strFsid)
 	if err != nil {
-		http.Error(w, "invalid func-status-id", http.StatusBadRequest)
+		http.Error(w, "invalid func-status-id because id is not integer", http.StatusBadRequest)
 		return
 	}
 
-	// suppress compile error
-	_ = logobj
-	_ = fsid
-	// TODO: SymbolsからFuncStatusを取得するメソッドを追加する
-	//logutil.FuncID(fid)
-	//logobj.Symbols().
+	if fsid < 0 || len(logobj.Symbols().FuncStatus) <= fsid {
+		http.Error(w, "invalid func-status-id because id is out-of-range", http.StatusBadRequest)
+	}
+	fs := logobj.Symbols().FuncStatus[fsid]
+
+	js, err := json.Marshal(fs)
+	if err != nil {
+		api.serverError(w, err, "failed to json.Marshal")
+		return
+	}
+	api.write(w, js)
 }
 func (api APIv0) tracers(w http.ResponseWriter, r *http.Request) {
 	// TODO: これを実装する前に、どのトレーサが接続しているのか管理出来るようにする
