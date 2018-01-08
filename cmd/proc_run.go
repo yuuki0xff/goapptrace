@@ -104,6 +104,7 @@ func runProcRun(conf *config.Config, stdout, stderr io.Writer, targets []string)
 
 func init() {
 	procCmd.AddCommand(procRunCmd)
+	RootCmd.AddCommand(procRunCmd)
 
 	// Here you will define your flags and configuration settings.
 
