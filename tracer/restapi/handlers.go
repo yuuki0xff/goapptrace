@@ -5,7 +5,6 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"math"
 	"net/http"
 	"os"
 	"strconv"
@@ -258,7 +257,7 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid min-id", http.StatusBadRequest)
 		return
 	}
-	maxId, err = parseInt(q.Get("max-id"), math.MaxInt64)
+	maxId, err = parseInt(q.Get("max-id"), -1)
 	if err != nil {
 		http.Error(w, "invalid max-id", http.StatusBadRequest)
 		return
@@ -268,7 +267,7 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid min-timestamp", http.StatusBadRequest)
 		return
 	}
-	maxTs, err = parseInt(q.Get("max-timestamp"), math.MaxInt64)
+	maxTs, err = parseInt(q.Get("max-timestamp"), -1)
 	if err != nil {
 		http.Error(w, "invalid max-timestamp", http.StatusBadRequest)
 		return
