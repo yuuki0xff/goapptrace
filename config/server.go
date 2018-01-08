@@ -8,13 +8,13 @@ const (
 type ServerID int64
 type Servers struct {
 	LogServer map[ServerID]*LogServerConfig
-	ApiServer map[ServerID]*ApiServerConfg
+	ApiServer map[ServerID]*ApiServerConfig
 }
 
 func NewServers() *Servers {
 	return &Servers{
 		LogServer: map[ServerID]*LogServerConfig{},
-		ApiServer: map[ServerID]*ApiServerConfg{},
+		ApiServer: map[ServerID]*ApiServerConfig{},
 	}
 }
 
@@ -27,7 +27,7 @@ type LogServerConfig struct {
 }
 
 // configuration for the REST API server.
-type ApiServerConfg struct {
+type ApiServerConfig struct {
 	ServerID ServerID `json:"server-id"`
 	Version  int      `json:"version"`
 	// server address like "http://x.x.x.x:xxxx".
