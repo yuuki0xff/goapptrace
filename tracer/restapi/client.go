@@ -2,6 +2,7 @@ package restapi
 
 import (
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -154,6 +155,9 @@ func (c Client) SearchFuncCalls(id string, so SearchFuncCallParams) (chan FuncCa
 		for {
 			var fc FuncCall
 			if err := dec.Decode(&fc); err != nil {
+				if err == io.EOF {
+					return
+				}
 				log.Println(err)
 				return
 			}
