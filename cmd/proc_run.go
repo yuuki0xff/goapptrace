@@ -21,24 +21,18 @@
 package cmd
 
 import (
-	"os"
-	"os/signal"
-	"syscall"
-
-	"log"
-
-	"sync"
-
 	"fmt"
-
+	"io"
+	"log"
+	"os"
+	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/info"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
-	"github.com/yuuki0xff/goapptrace/tracer/protocol"
-	"github.com/yuuki0xff/goapptrace/tracer/storage"
+	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 )
 
 const (
@@ -51,104 +45,34 @@ var procRunCmd = &cobra.Command{
 	Short: "Start processes, and start tracing",
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
 		conf.WantSave()
-		return runProcRun(conf, args)
+		return runProcRun(conf, cmd.OutOrStdout(), cmd.OutOrStderr(), args)
 	}),
 }
 
-func runProcRun(conf *config.Config, targets []string) error {
+func runProcRun(conf *config.Config, stdout, stderr io.Writer, targets []string) error {
 	if len(targets) == 0 {
 		targets = conf.Targets.Names()
 	}
 
-	strg := storage.Storage{
-		Root: storage.DirLayout{
-			Root: conf.LogsDir(),
-		},
-	}
-
-	// key: protocol.ConnID
-	// value: *storage.Log
-	var logobjs sync.Map
-	defer logobjs.Range(func(key, value interface{}) bool {
-		id := key.(protocol.ConnID)
-		logobjs.Delete(key)
-		logobj := value.(*storage.Log)
-		// セッションが異常終了した場合、disconnected eventが発生せずにサーバが終了してしまう。
-		// Close()漏れによるファイル破損を防止するため、ここでもClose()しておく
-		if err := logobj.Close(); err != nil {
-			log.Printf("failed to close Log(%d) file: %s", id, err.Error())
-		}
-		return true
-	})
-	getLog := func(id protocol.ConnID) *storage.Log {
-		value, ok := logobjs.Load(id)
-		if !ok {
-			log.Panicf("ERROR: Server: ConnID(%d) not found", id)
-		}
-		l := value.(*storage.Log)
-		return l
-	}
-
-	if err := strg.Init(); err != nil {
+	api, err := getAPIClient(conf)
+	if err != nil {
 		return err
 	}
-	defer strg.Close() // nolint: errcheck
-
-	// use ephemeral port for communication with child process
-	srv := protocol.Server{
-		Addr: "",
-		Handler: protocol.ServerHandler{
-			Connected: func(id protocol.ConnID) {
-				log.Println("INFO: Server: connected")
-
-				// create a storage.Log object
-				logobj, err := strg.New()
-				if err != nil {
-					log.Panicf("ERROR: Server: failed to a create Log object: err=%s", err.Error())
-				}
-				if _, loaded := logobjs.LoadOrStore(id, logobj); loaded {
-					log.Panicf("ERROR: Server: failed to a store Log object. this process MUST success")
-				}
-			},
-			Disconnected: func(id protocol.ConnID) {
-				log.Println("INFO: Server: disconnected")
-
-				logobj := getLog(id)
-				logobjs.Delete(id)
-				if err := logobj.Close(); err != nil {
-					log.Panicf("ERROR: Server: failed to close a Log object: err=%s", err.Error())
-				}
-			},
-			Error: func(id protocol.ConnID, err error) {
-				// TODO: check ConnID
-				log.Println("ERROR: Server:", err)
-			},
-			Symbols: func(id protocol.ConnID, s *logutil.Symbols) {
-				log.Printf("DEBUG: Server: add symbols: %+v\n", s)
-
-				logobj := getLog(id)
-				if err := logobj.AppendSymbols(s); err != nil {
-					panic(err)
-				}
-			},
-			RawFuncLog: func(id protocol.ConnID, f *logutil.RawFuncLog) {
-				log.Printf("DEBUG: Server: got RawFuncLog: %+v\n", f)
-				logobj := getLog(id)
-				if err := logobj.AppendRawFuncLog(f); err != nil {
-					panic(err)
-				}
-			},
-		},
-		AppName: info.APP_NAME,
-		Secret:  "secret", // TODO: set random value
-	}
-	if err := srv.Listen(); err != nil {
+	srvs, err := api.Servers()
+	if err != nil {
 		return err
 	}
-	go srv.Serve()
+	if len(srvs) == 0 {
+		fmt.Fprint(stderr, "Log servers is not running")
+		return errors.New("log servers is not running")
+	}
+	var srv restapi.ServerStatus
+	for _, srv = range srvs {
+		break
+	}
 
 	// set env for child processes
-	if err := os.Setenv(info.DEFAULT_LOGSRV_ENV, srv.ActualAddr()); err != nil {
+	if err := os.Setenv(info.DEFAULT_LOGSRV_ENV, srv.Addr); err != nil {
 		return err
 	}
 
@@ -174,29 +98,7 @@ func runProcRun(conf *config.Config, targets []string) error {
 		}()
 	}
 
-	go func() {
-		// close server when all child process was exited
-		wg.Wait()
-		log.Println("DEBUG: all child process was exited. the server is going exit")
-
-		// wait for receive all packets that staying in the network
-		time.Sleep(CloseDelayDuration)
-
-		if err := srv.Close(); err != nil {
-			lastErr = err
-		}
-	}()
-	go func() {
-		// close server when a signal was received
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT)
-		<-c
-		log.Println("DEBUG: signal was received. the server is going exit")
-		if err := srv.Close(); err != nil {
-			lastErr = err
-		}
-	}()
-	srv.Wait()
+	wg.Wait()
 	return lastErr
 }
 
