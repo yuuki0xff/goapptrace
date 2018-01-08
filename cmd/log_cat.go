@@ -21,18 +21,15 @@
 package cmd
 
 import (
-	"fmt"
-
-	"io"
-
 	"encoding/json"
-
+	"fmt"
+	"io"
 	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
-	"github.com/yuuki0xff/goapptrace/tracer/storage"
+	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 )
 
 const (
@@ -44,60 +41,57 @@ var logCatCmd = &cobra.Command{
 	Use:   "cat",
 	Short: "Show logs on console",
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
-		stdout := cmd.OutOrStdout()
-
-		strg := &storage.Storage{
-			Root:     storage.DirLayout{Root: conf.LogsDir()},
-			ReadOnly: true,
-		}
-		if err := strg.Init(); err != nil {
-			return fmt.Errorf("Failed Storage.Init(): %s", err.Error())
-		}
-
 		// get specify log object.
 		if len(args) != 1 {
 			return fmt.Errorf("Should specify one args")
 		}
-		logID, err := storage.LogID{}.Unhex(args[0])
-		if err != nil {
-			return fmt.Errorf("Invalid LogID: %s", err.Error())
-		}
-		logobj, ok := strg.Log(logID)
-		if !ok {
-			return fmt.Errorf("LogID(%s) not found", logID.Hex())
-		}
-		defer logobj.Close() // nolinter: errchk
+		logID := args[0]
 
 		// initialize LogWriter with specify format.
 		format, err := cmd.Flags().GetString("format")
 		if err != nil {
 			return fmt.Errorf("Flag error: %s", err.Error())
 		}
-		writer, err := NewLogWriter(format, stdout)
+		writer, err := NewLogWriter(format, cmd.OutOrStdout())
 		if err != nil {
 			return fmt.Errorf("failed to initialize LogWriter(%s): %s", logID, err.Error())
 		}
-		return runLogCat(logobj, writer)
+
+		return runLogCat(conf, cmd.OutOrStderr(), logID, writer)
 	}),
 }
 
-func runLogCat(logobj *storage.Log, writer LogWriter) error {
-	writer.SetSymbols(logobj.Symbols())
-
-	if err := writer.WriteHeader(); err != nil {
+func runLogCat(conf *config.Config, stderr io.Writer, logID string, logw LogWriter) error {
+	api, err := getAPIClient(conf)
+	if err != nil {
 		return err
 	}
-	if err := logobj.WalkRawFuncLog(func(evt logutil.RawFuncLog) error {
-		return writer.Write(evt)
-	}); err != nil {
-		return fmt.Errorf("log read error: %s", err)
+
+	ch, err := api.SearchFuncCalls(logID, restapi.SearchFuncCallParams{})
+	if err != nil {
+		return err
+	}
+	defer func() {
+		// consume all items.
+		for range ch {
+		}
+	}()
+
+	logw.SetSymbols(nil) // TODO
+	if err := logw.WriteHeader(); err != nil {
+		return err
+	}
+	for funcCall := range ch {
+		if err := logw.Write(funcCall); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 type LogWriter interface {
 	WriteHeader() error
-	Write(evt logutil.RawFuncLog) error
+	Write(evt restapi.FuncCall) error
 	SetSymbols(symbols *logutil.Symbols)
 }
 
@@ -131,7 +125,7 @@ func NewJsonLogWriter(output io.Writer) *JsonLogWriter {
 func (w *JsonLogWriter) WriteHeader() error {
 	return nil
 }
-func (w *JsonLogWriter) Write(evt logutil.RawFuncLog) error {
+func (w *JsonLogWriter) Write(evt restapi.FuncCall) error {
 	return w.encoder.Encode(evt)
 }
 func (w *JsonLogWriter) SetSymbols(symbols *logutil.Symbols) {}
@@ -147,24 +141,22 @@ func NewTextLogWriter(output io.Writer) *TextLogWriter {
 	}
 }
 func (w *TextLogWriter) WriteHeader() error {
-	_, err := fmt.Fprintln(w.output, "[Tag] Timestamp ExecTime GID TxID Module.Func:Line")
+	_, err := fmt.Fprintln(w.output, "StartTime ~ ExecTime [GID] Module.Func:Line")
 	return err
 }
-func (w *TextLogWriter) Write(evt logutil.RawFuncLog) error {
+func (w *TextLogWriter) Write(evt restapi.FuncCall) error {
 	currentFrame := evt.Frames[0]
 	fs := w.symbols.FuncStatus[currentFrame]
 	funcName := w.symbols.Funcs[fs.Func].Name // module.func
 	line := fs.Line
-	execTime := 0 // TODO: calc ExecTime
+	execTime := evt.EndTime - evt.StartTime
 
 	_, err := fmt.Fprintf(
 		w.output,
-		"[%s] %s %d %d %d %s:%d\n",
-		evt.Tag,
-		time.Unix(evt.Timestamp, 0).Format(DefaultTimeFormat),
+		"%s %d %d %s:%d\n",
+		time.Unix(int64(evt.StartTime), 0).Format(DefaultTimeFormat),
 		execTime,
 		evt.GID,
-		evt.TxID,
 		funcName, // module.func
 		line,     // line
 	)

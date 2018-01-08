@@ -23,9 +23,9 @@ package cmd
 import (
 	"io"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
-	"github.com/yuuki0xff/goapptrace/tracer/storage"
 )
 
 // logLsCmd represents the ls command
@@ -33,33 +33,27 @@ var logLsCmd = &cobra.Command{
 	Use:   "ls",
 	Short: "Show available log names",
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
-		return runLogLs(conf, cmd.OutOrStdout(), args)
+		return runLogLs(conf, cmd.OutOrStdout(), cmd.OutOrStderr(), args)
 	}),
 }
 
-func runLogLs(conf *config.Config, out io.Writer, targets []string) error {
-	stg := storage.Storage{
-		Root: storage.DirLayout{
-			Root: conf.LogsDir(),
-		},
-		ReadOnly: true,
-	}
-	if err := stg.Init(); err != nil {
-		return err
-	}
-	defer stg.Close() // nolint: errcheck
-
-	logs, err := stg.Logs()
+func runLogLs(conf *config.Config, stdout io.Writer, stderr io.Writer, targets []string) error {
+	api, err := getAPIClient(conf)
 	if err != nil {
 		return err
 	}
-	tbl := defaultTable(out)
+	logs, err := api.Logs()
+	if err != nil {
+		return errors.Wrap(err, "failed to fetch the log list")
+	}
+
+	tbl := defaultTable(stdout)
 	tbl.SetHeader([]string{
 		"ID", "Time",
 	})
 	for i := range logs {
 		tbl.Append([]string{
-			logs[i].ID.Hex(),
+			logs[i].ID,
 			logs[i].Metadata.Timestamp.String(),
 		})
 	}
