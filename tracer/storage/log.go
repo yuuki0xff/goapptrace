@@ -26,19 +26,19 @@ type LogID [16]byte
 //  * Symbolキャッシュ
 //  * Index
 type Log struct {
-	ID LogID `json:"log-id"`
+	ID LogID
 	// メタデータを更新するたびにインクリメントされる値
-	Version  int          `json:"version"`
-	Root     DirLayout    `json:"-"`
-	Metadata *LogMetadata `json:"metadata"`
+	Version  int
+	Root     DirLayout
+	Metadata *LogMetadata
 	// 書き込み先ファイルが変更される直前に呼び出される。
 	// このイベント実行中はロックが外れるため、他のスレッドから随時書き込まれる可能性がある。
-	BeforeRotateEventHandler func() `json:"-"`
+	BeforeRotateEventHandler func()
 	// RawFuncLogファイルの最大のファイルサイズの目安。
 	// 実際のファイルサイズは、指定したサイズよりもやや大きくなる可能性がある。
 	// 0を指定するとローテーション機能が無効になる。
-	MaxFileSize int64 `json:"max-file-size"`
-	ReadOnly    bool  `json:"read-only"`
+	MaxFileSize int64
+	ReadOnly    bool
 
 	lock sync.RWMutex
 	// rotate()を実行中ならtrue。
@@ -59,6 +59,17 @@ type Log struct {
 	goroutineLog SplitReadWriter
 }
 
+// Logオブジェクトをmarshalするときに使用する。
+// Logとは異なる点は、APIのレスポンスに必要なフィールドしか持っていないこと、および
+// フィールドの値が更新されないため、ロックセずにフィールドの値にアクセスできることである。
+// APIのレスポンスとして使用することを想定している。
+type LogInfo struct {
+	ID          string      `json:"log-id"`
+	Version     int         `json:"version"`
+	Metadata    LogMetadata `json:"metadata"`
+	MaxFileSize int64       `json:"max-file-size"`
+	ReadOnly    bool        `json:"read-only"`
+}
 type LogMetadata struct {
 	// Timestamp of the last record
 	Timestamp time.Time `json:"timestamp"`
@@ -636,10 +647,15 @@ func (l *Log) raiseBeforeRotateEvent() {
 	}
 }
 
-// TODO: テストを書く
 // ロックをかけた上で、JSONに変換する
-func (l *Log) ToJson() ([]byte, error) {
+func (l *Log) LogInfo() LogInfo {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
-	return json.Marshal(l)
+	return LogInfo{
+		ID:          l.ID.Hex(),
+		Version:     l.Version,
+		Metadata:    *l.Metadata,
+		MaxFileSize: l.MaxFileSize,
+		ReadOnly:    l.ReadOnly,
+	}
 }

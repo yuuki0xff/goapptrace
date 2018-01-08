@@ -91,12 +91,12 @@ func (api APIv0) write(w io.Writer, data []byte) {
 
 // TODO: テストを書く
 func (api APIv0) servers(w http.ResponseWriter, r *http.Request) {
-	srvList := make([]*config.LogServerConfig, 0, len(api.Config.Servers.LogServer))
+	srvList := make([]ServerStatus, 0, len(api.Config.Servers.LogServer))
 	for _, srv := range api.Config.Servers.LogServer {
-		srvList = append(srvList, srv)
+		srvList = append(srvList, ServerStatus(*srv))
 	}
 
-	js, err := json.Marshal(ServersResponse{
+	js, err := json.Marshal(Servers{
 		Servers: srvList,
 	})
 	if err != nil {
@@ -136,23 +136,15 @@ func (api APIv0) serverStatus(w http.ResponseWriter, r *http.Request) {
 
 // TODO: テストを書く
 func (api APIv0) logs(w http.ResponseWriter, r *http.Request) {
-	res := LogsResponse{
-		Logs: []json.RawMessage{},
-	}
-
+	var res Logs
 	logs, err := api.Storage.Logs()
 	if err != nil {
 		api.serverError(w, err, "failed to load logs from storage")
 		return
 	}
+
 	for _, l := range logs {
-		var js []byte
-		js, err = l.ToJson()
-		if err != nil {
-			api.serverError(w, err, "failed to json.Marshal()")
-			return
-		}
-		res.Logs = append(res.Logs, json.RawMessage(js))
+		res.Logs = append(res.Logs, LogStatus(l.LogInfo()))
 	}
 
 	js, err := json.Marshal(res)
@@ -179,7 +171,7 @@ func (api APIv0) log(w http.ResponseWriter, r *http.Request) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	case http.MethodGet:
-		js, err := logobj.ToJson()
+		js, err := json.Marshal(logobj)
 		if err != nil {
 			api.serverError(w, err, "failed to json.Marshal()")
 			return
@@ -208,7 +200,7 @@ func (api APIv0) log(w http.ResponseWriter, r *http.Request) {
 			if err == storage.ErrConflict {
 				// バージョン番号が異なるため、Metadataを更新できない。
 				// 現在の状態を返す。
-				js, err = logobj.ToJson()
+				js, err = json.Marshal(logobj)
 				if err != nil {
 					api.serverError(w, err, "failed to json.Marshal()")
 					return
@@ -225,7 +217,7 @@ func (api APIv0) log(w http.ResponseWriter, r *http.Request) {
 
 		// 更新に成功。
 		// 新しい状態を返す。
-		js, err = logobj.ToJson()
+		js, err = json.Marshal(logobj)
 		if err != nil {
 			api.serverError(w, err, "failed to json.Marshal()")
 			return
