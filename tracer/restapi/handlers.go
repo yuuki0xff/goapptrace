@@ -349,15 +349,52 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 }
+
+// TODO: テストを書く
 func (api APIv0) goroutineSearch(w http.ResponseWriter, r *http.Request) {
 	logobj, ok := api.getLog(w, r)
 	if !ok {
 		return
 	}
 
-	// suppress compile error
-	_ = logobj
-	// TODO: storage.LogにGoroutineの検索機能をつける
+	q := r.URL.Query()
+	minTs, err := parseInt(q.Get("min-timestamp"), -1)
+	if err != nil {
+		http.Error(w, "invalid min-timestamp", http.StatusBadRequest)
+		return
+	}
+	maxTs, err := parseInt(q.Get("max-timestamp"), -1)
+	if err != nil {
+		http.Error(w, "invalid max-timestamp", http.StatusBadRequest)
+		return
+	}
+
+	// read all records in the search range.
+	ch := make(chan logutil.Goroutine, 1<<20) // buffer size is 1M records
+	go func() {
+		err = logobj.WalkIndexRecord(func(i int64, ir storage.IndexRecord) error {
+			if (minTs == -1 || minTs <= ir.Timestamp.Unix()) && (maxTs == -1 || ir.Timestamp.Unix() <= maxTs) {
+				return logobj.WalkGoroutine(i, func(g logutil.Goroutine) error {
+					ch <- g
+					return nil
+				})
+			}
+			return nil
+		})
+		if err != nil {
+			api.Logger.Println(errors.Wrap(err, "failed to read GoroutineFile"))
+			return
+		}
+	}()
+
+	// encode and send records to client.
+	enc := json.NewEncoder(w)
+	for g := range ch {
+		if err := enc.Encode(g); err != nil {
+			api.Logger.Println(errors.Wrap(err, "failed to json.Encoder.Encode()"))
+			return
+		}
+	}
 }
 func (api APIv0) funcSymbol(w http.ResponseWriter, r *http.Request) {
 	logobj, ok := api.getLog(w, r)
