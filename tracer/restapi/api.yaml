@@ -184,8 +184,8 @@ definitions:
         format: int64
         example: 62
         description: Goroutine ID
-  goroutine-list:
-    description: List of goroutines
+  goroutine-jsonlines:
+    description: The multiple json separated by newline character.
     type: array
     items:
       $ref: '#/definitions/goroutine'
@@ -554,7 +554,9 @@ paths:
             $ref: '#/definitions/func-call-jsonlines'
   '/log/{log-id}/goroutines/search':
     get:
-      description: Returns
+      description: Returns list of goroutines.
+      produces:
+        - application/x-jsonlines
       parameters:
         - name: log-id
           in: path
@@ -572,7 +574,7 @@ paths:
         '200':
           description: success
           schema:
-            $ref: '#/definitions/goroutine-list'
+            $ref: '#/definitions/goroutine-jsonlines'
   '/log/{log-id}/symbol/func/{func-id}':
     get:
       description: Returns detail of the function.
