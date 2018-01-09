@@ -9,6 +9,8 @@ import (
 
 type View interface {
 	Widget() tui.Widget
+	// 画面を更新する
+	Update()
 	SetKeybindings()
 	Quit()
 }
@@ -27,11 +29,11 @@ func (v *Controller) Run() error {
 		root: v,
 	}
 
-	v.UI, err = tui.New(v.view.Widget())
+	v.UI, err = tui.New(tui.NewSpacer())
 	if err != nil {
 		return errors.Wrap(err, "failed to initialize TUI")
 	}
-	v.setKeybindings()
+	v.setView(v.view)
 
 	if err := v.UI.Run(); err != nil {
 		return errors.Wrap(err, "failed to initialize TUI")
@@ -53,4 +55,6 @@ func (v *Controller) setView(view View) {
 	v.UI.ClearKeybindings()
 	v.setKeybindings()
 	v.view.SetKeybindings()
+
+	go v.UI.Update(v.view.Update)
 }

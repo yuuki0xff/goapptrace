@@ -12,12 +12,18 @@ type showLogView struct {
 	LogID string
 	root  *Controller
 
-	table   *tui.Table
+	table   *headerTable
 	records []restapi.FuncCall
 }
 
 func (v *showLogView) Widget() tui.Widget {
-	v.table = tui.NewTable(0, 0)
+	v.table = newHeaderTable(
+		tui.NewLabel("StartTime"),
+		tui.NewLabel("ExecTime"),
+		tui.NewLabel("GID"),
+		tui.NewLabel("Module.Func:Line"),
+	)
+
 	v.Update()
 	v.table.OnItemActivated(func(table *tui.Table) {
 		if v.table.Selected() == 0 {
@@ -25,18 +31,6 @@ func (v *showLogView) Widget() tui.Widget {
 		}
 		// TODO: 右サイドに、詳細パネルを表示する
 	})
-	v.table.OnSelectionChanged(func(table *tui.Table) {
-		if len(v.records) == 0 {
-			if v.table.Selected() != 0 {
-				v.table.Select(0)
-			}
-		} else {
-			if v.table.Selected() == 0 {
-				v.table.Select(1)
-			}
-		}
-	})
-	v.table.Select(1)
 
 	layout := tui.NewVBox(
 		v.table,
@@ -61,12 +55,6 @@ func (v *showLogView) Update() {
 	v.records = v.records[:0]
 
 	// update contents
-	v.table.AppendRow(
-		tui.NewLabel("StartTime"),
-		tui.NewLabel("ExecTime"),
-		tui.NewLabel("GID"),
-		tui.NewLabel("Module.Func:Line"),
-	)
 	for fc := range ch {
 		v.records = append(v.records, fc)
 

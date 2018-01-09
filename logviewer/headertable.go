@@ -7,14 +7,40 @@ import (
 type headerTable struct {
 	*tui.Table
 	Headers []tui.Widget
-	rows    int
+	// ヘッダーを除いた行数
+	rows int
+
+	onActivated func(table *tui.Table)
+	onSelected  func(table *tui.Table)
 }
 
 func newHeaderTable(headers ...tui.Widget) *headerTable {
-	return &headerTable{
-		Table:   tui.NewTable(0, 0),
-		Headers: headers,
+	table := tui.NewTable(0, 0)
+	table.AppendRow(headers...)
+	table.Select(-1)
+
+	t := &headerTable{
+		Table:       table,
+		Headers:     headers,
+		rows:        0,
+		onActivated: discardTableEvent,
+		onSelected:  discardTableEvent,
 	}
+	t.Table.OnItemActivated(func(table *tui.Table) {
+		t.onActivated(table)
+	})
+	t.Table.OnSelectionChanged(func(table *tui.Table) {
+		if t.rows == 0 && t.Selected() == 0 {
+			t.Table.Select(-1)
+			return
+		} else if t.rows > 0 && t.Selected() <= 0 {
+			t.Table.Select(1)
+			return
+		}
+
+		t.onSelected(table)
+	})
+	return t
 }
 func (t *headerTable) Select(i int) {
 	if t.rows <= 1 {
@@ -44,4 +70,23 @@ func (t *headerTable) RemoveRows() {
 }
 func (t *headerTable) AppendRow(row ...tui.Widget) {
 	t.Table.AppendRow(row...)
+	t.rows++
 }
+
+func (t *headerTable) OnItemActivated(fn func(table *tui.Table)) {
+	if fn == nil {
+		t.onActivated = discardTableEvent
+	} else {
+		t.onActivated = fn
+	}
+}
+
+func (t *headerTable) OnSelectionChanged(fn func(table *tui.Table)) {
+	if fn == nil {
+		t.onSelected = discardTableEvent
+	} else {
+		t.onSelected = fn
+	}
+}
+
+func discardTableEvent(table *tui.Table) {}
