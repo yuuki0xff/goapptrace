@@ -25,7 +25,9 @@ func (v *selectLogView) Widget() tui.Widget {
 	})
 	v.table.OnSelectionChanged(func(table *tui.Table) {
 		if len(v.logs) == 0 {
-			v.table.Select(0)
+			if v.table.Selected() != 0 {
+				v.table.Select(0)
+			}
 		} else {
 			if v.table.Selected() == 0 {
 				v.table.Select(1)
