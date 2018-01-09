@@ -456,6 +456,20 @@ func (l *Log) WalkRawFuncLogFile(i int64, fn func(evt logutil.RawFuncLog) error)
 	)
 }
 
+// TODO: テストを書く
+// 指定したindexの範囲で活動していたgoroutineを全てcallbackする。
+func (l *Log) WalkGoroutine(i int64, fn func(g logutil.Goroutine) error) error {
+	return l.goroutineLog.Index(int(i)).Walk(
+		func() interface{} {
+			return &logutil.Goroutine{}
+		},
+		func(val interface{}) error {
+			data := val.(*logutil.Goroutine)
+			return fn(*data)
+		},
+	)
+}
+
 // IndexRecordの内容を全てcallbackする。
 func (l *Log) WalkIndexRecord(fn func(i int64, ir IndexRecord) error) error {
 	l.lock.RLock()
