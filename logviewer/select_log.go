@@ -6,7 +6,7 @@ import (
 )
 
 type selectLogView struct {
-	root *Controller
+	Root *Controller
 	logs []restapi.LogStatus
 	// ログ表示領域に表示するWidgetを切り替えるために使用する。
 	logView wrapWidget
@@ -44,7 +44,7 @@ func (v *selectLogView) Quit() {
 
 // ログ一覧を最新の状態に更新する。
 func (v *selectLogView) Update() {
-	v.logs, _ = v.root.Api.Logs()
+	v.logs, _ = v.Root.Api.Logs()
 
 	v.table.RemoveRows()
 	if len(v.logs) == 0 {
@@ -65,8 +65,8 @@ func (v *selectLogView) onSelectedLog(table *tui.Table) {
 	if v.table.Selected() == 0 {
 		return
 	}
-	v.root.setView(&showLogView{
+	v.Root.setView(&showLogView{
 		LogID: v.logs[v.table.Selected()-1].ID,
-		root:  v.root,
+		Root:  v.Root,
 	})
 }

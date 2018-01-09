@@ -26,7 +26,7 @@ type Controller struct {
 func (v *Controller) Run() error {
 	var err error
 	v.view = &selectLogView{
-		root: v,
+		Root: v,
 	}
 
 	v.UI, err = tui.New(tui.NewSpacer())

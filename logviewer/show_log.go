@@ -10,7 +10,7 @@ import (
 
 type showLogView struct {
 	LogID string
-	root  *Controller
+	Root  *Controller
 
 	recordsView *wrapWidget
 	table       *headerTable
@@ -49,7 +49,7 @@ func (v *showLogView) Quit() {
 	// do nothing
 }
 func (v *showLogView) Update() {
-	ch, err := v.root.Api.SearchFuncCalls(v.LogID, restapi.SearchFuncCallParams{})
+	ch, err := v.Root.Api.SearchFuncCalls(v.LogID, restapi.SearchFuncCallParams{})
 	if err != nil {
 		log.Panic(err)
 	}
@@ -63,11 +63,11 @@ func (v *showLogView) Update() {
 		v.records = append(v.records, fc)
 
 		currentFrame := fc.Frames[0]
-		fs, err := v.root.Api.FuncStatus(v.LogID, strconv.Itoa(int(currentFrame)))
+		fs, err := v.Root.Api.FuncStatus(v.LogID, strconv.Itoa(int(currentFrame)))
 		if err != nil {
 			log.Panic(err)
 		}
-		fi, err := v.root.Api.Func(v.LogID, strconv.Itoa(int(fs.Func)))
+		fi, err := v.Root.Api.Func(v.LogID, strconv.Itoa(int(fs.Func)))
 		if err != nil {
 			log.Panic(err)
 		}
