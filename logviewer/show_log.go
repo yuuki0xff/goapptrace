@@ -10,7 +10,7 @@ import (
 
 type showLogView struct {
 	LogID string
-	root  *LogViewer
+	root  *Controller
 
 	table   *tui.Table
 	records []restapi.FuncCall

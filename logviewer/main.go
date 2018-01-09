@@ -13,7 +13,7 @@ type View interface {
 	Quit()
 }
 
-type LogViewer struct {
+type Controller struct {
 	Config *config.Config
 	Api    *restapi.Client
 	LogID  string
@@ -21,7 +21,7 @@ type LogViewer struct {
 	view   View
 }
 
-func (v *LogViewer) Run() error {
+func (v *Controller) Run() error {
 	var err error
 	v.view = &selectLogView{
 		root: v,
@@ -38,14 +38,14 @@ func (v *LogViewer) Run() error {
 	}
 	return nil
 }
-func (v *LogViewer) Quit() {
+func (v *Controller) Quit() {
 	v.UI.Quit()
 }
-func (v *LogViewer) setKeybindings() {
+func (v *Controller) setKeybindings() {
 	v.UI.SetKeybinding("Q", v.Quit)
 	v.UI.SetKeybinding("Esc", v.Quit)
 }
-func (v *LogViewer) setView(view View) {
+func (v *Controller) setView(view View) {
 	v.view = view
 	v.UI.SetWidget(v.view.Widget())
 

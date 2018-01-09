@@ -6,7 +6,7 @@ import (
 )
 
 type selectLogView struct {
-	root  *LogViewer
+	root  *Controller
 	table *tui.Table
 	logs  []restapi.LogStatus
 }
