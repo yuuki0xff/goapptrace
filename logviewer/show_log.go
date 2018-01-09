@@ -12,8 +12,10 @@ type showLogView struct {
 	LogID string
 	root  *Controller
 
-	table   *headerTable
-	records []restapi.FuncCall
+	recordsView *wrapWidget
+	table       *headerTable
+	loading     *tui.Label
+	records     []restapi.FuncCall
 }
 
 func (v *showLogView) Widget() tui.Widget {
@@ -23,17 +25,19 @@ func (v *showLogView) Widget() tui.Widget {
 		tui.NewLabel("GID"),
 		tui.NewLabel("Module.Func:Line"),
 	)
-
-	v.Update()
 	v.table.OnItemActivated(func(table *tui.Table) {
 		if v.table.Selected() == 0 {
 			return
 		}
 		// TODO: 右サイドに、詳細パネルを表示する
 	})
+	v.loading = tui.NewLabel("Loading...")
 
+	v.recordsView = &wrapWidget{
+		Widget: v.loading,
+	}
 	layout := tui.NewVBox(
-		v.table,
+		v.recordsView,
 		tui.NewSpacer(),
 	)
 	return layout
@@ -76,4 +80,5 @@ func (v *showLogView) Update() {
 			tui.NewLabel(fi.Name+":"+strconv.Itoa(int(fs.Line))),
 		)
 	}
+	v.recordsView.SetWidget(v.table)
 }
