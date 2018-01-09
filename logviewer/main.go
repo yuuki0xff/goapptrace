@@ -22,11 +22,15 @@ type LogViewer struct {
 }
 
 func (v *LogViewer) Run() error {
+	var err error
 	v.view = &selectLogView{
 		root: v,
 	}
 
-	v.ui = tui.New(v.view.Widget())
+	v.ui, err = tui.New(v.view.Widget())
+	if err != nil {
+		return errors.Wrap(err, "failed to initialize TUI")
+	}
 	v.setKeybindings()
 
 	if err := v.ui.Run(); err != nil {
