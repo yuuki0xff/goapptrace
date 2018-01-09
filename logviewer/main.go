@@ -8,7 +8,7 @@ import (
 )
 
 type View interface {
-	Widget() tui.Widget
+	tui.Widget
 	// 画面を更新する
 	Update()
 	SetKeybindings()
@@ -25,9 +25,7 @@ type Controller struct {
 
 func (v *Controller) Run() error {
 	var err error
-	v.view = &selectLogView{
-		Root: v,
-	}
+	v.view = newSelectLogView(v)
 
 	v.UI, err = tui.New(tui.NewSpacer())
 	if err != nil {
@@ -49,7 +47,7 @@ func (v *Controller) setKeybindings() {
 }
 func (v *Controller) setView(view View) {
 	v.view = view
-	v.UI.SetWidget(v.view.Widget())
+	v.UI.SetWidget(v.view)
 
 	// rebuild key bind settings.
 	v.UI.ClearKeybindings()

@@ -8,6 +8,8 @@ import (
 type selectLogView struct {
 	Root *Controller
 	logs []restapi.LogStatus
+
+	tui.Widget
 	// ログ表示領域に表示するWidgetを切り替えるために使用する。
 	logView wrapWidget
 
@@ -18,22 +20,23 @@ type selectLogView struct {
 	loading   *tui.Label
 }
 
-func (v *selectLogView) Widget() tui.Widget {
-	v.table = newHeaderTable(
-		tui.NewLabel("LogID"),
-	)
-	v.table.OnItemActivated(v.onSelectedLog)
-	v.noContent = tui.NewLabel("Available logs not found")
-	v.loading = tui.NewLabel("Loading...")
-
-	v.logView = wrapWidget{
-		Widget: v.loading,
+func newSelectLogView(root *Controller) *selectLogView {
+	v := &selectLogView{
+		Root: root,
+		table: newHeaderTable(
+			tui.NewLabel("LogID"),
+		),
+		noContent: tui.NewLabel("Available logs not found"),
+		loading:   tui.NewLabel("Loading..."),
 	}
-	layout := tui.NewVBox(
+	v.table.OnItemActivated(v.onSelectedLog)
+
+	v.logView.SetWidget(v.loading)
+	v.Widget = tui.NewVBox(
 		v.table,
 		tui.NewSpacer(),
 	)
-	return layout
+	return v
 }
 func (v *selectLogView) SetKeybindings() {
 	// do nothing
@@ -65,8 +68,9 @@ func (v *selectLogView) onSelectedLog(table *tui.Table) {
 	if v.table.Selected() == 0 {
 		return
 	}
-	v.Root.setView(&showLogView{
-		LogID: v.logs[v.table.Selected()-1].ID,
-		Root:  v.Root,
-	})
+
+	v.Root.setView(newShowLogView(
+		v.logs[v.table.Selected()-1].ID,
+		v.Root,
+	))
 }

@@ -12,35 +12,34 @@ type showLogView struct {
 	LogID string
 	Root  *Controller
 
-	recordsView *wrapWidget
-	table       *headerTable
-	loading     *tui.Label
-	records     []restapi.FuncCall
+	tui.Widget
+	logList wrapWidget
+
+	table   *headerTable
+	loading *tui.Label
+	records []restapi.FuncCall
 }
 
-func (v *showLogView) Widget() tui.Widget {
-	v.table = newHeaderTable(
-		tui.NewLabel("StartTime"),
-		tui.NewLabel("ExecTime"),
-		tui.NewLabel("GID"),
-		tui.NewLabel("Module.Func:Line"),
-	)
-	v.table.OnItemActivated(func(table *tui.Table) {
-		if v.table.Selected() == 0 {
-			return
-		}
-		// TODO: 右サイドに、詳細パネルを表示する
-	})
-	v.loading = tui.NewLabel("Loading...")
-
-	v.recordsView = &wrapWidget{
-		Widget: v.loading,
+func newShowLogView(logID string, root *Controller) *showLogView {
+	v := &showLogView{
+		LogID: logID,
+		Root:  root,
+		table: newHeaderTable(
+			tui.NewLabel("StartTime"),
+			tui.NewLabel("ExecTime"),
+			tui.NewLabel("GID"),
+			tui.NewLabel("Module.Func:Line"),
+		),
+		loading: tui.NewLabel("Loading..."),
 	}
-	layout := tui.NewVBox(
-		v.recordsView,
+	v.table.OnItemActivated(v.onSelectedFuncCallRecord)
+
+	v.logList.SetWidget(v.loading)
+	v.Widget = tui.NewVBox(
+		&v.logList,
 		tui.NewSpacer(),
 	)
-	return layout
+	return v
 }
 func (v *showLogView) SetKeybindings() {
 	// do nothing
@@ -80,5 +79,11 @@ func (v *showLogView) Update() {
 			tui.NewLabel(fi.Name+":"+strconv.Itoa(int(fs.Line))),
 		)
 	}
-	v.recordsView.SetWidget(v.table)
+	v.logList.SetWidget(v.table)
+}
+func (v *showLogView) onSelectedFuncCallRecord(table *tui.Table) {
+	if v.table.Selected() == 0 {
+		return
+	}
+	// TODO: 右サイドに、詳細パネルを表示する
 }
