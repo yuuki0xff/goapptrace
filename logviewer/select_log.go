@@ -58,7 +58,6 @@ func (v *selectLogView) Update() {
 		}
 		v.logView.SetWidget(v.table)
 	}
-	tui.NewHBox()
 }
 
 // ログを選択したときにコールバックされる関数。
