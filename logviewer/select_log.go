@@ -33,7 +33,7 @@ func newSelectLogView(root *Controller) *selectLogView {
 
 	v.logView.SetWidget(v.loading)
 	v.Widget = tui.NewVBox(
-		v.table,
+		&v.logView,
 		tui.NewSpacer(),
 	)
 	return v
