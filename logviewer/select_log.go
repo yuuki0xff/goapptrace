@@ -47,7 +47,13 @@ func (v *selectLogView) Quit() {
 
 // ログ一覧を最新の状態に更新する。
 func (v *selectLogView) Update() {
-	v.logs, _ = v.Root.Api.Logs()
+	var err error
+	v.logs, err = v.Root.Api.Logs()
+
+	if err != nil {
+		v.logView.SetWidget(tui.NewLabel("ERROR: " + err.Error()))
+		return
+	}
 
 	v.table.RemoveRows()
 	if len(v.logs) == 0 {
