@@ -51,7 +51,7 @@ func (v *selectLogView) Update() {
 	v.logs, err = v.Root.Api.Logs()
 
 	if err != nil {
-		v.logView.SetWidget(tui.NewLabel("ERROR: " + err.Error()))
+		v.logView.SetWidget(newErrorMsg(err))
 		return
 	}
 

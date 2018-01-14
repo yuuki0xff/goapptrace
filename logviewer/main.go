@@ -31,6 +31,12 @@ func (v *Controller) Run() error {
 	if err != nil {
 		return errors.Wrap(err, "failed to initialize TUI")
 	}
+	theme := tui.NewTheme()
+	theme.SetStyle("label.error-message", tui.Style{
+		Fg:   tui.ColorRed,
+		Bold: tui.DecorationOn,
+	})
+	v.UI.SetTheme(theme)
 	v.setView(v.view)
 
 	if err := v.UI.Run(); err != nil {
