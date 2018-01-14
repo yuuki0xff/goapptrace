@@ -32,6 +32,9 @@ func (v *Controller) Run() error {
 		return errors.Wrap(err, "failed to initialize TUI")
 	}
 	theme := tui.NewTheme()
+	theme.SetStyle("list.item.selected", tui.Style{Reverse: tui.DecorationOn})
+	theme.SetStyle("table.cell.selected", tui.Style{Reverse: tui.DecorationOn})
+	theme.SetStyle("button.focused", tui.Style{Reverse: tui.DecorationOn})
 	theme.SetStyle("label.error-message", tui.Style{
 		Fg:   tui.ColorRed,
 		Bold: tui.DecorationOn,
