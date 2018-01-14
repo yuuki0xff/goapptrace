@@ -85,5 +85,6 @@ func (v *showLogView) onSelectedFuncCallRecord(table *tui.Table) {
 	if v.table.Selected() == 0 {
 		return
 	}
-	// TODO: 右サイドに、詳細パネルを表示する
+	rec := &v.records[v.table.Selected()]
+	v.Root.setView(newFuncCallDetailView(v.LogID, rec, v.Root))
 }
