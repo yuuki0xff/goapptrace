@@ -18,6 +18,7 @@ type showLogView struct {
 	table   *headerTable
 	loading *tui.Label
 	records []restapi.FuncCall
+	fc      tui.FocusChain
 }
 
 func newShowLogView(logID string, root *Controller) *showLogView {
@@ -33,6 +34,9 @@ func newShowLogView(logID string, root *Controller) *showLogView {
 		loading: tui.NewLabel("Loading..."),
 	}
 	v.table.OnItemActivated(v.onSelectedFuncCallRecord)
+	fc := &tui.SimpleFocusChain{}
+	fc.Set(&v.logList)
+	v.fc = fc
 
 	v.logList.SetWidget(v.loading)
 	v.Widget = tui.NewVBox(
@@ -43,6 +47,9 @@ func newShowLogView(logID string, root *Controller) *showLogView {
 }
 func (v *showLogView) SetKeybindings() {
 	// do nothing
+}
+func (v *showLogView) FocusChain() tui.FocusChain {
+	return v.fc
 }
 func (v *showLogView) Quit() {
 	// do nothing

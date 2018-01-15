@@ -16,6 +16,7 @@ type FuncCallDetailView struct {
 
 	funcInfoTable *headerTable
 	framesTable   *headerTable
+	fc            tui.FocusChain
 }
 
 func newFuncCallDetailView(logID string, record *restapi.FuncCall, root *Controller) *FuncCallDetailView {
@@ -36,6 +37,9 @@ func newFuncCallDetailView(logID string, record *restapi.FuncCall, root *Control
 	}
 	v.funcInfoTable.OnItemActivated(v.onSelectedFilter)
 	v.framesTable.OnItemActivated(v.onSelectedFrame)
+	fc := &tui.SimpleFocusChain{}
+	fc.Set(v.funcInfoTable, v.framesTable)
+	v.fc = fc
 
 	v.Widget = tui.NewVBox(
 		v.funcInfoTable,
@@ -73,6 +77,9 @@ func (v *FuncCallDetailView) Update() {
 }
 func (v *FuncCallDetailView) SetKeybindings() {
 	// do nothing
+}
+func (v *FuncCallDetailView) FocusChain() tui.FocusChain {
+	return v.fc
 }
 func (v *FuncCallDetailView) Quit() {
 	// do nothing

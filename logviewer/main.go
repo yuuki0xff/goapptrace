@@ -12,6 +12,7 @@ type View interface {
 	// 画面を更新する
 	Update()
 	SetKeybindings()
+	FocusChain() tui.FocusChain
 	Quit()
 }
 
@@ -62,6 +63,9 @@ func (v *Controller) setView(view View) {
 	v.UI.ClearKeybindings()
 	v.setKeybindings()
 	v.view.SetKeybindings()
+
+	// update focus chain
+	v.UI.SetFocusChain(v.view.FocusChain())
 
 	go v.UI.Update(v.view.Update)
 }

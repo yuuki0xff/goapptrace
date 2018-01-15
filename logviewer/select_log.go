@@ -18,6 +18,7 @@ type selectLogView struct {
 	// ログが1つも存在しないときに表示される
 	noContent *tui.Label
 	loading   *tui.Label
+	fc        tui.FocusChain
 }
 
 func newSelectLogView(root *Controller) *selectLogView {
@@ -30,6 +31,9 @@ func newSelectLogView(root *Controller) *selectLogView {
 		loading:   tui.NewLabel("Loading..."),
 	}
 	v.table.OnItemActivated(v.onSelectedLog)
+	fc := &tui.SimpleFocusChain{}
+	fc.Set(&v.logView)
+	v.fc = fc
 
 	v.logView.SetWidget(v.loading)
 	v.Widget = tui.NewVBox(
@@ -40,6 +44,9 @@ func newSelectLogView(root *Controller) *selectLogView {
 }
 func (v *selectLogView) SetKeybindings() {
 	// do nothing
+}
+func (v *selectLogView) FocusChain() tui.FocusChain {
+	return v.fc
 }
 func (v *selectLogView) Quit() {
 	// do nothing
