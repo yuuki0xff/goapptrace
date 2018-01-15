@@ -4,6 +4,7 @@ import (
 	"github.com/marcusolsson/tui-go"
 )
 
+// ヘッダーを指定可能なテーブル
 type headerTable struct {
 	*tui.Table
 	Headers []tui.Widget
