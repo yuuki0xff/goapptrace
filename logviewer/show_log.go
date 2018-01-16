@@ -13,10 +13,10 @@ type showLogView struct {
 	Root  *Controller
 
 	tui.Widget
-	logList wrapWidget
+	wrap wrapWidget
 
 	table   *headerTable
-	loading *tui.Label
+	status  *tui.StatusBar
 	records []restapi.FuncCall
 	fc      tui.FocusChain
 }
@@ -31,18 +31,20 @@ func newShowLogView(logID string, root *Controller) *showLogView {
 			tui.NewLabel("GID"),
 			tui.NewLabel("Module.Func:Line"),
 		),
-		loading: tui.NewLabel("Loading..."),
+		status: tui.NewStatusBar(LoadingText),
 	}
+	v.status.SetPermanentText("Function Call Logs")
 	v.table.OnItemActivated(v.onSelectedFuncCallRecord)
+	v.wrap.SetWidget(v.table)
+
 	fc := &tui.SimpleFocusChain{}
-	fc.Set(&v.logList)
+	fc.Set(&v.wrap)
 	v.fc = fc
 
-	v.logList.SetWidget(v.loading)
-	v.logList.SetFocused(true)
 	v.Widget = tui.NewVBox(
-		&v.logList,
+		&v.wrap,
 		tui.NewSpacer(),
+		v.status,
 	)
 	return v
 }
@@ -70,6 +72,8 @@ func (v *showLogView) Quit() {
 	// do nothing
 }
 func (v *showLogView) Update() {
+	v.status.SetText(LoadingText)
+
 	ch, err := v.Root.Api.SearchFuncCalls(v.LogID, restapi.SearchFuncCallParams{})
 	if err != nil {
 		log.Panic(err)
@@ -101,7 +105,8 @@ func (v *showLogView) Update() {
 			tui.NewLabel(fi.Name+":"+strconv.Itoa(int(fs.Line))),
 		)
 	}
-	v.logList.SetWidget(v.table)
+	v.wrap.SetWidget(v.table)
+	v.status.SetText("")
 }
 func (v *showLogView) onSelectedFuncCallRecord(table *tui.Table) {
 	if v.table.Selected() == 0 {

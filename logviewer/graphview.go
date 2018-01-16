@@ -15,28 +15,28 @@ type GraphView struct {
 	LogID string
 	Root  *Controller
 
-	sf      singleflight.Group
-	wrap    *wrapWidget
-	graph   *GraphWidget
-	loading *tui.Label
-	fc      tui.FocusChain
+	sf     singleflight.Group
+	status *tui.StatusBar
+	graph  *GraphWidget
+	fc     tui.FocusChain
 }
 
 func newGraphView(logID string, root *Controller) *GraphView {
 	v := &GraphView{
-		LogID:   logID,
-		Root:    root,
-		graph:   newGraphWidget(),
-		loading: tui.NewLabel("Loading..."),
+		LogID:  logID,
+		Root:   root,
+		status: tui.NewStatusBar(LoadingText),
+		graph:  newGraphWidget(),
 	}
+	v.status.SetPermanentText("Function Call Graph")
 
 	fc := &tui.SimpleFocusChain{}
 	fc.Set(v)
 	v.fc = fc
-	v.wrap = &wrapWidget{
-		Widget: v.loading,
-	}
-	v.Widget = v.wrap
+	v.Widget = tui.NewVBox(
+		v.graph,
+		v.status,
+	)
 
 	v.graph.AddLine(Line{
 		Start:     image.Point{0, 0},
@@ -90,7 +90,7 @@ func newGraphView(logID string, root *Controller) *GraphView {
 }
 
 func (v *GraphView) Update() {
-	v.wrap.SetWidget(v.loading)
+	v.status.SetText(LoadingText)
 
 	go v.sf.Do("update", func() (interface{}, error) {
 		ch, err := v.Root.Api.SearchFuncCalls(v.LogID, restapi.SearchFuncCallParams{})
@@ -132,7 +132,7 @@ func (v *GraphView) Update() {
 		v.graph.SetLines(lines)
 
 		v.Root.UI.Update(func() {
-			v.wrap.SetWidget(v.graph)
+			v.status.SetText("")
 		})
 		return nil, nil
 	})

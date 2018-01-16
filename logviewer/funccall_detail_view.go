@@ -14,8 +14,11 @@ type FuncCallDetailView struct {
 	Record *restapi.FuncCall
 	Root   *Controller
 
+	// TODO: エラーメッセージを表示できるようにする
+
 	funcInfoTable *headerTable
 	framesTable   *headerTable
+	status        *tui.StatusBar
 	fc            tui.FocusChain
 }
 
@@ -34,7 +37,9 @@ func newFuncCallDetailView(logID string, record *restapi.FuncCall, root *Control
 			tui.NewLabel("Line"),
 			tui.NewLabel("PC"),
 		),
+		status: tui.NewStatusBar(LoadingText),
 	}
+	v.status.SetPermanentText("Function Call Detail")
 	v.funcInfoTable.OnItemActivated(v.onSelectedFilter)
 	v.framesTable.OnItemActivated(v.onSelectedFrame)
 	fc := &tui.SimpleFocusChain{}
@@ -46,11 +51,14 @@ func newFuncCallDetailView(logID string, record *restapi.FuncCall, root *Control
 		v.funcInfoTable,
 		v.framesTable,
 		tui.NewSpacer(),
+		v.status,
 	)
 	return v
 }
 
 func (v *FuncCallDetailView) Update() {
+	v.status.SetText(LoadingText)
+
 	v.funcInfoTable.RemoveRows()
 	v.funcInfoTable.AppendRow(
 		tui.NewLabel("GID"),
@@ -74,7 +82,7 @@ func (v *FuncCallDetailView) Update() {
 			tui.NewLabel("("+strconv.Itoa(int(fs.PC))+")"),
 		)
 	}
-
+	v.status.SetText("")
 }
 func (v *FuncCallDetailView) SetKeybindings() {
 	gotoLogView := func() {

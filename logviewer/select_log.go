@@ -10,15 +10,12 @@ type selectLogView struct {
 	logs []restapi.LogStatus
 
 	tui.Widget
-	// ログ表示領域に表示するWidgetを切り替えるために使用する。
-	logView wrapWidget
 
+	wrap wrapWidget
 	// ログの一覧を表示するためのテーブル
-	table *headerTable
-	// ログが1つも存在しないときに表示される
-	noContent *tui.Label
-	loading   *tui.Label
-	fc        tui.FocusChain
+	table  *headerTable
+	status *tui.StatusBar
+	fc     tui.FocusChain
 }
 
 func newSelectLogView(root *Controller) *selectLogView {
@@ -27,19 +24,20 @@ func newSelectLogView(root *Controller) *selectLogView {
 		table: newHeaderTable(
 			tui.NewLabel("LogID"),
 		),
-		noContent: tui.NewLabel("Available logs not found"),
-		loading:   tui.NewLabel("Loading..."),
+		status: tui.NewStatusBar(LoadingText),
 	}
+	v.status.SetPermanentText("Log List")
 	v.table.OnItemActivated(v.onSelectedLog)
+	v.wrap.SetWidget(v.table)
+
 	fc := &tui.SimpleFocusChain{}
-	fc.Set(&v.logView)
+	fc.Set(&v.wrap)
 	v.fc = fc
 
-	v.logView.SetWidget(v.loading)
-	v.logView.SetFocused(true)
 	v.Widget = tui.NewVBox(
-		&v.logView,
+		&v.wrap,
 		tui.NewSpacer(),
+		v.status,
 	)
 	return v
 }
@@ -60,17 +58,21 @@ func (v *selectLogView) Quit() {
 
 // ログ一覧を最新の状態に更新する。
 func (v *selectLogView) Update() {
+	v.status.SetText(LoadingText)
+
 	var err error
 	v.logs, err = v.Root.Api.Logs()
 
 	if err != nil {
-		v.logView.SetWidget(newErrorMsg(err))
+		v.wrap.SetWidget(newErrorMsg(err))
+		v.status.SetText(ErrorText)
 		return
 	}
 
 	v.table.RemoveRows()
 	if len(v.logs) == 0 {
-		v.logView.SetWidget(v.noContent)
+		v.wrap.SetWidget(tui.NewLabel(NoLogFiles))
+		v.status.SetText("")
 		return
 	} else {
 		for _, l := range v.logs {
@@ -78,7 +80,8 @@ func (v *selectLogView) Update() {
 				tui.NewLabel(l.ID),
 			)
 		}
-		v.logView.SetWidget(v.table)
+		v.wrap.SetWidget(v.table)
+		v.status.SetText("")
 	}
 }
 
