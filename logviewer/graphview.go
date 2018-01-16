@@ -15,7 +15,8 @@ type GraphView struct {
 	LogID string
 	Root  *Controller
 
-	sf     singleflight.Group
+	updateGroup singleflight.Group
+
 	status *tui.StatusBar
 	graph  *GraphWidget
 	fc     tui.FocusChain
@@ -92,48 +93,59 @@ func newGraphView(logID string, root *Controller) *GraphView {
 func (v *GraphView) Update() {
 	v.status.SetText(LoadingText)
 
-	go v.sf.Do("update", func() (interface{}, error) {
-		ch, err := v.Root.Api.SearchFuncCalls(v.LogID, restapi.SearchFuncCallParams{})
-		if err != nil {
-			log.Panic(err)
-		}
-
-		// TODO: update graph widget
-		lines := make([]Line, 0, 1000)
-		for fc := range ch {
-			styleName := "line."
-			if fc.IsEnded() {
-				styleName += "stopped"
+	go v.updateGroup.Do("update", func() (interface{}, error) {
+		var err error
+		defer func() {
+			if err != nil {
+				//v.wrap.SetWidget(newErrorMsg(err))
+				v.status.SetText(ErrorText)
 			} else {
-				styleName += "running"
+				//v.wrap.SetWidget(v.table)
+				v.status.SetText("")
+			}
+			v.Root.UI.Update(func() {})
+		}()
+
+		func() {
+			var ch chan restapi.FuncCall
+			ch, err = v.Root.Api.SearchFuncCalls(v.LogID, restapi.SearchFuncCallParams{})
+			if err != nil {
+				return
 			}
 
-			// TODO: check if this line is selected.
-			// TODO: check if this line is marked.
-			// TODO: check if this line must hidden.
+			// TODO: update graph widget
+			lines := make([]Line, 0, 1000)
+			for fc := range ch {
+				styleName := "line."
+				if fc.IsEnded() {
+					styleName += "stopped"
+				} else {
+					styleName += "running"
+				}
 
-			line := Line{
-				Start: image.Point{
-					X: int(fc.StartTime),
-					Y: int(fc.GID),
-				},
-				Length:    int(fc.EndTime - fc.StartTime),
-				Type:      VerticalLine,
-				StartDeco: LineTerminationNormal,
-				EndDeco:   LineTerminationNone,
-				StyleName: styleName,
+				// TODO: check if this line is selected.
+				// TODO: check if this line is marked.
+				// TODO: check if this line must hidden.
+
+				line := Line{
+					Start: image.Point{
+						X: int(fc.StartTime),
+						Y: int(fc.GID),
+					},
+					Length:    int(fc.EndTime - fc.StartTime),
+					Type:      VerticalLine,
+					StartDeco: LineTerminationNormal,
+					EndDeco:   LineTerminationNone,
+					StyleName: styleName,
+				}
+				lines = append(lines, line)
+
+				// print a log
+				b, _ := json.Marshal(line)
+				log.Println(string(b))
 			}
-			lines = append(lines, line)
-
-			// print a log
-			b, _ := json.Marshal(line)
-			log.Println(string(b))
-		}
-		v.graph.SetLines(lines)
-
-		v.Root.UI.Update(func() {
-			v.status.SetText("")
-		})
+			v.graph.SetLines(lines)
+		}()
 		return nil, nil
 	})
 }

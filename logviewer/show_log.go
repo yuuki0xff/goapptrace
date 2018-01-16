@@ -1,11 +1,11 @@
 package logviewer
 
 import (
-	"log"
 	"strconv"
 
 	"github.com/marcusolsson/tui-go"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
+	"golang.org/x/sync/singleflight"
 )
 
 type showLogView struct {
@@ -13,7 +13,8 @@ type showLogView struct {
 	Root  *Controller
 
 	tui.Widget
-	wrap wrapWidget
+	wrap        wrapWidget
+	updateGroup singleflight.Group
 
 	table   *headerTable
 	status  *tui.StatusBar
@@ -74,39 +75,58 @@ func (v *showLogView) Quit() {
 func (v *showLogView) Update() {
 	v.status.SetText(LoadingText)
 
-	ch, err := v.Root.Api.SearchFuncCalls(v.LogID, restapi.SearchFuncCallParams{})
-	if err != nil {
-		log.Panic(err)
-	}
+	go v.updateGroup.Do("update", func() (interface{}, error) {
+		var err error
+		table := newHeaderTable(v.table.Headers...)
+		records := make([]restapi.FuncCall, 0, 10000)
 
-	// remove all rows
-	v.table.RemoveRows()
-	v.records = v.records[:0]
+		defer v.Root.UI.Update(func() {
+			v.table = table
+			v.records = records
 
-	// update contents
-	for fc := range ch {
-		v.records = append(v.records, fc)
+			if err != nil {
+				v.wrap.SetWidget(newErrorMsg(err))
+				v.status.SetText(ErrorText)
+			} else {
+				v.wrap.SetWidget(v.table)
+				v.status.SetText("")
+			}
+		})
 
-		currentFrame := fc.Frames[0]
-		fs, err := v.Root.Api.FuncStatus(v.LogID, strconv.Itoa(int(currentFrame)))
-		if err != nil {
-			log.Panic(err)
-		}
-		fi, err := v.Root.Api.Func(v.LogID, strconv.Itoa(int(fs.Func)))
-		if err != nil {
-			log.Panic(err)
-		}
-		execTime := fc.EndTime - fc.StartTime
+		func() {
+			var ch chan restapi.FuncCall
+			ch, err = v.Root.Api.SearchFuncCalls(v.LogID, restapi.SearchFuncCallParams{})
+			if err != nil {
+				return
+			}
 
-		v.table.AppendRow(
-			tui.NewLabel(strconv.Itoa(int(fc.StartTime))),
-			tui.NewLabel(strconv.Itoa(int(execTime))),
-			tui.NewLabel(strconv.Itoa(int(fc.GID))),
-			tui.NewLabel(fi.Name+":"+strconv.Itoa(int(fs.Line))),
-		)
-	}
-	v.wrap.SetWidget(v.table)
-	v.status.SetText("")
+			// update contents
+			for fc := range ch {
+				records = append(records, fc)
+
+				currentFrame := fc.Frames[0]
+				var fs restapi.FuncStatusInfo
+				fs, err = v.Root.Api.FuncStatus(v.LogID, strconv.Itoa(int(currentFrame)))
+				if err != nil {
+					return
+				}
+				var fi restapi.FuncInfo
+				fi, err = v.Root.Api.Func(v.LogID, strconv.Itoa(int(fs.Func)))
+				if err != nil {
+					return
+				}
+				execTime := fc.EndTime - fc.StartTime
+
+				table.AppendRow(
+					tui.NewLabel(strconv.Itoa(int(fc.StartTime))),
+					tui.NewLabel(strconv.Itoa(int(execTime))),
+					tui.NewLabel(strconv.Itoa(int(fc.GID))),
+					tui.NewLabel(fi.Name+":"+strconv.Itoa(int(fs.Line))),
+				)
+			}
+		}()
+		return nil, nil
+	})
 }
 func (v *showLogView) onSelectedFuncCallRecord(table *tui.Table) {
 	if v.table.Selected() == 0 {

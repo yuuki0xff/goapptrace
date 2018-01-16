@@ -6,6 +6,7 @@ import (
 
 	"github.com/marcusolsson/tui-go"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
+	"golang.org/x/sync/singleflight"
 )
 
 type FuncCallDetailView struct {
@@ -15,11 +16,14 @@ type FuncCallDetailView struct {
 	Root   *Controller
 
 	// TODO: エラーメッセージを表示できるようにする
+	updateGroup singleflight.Group
 
+	// TODO: これらのテーブルをラップする。
+	// focusChainに渡す値が常に同じになるようにしないと、クラッシュしてしまう問題を回避するため。
 	funcInfoTable *headerTable
 	framesTable   *headerTable
 	status        *tui.StatusBar
-	fc            tui.FocusChain
+	fc            *tui.SimpleFocusChain
 }
 
 func newFuncCallDetailView(logID string, record *restapi.FuncCall, root *Controller) *FuncCallDetailView {
@@ -38,51 +42,76 @@ func newFuncCallDetailView(logID string, record *restapi.FuncCall, root *Control
 			tui.NewLabel("PC"),
 		),
 		status: tui.NewStatusBar(LoadingText),
+		fc:     &tui.SimpleFocusChain{},
 	}
 	v.status.SetPermanentText("Function Call Detail")
 	v.funcInfoTable.OnItemActivated(v.onSelectedFilter)
 	v.framesTable.OnItemActivated(v.onSelectedFrame)
-	fc := &tui.SimpleFocusChain{}
-	fc.Set(v.funcInfoTable, v.framesTable)
-	v.fc = fc
 	v.funcInfoTable.SetFocused(true)
 
+	v.rebuildWidget()
+	return v
+}
+
+func (v *FuncCallDetailView) rebuildWidget() {
+	v.fc.Set(v.funcInfoTable, v.framesTable)
 	v.Widget = tui.NewVBox(
 		v.funcInfoTable,
 		v.framesTable,
 		tui.NewSpacer(),
 		v.status,
 	)
-	return v
 }
 
 func (v *FuncCallDetailView) Update() {
 	v.status.SetText(LoadingText)
 
-	v.funcInfoTable.RemoveRows()
-	v.funcInfoTable.AppendRow(
-		tui.NewLabel("GID"),
-		tui.NewLabel(strconv.Itoa(int(v.Record.GID))),
-	)
+	go v.updateGroup.Do("update", func() (interface{}, error) {
+		var err error
+		defer func() {
+			if err != nil {
+				//v.wrap.SetWidget(newErrorMsg(err))
+				v.status.SetText(ErrorText)
+			} else {
+				//v.wrap.SetWidget(v.table)
+				v.status.SetText("")
+			}
+			v.rebuildWidget()
+			v.Root.UI.Update(func() {})
+		}()
 
-	v.framesTable.RemoveRows()
-	for _, fs := range v.Record.Frames {
-		fs, err := v.Root.Api.FuncStatus(v.LogID, strconv.Itoa(int(fs)))
-		if err != nil {
-			log.Panic(err)
-		}
-		fi, err := v.Root.Api.Func(v.LogID, strconv.Itoa(int(fs.Func)))
-		if err != nil {
-			log.Panic(err)
-		}
+		func() {
+			funcInfoTable := newHeaderTable(v.funcInfoTable.Headers...)
+			framesTable := newHeaderTable(v.framesTable.Headers...)
 
-		v.framesTable.AppendRow(
-			tui.NewLabel(fi.Name),
-			tui.NewLabel(strconv.Itoa(int(fs.Line))),
-			tui.NewLabel("("+strconv.Itoa(int(fs.PC))+")"),
-		)
-	}
-	v.status.SetText("")
+			funcInfoTable.AppendRow(
+				tui.NewLabel("GID"),
+				tui.NewLabel(strconv.Itoa(int(v.Record.GID))),
+			)
+
+			for _, fsid := range v.Record.Frames {
+				var fs restapi.FuncStatusInfo
+				fs, err = v.Root.Api.FuncStatus(v.LogID, strconv.Itoa(int(fsid)))
+				if err != nil {
+					return
+				}
+				var fi restapi.FuncInfo
+				fi, err = v.Root.Api.Func(v.LogID, strconv.Itoa(int(fs.Func)))
+				if err != nil {
+					return
+				}
+
+				framesTable.AppendRow(
+					tui.NewLabel(fi.Name),
+					tui.NewLabel(strconv.Itoa(int(fs.Line))),
+					tui.NewLabel("("+strconv.Itoa(int(fs.PC))+")"),
+				)
+			}
+			v.funcInfoTable = funcInfoTable
+			v.framesTable = framesTable
+		}()
+		return nil, nil
+	})
 }
 func (v *FuncCallDetailView) SetKeybindings() {
 	gotoLogView := func() {

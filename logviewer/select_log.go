@@ -1,8 +1,11 @@
 package logviewer
 
 import (
+	"errors"
+
 	"github.com/marcusolsson/tui-go"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
+	"golang.org/x/sync/singleflight"
 )
 
 type selectLogView struct {
@@ -11,7 +14,9 @@ type selectLogView struct {
 
 	tui.Widget
 
-	wrap wrapWidget
+	wrap        wrapWidget
+	updateGroup singleflight.Group
+
 	// ログの一覧を表示するためのテーブル
 	table  *headerTable
 	status *tui.StatusBar
@@ -60,29 +65,41 @@ func (v *selectLogView) Quit() {
 func (v *selectLogView) Update() {
 	v.status.SetText(LoadingText)
 
-	var err error
-	v.logs, err = v.Root.Api.Logs()
+	go v.updateGroup.Do("update", func() (interface{}, error) {
+		var err error
+		defer func() {
+			if err != nil {
+				v.wrap.SetWidget(newErrorMsg(err))
+				v.status.SetText(ErrorText)
+			} else {
+				v.wrap.SetWidget(v.table)
+				v.status.SetText("")
+			}
+			v.Root.UI.Update(func() {})
+		}()
 
-	if err != nil {
-		v.wrap.SetWidget(newErrorMsg(err))
-		v.status.SetText(ErrorText)
-		return
-	}
+		func() {
+			var logs []restapi.LogStatus
+			logs, err = v.Root.Api.Logs()
+			if err != nil {
+				return
+			}
+			table := newHeaderTable(v.table.Headers...)
 
-	v.table.RemoveRows()
-	if len(v.logs) == 0 {
-		v.wrap.SetWidget(tui.NewLabel(NoLogFiles))
-		v.status.SetText("")
-		return
-	} else {
-		for _, l := range v.logs {
-			v.table.AppendRow(
-				tui.NewLabel(l.ID),
-			)
-		}
-		v.wrap.SetWidget(v.table)
-		v.status.SetText("")
-	}
+			if len(logs) == 0 {
+				err = errors.New(NoLogFiles)
+			} else {
+				for _, l := range logs {
+					table.AppendRow(
+						tui.NewLabel(l.ID),
+					)
+				}
+			}
+			v.logs = logs
+			v.table = table
+		}()
+		return nil, nil
+	})
 }
 
 // ログを選択したときにコールバックされる関数。
