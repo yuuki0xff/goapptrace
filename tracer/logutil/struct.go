@@ -64,6 +64,10 @@ type RawFuncLog struct {
 	TxID      TxID           `json:"txid"`
 }
 
+func (fl FuncLog) IsEnded() bool {
+	return fl.EndTime != NotEnded
+}
+
 ////////////////////////////////////////////////////////////////
 // Symbols
 type FuncID uint64

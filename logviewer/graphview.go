@@ -101,6 +101,17 @@ func (v *GraphView) Update() {
 		// TODO: update graph widget
 		lines := make([]Line, 0, 1000)
 		for fc := range ch {
+			styleName := "line."
+			if fc.IsEnded() {
+				styleName += "stopped"
+			} else {
+				styleName += "running"
+			}
+
+			// TODO: check if this line is selected.
+			// TODO: check if this line is marked.
+			// TODO: check if this line must hidden.
+
 			line := Line{
 				Start: image.Point{
 					X: int(fc.StartTime),
@@ -110,7 +121,7 @@ func (v *GraphView) Update() {
 				Type:      VerticalLine,
 				StartDeco: LineTerminationNormal,
 				EndDeco:   LineTerminationNone,
-				StyleName: "running", // TODO
+				StyleName: styleName,
 			}
 			lines = append(lines, line)
 
