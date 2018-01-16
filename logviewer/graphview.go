@@ -1,9 +1,13 @@
 package logviewer
 
 import (
+	"encoding/json"
 	"image"
+	"log"
 
 	"github.com/marcusolsson/tui-go"
+	"github.com/yuuki0xff/goapptrace/tracer/restapi"
+	"golang.org/x/sync/singleflight"
 )
 
 type GraphView struct {
@@ -11,6 +15,7 @@ type GraphView struct {
 	LogID string
 	Root  *Controller
 
+	sf      singleflight.Group
 	wrap    *wrapWidget
 	graph   *GraphWidget
 	loading *tui.Label
@@ -85,8 +90,41 @@ func newGraphView(logID string, root *Controller) *GraphView {
 }
 
 func (v *GraphView) Update() {
-	// TODO: update graph widget
-	v.wrap.SetWidget(v.graph)
+	v.wrap.SetWidget(v.loading)
+
+	go v.sf.Do("update", func() (interface{}, error) {
+		ch, err := v.Root.Api.SearchFuncCalls(v.LogID, restapi.SearchFuncCallParams{})
+		if err != nil {
+			log.Panic(err)
+		}
+
+		// TODO: update graph widget
+		lines := make([]Line, 0, 1000)
+		for fc := range ch {
+			line := Line{
+				Start: image.Point{
+					X: int(fc.StartTime),
+					Y: int(fc.GID),
+				},
+				Length:    int(fc.EndTime - fc.StartTime),
+				Type:      VerticalLine,
+				StartDeco: LineTerminationNormal,
+				EndDeco:   LineTerminationNone,
+				StyleName: "running", // TODO
+			}
+			lines = append(lines, line)
+
+			// print a log
+			b, _ := json.Marshal(line)
+			log.Println(string(b))
+		}
+		v.graph.SetLines(lines)
+
+		v.Root.UI.Update(func() {
+			v.wrap.SetWidget(v.graph)
+		})
+		return nil, nil
+	})
 }
 func (v *GraphView) SetKeybindings() {
 	// do nothing

@@ -69,6 +69,9 @@ func newGraphWidget() *GraphWidget {
 func (v *GraphWidget) RemoveLines() {
 	v.lines = nil
 }
+func (v *GraphWidget) SetLines(lines []Line) {
+	v.lines = lines
+}
 func (v *GraphWidget) AddLine(line Line) {
 	if line.Length <= 0 {
 		log.Panic("invalid line. line length should larger than 0")
