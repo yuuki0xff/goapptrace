@@ -2,6 +2,7 @@ package logviewer
 
 import (
 	"image"
+	"log"
 
 	"github.com/marcusolsson/tui-go"
 )
@@ -12,7 +13,19 @@ type wrapWidget struct {
 }
 
 func (w *wrapWidget) SetWidget(widget tui.Widget) {
+	if widget == nil {
+		log.Panic("widget argument should not nil")
+	}
+	var focused bool
+	if w.Widget != nil {
+		// un-focus the old widget.
+		focused = w.Widget.IsFocused()
+		w.Widget.SetFocused(false)
+	}
+
+	// focus the new widget.
 	w.Widget = widget
+	w.Widget.SetFocused(focused)
 }
 
 func (w *wrapWidget) Draw(p *tui.Painter)                          { w.Widget.Draw(p) }

@@ -36,6 +36,7 @@ func newSelectLogView(root *Controller) *selectLogView {
 	v.fc = fc
 
 	v.logView.SetWidget(v.loading)
+	v.logView.SetFocused(true)
 	v.Widget = tui.NewVBox(
 		&v.logView,
 		tui.NewSpacer(),

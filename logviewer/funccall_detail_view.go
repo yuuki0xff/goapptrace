@@ -40,6 +40,7 @@ func newFuncCallDetailView(logID string, record *restapi.FuncCall, root *Control
 	fc := &tui.SimpleFocusChain{}
 	fc.Set(v.funcInfoTable, v.framesTable)
 	v.fc = fc
+	v.funcInfoTable.SetFocused(true)
 
 	v.Widget = tui.NewVBox(
 		v.funcInfoTable,

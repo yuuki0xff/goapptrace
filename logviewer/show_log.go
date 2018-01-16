@@ -39,6 +39,7 @@ func newShowLogView(logID string, root *Controller) *showLogView {
 	v.fc = fc
 
 	v.logList.SetWidget(v.loading)
+	v.logList.SetFocused(true)
 	v.Widget = tui.NewVBox(
 		&v.logList,
 		tui.NewSpacer(),
