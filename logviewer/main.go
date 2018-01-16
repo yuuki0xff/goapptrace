@@ -40,6 +40,33 @@ func (v *Controller) Run() error {
 		Fg:   tui.ColorRed,
 		Bold: tui.DecorationOn,
 	})
+	theme.SetStyle("line.stopped", tui.Style{
+		Fg: tui.ColorBlue,
+	})
+	theme.SetStyle("line.stopped.selected", tui.Style{
+		Fg:      tui.ColorBlue,
+		Bold:    tui.DecorationOn,
+		Reverse: tui.DecorationOn,
+	})
+	theme.SetStyle("line.stopped.marked", tui.Style{
+		Fg:   tui.ColorWhite,
+		Bg:   tui.ColorBlue,
+		Bold: tui.DecorationOn,
+	})
+	theme.SetStyle("line.running", tui.Style{
+		Fg:   tui.ColorGreen,
+		Bold: tui.DecorationOn,
+	})
+	theme.SetStyle("line.running.selected", tui.Style{
+		Fg:      tui.ColorGreen,
+		Bold:    tui.DecorationOn,
+		Reverse: tui.DecorationOn,
+	})
+	theme.SetStyle("line.running.marked", tui.Style{
+		Fg:   tui.ColorWhite,
+		Bg:   tui.ColorGreen,
+		Bold: tui.DecorationOn,
+	})
 	v.UI.SetTheme(theme)
 	v.setView(v.view)
 
