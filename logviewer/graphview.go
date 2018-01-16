@@ -11,35 +11,43 @@ type GraphView struct {
 	LogID string
 	Root  *Controller
 
-	fc tui.FocusChain
+	wrap    *wrapWidget
+	graph   *GraphWidget
+	loading *tui.Label
+	fc      tui.FocusChain
 }
 
 func newGraphView(logID string, root *Controller) *GraphView {
 	v := &GraphView{
-		LogID: logID,
-		Root:  root,
+		LogID:   logID,
+		Root:    root,
+		graph:   newGraphWidget(),
+		loading: tui.NewLabel("Loading..."),
 	}
 
 	fc := &tui.SimpleFocusChain{}
 	fc.Set(v)
 	v.fc = fc
+	v.wrap = &wrapWidget{
+		Widget: v.loading,
+	}
+	v.Widget = v.wrap
 
-	p := newGraphWidget()
-	p.AddLine(Line{
+	v.graph.AddLine(Line{
 		Start:     image.Point{0, 0},
 		Length:    5,
 		Type:      VerticalLine,
 		StartDeco: LineTerminationNone,
 		EndDeco:   LineTerminationNormal,
 	})
-	p.AddLine(Line{
+	v.graph.AddLine(Line{
 		Start:     image.Point{1, 1},
 		Length:    10,
 		Type:      HorizontalLine,
 		StartDeco: LineTerminationNone,
 		EndDeco:   LineTerminationNormal,
 	})
-	p.AddLine(Line{
+	v.graph.AddLine(Line{
 		Start:     image.Point{2, 2},
 		Length:    10,
 		Type:      HorizontalLine,
@@ -47,7 +55,7 @@ func newGraphView(logID string, root *Controller) *GraphView {
 		EndDeco:   LineTerminationNone,
 		StyleName: "line.highlight",
 	})
-	p.AddLine(Line{
+	v.graph.AddLine(Line{
 		Start:     image.Point{3, 3},
 		Length:    10,
 		Type:      HorizontalLine,
@@ -55,12 +63,12 @@ func newGraphView(logID string, root *Controller) *GraphView {
 		EndDeco:   LineTerminationHighlight,
 		StyleName: "line.hint",
 	})
-	v.Widget = p
 	return v
 }
 
 func (v *GraphView) Update() {
-	// TODO
+	// TODO: update graph widget
+	v.wrap.SetWidget(v.graph)
 }
 func (v *GraphView) SetKeybindings() {
 	// do nothing
