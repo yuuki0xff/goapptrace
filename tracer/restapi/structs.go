@@ -18,9 +18,9 @@ type Logs struct {
 }
 type LogStatus storage.LogInfo
 
-type FuncCall logutil.FuncLog
-type FuncInfo logutil.FuncSymbol
-type FuncStatusInfo logutil.FuncStatus
+type FuncCall = logutil.FuncLog
+type FuncInfo = logutil.FuncSymbol
+type FuncStatusInfo = logutil.FuncStatus
 
 type SearchFuncCallParams struct {
 	Gid int64
