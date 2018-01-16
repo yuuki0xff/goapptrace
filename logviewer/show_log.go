@@ -47,7 +47,21 @@ func newShowLogView(logID string, root *Controller) *showLogView {
 	return v
 }
 func (v *showLogView) SetKeybindings() {
-	// do nothing
+	gotoLogList := func() {
+		v.Root.setView(newSelectLogView(v.Root))
+	}
+	gotoDetailView := func() {
+		v.onSelectedFuncCallRecord(nil)
+	}
+	gotoGraph := func() {
+		v.Root.setView(newGraphView(v.LogID, v.Root))
+	}
+
+	v.Root.UI.SetKeybinding("Left", gotoLogList)
+	v.Root.UI.SetKeybinding("h", gotoLogList)
+	v.Root.UI.SetKeybinding("Right", gotoDetailView)
+	v.Root.UI.SetKeybinding("l", gotoDetailView)
+	v.Root.UI.SetKeybinding("t", gotoGraph)
 }
 func (v *showLogView) FocusChain() tui.FocusChain {
 	return v.fc

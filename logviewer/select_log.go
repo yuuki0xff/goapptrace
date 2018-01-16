@@ -44,7 +44,12 @@ func newSelectLogView(root *Controller) *selectLogView {
 	return v
 }
 func (v *selectLogView) SetKeybindings() {
-	// do nothing
+	gotoLogView := func() {
+		v.onSelectedLog(nil)
+	}
+
+	v.Root.UI.SetKeybinding("Right", gotoLogView)
+	v.Root.UI.SetKeybinding("l", gotoLogView)
 }
 func (v *selectLogView) FocusChain() tui.FocusChain {
 	return v.fc

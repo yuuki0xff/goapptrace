@@ -77,7 +77,12 @@ func (v *FuncCallDetailView) Update() {
 
 }
 func (v *FuncCallDetailView) SetKeybindings() {
-	// do nothing
+	gotoLogView := func() {
+		v.Root.setView(newShowLogView(v.LogID, v.Root))
+	}
+
+	v.Root.UI.SetKeybinding("Left", gotoLogView)
+	v.Root.UI.SetKeybinding("h", gotoLogView)
 }
 func (v *FuncCallDetailView) FocusChain() tui.FocusChain {
 	return v.fc
