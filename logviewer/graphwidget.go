@@ -61,7 +61,7 @@ type GraphWidget struct {
 	lines []Line
 }
 
-func newPaintWidget() *GraphWidget {
+func newGraphWidget() *GraphWidget {
 	v := &GraphWidget{}
 	return v
 }

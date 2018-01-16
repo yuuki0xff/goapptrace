@@ -24,7 +24,7 @@ func newGraphView(logID string, root *Controller) *GraphView {
 	fc.Set(v)
 	v.fc = fc
 
-	p := newPaintWidget()
+	p := newGraphWidget()
 	p.AddLine(Line{
 		Start:     image.Point{0, 0},
 		Length:    5,
