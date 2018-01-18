@@ -15,15 +15,14 @@ type FuncCallDetailView struct {
 	Record *restapi.FuncCall
 	Root   *Controller
 
-	// TODO: エラーメッセージを表示できるようにする
 	updateGroup singleflight.Group
 
-	// TODO: これらのテーブルをラップする。
 	// focusChainに渡す値が常に同じになるようにしないと、クラッシュしてしまう問題を回避するため。
-	funcInfoTable *headerTable
-	framesTable   *headerTable
-	status        *tui.StatusBar
-	fc            *tui.SimpleFocusChain
+	funcInfoWrap wrapWidget
+	framesWrap   wrapWidget
+
+	status *tui.StatusBar
+	fc     *tui.SimpleFocusChain
 }
 
 func newFuncCallDetailView(logID string, record *restapi.FuncCall, root *Controller) *FuncCallDetailView {
@@ -32,35 +31,20 @@ func newFuncCallDetailView(logID string, record *restapi.FuncCall, root *Control
 		Record: record,
 		Root:   root,
 
-		funcInfoTable: newHeaderTable(
-			tui.NewLabel("Name"),
-			tui.NewLabel("Value"),
-		),
-		framesTable: newHeaderTable(
-			tui.NewLabel("Name"),
-			tui.NewLabel("Line"),
-			tui.NewLabel("PC"),
-		),
 		status: tui.NewStatusBar(LoadingText),
 		fc:     &tui.SimpleFocusChain{},
 	}
 	v.status.SetPermanentText("Function Call Detail")
-	v.funcInfoTable.OnItemActivated(v.onSelectedFilter)
-	v.framesTable.OnItemActivated(v.onSelectedFrame)
-	v.funcInfoTable.SetFocused(true)
+	v.swapWidget(v.newWidgets())
 
-	v.rebuildWidget()
-	return v
-}
-
-func (v *FuncCallDetailView) rebuildWidget() {
-	v.fc.Set(v.funcInfoTable, v.framesTable)
+	v.fc.Set(&v.funcInfoWrap, &v.framesWrap)
 	v.Widget = tui.NewVBox(
-		v.funcInfoTable,
-		v.framesTable,
+		&v.funcInfoWrap,
+		&v.framesWrap,
 		tui.NewSpacer(),
 		v.status,
 	)
+	return v
 }
 
 func (v *FuncCallDetailView) Update() {
@@ -68,6 +52,8 @@ func (v *FuncCallDetailView) Update() {
 
 	go v.updateGroup.Do("update", func() (interface{}, error) {
 		var err error
+		funcInfoTable, framesTable := v.newWidgets()
+
 		defer func() {
 			if err != nil {
 				//v.wrap.SetWidget(newErrorMsg(err))
@@ -76,14 +62,11 @@ func (v *FuncCallDetailView) Update() {
 				//v.wrap.SetWidget(v.table)
 				v.status.SetText("")
 			}
-			v.rebuildWidget()
+			v.swapWidget(funcInfoTable, framesTable)
 			v.Root.UI.Update(func() {})
 		}()
 
 		func() {
-			funcInfoTable := newHeaderTable(v.funcInfoTable.Headers...)
-			framesTable := newHeaderTable(v.framesTable.Headers...)
-
 			funcInfoTable.AppendRow(
 				tui.NewLabel("GID"),
 				tui.NewLabel(strconv.Itoa(int(v.Record.GID))),
@@ -107,8 +90,6 @@ func (v *FuncCallDetailView) Update() {
 					tui.NewLabel("("+strconv.Itoa(int(fs.PC))+")"),
 				)
 			}
-			v.funcInfoTable = funcInfoTable
-			v.framesTable = framesTable
 		}()
 		return nil, nil
 	})
@@ -128,15 +109,38 @@ func (v *FuncCallDetailView) Quit() {
 	// do nothing
 }
 
-func (v *FuncCallDetailView) onSelectedFilter(*tui.Table) {
-	if v.funcInfoTable.Selected() == 0 {
+func (v *FuncCallDetailView) onSelectedFilter(funcInfoTable *tui.Table) {
+	if funcInfoTable.Selected() == 0 {
 		return
 	}
 	log.Panic("not implemented")
 }
-func (v *FuncCallDetailView) onSelectedFrame(*tui.Table) {
-	if v.framesTable.Selected() == 0 {
+func (v *FuncCallDetailView) onSelectedFrame(framesTable *tui.Table) {
+	if framesTable.Selected() == 0 {
 		return
 	}
 	log.Panic("not implemented")
+}
+
+// swapWidget swaps all widgets in the current view.
+func (v *FuncCallDetailView) swapWidget(funcInfoTable *headerTable, framesTable *headerTable) {
+	v.funcInfoWrap.SetWidget(funcInfoTable)
+	v.framesWrap.SetWidget(framesTable)
+}
+
+// newWidgets returns new widget objects
+func (v *FuncCallDetailView) newWidgets() (funcInfoTable *headerTable, framesTable *headerTable) {
+	funcInfoTable = newHeaderTable(
+		tui.NewLabel("Name"),
+		tui.NewLabel("Value"),
+	)
+	framesTable = newHeaderTable(
+		tui.NewLabel("Name"),
+		tui.NewLabel("Line"),
+		tui.NewLabel("PC"),
+	)
+
+	funcInfoTable.OnItemActivated(v.onSelectedFilter)
+	framesTable.OnItemActivated(v.onSelectedFrame)
+	return
 }
