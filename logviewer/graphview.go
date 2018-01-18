@@ -64,37 +64,7 @@ func (v *GraphView) Update() {
 				return
 			}
 
-			// TODO: update graph widget
-			lines := make([]Line, 0, 1000)
-			for fc := range ch {
-				styleName := "line."
-				if fc.IsEnded() {
-					styleName += "stopped"
-				} else {
-					styleName += "running"
-				}
-
-				// TODO: check if this line is selected.
-				// TODO: check if this line is marked.
-				// TODO: check if this line must hidden.
-
-				line := Line{
-					Start: image.Point{
-						X: int(fc.StartTime),
-						Y: int(fc.GID),
-					},
-					Length:    int(fc.EndTime - fc.StartTime),
-					Type:      VerticalLine,
-					StartDeco: LineTerminationNormal,
-					EndDeco:   LineTerminationNone,
-					StyleName: styleName,
-				}
-				lines = append(lines, line)
-
-				// print a log
-				b, _ := json.Marshal(line)
-				log.Println(string(b))
-			}
+			lines := v.buildLines(ch)
 			v.graph.SetLines(lines)
 		}()
 		return nil, nil
@@ -121,4 +91,42 @@ func (v *GraphView) FocusChain() tui.FocusChain {
 }
 func (v *GraphView) Quit() {
 	// do nothing
+}
+
+// buildLinesは、graphを構成する線分を構築して返す。
+func (v *GraphView) buildLines(ch chan restapi.FuncCall) (lines []Line) {
+	// TODO: widget
+	lines = make([]Line, 0, 1000)
+
+	// TODO: update graph widget
+	for fc := range ch {
+		styleName := "line."
+		if fc.IsEnded() {
+			styleName += "stopped"
+		} else {
+			styleName += "running"
+		}
+
+		// TODO: check if this line is selected.
+		// TODO: check if this line is marked.
+		// TODO: check if this line must hidden.
+
+		line := Line{
+			Start: image.Point{
+				X: int(fc.StartTime),
+				Y: int(fc.GID),
+			},
+			Length:    int(fc.EndTime - fc.StartTime),
+			Type:      VerticalLine,
+			StartDeco: LineTerminationNormal,
+			EndDeco:   LineTerminationNone,
+			StyleName: styleName,
+		}
+		lines = append(lines, line)
+
+		// print a log
+		b, _ := json.Marshal(line)
+		log.Println(string(b))
+	}
+	return lines
 }
