@@ -23,6 +23,9 @@ type GraphView struct {
 	status *tui.StatusBar
 	graph  *GraphWidget
 	fc     tui.FocusChain
+
+	// 現在選択されている状態のFuncCallイベントのID
+	selectedFLID logutil.FuncLogID
 }
 
 func newGraphView(logID string, root *Controller) *GraphView {
@@ -67,11 +70,13 @@ func (v *GraphView) Update() {
 				return
 			}
 
-			// TODO: 取得するコードを作る。現在は、仮の値を設定している。
-			selectedID := logutil.FuncLogID(0)
-			var config *storage.UIConfig
+			var ls restapi.LogStatus
+			ls, err = v.Root.Api.LogStatus(v.LogID)
+			if err != nil {
+				return
+			}
 
-			lines := v.buildLines(ch, selectedID, config)
+			lines := v.buildLines(ch, v.selectedFLID, &ls.Metadata.UI)
 			v.graph.SetLines(lines)
 		}()
 		return nil, nil
