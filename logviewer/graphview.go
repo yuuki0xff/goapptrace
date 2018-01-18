@@ -98,7 +98,7 @@ func (v *GraphView) buildLines(ch chan restapi.FuncCall) (lines []Line) {
 	// TODO: widget
 	lines = make([]Line, 0, 1000)
 
-	// TODO: update graph widget
+	// TODO: build lines
 	for fc := range ch {
 		styleName := "line."
 		if fc.IsEnded() {
