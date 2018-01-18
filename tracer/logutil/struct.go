@@ -56,6 +56,9 @@ type FuncLog struct {
 }
 
 type RawFuncLog struct {
+	// TODO: Time fieldに適切な値を書き込む
+	// TODO: ドキュメントを書く
+
 	Time      Time
 	Tag       TagName        `json:"tag"`
 	Timestamp int64          `json:"timestamp"`

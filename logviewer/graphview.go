@@ -147,6 +147,11 @@ func (v *GraphView) buildLines(ch chan restapi.FuncCall, selectedFuncCall loguti
 			}
 		}
 
+		// TODO: Lineの長さを適切にする
+		// EndTimeとStartTimeがタイムスタンプ(1秒単位の絶対時間)であるため、1秒未満で実行が終了する関数の呼び出しログは、
+		// 長さゼロのLineとしてレンダリングされてしまう。
+		// どのような軸を使用するかにもよるが、基本的に連番となるfieldの値を使用する。
+		// もしくは、nanosecond程度の精度がある時刻を採用する。
 		line := Line{
 			Start: image.Point{
 				X: int(fc.StartTime),
