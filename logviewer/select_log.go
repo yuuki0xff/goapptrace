@@ -104,7 +104,7 @@ func (v *selectLogView) Update() {
 
 // ログを選択したときにコールバックされる関数。
 func (v *selectLogView) onSelectedLog(table *tui.Table) {
-	if v.table.Selected() == 0 {
+	if v.table.Selected() <= 0 {
 		return
 	}
 

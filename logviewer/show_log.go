@@ -129,7 +129,7 @@ func (v *showLogView) Update() {
 	})
 }
 func (v *showLogView) onSelectedFuncCallRecord(table *tui.Table) {
-	if v.table.Selected() == 0 {
+	if v.table.Selected() <= 0 {
 		return
 	}
 	rec := &v.records[v.table.Selected()]

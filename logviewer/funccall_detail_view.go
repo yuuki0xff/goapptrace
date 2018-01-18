@@ -110,13 +110,13 @@ func (v *FuncCallDetailView) Quit() {
 }
 
 func (v *FuncCallDetailView) onSelectedFilter(funcInfoTable *tui.Table) {
-	if funcInfoTable.Selected() == 0 {
+	if funcInfoTable.Selected() <= 0 {
 		return
 	}
 	log.Panic("not implemented")
 }
 func (v *FuncCallDetailView) onSelectedFrame(framesTable *tui.Table) {
-	if framesTable.Selected() == 0 {
+	if framesTable.Selected() <= 0 {
 		return
 	}
 	log.Panic("not implemented")
