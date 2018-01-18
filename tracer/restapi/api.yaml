@@ -102,6 +102,14 @@ definitions:
         type: object
         description: User interface settings
         properties:
+          func-calls:
+            type: object
+            additionalProperties:
+              $ref: '#/definitions/log-metadata-item-setting'
+            example:
+              '10':
+                pinned: true
+                comment: This function call event is pinned.
           funcs:
             type: object
             description: Pinned items
