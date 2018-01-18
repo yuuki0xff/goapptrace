@@ -4,9 +4,12 @@ import (
 	"encoding/json"
 	"image"
 	"log"
+	"strconv"
 
 	"github.com/marcusolsson/tui-go"
+	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
+	"github.com/yuuki0xff/goapptrace/tracer/storage"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -64,7 +67,11 @@ func (v *GraphView) Update() {
 				return
 			}
 
-			lines := v.buildLines(ch)
+			// TODO: 取得するコードを作る。現在は、仮の値を設定している。
+			selectedID := logutil.FuncLogID(0)
+			var config *storage.UIConfig
+
+			lines := v.buildLines(ch, selectedID, config)
 			v.graph.SetLines(lines)
 		}()
 		return nil, nil
@@ -94,7 +101,7 @@ func (v *GraphView) Quit() {
 }
 
 // buildLinesは、graphを構成する線分を構築して返す。
-func (v *GraphView) buildLines(ch chan restapi.FuncCall) (lines []Line) {
+func (v *GraphView) buildLines(ch chan restapi.FuncCall, selectedFuncCall logutil.FuncLogID, config *storage.UIConfig) (lines []Line) {
 	lines = make([]Line, 0, 1000)
 
 	// TODO: build lines
@@ -106,9 +113,34 @@ func (v *GraphView) buildLines(ch chan restapi.FuncCall) (lines []Line) {
 			styleName += "running"
 		}
 
-		// TODO: check if this line is selected.
-		// TODO: check if this line is marked.
-		// TODO: check if this line must hidden.
+		// TODO: fc.IDが設定されてない！？
+		if fc.ID == selectedFuncCall {
+			// fc is selected.
+			styleName += ".selected"
+		} else {
+			var pinned bool
+			var masked bool
+
+			funcs := v.frames2funcs(fc.Frames)
+			for _, fid := range funcs {
+				if f, ok := config.Funcs[fid]; ok {
+					pinned = pinned || f.Pinned
+					masked = masked || f.Masked
+				}
+			}
+			if g, ok := config.Goroutines[fc.GID]; ok {
+				pinned = pinned || g.Pinned
+				masked = masked || g.Masked
+			}
+
+			if masked {
+				// fc should not display.
+				continue
+			} else if pinned {
+				// fc is marked.
+				styleName += ".marked"
+			}
+		}
 
 		line := Line{
 			Start: image.Point{
@@ -128,4 +160,16 @@ func (v *GraphView) buildLines(ch chan restapi.FuncCall) (lines []Line) {
 		log.Println(string(b))
 	}
 	return lines
+}
+
+// frames2funcs converts logutil.FuncStatusID to logutil.FuncID.
+func (v *GraphView) frames2funcs(frames []logutil.FuncStatusID) (funcs []logutil.FuncID) {
+	for _, id := range frames {
+		fs, err := v.Root.Api.FuncStatus(v.LogID, strconv.Itoa(int(id)))
+		if err != nil {
+			log.Panic(err)
+		}
+		funcs = append(funcs, fs.Func)
+	}
+	return
 }
