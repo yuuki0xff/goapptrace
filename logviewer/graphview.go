@@ -95,7 +95,6 @@ func (v *GraphView) Quit() {
 
 // buildLinesは、graphを構成する線分を構築して返す。
 func (v *GraphView) buildLines(ch chan restapi.FuncCall) (lines []Line) {
-	// TODO: widget
 	lines = make([]Line, 0, 1000)
 
 	// TODO: build lines
