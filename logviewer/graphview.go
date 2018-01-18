@@ -150,7 +150,7 @@ func (v *GraphView) Update() {
 	})
 }
 func (v *GraphView) SetKeybindings() {
-	// do nothing
+	// TODO: impl key event handlers
 	up := func() {}
 	right := func() {}
 	down := func() {}
