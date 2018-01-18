@@ -38,55 +38,6 @@ func newGraphView(logID string, root *Controller) *GraphView {
 		v.graph,
 		v.status,
 	)
-
-	v.graph.AddLine(Line{
-		Start:     image.Point{0, 0},
-		Length:    5,
-		Type:      VerticalLine,
-		StartDeco: LineTerminationNone,
-		EndDeco:   LineTerminationNormal,
-		StyleName: "line.stopped",
-	})
-	v.graph.AddLine(Line{
-		Start:     image.Point{1, 0},
-		Length:    5,
-		Type:      VerticalLine,
-		StartDeco: LineTerminationNone,
-		EndDeco:   LineTerminationNormal,
-		StyleName: "line.stopped.selected",
-	})
-	v.graph.AddLine(Line{
-		Start:     image.Point{2, 0},
-		Length:    5,
-		Type:      VerticalLine,
-		StartDeco: LineTerminationNone,
-		EndDeco:   LineTerminationNormal,
-		StyleName: "line.stopped.marked",
-	})
-	v.graph.AddLine(Line{
-		Start:     image.Point{3, 1},
-		Length:    10,
-		Type:      HorizontalLine,
-		StartDeco: LineTerminationNone,
-		EndDeco:   LineTerminationNormal,
-		StyleName: "line.running",
-	})
-	v.graph.AddLine(Line{
-		Start:     image.Point{3, 2},
-		Length:    10,
-		Type:      HorizontalLine,
-		StartDeco: LineTerminationHighlight,
-		EndDeco:   LineTerminationNone,
-		StyleName: "line.running.selected",
-	})
-	v.graph.AddLine(Line{
-		Start:     image.Point{3, 3},
-		Length:    10,
-		Type:      HorizontalLine,
-		StartDeco: LineTerminationHighlight,
-		EndDeco:   LineTerminationHighlight,
-		StyleName: "line.running.marked",
-	})
 	return v
 }
 
