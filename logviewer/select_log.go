@@ -25,15 +25,11 @@ type selectLogView struct {
 
 func newSelectLogView(root *Controller) *selectLogView {
 	v := &selectLogView{
-		Root: root,
-		table: newHeaderTable(
-			tui.NewLabel("LogID"),
-		),
+		Root:   root,
 		status: tui.NewStatusBar(LoadingText),
 	}
 	v.status.SetPermanentText("Log List")
-	v.table.OnItemActivated(v.onSelectedLog)
-	v.wrap.SetWidget(v.table)
+	v.wrap.SetWidget(tui.NewSpacer())
 
 	fc := &tui.SimpleFocusChain{}
 	fc.Set(&v.wrap)
@@ -84,7 +80,7 @@ func (v *selectLogView) Update() {
 			if err != nil {
 				return
 			}
-			table := newHeaderTable(v.table.Headers...)
+			table := v.newTable()
 
 			if len(logs) == 0 {
 				err = errors.New(NoLogFiles)
@@ -112,4 +108,12 @@ func (v *selectLogView) onSelectedLog(table *tui.Table) {
 		v.logs[v.table.Selected()-1].ID,
 		v.Root,
 	))
+}
+
+func (v *selectLogView) newTable() *headerTable {
+	t := newHeaderTable(
+		tui.NewLabel("LogID"),
+	)
+	t.OnItemActivated(v.onSelectedLog)
+	return t
 }

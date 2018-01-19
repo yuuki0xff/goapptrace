@@ -24,19 +24,12 @@ type showLogView struct {
 
 func newShowLogView(logID string, root *Controller) *showLogView {
 	v := &showLogView{
-		LogID: logID,
-		Root:  root,
-		table: newHeaderTable(
-			tui.NewLabel("StartTime"),
-			tui.NewLabel("ExecTime"),
-			tui.NewLabel("GID"),
-			tui.NewLabel("Module.Func:Line"),
-		),
+		LogID:  logID,
+		Root:   root,
 		status: tui.NewStatusBar(LoadingText),
 	}
 	v.status.SetPermanentText("Function Call Logs")
-	v.table.OnItemActivated(v.onSelectedFuncCallRecord)
-	v.wrap.SetWidget(v.table)
+	v.wrap.SetWidget(tui.NewSpacer())
 
 	fc := &tui.SimpleFocusChain{}
 	fc.Set(&v.wrap)
@@ -77,7 +70,7 @@ func (v *showLogView) Update() {
 
 	go v.updateGroup.Do("update", func() (interface{}, error) { // nolint: errcheck
 		var err error
-		table := newHeaderTable(v.table.Headers...)
+		table := v.newTable()
 		records := make([]restapi.FuncCall, 0, 10000)
 
 		defer v.Root.UI.Update(func() {
@@ -134,4 +127,14 @@ func (v *showLogView) onSelectedFuncCallRecord(table *tui.Table) {
 	}
 	rec := &v.records[v.table.Selected()-1]
 	v.Root.setView(newFuncCallDetailView(v.LogID, rec, v.Root))
+}
+func (v *showLogView) newTable() *headerTable {
+	t := newHeaderTable(
+		tui.NewLabel("StartTime"),
+		tui.NewLabel("ExecTime"),
+		tui.NewLabel("GID"),
+		tui.NewLabel("Module.Func:Line"),
+	)
+	t.OnItemActivated(v.onSelectedFuncCallRecord)
+	return t
 }
