@@ -33,10 +33,6 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 )
 
-const (
-	DefaultTimeFormat = "15:04:05.000"
-)
-
 // logCatCmd represents the cat command
 var logCatCmd = &cobra.Command{
 	Use:   "cat",
@@ -174,7 +170,7 @@ func (w *TextLogWriter) Write(evt restapi.FuncCall) error {
 	_, err := fmt.Fprintf(
 		w.output,
 		"%s %d [%d] %s:%d\n",
-		evt.StartTime.UnixTime().Format(DefaultTimeFormat),
+		evt.StartTime.UnixTime().Format(config.TimestampFormat),
 		execTime,
 		evt.GID,
 		funcName, // module.func

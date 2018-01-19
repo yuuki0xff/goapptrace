@@ -3,6 +3,7 @@ package logviewer
 import (
 	"strconv"
 
+	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 	"github.com/yuuki0xff/tui-go"
 	"golang.org/x/sync/singleflight"
@@ -111,7 +112,7 @@ func (v *showLogView) Update() {
 				execTime := fc.EndTime - fc.StartTime
 
 				table.AppendRow(
-					tui.NewLabel(strconv.Itoa(int(fc.StartTime))),
+					tui.NewLabel(fc.StartTime.UnixTime().Format(config.TimestampFormat)),
 					tui.NewLabel(strconv.Itoa(int(execTime))),
 					tui.NewLabel(strconv.Itoa(int(fc.GID))),
 					tui.NewLabel(fi.Name+":"+strconv.Itoa(int(fs.Line))),
