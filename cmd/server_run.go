@@ -186,7 +186,7 @@ func getServerHandler(strg *storage.Storage) protocol.ServerHandler {
 			}
 			logobj.ReadOnly = true
 			if err = logobj.Open(); err != nil {
-				log.Panicf("failed to reopen a Log(%s): connID=%d err=%d", logobj.ID, id, err.Error())
+				log.Panicf("failed to reopen a Log(%s): connID=%d err=%s", logobj.ID, id, err.Error())
 			}
 		}()
 
