@@ -132,6 +132,6 @@ func (v *showLogView) onSelectedFuncCallRecord(table *tui.Table) {
 	if v.table.Selected() <= 0 {
 		return
 	}
-	rec := &v.records[v.table.Selected()]
+	rec := &v.records[v.table.Selected()-1]
 	v.Root.setView(newFuncCallDetailView(v.LogID, rec, v.Root))
 }
