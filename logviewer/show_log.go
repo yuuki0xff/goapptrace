@@ -132,7 +132,7 @@ func (v *showLogView) onSelectedFuncCallRecord(table *tui.Table) {
 func (v *showLogView) newTable() *headerTable {
 	t := newHeaderTable(
 		tui.NewLabel("StartTime"),
-		tui.NewLabel("ExecTime"),
+		tui.NewLabel("ExecTime (ns)"),
 		tui.NewLabel("GID"),
 		tui.NewLabel("Module.Func:Line"),
 	)
