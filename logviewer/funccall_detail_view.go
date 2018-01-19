@@ -50,7 +50,7 @@ func newFuncCallDetailView(logID string, record *restapi.FuncCall, root *Control
 func (v *FuncCallDetailView) Update() {
 	v.status.SetText(LoadingText)
 
-	go v.updateGroup.Do("update", func() (interface{}, error) {
+	go v.updateGroup.Do("update", func() (interface{}, error) { // nolint: errcheck
 		var err error
 		funcInfoTable, framesTable := v.newWidgets()
 

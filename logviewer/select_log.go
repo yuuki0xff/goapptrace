@@ -65,7 +65,7 @@ func (v *selectLogView) Quit() {
 func (v *selectLogView) Update() {
 	v.status.SetText(LoadingText)
 
-	go v.updateGroup.Do("update", func() (interface{}, error) {
+	go v.updateGroup.Do("update", func() (interface{}, error) { // nolint: errcheck
 		var err error
 		defer func() {
 			if err != nil {

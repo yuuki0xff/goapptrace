@@ -50,7 +50,7 @@ func newGraphView(logID string, root *Controller) *GraphView {
 func (v *GraphView) Update() {
 	v.status.SetText(LoadingText)
 
-	go v.updateGroup.Do("update", func() (interface{}, error) {
+	go v.updateGroup.Do("update", func() (interface{}, error) { // nolint: errcheck
 		var err error
 		defer func() {
 			if err != nil {

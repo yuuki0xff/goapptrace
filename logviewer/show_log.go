@@ -75,7 +75,7 @@ func (v *showLogView) Quit() {
 func (v *showLogView) Update() {
 	v.status.SetText(LoadingText)
 
-	go v.updateGroup.Do("update", func() (interface{}, error) {
+	go v.updateGroup.Do("update", func() (interface{}, error) { // nolint: errcheck
 		var err error
 		table := newHeaderTable(v.table.Headers...)
 		records := make([]restapi.FuncCall, 0, 10000)
