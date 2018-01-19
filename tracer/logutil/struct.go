@@ -57,7 +57,7 @@ type FuncLog struct {
 }
 
 type RawFuncLog struct {
-	// TODO: Time fieldに適切な値を書き込む
+	// TODO: ID fieldに適切な値を書き込む
 	// TODO: ドキュメントを書く
 
 	ID        RawFuncLogID
