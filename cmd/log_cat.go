@@ -161,7 +161,7 @@ func NewTextLogWriter(output io.Writer) *TextLogWriter {
 	}
 }
 func (w *TextLogWriter) WriteHeader() error {
-	_, err := fmt.Fprintln(w.output, "StartTime ~ ExecTime [GID] Module.Func:Line")
+	_, err := fmt.Fprintln(w.output, "StartTime ExecTime [GID] Module.Func:Line")
 	return err
 }
 func (w *TextLogWriter) Write(evt restapi.FuncCall) error {
@@ -173,7 +173,7 @@ func (w *TextLogWriter) Write(evt restapi.FuncCall) error {
 
 	_, err := fmt.Fprintf(
 		w.output,
-		"%s %d %d %s:%d\n",
+		"%s %d [%d] %s:%d\n",
 		evt.StartTime.UnixTime().Format(DefaultTimeFormat),
 		execTime,
 		evt.GID,
