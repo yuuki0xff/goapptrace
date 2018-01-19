@@ -84,11 +84,15 @@ func (v *GraphView) Update() {
 }
 func (v *GraphView) SetKeybindings() {
 	// TODO: impl key event handlers
+	gotoLogView := func() {
+		v.Root.setView(newShowLogView(v.LogID, v.Root))
+	}
 	up := func() {}
 	right := func() {}
 	down := func() {}
 	left := func() {}
 
+	v.Root.UI.SetKeybinding("d", gotoLogView)
 	v.Root.UI.SetKeybinding("k", up)
 	v.Root.UI.SetKeybinding("Up", up)
 	v.Root.UI.SetKeybinding("l", right)
