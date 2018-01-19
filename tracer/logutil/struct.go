@@ -10,6 +10,7 @@ const (
 type GID int64 // GID - Goroutine ID
 type TxID uint64
 type FuncLogID int
+type RawFuncLogID int
 type Time int
 type TagName string
 
@@ -59,7 +60,7 @@ type RawFuncLog struct {
 	// TODO: Time fieldに適切な値を書き込む
 	// TODO: ドキュメントを書く
 
-	Time      Time
+	ID        RawFuncLogID
 	Tag       TagName        `json:"tag"`
 	Timestamp int64          `json:"timestamp"`
 	Frames    []FuncStatusID `json:"frames"` // Frames[0] is current frame, Frames[1] is the caller of Frame[0].

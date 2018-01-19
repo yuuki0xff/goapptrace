@@ -29,7 +29,7 @@ func TestStateSimulator_Next_startStopFuncs(t *testing.T) {
 	testData := []RawFuncLog{
 		// main() start
 		{
-			Time:      Time(1),
+			ID:        RawFuncLogID(1),
 			Tag:       "funcStart",
 			Timestamp: 1,
 			Frames: []FuncStatusID{
@@ -40,7 +40,7 @@ func TestStateSimulator_Next_startStopFuncs(t *testing.T) {
 		},
 		// main() end
 		{
-			Time:      Time(2),
+			ID:        RawFuncLogID(2),
 			Tag:       "funcEnd",
 			Timestamp: 2,
 			Frames: []FuncStatusID{
@@ -77,7 +77,7 @@ func TestStateSimulator_Next_withNestedCall(t *testing.T) {
 	testData := []RawFuncLog{
 		// main() start
 		{
-			Time:      Time(1),
+			ID:        RawFuncLogID(1),
 			Tag:       "funcStart",
 			Timestamp: 1,
 			Frames: []FuncStatusID{
@@ -88,7 +88,7 @@ func TestStateSimulator_Next_withNestedCall(t *testing.T) {
 		},
 		// main() -> func1() start
 		{
-			Time:      Time(2),
+			ID:        RawFuncLogID(2),
 			Tag:       "funcStart",
 			Timestamp: 2,
 			Frames: []FuncStatusID{
@@ -100,7 +100,7 @@ func TestStateSimulator_Next_withNestedCall(t *testing.T) {
 		},
 		// main() -> func1() -> func2() start
 		{
-			Time:      Time(3),
+			ID:        RawFuncLogID(3),
 			Tag:       "funcStart",
 			Timestamp: 3,
 			Frames: []FuncStatusID{
@@ -113,7 +113,7 @@ func TestStateSimulator_Next_withNestedCall(t *testing.T) {
 		},
 		// main() -> func1() -> func2() end
 		{
-			Time:      Time(4),
+			ID:        RawFuncLogID(4),
 			Tag:       "funcEnd",
 			Timestamp: 4,
 			Frames: []FuncStatusID{
@@ -126,7 +126,7 @@ func TestStateSimulator_Next_withNestedCall(t *testing.T) {
 		},
 		// main() -> func1() end
 		{
-			Time:      Time(5),
+			ID:        RawFuncLogID(5),
 			Tag:       "funcEnd",
 			Timestamp: 5,
 			Frames: []FuncStatusID{
@@ -138,7 +138,7 @@ func TestStateSimulator_Next_withNestedCall(t *testing.T) {
 		},
 		// main() end
 		{
-			Time:      Time(6),
+			ID:        RawFuncLogID(6),
 			Tag:       "funcEnd",
 			Timestamp: 6,
 			Frames: []FuncStatusID{
@@ -170,7 +170,7 @@ func TestStateSimulator_Next_startStopNewGoroutines(t *testing.T) {
 	testData := []RawFuncLog{
 		// main() start
 		{
-			Time:      Time(1),
+			ID:        RawFuncLogID(1),
 			Tag:       "funcStart",
 			Timestamp: 1,
 			Frames: []FuncStatusID{
@@ -182,7 +182,7 @@ func TestStateSimulator_Next_startStopNewGoroutines(t *testing.T) {
 		// main()
 		// newGoroutine() start
 		{
-			Time:      Time(2),
+			ID:        RawFuncLogID(2),
 			Tag:       "funcStart",
 			Timestamp: 2,
 			Frames: []FuncStatusID{
@@ -194,7 +194,7 @@ func TestStateSimulator_Next_startStopNewGoroutines(t *testing.T) {
 		// main()
 		// newGoroutine() end
 		{
-			Time:      Time(3),
+			ID:        RawFuncLogID(3),
 			Tag:       "funcEnd",
 			Timestamp: 3,
 			Frames: []FuncStatusID{
@@ -205,7 +205,7 @@ func TestStateSimulator_Next_startStopNewGoroutines(t *testing.T) {
 		},
 		// main() end
 		{
-			Time:      Time(4),
+			ID:        RawFuncLogID(4),
 			Tag:       "funcEnd",
 			Timestamp: 4,
 			Frames: []FuncStatusID{
@@ -234,7 +234,7 @@ func TestStateSimulator_Next_handlerIsNil(t *testing.T) {
 	testData := []RawFuncLog{
 		// main() start
 		{
-			Time:      Time(1),
+			ID:        RawFuncLogID(1),
 			Tag:       "funcStart",
 			Timestamp: 1,
 			Frames: []FuncStatusID{
@@ -245,7 +245,7 @@ func TestStateSimulator_Next_handlerIsNil(t *testing.T) {
 		},
 		// main() end
 		{
-			Time:      Time(2),
+			ID:        RawFuncLogID(2),
 			Tag:       "funcEnd",
 			Timestamp: 2,
 			Frames: []FuncStatusID{
@@ -274,7 +274,7 @@ func TestStateSimulator_Next_endlessFuncs(t *testing.T) {
 	testData := []RawFuncLog{
 		// main() start
 		{
-			Time:      Time(1),
+			ID:        RawFuncLogID(1),
 			Tag:       "funcStart",
 			Timestamp: 1,
 			Frames: []FuncStatusID{

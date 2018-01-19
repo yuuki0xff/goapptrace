@@ -38,7 +38,7 @@ func (s *StateSimulator) Next(fl RawFuncLog) {
 
 		s.funcLogs[id] = &FuncLog{
 			ID:        id,
-			StartTime: fl.Time,
+			StartTime: fl.ID,
 			EndTime:   NotEnded,
 			ParentID:  parentID,
 			Frames:    fl.Frames,
@@ -51,7 +51,7 @@ func (s *StateSimulator) Next(fl RawFuncLog) {
 			// 新しいgoroutineを追加
 			s.goroutines[fl.GID] = &Goroutine{
 				GID:       fl.GID,
-				StartTime: fl.Time,
+				StartTime: fl.ID,
 				EndTime:   NotEnded,
 			}
 		} else if isExistsGID && parentID == FuncLogID(-1) {
@@ -71,14 +71,14 @@ func (s *StateSimulator) Next(fl RawFuncLog) {
 
 		parentID := s.funcLogs[id].ParentID
 
-		s.funcLogs[id].EndTime = fl.Time
+		s.funcLogs[id].EndTime = fl.ID
 		delete(s.txids, fl.TxID)
 		s.stacks[fl.GID] = parentID
 
 		if parentID == FuncLogID(-1) {
 			// スタックが空になったので、goroutineが終了したと見なす。
 			// 終了時刻を更新。
-			s.goroutines[fl.GID].EndTime = fl.Time
+			s.goroutines[fl.GID].EndTime = fl.ID
 		}
 	default:
 		panic(fmt.Errorf("Unsupported tag: %s", fl.Tag))
