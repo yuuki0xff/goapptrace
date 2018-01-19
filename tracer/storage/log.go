@@ -416,7 +416,7 @@ func (l *Log) WalkFuncLog(fn func(evt logutil.FuncLog) error) error {
 func (l *Log) WalkFuncLogFile(i int64, fn func(evt logutil.FuncLog) error) error {
 	// SplitReadWriterのIndex()やWalk()は排他制御されているため、、
 	// ここでl.lock.RLock()をする必要がない。
-	return l.rawFuncLog.Index(int(i)).Walk(
+	return l.funcLog.Index(int(i)).Walk(
 		func() interface{} {
 			return &logutil.FuncLog{}
 		},
