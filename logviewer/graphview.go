@@ -118,7 +118,6 @@ func (v *GraphView) buildLines(ch chan restapi.FuncCall, selectedFuncCall loguti
 			styleName += "running"
 		}
 
-		// TODO: fc.IDが設定されてない！？
 		if fc.ID == selectedFuncCall {
 			// fc is selected.
 			styleName += ".selected"
