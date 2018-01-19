@@ -70,7 +70,7 @@ func TestRetrySender(t *testing.T) {
 		&logutil.RawFuncLog{
 			ID:        logutil.RawFuncLogID(0),
 			Tag:       "funcStart",
-			Timestamp: time.Now().Unix(),
+			Timestamp: logutil.NewTime(time.Now()),
 			Frames:    []logutil.FuncStatusID{0, 1},
 		},
 	); err != nil {
@@ -92,7 +92,7 @@ func TestRetrySender(t *testing.T) {
 		&logutil.RawFuncLog{
 			ID:        logutil.RawFuncLogID(1),
 			Tag:       "funcEnd",
-			Timestamp: time.Now().Unix(),
+			Timestamp: logutil.NewTime(time.Now()),
 			Frames:    []logutil.FuncStatusID{0, 2},
 		},
 	); err != nil {

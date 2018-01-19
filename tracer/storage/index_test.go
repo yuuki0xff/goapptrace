@@ -4,6 +4,8 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
 func TestIndex(t *testing.T) {
@@ -12,19 +14,19 @@ func TestIndex(t *testing.T) {
 
 	records := []IndexRecord{
 		{
-			Timestamp: time.Unix(10, 0),
+			Timestamp: logutil.NewTime(time.Unix(10, 0)),
 			Records:   10,
 		}, {
-			Timestamp: time.Unix(30, 0),
+			Timestamp: logutil.NewTime(time.Unix(30, 0)),
 			Records:   20,
 		}, {
-			Timestamp: time.Unix(50, 0),
+			Timestamp: logutil.NewTime(time.Unix(50, 0)),
 			Records:   15,
 		}, {
-			Timestamp: time.Unix(90, 0),
+			Timestamp: logutil.NewTime(time.Unix(90, 0)),
 			Records:   5,
 		}, {
-			Timestamp: time.Unix(110, 0),
+			Timestamp: logutil.NewTime(time.Unix(110, 0)),
 			Records:   50,
 		},
 	}

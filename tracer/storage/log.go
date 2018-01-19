@@ -377,9 +377,9 @@ func (l *Log) Search(start, end time.Time, fn func(evt logutil.RawFuncLog) error
 	var endIdx int64
 
 	if err := l.index.Walk(func(i int64, ir IndexRecord) error {
-		if start.Before(ir.Timestamp) {
+		if start.Before(ir.Timestamp.UnixTime()) {
 			startIdx = i - 1
-		} else if end.Before(ir.Timestamp) {
+		} else if end.Before(ir.Timestamp.UnixTime()) {
 			endIdx = i - 1
 			return StopIteration
 		}
@@ -517,13 +517,13 @@ func (l *Log) AppendRawFuncLog(raw *logutil.RawFuncLog) error {
 	if l.index.Len() > 0 {
 		last := l.index.Last()
 		last.Records++
-		last.Timestamp = time.Unix(raw.Timestamp, 0)
+		last.Timestamp = raw.Timestamp
 		if err := l.index.UpdateLast(last); err != nil {
 			return err
 		}
 	} else {
 		if err := l.index.Append(IndexRecord{
-			Timestamp: time.Unix(raw.Timestamp, 0),
+			Timestamp: raw.Timestamp,
 			Records:   1,
 			writing:   true,
 		}); err != nil {
@@ -649,9 +649,7 @@ func (l *Log) rotate() error {
 	}
 
 	return l.index.Append(IndexRecord{
-		Timestamp: time.Unix(0, 0),
-		Records:   0,
-		writing:   true,
+		writing: true,
 	})
 }
 

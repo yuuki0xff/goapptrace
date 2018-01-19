@@ -174,7 +174,7 @@ func TestLog_ReadDuringWriting(t *testing.T) {
 			rune(rand.Int()),
 		})
 		must(t, l.AppendRawFuncLog(&logutil.RawFuncLog{
-			ID:   logutil.Time(i),
+			ID:   logutil.RawFuncLogID(i),
 			Tag:  logutil.TagName(randomName),
 			GID:  logutil.GID(rand.Int()),
 			TxID: logutil.TxID(rand.Int()),

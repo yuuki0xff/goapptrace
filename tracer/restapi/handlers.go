@@ -238,8 +238,8 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 	//var mid int64
 	var minId int64
 	var maxId int64
-	var minTs int64
-	var maxTs int64
+	var minTs logutil.Time
+	var maxTs logutil.Time
 	var err error
 
 	gid, err = parseInt(q.Get("gid"), -1)
@@ -262,12 +262,12 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid max-id", http.StatusBadRequest)
 		return
 	}
-	minTs, err = parseInt(q.Get("min-timestamp"), -1)
+	minTs, err = parseTimestamp(q.Get("min-timestamp"), -1)
 	if err != nil {
 		http.Error(w, "invalid min-timestamp", http.StatusBadRequest)
 		return
 	}
-	maxTs, err = parseInt(q.Get("max-timestamp"), -1)
+	maxTs, err = parseTimestamp(q.Get("max-timestamp"), -1)
 	if err != nil {
 		http.Error(w, "invalid max-timestamp", http.StatusBadRequest)
 		return
@@ -279,13 +279,14 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 	// narrow the search range by ID and Timestamp.
 	if minId >= 0 || maxId >= 0 || minTs >= 0 || maxTs >= 0 {
 		var total int64
-		var lowerTs int64 // inclusive
+		var lowerTs logutil.Time // inclusive
 		err = logobj.WalkIndexRecord(func(i int64, ir storage.IndexRecord) error {
 			lowerID := total // exclusive if i != 0, else inclusive
 			total += ir.Records
 			upperID := total // inclusive
 
-			upperTs := ir.Timestamp.Unix() // inclusive
+			// TODO: 引数の法を、Time型に変更するほうがよい
+			upperTs := ir.Timestamp // inclusive
 
 			// by ID
 			if minIdx < i && lowerID < minId {
@@ -358,12 +359,12 @@ func (api APIv0) goroutineSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	q := r.URL.Query()
-	minTs, err := parseInt(q.Get("min-timestamp"), -1)
+	minTs, err := parseTimestamp(q.Get("min-timestamp"), -1)
 	if err != nil {
 		http.Error(w, "invalid min-timestamp", http.StatusBadRequest)
 		return
 	}
-	maxTs, err := parseInt(q.Get("max-timestamp"), -1)
+	maxTs, err := parseTimestamp(q.Get("max-timestamp"), -1)
 	if err != nil {
 		http.Error(w, "invalid max-timestamp", http.StatusBadRequest)
 		return
@@ -373,7 +374,7 @@ func (api APIv0) goroutineSearch(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan logutil.Goroutine, 1<<20) // buffer size is 1M records
 	go func() {
 		err = logobj.WalkIndexRecord(func(i int64, ir storage.IndexRecord) error {
-			if (minTs == -1 || minTs <= ir.Timestamp.Unix()) && (maxTs == -1 || ir.Timestamp.Unix() <= maxTs) {
+			if (minTs == -1 || minTs <= ir.Timestamp) && (maxTs == -1 || ir.Timestamp <= maxTs) {
 				return logobj.WalkGoroutine(i, func(g logutil.Goroutine) error {
 					ch <- g
 					return nil
@@ -488,4 +489,16 @@ func parseInt(value string, defaultValue int64) (int64, error) {
 		return 0, err
 	}
 	return int64(intValue), nil
+}
+
+func parseTimestamp(value string, defaultValue logutil.Time) (logutil.Time, error) {
+	if value == "" {
+		return defaultValue, nil
+	}
+	var ts logutil.Time
+	err := ts.UnmarshalText([]byte(value))
+	if err != nil {
+		return 0, err
+	}
+	return ts, nil
 }
