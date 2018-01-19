@@ -1,7 +1,7 @@
 package logviewer
 
 import (
-	"github.com/marcusolsson/tui-go"
+	"github.com/yuuki0xff/tui-go"
 	"github.com/pkg/errors"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"

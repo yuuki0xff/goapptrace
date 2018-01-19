@@ -3,7 +3,7 @@ package logviewer
 import (
 	"strconv"
 
-	"github.com/marcusolsson/tui-go"
+	"github.com/yuuki0xff/tui-go"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 	"golang.org/x/sync/singleflight"
 )

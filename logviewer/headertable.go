@@ -1,7 +1,7 @@
 package logviewer
 
 import (
-	"github.com/marcusolsson/tui-go"
+	"github.com/yuuki0xff/tui-go"
 )
 
 // ヘッダーを指定可能なテーブル

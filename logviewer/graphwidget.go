@@ -4,7 +4,7 @@ import (
 	"image"
 	"log"
 
-	"github.com/marcusolsson/tui-go"
+	"github.com/yuuki0xff/tui-go"
 )
 
 type LineType int
