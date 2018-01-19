@@ -3,8 +3,8 @@ package logviewer
 import (
 	"errors"
 
-	"github.com/yuuki0xff/tui-go"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
+	"github.com/yuuki0xff/tui-go"
 	"golang.org/x/sync/singleflight"
 )
 
