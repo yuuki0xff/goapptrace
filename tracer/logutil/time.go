@@ -6,12 +6,15 @@ import (
 )
 
 func NewTime(t time.Time) Time {
-	return Time(t.Unix())
+	return Time(t.UnixNano())
 }
 
 func (t Time) UnixTime() time.Time {
-	return time.Unix(int64(t), 0)
+	sec := int64(t) / 1e9
+	nanosec := int64(t) % 1e9
+	return time.Unix(sec, nanosec)
 }
+
 func (t Time) MarshalText() (text []byte, err error) {
 	s := strconv.FormatInt(int64(t), 10)
 	return []byte(s), nil
