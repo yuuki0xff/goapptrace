@@ -11,7 +11,7 @@ type GID int64 // GID - Goroutine ID
 type TxID uint64
 type FuncLogID int
 type RawFuncLogID int
-type Time int
+type Time int64
 type TagName string
 
 // RawFuncLogから実行時の状態を推測し、FuncLogとGoroutineオブジェクトを構築する。
@@ -62,7 +62,7 @@ type RawFuncLog struct {
 
 	ID        RawFuncLogID
 	Tag       TagName        `json:"tag"`
-	Timestamp int64          `json:"timestamp"`
+	Timestamp Time           `json:"timestamp"`
 	Frames    []FuncStatusID `json:"frames"` // Frames[0] is current frame, Frames[1] is the caller of Frame[0].
 	GID       GID            `json:"gid"`
 	TxID      TxID           `json:"txid"`
