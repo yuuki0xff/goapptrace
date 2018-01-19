@@ -26,7 +26,6 @@ import (
 	"io"
 	"log"
 	"strconv"
-	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
@@ -175,7 +174,7 @@ func (w *TextLogWriter) Write(evt restapi.FuncCall) error {
 	_, err := fmt.Fprintf(
 		w.output,
 		"%s %d %d %s:%d\n",
-		time.Unix(int64(evt.StartTime), 0).Format(DefaultTimeFormat),
+		evt.StartTime.UnixTime().Format(DefaultTimeFormat),
 		execTime,
 		evt.GID,
 		funcName, // module.func
