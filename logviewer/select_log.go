@@ -63,7 +63,13 @@ func (v *selectLogView) Update() {
 
 	go v.updateGroup.Do("update", func() (interface{}, error) { // nolint: errcheck
 		var err error
-		defer func() {
+		var logs []restapi.LogStatus
+		table := v.newTable()
+
+		defer v.Root.UI.Update(func() {
+			v.logs = logs
+			v.table = table
+
 			if err != nil {
 				v.wrap.SetWidget(newErrorMsg(err))
 				v.status.SetText(ErrorText)
@@ -71,16 +77,13 @@ func (v *selectLogView) Update() {
 				v.wrap.SetWidget(v.table)
 				v.status.SetText("")
 			}
-			v.Root.UI.Update(func() {})
-		}()
+		})
 
 		func() {
-			var logs []restapi.LogStatus
 			logs, err = v.Root.Api.Logs()
 			if err != nil {
 				return
 			}
-			table := v.newTable()
 
 			if len(logs) == 0 {
 				err = errors.New(NoLogFiles)
@@ -91,8 +94,6 @@ func (v *selectLogView) Update() {
 					)
 				}
 			}
-			v.logs = logs
-			v.table = table
 		}()
 		return nil, nil
 	})
