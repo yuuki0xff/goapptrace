@@ -22,8 +22,17 @@ package cmd
 
 import (
 	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+	"os"
+	"os/exec"
+	"path"
+	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"github.com/yuuki0xff/goapptrace/config"
 )
 
 // buildCmd represents the build command
@@ -33,9 +42,60 @@ var buildCmd = &cobra.Command{
 	Long: `Build is an useful command like "go build".
 Add trace codes to specified files before build, and build them.
 Source code is no change!`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
 		fmt.Println("build called")
-	},
+		return runBuild(conf, cmd.Flags(), cmd.OutOrStdout(), cmd.OutOrStderr(), args)
+	}),
+}
+
+func runBuild(conf *config.Config, flags *pflag.FlagSet, stdout, stderr io.Writer, targets []string) error {
+	tmpdir, err := ioutil.TempDir("", ".goapptrace.run")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tmpdir) // nolint: errcheck
+
+	goroot := path.Join(tmpdir, "goroot")
+	gopath := path.Join(tmpdir, "gopath")
+
+	// TODO: insert trace code
+
+	buildArgs := []string{"build"}
+	flags.Visit(func(flag *pflag.Flag) {
+		var flagname string
+		if flag.Shorthand == "" {
+			flagname = "-" + flag.Shorthand
+		} else {
+			flagname = "-" + flag.Name
+		}
+
+		value := flag.Value.String()
+		switch flag.Value.Type() {
+		case "bool":
+			if value == "true" {
+				buildArgs = append(buildArgs, flagname)
+			}
+		case "string":
+			if value != "" {
+				buildArgs = append(buildArgs, flagname, value)
+			}
+		case "int":
+			if value != "0" {
+				buildArgs = append(buildArgs, flagname, value)
+			}
+		default:
+			log.Panicf("invalid type name: %s", flag.Value.Type())
+		}
+	})
+	env := os.Environ()
+	env = append(env, "GOROOT="+goroot)
+	env = append(env, "GOPATH="+gopath)
+
+	buildCmd := exec.Command("go", buildArgs...)
+	buildCmd.Stdout = stdout
+	buildCmd.Stderr = stderr
+	buildCmd.Env = env
+	return buildCmd.Run()
 }
 
 func init() {
@@ -50,4 +110,70 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// buildCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+
+	// "go build" flags
+	// TODO: "go build"の引数との互換性を改善する。
+	//       現時点では、引数名の前に"--"がつくため、厳密には"go build"の引数とは互換性がない。
+	//       引数の解析エラーで発生するFlagErrorFuncで、フラグ名を修正して自分自身を呼び出すとよい。
+	buildCmd.Flags().StringP("o", "o", "", "forces build to write the resulting executable or object to the named output file.")
+	buildCmd.Flags().BoolP("i", "i", false, "install the packages that are dependencies of the target.")
+	buildCmd.Flags().BoolP("a", "a", false, "force rebuilding of packages that are already up-to-date.")
+	buildCmd.Flags().BoolP("n", "n", false, "print the commands but do not run them.")
+	buildCmd.Flags().IntP("p", "p", 0, "specifies the number of threads/commands to run.")
+	buildCmd.Flags().BoolP("race", "", false, "enable data race detection.")
+	buildCmd.Flags().BoolP("msan", "", false, "enable interoperation with memory sanitizer.")
+	buildCmd.Flags().BoolP("v", "v", false, "print the names of packages as they are compiled.")
+	buildCmd.Flags().BoolP("work", "", false, "print the name of the temporary work directory and do not delete it when exiting.")
+	buildCmd.Flags().BoolP("x", "x", false, "print the commands.")
+	buildCmd.Flags().StringP("asmflags", "", "", "arguments to pass on each go tool asm invocation.")
+	buildCmd.Flags().StringP("buildmode", "", "", "build mode to use. See 'go help buildmode' for more.")
+	buildCmd.Flags().StringP("compiler", "", "", "name of compiler to use, as in runtime.Compiler (gccgo or gc).")
+	buildCmd.Flags().StringP("gccgoflags", "", "", "arguments to pass on each gccgo compiler/linker invocation.")
+	buildCmd.Flags().StringP("gcflags", "", "", "arguments to pass on each go tool compile invocation.")
+	buildCmd.Flags().StringP("installsuffix", "", "", "a suffix to use in the name of the package installation directory.")
+	buildCmd.Flags().StringP("ldflags", "", "", "arguments to pass on each go tool link invocation.")
+	buildCmd.Flags().BoolP("linkshared", "", false, "link against shared libraries previously created with -buildmode=shared.")
+	buildCmd.Flags().StringP("pkgdir", "", "", "install and load all packages from dir instead of the usual locations.")
+	buildCmd.Flags().StringP("tags", "", "", "a space-separated list of build tags to consider satisfied during the build.")
+	buildCmd.Flags().StringP("toolexec", "", "", "a program to use to invoke toolchain programs like vet and asm.")
+
+	// golang標準のflagパッケージの形式の引数に対応するため、
+	// 引数名のprefixを必要に応じて"-"から"--"に変換する。
+	buildCmd.SetFlagErrorFunc(func(command *cobra.Command, e error) error {
+		// 定義済みの長いフラグ名 ("--"は含まない)
+		flagNames := map[string]bool{}
+		buildCmd.Flags().VisitAll(func(flag *pflag.Flag) {
+			flagNames[flag.Name] = true
+		})
+
+		var converted bool
+		args := []string{}
+		// TODO: fix flag names
+		for _, arg := range os.Args[1:] {
+			if strings.HasPrefix(arg, "-") && flagNames[arg[1:]] {
+				// "-flag"から"--flag"形式に変換する。
+				args = append(args, "--"+arg[1:])
+				converted = true
+			} else {
+				args = append(args, arg)
+			}
+		}
+
+		if !converted {
+			// 引数の変換が行えないにも関わらずエラーが発生した状況である。
+			// 間違った引数を与えていた可能性があるので、ここで実行を中断。
+			return e
+		}
+
+		exe, err := os.Executable()
+		if err != nil {
+			return err
+		}
+
+		cmd := exec.Command(exe, args...)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		return cmd.Run()
+	})
 }
