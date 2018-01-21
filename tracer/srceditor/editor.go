@@ -21,6 +21,27 @@ type CodeEditor struct {
 	tmpl *Template
 }
 
+// inFileにトレース用コードを追加し、outFileに書き出す。
+// inFileの内容は変更されない。
+func (ce *CodeEditor) EditFile(inFile, outFile string) error {
+	src, err := ioutil.ReadFile(inFile)
+	if err != nil {
+		return err
+	}
+
+	info, err := os.Stat(inFile)
+	if err != nil {
+		return err
+	}
+
+	var newSrc []byte
+	if newSrc, err = ce.edit(inFile, src); err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(outFile, newSrc, info.Mode())
+}
+
 // fnameにトレース用のコードを追加する。
 // 指定されたファイルは上書きされる。
 func (ce *CodeEditor) EditFileOverwrite(fname string) error {
