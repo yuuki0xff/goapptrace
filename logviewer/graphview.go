@@ -89,7 +89,9 @@ func (v *GraphView) Update() {
 	})
 }
 func (v *GraphView) SetKeybindings() {
-	// TODO: impl key event handlers
+	// TODO: スクロール処理を高速化する。
+	//       現在は、サーバからのログ取得からレンダリングまでの全ての工程をスクロールのたびに行っている。
+	//       描画済みの線のオフセットを変更するだけにすれば、軽量化出来るはず。
 	gotoLogView := func() {
 		v.Root.setView(newShowLogView(v.LogID, v.Root))
 	}
