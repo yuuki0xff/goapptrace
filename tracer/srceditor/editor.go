@@ -10,11 +10,18 @@ import (
 	"path"
 )
 
+// 既存のソースコードを編集し、トレース用のコードを追加する。
 type CodeEditor struct {
+	// trueなら、エクスポートされた関数にのみトレース用のコードを追加する。
+	// falseなら、全ての関数に対してトレース用のコードを追加する。
 	ExportedOnly bool
-	Overwrite    bool
-	Prefix       string
-	Files        []string
+	// trueならファイルに上書きする。
+	// falseなら、編集結果をstdoutに出力する。
+	Overwrite bool
+	// import名や変数名につけるprefix。既存の変数などと名前が衝突しないようにするために設定する。
+	Prefix string
+	// 編集対象のファイル名の一覧。
+	Files []string
 
 	tmpl *Template
 }
