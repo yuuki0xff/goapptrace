@@ -28,7 +28,7 @@ func (s *StateSimulator) Next(fl RawFuncLog) {
 
 	switch fl.Tag {
 	case FuncStart:
-		parentID := FuncLogID(-1)
+		parentID := NotFoundParent
 		if isExistsGID {
 			parentID = s.stacks[fl.GID]
 		}

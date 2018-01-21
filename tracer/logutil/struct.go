@@ -1,7 +1,8 @@
 package logutil
 
 const (
-	NotEnded = -1
+	NotEnded       = Time(-1)
+	NotFoundParent = FuncLogID(-1)
 
 	FuncStart = TagName("funcStart")
 	FuncEnd   = TagName("funcEnd")
