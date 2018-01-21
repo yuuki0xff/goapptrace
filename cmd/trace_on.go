@@ -58,7 +58,7 @@ func runTraceOn(conf *config.Config, exportedOnly bool, prefix string, targetNam
 				Prefix:       prefix,
 			}
 			for _, f := range files {
-				if err := editor.Edit(f); err != nil {
+				if err := editor.EditFileOverwrite(f); err != nil {
 					return err
 				}
 			}

@@ -21,7 +21,9 @@ type CodeEditor struct {
 	tmpl *Template
 }
 
-func (ce *CodeEditor) Edit(fname string) error {
+// fnameにトレース用のコードを追加する。
+// 指定されたファイルは上書きされる。
+func (ce *CodeEditor) EditFileOverwrite(fname string) error {
 	edit := func(r io.Reader, w io.Writer) error {
 		src, err := ioutil.ReadAll(r)
 		if err != nil {
