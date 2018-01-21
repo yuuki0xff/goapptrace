@@ -15,9 +15,6 @@ type CodeEditor struct {
 	// trueなら、エクスポートされた関数にのみトレース用のコードを追加する。
 	// falseなら、全ての関数に対してトレース用のコードを追加する。
 	ExportedOnly bool
-	// trueならファイルに上書きする。
-	// falseなら、編集結果をstdoutに出力する。
-	Overwrite bool
 	// import名や変数名につけるprefix。既存の変数などと名前が衝突しないようにするために設定する。
 	Prefix string
 
@@ -40,16 +37,7 @@ func (ce *CodeEditor) Edit(fname string) error {
 		return err
 	}
 
-	if ce.Overwrite {
-		return AtomicReadWrite(fname, edit)
-	} else {
-		file, err := os.Open(fname)
-		if err != nil {
-			return err
-		}
-		defer file.Close() // nolint: errcheck
-		return edit(file, os.Stdout)
-	}
+	return AtomicReadWrite(fname, edit)
 }
 
 func AtomicReadWrite(fname string, fn func(r io.Reader, w io.Writer) error) error {

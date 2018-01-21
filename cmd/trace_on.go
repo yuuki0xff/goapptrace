@@ -55,7 +55,6 @@ func runTraceOn(conf *config.Config, exportedOnly bool, prefix string, targetNam
 
 			editor := &srceditor.CodeEditor{
 				ExportedOnly: exportedOnly,
-				Overwrite:    true, //TODO
 				Prefix:       prefix,
 			}
 			for _, f := range files {
