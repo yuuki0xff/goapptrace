@@ -53,7 +53,8 @@ func (v *GraphView) Update() {
 
 	go v.updateGroup.Do("update", func() (interface{}, error) { // nolint: errcheck
 		var err error
-		defer func() {
+		var lines []Line
+		defer v.Root.UI.Update(func() {
 			if err != nil {
 				//v.wrap.SetWidget(newErrorMsg(err))
 				v.status.SetText(ErrorText)
@@ -61,8 +62,8 @@ func (v *GraphView) Update() {
 				//v.wrap.SetWidget(v.table)
 				v.status.SetText("")
 			}
-			v.Root.UI.Update(func() {})
-		}()
+			v.graph.SetLines(lines)
+		})
 
 		func() {
 			var ch chan restapi.FuncCall
@@ -77,8 +78,7 @@ func (v *GraphView) Update() {
 				return
 			}
 
-			lines := v.buildLines(ch, v.graph.Size(), v.selectedFLID, &ls.Metadata.UI)
-			v.graph.SetLines(lines)
+			lines = v.buildLines(ch, v.graph.Size(), v.selectedFLID, &ls.Metadata.UI)
 		}()
 		return nil, nil
 	})
