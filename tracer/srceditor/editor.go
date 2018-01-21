@@ -73,7 +73,6 @@ func AtomicReadWrite(fname string, fn func(r io.Reader, w io.Writer) error) erro
 	if err != nil {
 		return err
 	}
-	w.Chmod(finfo.Mode())
 	tmpfname := w.Name()
 	defer func() {
 		if !ok {
@@ -81,6 +80,9 @@ func AtomicReadWrite(fname string, fn func(r io.Reader, w io.Writer) error) erro
 			os.Remove(tmpfname) // nolint: errcheck
 		}
 	}()
+	if err = w.Chmod(finfo.Mode()); err != nil {
+		return err
+	}
 
 	if err = fn(r, w); err != nil {
 		w.Close() // nolint: errcheck
