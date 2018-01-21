@@ -85,14 +85,12 @@ func (nl *NodeList) Format() ([]byte, error) {
 }
 
 func (nl *NodeList) srcByRange1(a token.Pos) []byte {
-	basePos := nl.File.Pos() - 1
-	start := basePos + a - 1
+	start := a - 1
 	return nl.OrigSrc[start:]
 }
 
 func (nl *NodeList) srcByRange2(a, b token.Pos) []byte {
-	basePos := nl.File.Pos() - 1
-	start := basePos + a - 1
-	end := basePos + b - 1
+	start := a - 1
+	end := b - 1
 	return nl.OrigSrc[start:end]
 }

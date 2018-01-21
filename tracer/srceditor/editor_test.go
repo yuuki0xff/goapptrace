@@ -304,3 +304,37 @@ func bar() {
 `),
 	})
 }
+
+func TestEditIncludeCommentsBeforePackageStatement(t *testing.T) {
+	testEdit(t, editTestCase{
+		Editor: CodeEditor{},
+		In: strings.TrimSpace(`
+// Copyright 2018 yuuki0xff.
+
+package foo
+
+import "os"
+
+func bar() {
+	os.Exit(0)
+}
+`),
+		Out: strings.TrimSpace(`
+// Copyright 2018 yuuki0xff.
+
+package foo
+
+import __goapptrace_tracer "github.com/yuuki0xff/goapptrace/tracer/logger"
+
+import "os"
+
+func bar() {
+	__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
+	defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
+
+	__goapptrace_tracer.Close()
+	os.Exit(0)
+}
+`),
+	})
+}
