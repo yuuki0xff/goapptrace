@@ -20,19 +20,8 @@ type CodeEditor struct {
 	Overwrite bool
 	// import名や変数名につけるprefix。既存の変数などと名前が衝突しないようにするために設定する。
 	Prefix string
-	// 編集対象のファイル名の一覧。
-	Files []string
 
 	tmpl *Template
-}
-
-func (ce *CodeEditor) EditAll() error {
-	for _, f := range ce.Files {
-		if err := ce.Edit(f); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (ce *CodeEditor) Edit(fname string) error {
