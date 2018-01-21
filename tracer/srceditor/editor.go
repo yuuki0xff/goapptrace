@@ -57,6 +57,7 @@ func (ce *CodeEditor) Edit(fname string) error {
 }
 
 func AtomicReadWrite(fname string, fn func(r io.Reader, w io.Writer) error) error {
+	var ok bool
 	r, err := os.Open(fname)
 	if err != nil {
 		return err
@@ -74,18 +75,28 @@ func AtomicReadWrite(fname string, fn func(r io.Reader, w io.Writer) error) erro
 	}
 	w.Chmod(finfo.Mode())
 	tmpfname := w.Name()
+	defer func() {
+		if !ok {
+			// clean up a temporary file.
+			os.Remove(tmpfname) // nolint: errcheck
+		}
+	}()
 
 	if err = fn(r, w); err != nil {
 		w.Close() // nolint: errcheck
 		// the original file was kept, and tmp file will be remove.
-		return os.Remove(tmpfname)
+		return err
 	}
 
 	// the original file was atomically replaced by a tmp file.
-	if err := w.Close(); err != nil {
+	if err = w.Close(); err != nil {
 		return err
 	}
-	return os.Rename(tmpfname, fname)
+	if err = os.Rename(tmpfname, fname); err != nil {
+		return err
+	}
+	ok = true
+	return nil
 }
 
 func (ce *CodeEditor) init() {
