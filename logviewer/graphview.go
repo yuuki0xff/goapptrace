@@ -25,6 +25,11 @@ type GraphView struct {
 	graph  *GraphWidget
 	fc     tui.FocusChain
 
+	// X軸方向のスクロール量
+	offsetX int
+	// Y軸方向のスクロール量
+	offsetY int
+
 	// 現在選択されている状態のFuncCallイベントのID
 	selectedFLID logutil.FuncLogID
 }
@@ -88,10 +93,28 @@ func (v *GraphView) SetKeybindings() {
 	gotoLogView := func() {
 		v.Root.setView(newShowLogView(v.LogID, v.Root))
 	}
-	up := func() {}
-	right := func() {}
-	down := func() {}
-	left := func() {}
+	up := func() {
+		v.offsetY++
+		go v.Update()
+	}
+	right := func() {
+		v.offsetX--
+		if v.offsetX < 0 {
+			v.offsetX = 0
+		}
+		go v.Update()
+	}
+	down := func() {
+		v.offsetY--
+		if v.offsetY < 0 {
+			v.offsetY = 0
+		}
+		go v.Update()
+	}
+	left := func() {
+		v.offsetX++
+		go v.Update()
+	}
 
 	v.Root.UI.SetKeybinding("d", gotoLogView)
 	v.Root.UI.SetKeybinding("k", up)
@@ -186,7 +209,7 @@ func (v *GraphView) buildLines(ch chan restapi.FuncCall, size image.Point, selec
 		// TODO: X座標のbaseを設定して、X軸方向のスクロールを実現する
 		left := size.X
 		for i := range fcList {
-			fcX[i] = left - fcLen[i]
+			fcX[i] = left - fcLen[i] + v.offsetX
 			left--
 		}
 	}()
@@ -208,7 +231,7 @@ func (v *GraphView) buildLines(ch chan restapi.FuncCall, size image.Point, selec
 		for idx, gid := range gidList {
 			// TODO: Y座標のbaseを設定して、Y軸方向のスクロールを実現する
 			log.Printf("GID=%d idx=%d", gid, idx)
-			gidY[gid] = idx
+			gidY[gid] = idx + v.offsetY
 		}
 	}()
 
