@@ -208,7 +208,6 @@ func (v *GraphView) buildLines(ch chan restapi.FuncCall, size image.Point, selec
 
 		// X座標を決める。
 		// 最新のログは右側になるようにする。
-		// TODO: X座標のbaseを設定して、X軸方向のスクロールを実現する
 		left := size.X
 		for i := range fcList {
 			fcX[i] = left - fcLen[i] + v.offsetX
@@ -231,7 +230,6 @@ func (v *GraphView) buildLines(ch chan restapi.FuncCall, size image.Point, selec
 
 		// GoroutineごとのY座標を決定する
 		for idx, gid := range gidList {
-			// TODO: Y座標のbaseを設定して、Y軸方向のスクロールを実現する
 			log.Printf("GID=%d idx=%d", gid, idx)
 			gidY[gid] = idx + v.offsetY
 		}
