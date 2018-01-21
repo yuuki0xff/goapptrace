@@ -1,10 +1,11 @@
 package logviewer
 
 import (
-	"encoding/json"
 	"image"
 	"log"
+	"sort"
 	"strconv"
+	"sync"
 
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
@@ -76,7 +77,7 @@ func (v *GraphView) Update() {
 				return
 			}
 
-			lines := v.buildLines(ch, v.selectedFLID, &ls.Metadata.UI)
+			lines := v.buildLines(ch, v.graph.Size(), v.selectedFLID, &ls.Metadata.UI)
 			v.graph.SetLines(lines)
 		}()
 		return nil, nil
@@ -110,67 +111,152 @@ func (v *GraphView) Quit() {
 }
 
 // buildLinesは、graphを構成する線分を構築して返す。
-func (v *GraphView) buildLines(ch chan restapi.FuncCall, selectedFuncCall logutil.FuncLogID, config *storage.UIConfig) (lines []Line) {
-	lines = make([]Line, 0, 1000)
+func (v *GraphView) buildLines(ch chan restapi.FuncCall, size image.Point, selectedFuncCall logutil.FuncLogID, config *storage.UIConfig) (lines []Line) {
+	ch2 := make(chan funcCallWithFuncIDs, 10000)
+	go func() {
+		// TODO: 内部でAPI呼び出しを伴う遅い関数。必要に応じて並列度を上げる。
+		v.withFuncIDs(ch, ch2)
+		close(ch2)
+	}()
 
-	// TODO: build lines
-	for fc := range ch {
+	// 関数呼び出しのログの一覧
+	fcList := make([]funcCallWithFuncIDs, 0, 10000)
+	// 存在するGIDの集合
+	gidSet := make(map[logutil.GID]bool, 1000)
+	for item := range ch2 {
+		// マスクされているイベントを削除する
+		if item.isMasked(config) {
+			continue
+		}
+
+		fcList = append(fcList, item)
+		gidSet[item.GID] = true
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	// 長さとX座標を決める
+	fcLen := make([]int, len(fcList))
+	fcX := make([]int, len(fcList))
+	go func() {
+		defer wg.Done()
+		// 関数の実行終了時刻が遅い順(EndTimeの値が大きい順)にソートする。
+		sort.Slice(fcList, func(i, j int) bool {
+			return fcList[i].EndTime > fcList[j].EndTime
+		})
+
+		// FuncLogの子要素の一覧
+		childMap := make(map[logutil.FuncLogID][]int, len(fcList))
+		for i, item := range fcList {
+			if item.ParentID == logutil.NotFoundParent {
+				continue
+			}
+			childMap[item.ParentID] = append(childMap[item.ParentID], i)
+		}
+
+		// 長さを決める。
+		// 長さは、実行中に生じたログの数+2。
+		var length func(fc funcCallWithFuncIDs) int
+		length = func(fc funcCallWithFuncIDs) int {
+			childs, ok := childMap[fc.ID]
+			if !ok {
+				// 両端に終端記号を表示するため、長さは2にする。
+				return 2
+			}
+			total := 0
+			for _, idx := range childs {
+				if fcLen[idx] == 0 {
+					fcLen[idx] = length(fcList[idx])
+				}
+				total += fcLen[idx]
+			}
+			// 子要素の長さに、この要素の両端に終端記号を表示するための長さ(2)を足す。
+			return total + 2
+		}
+		for i := range fcList {
+			log.Printf("fcList[%d]: %+v", i, fcList[i])
+			if fcLen[i] == 0 {
+				fcLen[i] = length(fcList[i])
+			}
+		}
+
+		// X座標を決める。
+		// 最新のログは右側になるようにする。
+		// TODO: X座標のbaseを設定して、X軸方向のスクロールを実現する
+		left := size.X
+		for i := range fcList {
+			fcX[i] = left - fcLen[i]
+			left--
+		}
+	}()
+
+	// Y座標を決める
+	gidY := make(map[logutil.GID]int, len(gidSet))
+	go func() {
+		defer wg.Done()
+		// 描画対象のGoroutine IDの小さい順にソートする。
+		gidList := make([]logutil.GID, 0, len(gidSet))
+		for gid := range gidSet {
+			gidList = append(gidList, gid)
+		}
+		sort.Slice(gidList, func(i, j int) bool {
+			return gidList[i] < gidList[j]
+		})
+
+		// GoroutineごとのY座標を決定する
+		for idx, gid := range gidList {
+			// TODO: Y座標のbaseを設定して、Y軸方向のスクロールを実現する
+			log.Printf("GID=%d idx=%d", gid, idx)
+			gidY[gid] = idx
+		}
+		// TODO: 画面の範囲外になるgidを除外する
+	}()
+
+	lines = make([]Line, 0, len(fcList))
+	wg.Wait()
+	for i, fc := range fcList {
+		if gidY[fc.GID] < 0 || gidY[fc.GID] >= size.Y {
+			// 描画するのは水平線であるため、描画領域外の上下にある線は、絶対に描画されることはない。
+			// そのため、無視する。
+			continue
+		}
+		if fcX[i] >= size.X {
+			// 描画領域外の右側にある線は描画されることはないため、無視する。
+			continue
+		}
+		if fcX[i]+fcLen[i] < 0 {
+			// 線の右端が描画領域の左側に達しない場合、この線は描画されることはないため、無視する。
+			continue
+		}
+
+		// スタイル名の決定をする。
 		styleName := "line."
 		if fc.IsEnded() {
 			styleName += "stopped"
 		} else {
 			styleName += "running"
 		}
-
 		if fc.ID == selectedFuncCall {
-			// fc is selected.
 			styleName += ".selected"
-		} else {
-			var pinned bool
-			var masked bool
-
-			funcs := v.frames2funcs(fc.Frames)
-			for _, fid := range funcs {
-				if f, ok := config.Funcs[fid]; ok {
-					pinned = pinned || f.Pinned
-					masked = masked || f.Masked
-				}
-			}
-			if g, ok := config.Goroutines[fc.GID]; ok {
-				pinned = pinned || g.Pinned
-				masked = masked || g.Masked
-			}
-
-			if masked {
-				// fc should not display.
-				continue
-			} else if pinned {
-				// fc is marked.
-				styleName += ".marked"
-			}
+		} else if fc.isPinned(config) {
+			styleName += ".marked"
 		}
 
-		// TODO: Lineの長さを適切にする
-		// EndTimeとStartTimeがタイムスタンプ(1秒単位の絶対時間)であるため、1秒未満で実行が終了する関数の呼び出しログは、
-		// 長さゼロのLineとしてレンダリングされてしまう。
-		// どのような軸を使用するかにもよるが、基本的に連番となるfieldの値を使用する。
-		// もしくは、nanosecond程度の精度がある時刻を採用する。
+		// 水平線を追加
 		line := Line{
 			Start: image.Point{
-				X: int(fc.StartTime),
-				Y: int(fc.GID),
+				X: fcX[i],
+				Y: gidY[fc.GID],
 			},
-			Length:    int(fc.EndTime - fc.StartTime),
-			Type:      VerticalLine,
+			Length:    fcLen[i],
+			Type:      HorizontalLine,
 			StartDeco: LineTerminationNormal,
-			EndDeco:   LineTerminationNone,
+			EndDeco:   LineTerminationNormal,
 			StyleName: styleName,
 		}
+		log.Printf("lines[%d]: %+v", len(lines), line)
 		lines = append(lines, line)
-
-		// print a log
-		b, _ := json.Marshal(line)
-		log.Println(string(b))
 	}
 	return lines
 }
@@ -183,6 +269,46 @@ func (v *GraphView) frames2funcs(frames []logutil.FuncStatusID) (funcs []logutil
 			log.Panic(err)
 		}
 		funcs = append(funcs, fs.Func)
+	}
+	return
+}
+
+// withFuncIDsはFuncCallのIDsを
+func (v *GraphView) withFuncIDs(in chan restapi.FuncCall, out chan funcCallWithFuncIDs) {
+	for fc := range in {
+		funcs := v.frames2funcs(fc.Frames)
+		out <- funcCallWithFuncIDs{
+			FuncCall: fc,
+			funcs:    funcs,
+		}
+	}
+}
+
+type funcCallWithFuncIDs struct {
+	restapi.FuncCall
+	funcs []logutil.FuncID
+}
+
+func (f *funcCallWithFuncIDs) isMasked(config *storage.UIConfig) (masked bool) {
+	for _, fid := range f.funcs {
+		if f, ok := config.Funcs[fid]; ok {
+			masked = masked || f.Masked
+		}
+	}
+	if g, ok := config.Goroutines[f.GID]; ok {
+		masked = masked || g.Masked
+	}
+	return
+}
+
+func (f *funcCallWithFuncIDs) isPinned(config *storage.UIConfig) (pinned bool) {
+	for _, fid := range f.funcs {
+		if f, ok := config.Funcs[fid]; ok {
+			pinned = pinned || f.Pinned
+		}
+	}
+	if g, ok := config.Goroutines[f.GID]; ok {
+		pinned = pinned || g.Pinned
 	}
 	return
 }
