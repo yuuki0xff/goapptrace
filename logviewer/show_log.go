@@ -1,11 +1,15 @@
 package logviewer
 
 import (
+	"sort"
 	"strconv"
+	"sync"
 
 	"github.com/yuuki0xff/goapptrace/config"
+	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 	"github.com/yuuki0xff/tui-go"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -87,6 +91,7 @@ func (v *showLogView) Update() {
 			}
 		})
 
+		// update contents
 		func() {
 			var ch chan restapi.FuncCall
 			ch, err = v.Root.Api.SearchFuncCalls(v.LogID, restapi.SearchFuncCallParams{})
@@ -94,21 +99,79 @@ func (v *showLogView) Update() {
 				return
 			}
 
-			// update contents
-			for fc := range ch {
-				records = append(records, fc)
+			var eg errgroup.Group
 
+			// バックグラウンドでmetadataを取得するworkerへのリクエストを入れるチャンネル
+			reqCh := make(chan logutil.FuncStatusID, 10000)
+			// キャッシュ用。アクセスする前に必ずlockをすること。
+			fsMap := map[logutil.FuncStatusID]restapi.FuncStatusInfo{}
+			fMap := map[logutil.FuncID]restapi.FuncInfo{}
+			var lock sync.Mutex
+
+			eg.Go(func() error {
+				// FuncCalls apiのレスポンスを受け取る
+				for fc := range ch {
+					records = append(records, fc)
+
+					// metadata取得要求を出す
+					currentFrame := fc.Frames[0]
+					reqCh <- currentFrame
+				}
+				close(reqCh)
+
+				// 開始時刻が新しい順に並び替える
+				sort.Slice(records, func(i, j int) bool {
+					return records[i].StartTime > records[j].StartTime
+				})
+				return nil
+			})
+
+			// メタデータを取得するワーカを起動する
+			for i := 0; i < APIConnections; i++ {
+				eg.Go(func() (err error) {
+					for id := range reqCh {
+						// FuncStatusInfoを取得する
+						lock.Lock()
+						_, ok := fsMap[id]
+						lock.Unlock()
+						if ok {
+							continue
+						}
+						var fs restapi.FuncStatusInfo
+						fs, err = v.Root.Api.FuncStatus(v.LogID, strconv.Itoa(int(id)))
+						if err != nil {
+							return
+						}
+						lock.Lock()
+						fsMap[id] = fs
+
+						// FuncInfoを取得する
+						_, ok = fMap[fs.Func]
+						lock.Unlock()
+						if ok {
+							continue
+						}
+						var fi restapi.FuncInfo
+						fi, err = v.Root.Api.Func(v.LogID, strconv.Itoa(int(fs.Func)))
+						if err != nil {
+							return
+						}
+						lock.Lock()
+						fMap[fs.Func] = fi
+						lock.Unlock()
+					}
+					return
+				})
+			}
+			if err = eg.Wait(); err != nil {
+				return
+			}
+
+			for _, fc := range records {
 				currentFrame := fc.Frames[0]
-				var fs restapi.FuncStatusInfo
-				fs, err = v.Root.Api.FuncStatus(v.LogID, strconv.Itoa(int(currentFrame)))
-				if err != nil {
-					return
-				}
-				var fi restapi.FuncInfo
-				fi, err = v.Root.Api.Func(v.LogID, strconv.Itoa(int(fs.Func)))
-				if err != nil {
-					return
-				}
+
+				fs := fsMap[currentFrame]
+				fi := fMap[fs.Func]
 				execTime := fc.EndTime - fc.StartTime
 
 				table.AppendRow(
