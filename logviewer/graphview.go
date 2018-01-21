@@ -210,7 +210,6 @@ func (v *GraphView) buildLines(ch chan restapi.FuncCall, size image.Point, selec
 			log.Printf("GID=%d idx=%d", gid, idx)
 			gidY[gid] = idx
 		}
-		// TODO: 画面の範囲外になるgidを除外する
 	}()
 
 	lines = make([]Line, 0, len(fcList))
