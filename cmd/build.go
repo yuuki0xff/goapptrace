@@ -22,9 +22,6 @@ package cmd
 
 import (
 	"fmt"
-	"go/importer"
-	"go/parser"
-	"go/token"
 	"io"
 	"io/ioutil"
 	"log"
@@ -33,10 +30,10 @@ import (
 	"path"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/yuuki0xff/goapptrace/config"
+	"github.com/yuuki0xff/goapptrace/tracer/builder"
 )
 
 // buildCmd represents the build command
@@ -57,29 +54,32 @@ func runBuild(conf *config.Config, flags *pflag.FlagSet, stdout, stderr io.Write
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(tmpdir) // nolint: errcheck
+	log.Println("tmpdir:", tmpdir)
+	//defer os.RemoveAll(tmpdir) // nolint: errcheck
 
 	goroot := path.Join(tmpdir, "goroot")
 	gopath := path.Join(tmpdir, "gopath")
 
 	// TODO: insert trace code
-	ok, err := isGofiles(targets)
-	if err != nil {
-		fmt.Fprintf(stderr, err.Error())
-		return err
+	b := builder.RepoBuilder{
+		Goroot: goroot,
+		Gopath: gopath,
+		IgnorePkgs: map[string]bool{
+			"github.com/yuuki0xff/goapptrace/tracer/logger": true,
+		},
+		IgnoreStdPkgs: true,
 	}
-	if ok {
-		log.Println("importing")
-		err = parseGofiles(targets)
-		if err != nil {
-			log.Panic(err)
-		}
-		os.Exit(0)
-	} else {
-		// packagesとして見なす
-		// TODO:
+	if err := b.Init(); err != nil {
+		fmt.Fprintf(stderr, err.Error()+"\n")
+		log.Fatal("Fail")
 	}
-	log.Panic("FAIL")
+
+	if err = b.EditAll(targets); err != nil {
+		fmt.Fprintf(stderr, err.Error()+"\n")
+		log.Fatal("Fail")
+	}
+	log.Println("OK")
+	//os.Exit(0)
 
 	buildCmd := exec.Command("go", buildArgs(flags)...)
 	buildCmd.Stdout = stdout
@@ -87,104 +87,6 @@ func runBuild(conf *config.Config, flags *pflag.FlagSet, stdout, stderr io.Write
 	buildCmd.Env = buildEnv(goroot, gopath)
 	return buildCmd.Run()
 }
-
-// 全てのファイルが".go"で終わるファイルなら、trueを返す
-func isGofiles(files []string) (bool, error) {
-	for _, f := range files {
-		if !strings.HasSuffix(f, ".go") {
-			return false, nil
-		}
-		finfo, err := os.Stat(f)
-		if err != nil {
-			return false, errors.Wrap(err, "not found *.go file")
-		}
-		if finfo.IsDir() {
-			return false, nil
-		}
-	}
-	return true, nil
-}
-
-func parseGofiles(gofiles []string) error {
-	// インポートされたパッケージの一覧
-	imports := map[string]bool{}
-
-	imper := importer.For("source", nil)
-	var importPackage func(path string) error
-	importPackage = func(path string) error {
-		if imports[path] {
-			// 既にインポート済みなのでスキップする
-			return nil
-		}
-		if path == "C" {
-			// cgo用のimportなので、無視する。
-			return nil
-		}
-		log.Println("import", path)
-
-		pkg, err := imper.Import(path)
-		if err != nil {
-			return err
-		}
-
-		// 依存しているパッケージをインポートする
-		for _, imp := range pkg.Imports() {
-			if err = importPackage(imp.Path()); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-
-	fset := token.NewFileSet()
-	for _, fname := range gofiles {
-		f, err := parser.ParseFile(fset, fname, nil, parser.ParseComments)
-		if err != nil {
-			return err
-		}
-
-		// 依存しているパッケージもインポートする
-		for _, imp := range f.Imports {
-			if imp.Path.Kind != token.STRING {
-				log.Panic("unsupported kind:", imp.Path.Kind)
-			}
-			impPath := strings.Trim(imp.Path.Value, `"`)
-
-			if err = importPackage(impPath); err != nil {
-				return err
-			}
-		}
-	}
-
-	//ast.NewPackage(fset,)
-	// TODO
-	return nil
-}
-
-//func isPackages(pkgs []string) bool {
-//	for _, p := range pkgs {
-//		gopath := os.Getenv("GOPATH")
-//		goroot := runtime.GOROOT()
-//
-//		if isDir(p) || isDir(path.Join(gopath, p)) || isDir(path.Join(goroot, p)) {
-//			continue
-//		}
-//		return false
-//	}
-//	return true
-//}
-//
-//func isDir(path string) bool {
-//	finfo, err := os.Stat(path)
-//	if err != nil {
-//		if !os.IsNotExist(err) {
-//			log.Panic(errors.Wrap(err,"not found package"))
-//		}
-//		// 指定されたpathは存在しない
-//		return false
-//	}
-//	return finfo.IsDir()
-//}
 
 // "go build"コマンドの実行前にセットするべき環境変数を返す
 func buildEnv(goroot, gopath string) []string {
