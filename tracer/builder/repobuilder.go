@@ -5,6 +5,7 @@ import (
 	"go/build"
 	"go/parser"
 	"go/token"
+	"io/ioutil"
 	"log"
 	"os"
 	"path"
@@ -34,7 +35,7 @@ type RepoBuilder struct {
 }
 
 func (b *RepoBuilder) EditAll(targets []string) error {
-	ok, err := isGofiles(targets)
+	ok, err := IsGofiles(targets)
 	if err != nil {
 		return err
 	}
@@ -46,11 +47,19 @@ func (b *RepoBuilder) EditAll(targets []string) error {
 }
 
 func (b *RepoBuilder) Init() error {
-	// copy golang tools
+	// copy golang pkg directory
+	pkgDir := path.Join("pkg")
+	src := path.Join(runtime.GOROOT(), pkgDir)
+	dest := path.Join(b.Goroot, pkgDir)
+	if err := shutil.CopyTree(src, dest, nil); err != nil {
+		return err
+	}
 
-	toolDir := path.Join("pkg", "tool", runtime.GOOS+"_"+runtime.GOARCH)
-	src := path.Join(runtime.GOROOT(), toolDir)
-	dest := path.Join(b.Goroot, toolDir)
+	// copy cgo libraries
+	// copy src directory
+	srcDir := path.Join("src")
+	src = path.Join(runtime.GOROOT(), srcDir)
+	dest = path.Join(b.Goroot, srcDir)
 	return shutil.CopyTree(src, dest, nil)
 }
 
@@ -84,7 +93,7 @@ func (b *RepoBuilder) EditFiles(gofiles []string) error {
 		}
 	}
 
-	mainpkg := path.Join(b.Gopath, "mainpkg")
+	mainpkg := b.MainPkgDir()
 	if err := os.MkdirAll(mainpkg, os.ModePerm); err != nil {
 		return err
 	}
@@ -184,8 +193,12 @@ func (b *RepoBuilder) editPackage(pkg *build.Package) error {
 	return nil
 }
 
+func (b *RepoBuilder) MainPkgDir() string {
+	return path.Join(b.Gopath, "mainpkg")
+}
+
 // 全てのファイルが".go"で終わるファイルなら、trueを返す
-func isGofiles(files []string) (bool, error) {
+func IsGofiles(files []string) (bool, error) {
 	for _, f := range files {
 		if !strings.HasSuffix(f, ".go") {
 			return false, nil
@@ -211,15 +224,22 @@ func packageName(gofile string) (string, error) {
 	return f.Name.Name, nil
 }
 
+// copy all regular files under "pkg.Dir" directory to destDir.
 func copyPkg(pkg *build.Package, destDir string) error {
 	if err := os.MkdirAll(destDir, os.ModePerm); err != nil {
 		return err
 	}
 
-	files:=[]string{}
-	files=append(files,pkg.GoFiles)
-	files=append(files,pkg.CgoFiles)
-	files=append(files,pkg.CXXFiles)
+	finfos, err := ioutil.ReadDir(pkg.Dir)
+	if err != nil {
+		return err
+	}
+	files := make([]string, 0, len(finfos))
+	for i := range finfos {
+		if finfos[i].Mode().IsRegular() {
+			files = append(files, finfos[i].Name())
+		}
+	}
 
 	for _, gofile := range files {
 		srcfile := path.Join(pkg.Dir, gofile)

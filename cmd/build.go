@@ -74,6 +74,11 @@ func runBuild(conf *config.Config, flags *pflag.FlagSet, stdout, stderr io.Write
 		log.Fatal("Fail")
 	}
 
+	isGofiles, err := builder.IsGofiles(targets)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	if err = b.EditAll(targets); err != nil {
 		fmt.Fprintf(stderr, err.Error()+"\n")
 		log.Fatal("Fail")
@@ -81,7 +86,15 @@ func runBuild(conf *config.Config, flags *pflag.FlagSet, stdout, stderr io.Write
 	log.Println("OK")
 	//os.Exit(0)
 
-	buildCmd := exec.Command("go", buildArgs(flags)...)
+	newTargets := targets
+	if isGofiles {
+		newTargets = make([]string, len(targets))
+		for i := range targets {
+			newTargets[i] = path.Join(b.MainPkgDir(), path.Base(targets[i]))
+		}
+	}
+
+	buildCmd := exec.Command("go", buildArgs(flags, newTargets)...)
 	buildCmd.Stdout = stdout
 	buildCmd.Stderr = stderr
 	buildCmd.Env = buildEnv(goroot, gopath)
@@ -97,7 +110,7 @@ func buildEnv(goroot, gopath string) []string {
 }
 
 // "go build"の引数を返す
-func buildArgs(flags *pflag.FlagSet) []string {
+func buildArgs(flags *pflag.FlagSet, targets []string) []string {
 	buildArgs := []string{"build"}
 	flags.Visit(func(flag *pflag.Flag) {
 		var flagname string
@@ -125,7 +138,7 @@ func buildArgs(flags *pflag.FlagSet) []string {
 			log.Panicf("invalid type name: %s", flag.Value.Type())
 		}
 	})
-	return buildArgs
+	return append(buildArgs, targets...)
 }
 
 func init() {
