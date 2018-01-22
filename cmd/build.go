@@ -60,7 +60,6 @@ func runBuild(conf *config.Config, flags *pflag.FlagSet, stdout, stderr io.Write
 	goroot := path.Join(tmpdir, "goroot")
 	gopath := path.Join(tmpdir, "gopath")
 
-	// TODO: insert trace code
 	b := builder.RepoBuilder{
 		Goroot: goroot,
 		Gopath: gopath,
@@ -79,6 +78,7 @@ func runBuild(conf *config.Config, flags *pflag.FlagSet, stdout, stderr io.Write
 		log.Fatal(err)
 	}
 
+	// insert logging codes
 	if err = b.EditAll(targets); err != nil {
 		fmt.Fprintf(stderr, err.Error()+"\n")
 		log.Fatal("Fail")
