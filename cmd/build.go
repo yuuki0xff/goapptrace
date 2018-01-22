@@ -60,6 +60,23 @@ func runBuild(conf *config.Config, flags *pflag.FlagSet, stdout, stderr io.Write
 
 	// TODO: insert trace code
 
+	buildCmd := exec.Command("go", buildArgs(flags)...)
+	buildCmd.Stdout = stdout
+	buildCmd.Stderr = stderr
+	buildCmd.Env = buildEnv(goroot, gopath)
+	return buildCmd.Run()
+}
+
+// "go build"コマンドの実行前にセットするべき環境変数を返す
+func buildEnv(goroot, gopath string) []string {
+	env := os.Environ()
+	env = append(env, "GOROOT="+goroot)
+	env = append(env, "GOPATH="+gopath)
+	return env
+}
+
+// "go build"の引数を返す
+func buildArgs(flags *pflag.FlagSet) []string {
 	buildArgs := []string{"build"}
 	flags.Visit(func(flag *pflag.Flag) {
 		var flagname string
@@ -87,15 +104,7 @@ func runBuild(conf *config.Config, flags *pflag.FlagSet, stdout, stderr io.Write
 			log.Panicf("invalid type name: %s", flag.Value.Type())
 		}
 	})
-	env := os.Environ()
-	env = append(env, "GOROOT="+goroot)
-	env = append(env, "GOPATH="+gopath)
-
-	buildCmd := exec.Command("go", buildArgs...)
-	buildCmd.Stdout = stdout
-	buildCmd.Stderr = stderr
-	buildCmd.Env = env
-	return buildCmd.Run()
+	return buildArgs
 }
 
 func init() {
