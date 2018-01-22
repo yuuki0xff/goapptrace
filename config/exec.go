@@ -1,9 +1,8 @@
 package config
 
 import (
-	"path/filepath"
-
 	"os/exec"
+	"path/filepath"
 
 	"github.com/yuuki0xff/goapptrace/info"
 )

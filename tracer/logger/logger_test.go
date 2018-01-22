@@ -2,13 +2,10 @@ package logger
 
 import (
 	"os"
+	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
-
-	"reflect"
-
-	"path/filepath"
-
 	"time"
 
 	"github.com/yuuki0xff/goapptrace/info"

@@ -1,13 +1,11 @@
 package protocol
 
 import (
-	"io"
-
 	"bytes"
-	"encoding/gob"
-	"log"
-
 	"encoding/binary"
+	"encoding/gob"
+	"io"
+	"log"
 
 	"github.com/yuuki0xff/xtcp"
 )

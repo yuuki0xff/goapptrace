@@ -1,17 +1,14 @@
 package logger
 
 import (
+	"errors"
+	"log"
 	"os"
+	"regexp"
 	"runtime"
+	"strconv"
 	"sync"
 	"time"
-
-	"regexp"
-	"strconv"
-
-	"log"
-
-	"errors"
 
 	"github.com/bouk/monkey"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"

@@ -1,9 +1,8 @@
 package storage
 
 import (
-	"testing"
-
 	"os"
+	"testing"
 
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )

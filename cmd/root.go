@@ -22,7 +22,6 @@ package cmd
 
 import (
 	"io"
-
 	"log"
 
 	"github.com/olekukonko/tablewriter"

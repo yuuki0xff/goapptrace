@@ -1,18 +1,13 @@
 package protocol
 
 import (
-	"net"
-	"strings"
-
-	"time"
-
-	"sync"
-
-	"log"
-
 	"fmt"
-
+	"log"
+	"net"
 	"reflect"
+	"strings"
+	"sync"
+	"time"
 
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/xtcp"

@@ -3,7 +3,6 @@ package protocol
 import (
 	"fmt"
 	"log"
-
 	"reflect"
 
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"

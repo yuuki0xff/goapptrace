@@ -2,7 +2,6 @@ package logger
 
 import (
 	"log"
-
 	"time"
 
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"

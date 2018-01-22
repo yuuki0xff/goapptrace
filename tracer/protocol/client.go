@@ -3,15 +3,12 @@ package protocol
 import (
 	"context"
 	"errors"
-	"strings"
-
+	"fmt"
 	"log"
+	"reflect"
+	"strings"
 	"sync"
 	"time"
-
-	"fmt"
-
-	"reflect"
 
 	"github.com/yuuki0xff/xtcp"
 )
