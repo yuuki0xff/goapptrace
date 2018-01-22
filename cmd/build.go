@@ -49,7 +49,7 @@ Source code is no change!`,
 }
 
 func runBuild(conf *config.Config, flags *pflag.FlagSet, stdout, stderr io.Writer, targets []string) error {
-	tmpdir, err := ioutil.TempDir("", ".goapptrace.run")
+	tmpdir, err := ioutil.TempDir("", ".goapptrace.build")
 	if err != nil {
 		return err
 	}
