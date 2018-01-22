@@ -89,8 +89,12 @@ func (imper RecursiveImporter) Pkgs() map[string]*build.Package {
 	return imper.pkgs
 }
 
-func isStdPkg(imppath string) bool {
-	domain := strings.SplitN(imppath, "/", 2)[0]
-	return !strings.ContainsRune(domain, '.')
-
+// copy from github.com/golang/go/src/cmd/go/internal/load/pkg.go
+func isStdPkg(path string) bool {
+	i := strings.Index(path, "/")
+	if i < 0 {
+		i = len(path)
+	}
+	elem := path[:i]
+	return !strings.Contains(elem, ".")
 }
