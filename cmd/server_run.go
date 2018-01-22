@@ -87,10 +87,13 @@ func runServerRun(conf *config.Config, stdout io.Writer, stderr io.Writer, apiAd
 		logAddr = config.DefaultLogServerAddr
 	}
 
+	simulatorStore := logutil.StateSimulatorStore{}
+
 	// start API Server
 	apiSrv := httpserver.NewHttpServer(apiAddr, restapi.NewRouter(restapi.RouterArgs{
-		Config:  conf,
-		Storage: &strg,
+		Config:         conf,
+		Storage:        &strg,
+		SimulatorStore: &simulatorStore,
 	}))
 	if err := apiSrv.Start(); err != nil {
 		fmt.Fprintln(stderr, "ERROR: failed to start the API server:", err)
@@ -106,7 +109,7 @@ func runServerRun(conf *config.Config, stdout io.Writer, stderr io.Writer, apiAd
 	// start Log Server
 	logSrv := protocol.Server{
 		Addr:    "tcp://" + logAddr,
-		Handler: getServerHandler(&strg),
+		Handler: getServerHandler(&strg, &simulatorStore),
 		AppName: "TODO", // TODO
 		Secret:  "",     // TODO
 	}
@@ -168,7 +171,7 @@ func init() {
 	serverRunCmd.Flags().StringP("listen-log", "P", "", "Address and port for Log Server")
 }
 
-func getServerHandler(strg *storage.Storage) protocol.ServerHandler {
+func getServerHandler(strg *storage.Storage, store *logutil.StateSimulatorStore) protocol.ServerHandler {
 	// workerとの通信用。
 	// close()されたら、workerは終了するべき。
 	chMap := make(map[protocol.ConnID]chan interface{})
@@ -190,9 +193,8 @@ func getServerHandler(strg *storage.Storage) protocol.ServerHandler {
 			}
 		}()
 
-		ss := logutil.StateSimulator{}
-		ss.Init()
-
+		ss := store.New(logobj.ID)
+		defer store.Delete(logobj.ID)
 		writeCurrentState := func() {
 			for _, fl := range ss.FuncLogs() {
 				if err := logobj.AppendFuncLog(fl); err != nil {

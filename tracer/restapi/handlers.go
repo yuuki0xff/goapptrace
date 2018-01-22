@@ -17,8 +17,9 @@ import (
 )
 
 type RouterArgs struct {
-	Config  *config.Config
-	Storage *storage.Storage
+	Config         *config.Config
+	Storage        *storage.Storage
+	SimulatorStore *logutil.StateSimulatorStore
 }
 
 // Goapptrace REST API v0.xのハンドラを提供する
@@ -273,8 +274,9 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	minIdx := int64(0)              // inclusive
-	maxIdx := logobj.IndexLen() - 1 // inclusive
+	indexLen := logobj.IndexLen()
+	minIdx := int64(0)     // inclusive
+	maxIdx := indexLen - 1 // inclusive
 
 	// narrow the search range by ID and Timestamp.
 	if minId >= 0 || maxId >= 0 || minTs >= 0 || maxTs >= 0 {
@@ -312,24 +314,40 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	isFiltered := func(evt *logutil.FuncLog) bool {
+		if gid >= 0 && evt.GID != logutil.GID(gid) {
+			return true
+		}
+		if fid >= 0 && logobj.Symbols().FuncID(evt.Frames[0]) != logutil.FuncID(fid) {
+			return true
+		}
+		return false
+	}
 	// read all records in the search range, and filter by gid and fid.
 	ch := make(chan logutil.FuncLog, 1<<20) // buffer size is 1M records
 	go func() {
 		defer close(ch)
 		for i := minIdx; i <= maxIdx; i++ {
 			err = logobj.WalkFuncLogFile(i, func(evt logutil.FuncLog) error {
-				if gid >= 0 && evt.GID != logutil.GID(gid) {
-					return nil
+				if !isFiltered(&evt) {
+					ch <- evt
 				}
-				if fid >= 0 && logobj.Symbols().FuncID(evt.Frames[0]) != logutil.FuncID(fid) {
-					return nil
-				}
-				ch <- evt
 				return nil
 			})
 			if err != nil {
 				api.Logger.Println(errors.Wrap(err, "failed to read FuncLogFile"))
 				return
+			}
+		}
+
+		if maxIdx == indexLen-1 {
+			ss := api.SimulatorStore.Get(logobj.ID)
+			if ss != nil {
+				for _, evt := range ss.FuncLogs() {
+					if !isFiltered(evt) {
+						ch <- *evt
+					}
+				}
 			}
 		}
 	}()

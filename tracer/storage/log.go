@@ -1,8 +1,6 @@
 package storage
 
 import (
-	"bytes"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,7 +12,7 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
-type LogID [16]byte
+type LogID = logutil.LogID
 
 // 指定したLogIDに対応するログの作成・読み書き・削除を行う。
 // 現時点では完全なスレッドセーフではない。読み書きを複数のgoroutineから同時に行うのは推薦しない。
@@ -105,62 +103,6 @@ var (
 	StopIteration = errors.New("stop iteration error")
 	ErrConflict   = errors.New("failed to update because conflict")
 )
-
-// LogIDを16進数表現で返す。
-func (id LogID) Hex() string {
-	return hex.EncodeToString(id[:])
-}
-
-// 16新数表現からLogIDに変換して返す。
-// 16次sン数でない文字列や、長さが一致しない文字列が与えられた場合はエラーを返す。
-func (LogID) Unhex(str string) (id LogID, err error) {
-	var buf []byte
-	buf, err = hex.DecodeString(str)
-	if err != nil {
-		return
-	}
-	if len(buf) != len(id) {
-		err = fmt.Errorf(
-			"missmatch id length. expect %d charactors, but %d",
-			2*len(id), 2*len(buf),
-		)
-		return
-	}
-	copy(id[:], buf)
-	return
-}
-
-// 16進数化した文字列として出力する。
-func (id LogID) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	buf.WriteByte('"')
-	buf.Write([]byte(id.Hex()))
-	buf.WriteByte('"')
-	return buf.Bytes(), nil
-}
-
-// 16進数値のような文字列からLogIDに変換する。
-func (id *LogID) UnmarshalJSON(data []byte) error {
-	if len(data) != len(id)*2+2 {
-		return errors.New("mismatch id length")
-	}
-
-	if data[0] != '"' || data[len(data)-1] != '"' {
-		return errors.New("missing '\"'")
-	}
-
-	newId, err := id.Unhex(string(data[1 : len(data)-1]))
-	if err != nil {
-		return err
-	}
-	*id = newId
-	return nil
-}
-
-// LogIDを16進数表現で返す。
-func (id LogID) String() string {
-	return id.Hex()
-}
 
 // このログを開く。読み書きが可能。
 // Openするとファイルが作成されるため、LogStatusがLogInitializedに変化する。

@@ -24,6 +24,8 @@ func (s *StateSimulator) Init() {
 
 // 新しいRawFuncLogを受け取り、シミュレータの状態を更新する。
 func (s *StateSimulator) Next(fl RawFuncLog) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
 	_, isExistsGID := s.goroutines[fl.GID]
 
 	switch fl.Tag {
@@ -87,6 +89,8 @@ func (s *StateSimulator) Next(fl RawFuncLog) {
 
 // この期間に動作していた全ての関数についてのログを返す
 func (s *StateSimulator) FuncLogs() []*FuncLog {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 	funclogs := make([]*FuncLog, len(s.funcLogs))
 
 	var i int
@@ -108,6 +112,8 @@ func (s *StateSimulator) FuncLogs() []*FuncLog {
 
 // この期間に動作していた全てのgoroutineについてのログを返す
 func (s *StateSimulator) Goroutines() []*Goroutine {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 	goroutines := make([]*Goroutine, len(s.goroutines))
 
 	var i int
@@ -123,10 +129,49 @@ func (s *StateSimulator) Goroutines() []*Goroutine {
 
 // 実行が終了した関数についてのログを削除する
 func (s *StateSimulator) Clear() {
+	s.lock.Lock()
+	defer s.lock.Unlock()
 	for id, fl := range s.funcLogs {
 		if fl.EndTime == NotEnded {
 			continue
 		}
 		delete(s.funcLogs, id)
 	}
+}
+
+// StateSimulatorへの参照を返す。
+// 指定したIDに対応するStateSimulatorが存在しない場合、nilを返す。
+func (s *StateSimulatorStore) Get(id LogID) *StateSimulator {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	if s.m == nil {
+		return nil
+	}
+	return s.m[id.Hex()]
+}
+
+// 指定したIDに対応するStateSimulatorを新規作成してから返す。
+func (s *StateSimulatorStore) New(id LogID) *StateSimulator {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	if s.m == nil {
+		s.m = map[string]*StateSimulator{}
+	}
+	if s.m[id.Hex()] != nil {
+		log.Panicf("StateSimulator(LogID=%+v) is already exist", id)
+	}
+	simulator := &StateSimulator{}
+	simulator.Init()
+	s.m[id.Hex()] = simulator
+	return simulator
+}
+
+// StateSimulatorをこのストアから削除する。
+func (s *StateSimulatorStore) Delete(id LogID) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	if s.m == nil {
+		return
+	}
+	delete(s.m, id.Hex())
 }

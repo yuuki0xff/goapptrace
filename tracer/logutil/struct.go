@@ -1,5 +1,9 @@
 package logutil
 
+import (
+	"sync"
+)
+
 const (
 	NotEnded       = Time(-1)
 	NotFoundParent = FuncLogID(-1)
@@ -14,6 +18,7 @@ type FuncLogID int
 type RawFuncLogID int
 type Time int64
 type TagName string
+type LogID [16]byte
 
 // RawFuncLogから実行時の状態を推測し、FuncLogとGoroutineオブジェクトを構築する。
 // 具体的には、関数やgoroutineの開始・終了のタイミングの推測を行う。
@@ -34,6 +39,13 @@ type StateSimulator struct {
 	// 実行終了したと判断したgoroutineを動作中に変更することがあるので、
 	// 実行が終了しても削除してはならない。
 	goroutines map[GID]*Goroutine
+
+	lock sync.RWMutex
+}
+
+type StateSimulatorStore struct {
+	lock sync.Mutex
+	m    map[string]*StateSimulator
 }
 
 // Goroutineの生存期間、およびそのGoroutine内で行われたアクションを保持する。
