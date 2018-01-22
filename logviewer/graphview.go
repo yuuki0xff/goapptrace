@@ -97,6 +97,9 @@ func (v *GraphView) SetKeybindings() {
 	}
 	up := func() {
 		v.offsetY++
+		if v.offsetY > 0 {
+			v.offsetY = 0
+		}
 		go v.Update()
 	}
 	right := func() {
@@ -108,9 +111,6 @@ func (v *GraphView) SetKeybindings() {
 	}
 	down := func() {
 		v.offsetY--
-		if v.offsetY < 0 {
-			v.offsetY = 0
-		}
 		go v.Update()
 	}
 	left := func() {
