@@ -38,6 +38,7 @@ var procBuildCmd = &cobra.Command{
 }
 
 func runProcBuild(conf *config.Config, targets []string) error {
+	// TODO: "build"コマンドとの違いを説明する
 	if len(targets) == 0 {
 		targets = conf.Targets.Names()
 	}
