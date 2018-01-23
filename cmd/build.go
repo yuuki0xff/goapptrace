@@ -114,7 +114,7 @@ func buildArgs(flags *pflag.FlagSet, targets []string) []string {
 	buildArgs := []string{"build"}
 	flags.Visit(func(flag *pflag.Flag) {
 		var flagname string
-		if flag.Shorthand == "" {
+		if flag.Shorthand != "" {
 			flagname = "-" + flag.Shorthand
 		} else {
 			flagname = "-" + flag.Name
