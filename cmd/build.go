@@ -157,7 +157,7 @@ func init() {
 	// "go build" flags
 	buildCmd.Flags().StringP("o", "o", "", "forces build to write the resulting executable or object to the named output file.")
 	buildCmd.Flags().BoolP("i", "i", false, "install the packages that are dependencies of the target.")
-	buildCmd.Flags().AddFlagSet(sharedFlags)
+	buildCmd.Flags().AddFlagSet(sharedFlags())
 
 	buildCmd.SetFlagErrorFunc(fixFlagName)
 }

@@ -57,7 +57,7 @@ func init() {
 	// runCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
 	runCmd.Flags().StringP("exec", "", "", "invoke the binary using specified command")
-	runCmd.Flags().AddFlagSet(sharedFlags)
+	runCmd.Flags().AddFlagSet(sharedFlags())
 
 	runCmd.SetFlagErrorFunc(fixFlagName)
 }
