@@ -155,30 +155,9 @@ func init() {
 	// buildCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
 	// "go build" flags
-	// TODO: "go build"の引数との互換性を改善する。
-	//       現時点では、引数名の前に"--"がつくため、厳密には"go build"の引数とは互換性がない。
-	//       引数の解析エラーで発生するFlagErrorFuncで、フラグ名を修正して自分自身を呼び出すとよい。
 	buildCmd.Flags().StringP("o", "o", "", "forces build to write the resulting executable or object to the named output file.")
 	buildCmd.Flags().BoolP("i", "i", false, "install the packages that are dependencies of the target.")
-	buildCmd.Flags().BoolP("a", "a", false, "force rebuilding of packages that are already up-to-date.")
-	buildCmd.Flags().BoolP("n", "n", false, "print the commands but do not run them.")
-	buildCmd.Flags().IntP("p", "p", 0, "specifies the number of threads/commands to run.")
-	buildCmd.Flags().BoolP("race", "", false, "enable data race detection.")
-	buildCmd.Flags().BoolP("msan", "", false, "enable interoperation with memory sanitizer.")
-	buildCmd.Flags().BoolP("v", "v", false, "print the names of packages as they are compiled.")
-	buildCmd.Flags().BoolP("work", "", false, "print the name of the temporary work directory and do not delete it when exiting.")
-	buildCmd.Flags().BoolP("x", "x", false, "print the commands.")
-	buildCmd.Flags().StringP("asmflags", "", "", "arguments to pass on each go tool asm invocation.")
-	buildCmd.Flags().StringP("buildmode", "", "", "build mode to use. See 'go help buildmode' for more.")
-	buildCmd.Flags().StringP("compiler", "", "", "name of compiler to use, as in runtime.Compiler (gccgo or gc).")
-	buildCmd.Flags().StringP("gccgoflags", "", "", "arguments to pass on each gccgo compiler/linker invocation.")
-	buildCmd.Flags().StringP("gcflags", "", "", "arguments to pass on each go tool compile invocation.")
-	buildCmd.Flags().StringP("installsuffix", "", "", "a suffix to use in the name of the package installation directory.")
-	buildCmd.Flags().StringP("ldflags", "", "", "arguments to pass on each go tool link invocation.")
-	buildCmd.Flags().BoolP("linkshared", "", false, "link against shared libraries previously created with -buildmode=shared.")
-	buildCmd.Flags().StringP("pkgdir", "", "", "install and load all packages from dir instead of the usual locations.")
-	buildCmd.Flags().StringP("tags", "", "", "a space-separated list of build tags to consider satisfied during the build.")
-	buildCmd.Flags().StringP("toolexec", "", "", "a program to use to invoke toolchain programs like vet and asm.")
+	buildCmd.Flags().AddFlagSet(sharedFlags)
 
 	buildCmd.SetFlagErrorFunc(fixFlagName)
 }

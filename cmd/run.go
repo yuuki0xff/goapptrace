@@ -22,13 +22,18 @@ package cmd
 
 import (
 	"fmt"
+	"io"
+	"log"
+	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"github.com/yuuki0xff/goapptrace/config"
 )
 
 // runCmd represents the run command
 var runCmd = &cobra.Command{
-	Use:   "run [build flags] [-exec xprog] gofiles...",
+	Use:   "run [build flags] [-exec xprog] -- gofiles...",
 	Short: "compile and run Go program",
 	Long: `"goapptrace run" is a useful command like "go run".
 This command compiles specified files with logging codes, and execute them.
@@ -52,7 +57,7 @@ func init() {
 	// runCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
 	runCmd.Flags().StringP("exec", "", "", "invoke the binary using specified command")
-	runCmd.Flags().AddFlagSet(buildCmd.Flags())
+	runCmd.Flags().AddFlagSet(sharedFlags)
 
 	runCmd.SetFlagErrorFunc(fixFlagName)
 }

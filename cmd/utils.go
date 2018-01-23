@@ -12,6 +12,31 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 )
 
+// sharedFlags are shared by the "build" and "run" commands.
+var sharedFlags = pflag.NewFlagSet("", pflag.ContinueOnError)
+
+func init() {
+	sharedFlags.BoolP("a", "a", false, "force rebuilding of packages that are already up-to-date.")
+	sharedFlags.BoolP("n", "n", false, "print the commands but do not run them.")
+	sharedFlags.IntP("p", "p", 0, "specifies the number of threads/commands to run.")
+	sharedFlags.BoolP("race", "", false, "enable data race detection.")
+	sharedFlags.BoolP("msan", "", false, "enable interoperation with memory sanitizer.")
+	sharedFlags.BoolP("v", "v", false, "print the names of packages as they are compiled.")
+	sharedFlags.BoolP("work", "", false, "print the name of the temporary work directory and do not delete it when exiting.")
+	sharedFlags.BoolP("x", "x", false, "print the commands.")
+	sharedFlags.StringP("asmflags", "", "", "arguments to pass on each go tool asm invocation.")
+	sharedFlags.StringP("buildmode", "", "", "build mode to use. See 'go help buildmode' for more.")
+	sharedFlags.StringP("compiler", "", "", "name of compiler to use, as in runtime.Compiler (gccgo or gc).")
+	sharedFlags.StringP("gccgoflags", "", "", "arguments to pass on each gccgo compiler/linker invocation.")
+	sharedFlags.StringP("gcflags", "", "", "arguments to pass on each go tool compile invocation.")
+	sharedFlags.StringP("installsuffix", "", "", "a suffix to use in the name of the package installation directory.")
+	sharedFlags.StringP("ldflags", "", "", "arguments to pass on each go tool link invocation.")
+	sharedFlags.BoolP("linkshared", "", false, "link against shared libraries previously created with -buildmode=shared.")
+	sharedFlags.StringP("pkgdir", "", "", "install and load all packages from dir instead of the usual locations.")
+	sharedFlags.StringP("tags", "", "", "a space-separated list of build tags to consider satisfied during the build.")
+	sharedFlags.StringP("toolexec", "", "", "a program to use to invoke toolchain programs like vet and asm.")
+}
+
 func getAPIClient(conf *config.Config) (*restapi.Client, error) {
 	if conf == nil || len(conf.Servers.ApiServer) == 0 {
 		return nil, errors.New("api server not found")
