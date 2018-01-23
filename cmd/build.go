@@ -28,7 +28,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -180,42 +179,5 @@ func init() {
 	buildCmd.Flags().StringP("tags", "", "", "a space-separated list of build tags to consider satisfied during the build.")
 	buildCmd.Flags().StringP("toolexec", "", "", "a program to use to invoke toolchain programs like vet and asm.")
 
-	// golang標準のflagパッケージの形式の引数に対応するため、
-	// 引数名のprefixを必要に応じて"-"から"--"に変換する。
-	buildCmd.SetFlagErrorFunc(func(command *cobra.Command, e error) error {
-		// 定義済みの長いフラグ名 ("--"は含まない)
-		flagNames := map[string]bool{}
-		buildCmd.Flags().VisitAll(func(flag *pflag.Flag) {
-			flagNames[flag.Name] = true
-		})
-
-		var converted bool
-		args := []string{}
-		for _, arg := range os.Args[1:] {
-			if strings.HasPrefix(arg, "-") && flagNames[arg[1:]] {
-				// "-flag"から"--flag"形式に変換する。
-				args = append(args, "--"+arg[1:])
-				converted = true
-			} else {
-				args = append(args, arg)
-			}
-		}
-
-		if !converted {
-			// 引数の変換が行えないにも関わらずエラーが発生した状況である。
-			// 間違った引数を与えていた可能性があるので、ここで実行を中断。
-			return e
-		}
-
-		exe, err := os.Executable()
-		if err != nil {
-			return err
-		}
-
-		cmd := exec.Command(exe, args...)
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		return cmd.Run()
-	})
+	buildCmd.SetFlagErrorFunc(fixFlagName)
 }
