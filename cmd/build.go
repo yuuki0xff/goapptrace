@@ -35,6 +35,11 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/builder"
 )
 
+var buildFlags = mergeFlagNames(sharedFlagNames(), map[string]bool{
+	"o": true,
+	"i": true,
+})
+
 // buildCmd represents the build command
 var buildCmd = &cobra.Command{
 	Use:   "build [-o output] [-i] [packages]",
@@ -159,5 +164,5 @@ func init() {
 	buildCmd.Flags().BoolP("i", "i", false, "install the packages that are dependencies of the target.")
 	buildCmd.Flags().AddFlagSet(sharedFlags())
 
-	buildCmd.SetFlagErrorFunc(fixFlagName)
+	buildCmd.SetFlagErrorFunc(fixFlagName(buildFlags))
 }

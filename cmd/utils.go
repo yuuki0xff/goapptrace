@@ -37,6 +37,21 @@ func sharedFlags() *pflag.FlagSet {
 	return f
 }
 
+func sharedFlagNames() map[string]bool {
+	names := map[string]bool{}
+	sharedFlags().VisitAll(func(flag *pflag.Flag) {
+		names[flag.Name] = true
+	})
+	return names
+}
+
+func mergeFlagNames(a, b map[string]bool) map[string]bool {
+	for key, value := range b {
+		a[key] = value
+	}
+	return a
+}
+
 func getAPIClient(conf *config.Config) (*restapi.Client, error) {
 	if conf == nil || len(conf.Servers.ApiServer) == 0 {
 		return nil, errors.New("api server not found")
@@ -57,39 +72,35 @@ func getAPIClient(conf *config.Config) (*restapi.Client, error) {
 
 // 引数名のprefixを必要に応じて"-"から"--"に変換してから、再実行する。
 // golang標準のflagパッケージの形式との互換性を持たせるために使用する。
-func fixFlagName(command *cobra.Command, e error) error {
-	// 定義済みの長いフラグ名 ("--"は含まない)
-	flagNames := map[string]bool{}
-	command.Flags().VisitAll(func(flag *pflag.Flag) {
-		flagNames[flag.Name] = true
-	})
-
-	var converted bool
-	args := []string{}
-	for _, arg := range os.Args[1:] {
-		if strings.HasPrefix(arg, "-") && flagNames[arg[1:]] {
-			// "-flag"から"--flag"形式に変換する。
-			args = append(args, "--"+arg[1:])
-			converted = true
-		} else {
-			args = append(args, arg)
+func fixFlagName(flagNames map[string]bool) func(command *cobra.Command, e error) error {
+	return func(command *cobra.Command, e error) error {
+		var converted bool
+		args := []string{}
+		for _, arg := range os.Args[1:] {
+			if strings.HasPrefix(arg, "-") && flagNames[arg[1:]] {
+				// "-flag"から"--flag"形式に変換する。
+				args = append(args, "--"+arg[1:])
+				converted = true
+			} else {
+				args = append(args, arg)
+			}
 		}
-	}
 
-	if !converted {
-		// 引数の変換が行えないにも関わらずエラーが発生した状況である。
-		// 間違った引数を与えていた可能性があるので、ここで実行を中断。
-		return e
-	}
+		if !converted {
+			// 引数の変換が行えないにも関わらずエラーが発生した状況である。
+			// 間違った引数を与えていた可能性があるので、ここで実行を中断。
+			return e
+		}
 
-	exe, err := os.Executable()
-	if err != nil {
-		return err
-	}
+		exe, err := os.Executable()
+		if err != nil {
+			return err
+		}
 
-	cmd := exec.Command(exe, args...)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+		cmd := exec.Command(exe, args...)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		return cmd.Run()
+	}
 }

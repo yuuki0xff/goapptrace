@@ -31,6 +31,10 @@ import (
 	"github.com/yuuki0xff/goapptrace/config"
 )
 
+var runFlags = mergeFlagNames(sharedFlagNames(), map[string]bool{
+	"exec": true,
+})
+
 // runCmd represents the run command
 var runCmd = &cobra.Command{
 	Use:   "run [build flags] [-exec xprog] -- gofiles...",
@@ -59,5 +63,5 @@ func init() {
 	runCmd.Flags().StringP("exec", "", "", "invoke the binary using specified command")
 	runCmd.Flags().AddFlagSet(sharedFlags())
 
-	runCmd.SetFlagErrorFunc(fixFlagName)
+	runCmd.SetFlagErrorFunc(fixFlagName(runFlags))
 }
