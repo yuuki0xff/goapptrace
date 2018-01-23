@@ -49,4 +49,9 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// runCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+
+	runCmd.Flags().StringP("exec", "", "", "invoke the binary using specified command")
+	runCmd.Flags().AddFlagSet(buildCmd.Flags())
+
+	runCmd.SetFlagErrorFunc(fixFlagName)
 }
