@@ -28,7 +28,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/info"
@@ -54,27 +53,12 @@ func runProcRun(conf *config.Config, stdout, stderr io.Writer, targets []string)
 		targets = conf.Targets.Names()
 	}
 
-	api, err := getAPIClient(conf)
+	srv, err := getLogServer(conf)
 	if err != nil {
-		return err
-	}
-	srvs, err := api.Servers()
-	if err != nil {
-		return err
-	}
-	if len(srvs) == 0 {
-		fmt.Fprint(stderr, "Log servers is not running")
-		return errors.New("log servers is not running")
-	}
-	var srv restapi.ServerStatus
-	for _, srv = range srvs {
-		break
+		fmt.Fprintln(stderr, err.Error())
 	}
 
-	// set env for child processes
-	if err := os.Setenv(info.DEFAULT_LOGSRV_ENV, srv.Addr); err != nil {
-		return err
-	}
+	env := procRunEnv(srv)
 
 	var lastErr error
 	wg := sync.WaitGroup{}
@@ -83,7 +67,7 @@ func runProcRun(conf *config.Config, stdout, stderr io.Writer, targets []string)
 		if err != nil {
 			return err
 		}
-		proc, err := target.Run.Start()
+		proc, err := target.Run.Start(env)
 		if err != nil {
 			return err
 		}
@@ -100,6 +84,13 @@ func runProcRun(conf *config.Config, stdout, stderr io.Writer, targets []string)
 
 	wg.Wait()
 	return lastErr
+}
+
+// トレース対象のプロセスの環境変数を返す
+func procRunEnv(srv restapi.ServerStatus) []string {
+	env := os.Environ()
+	env = append(env, info.DEFAULT_LOGSRV_ENV+"="+srv.Addr)
+	return env
 }
 
 func init() {

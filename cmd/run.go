@@ -23,12 +23,16 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
+	"os/exec"
+	"path"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/yuuki0xff/goapptrace/config"
+	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 )
 
 var runFlags = mergeFlagNames(sharedFlagNames(), map[string]bool{
@@ -42,9 +46,78 @@ var runCmd = &cobra.Command{
 	Long: `"goapptrace run" is a useful command like "go run".
 This command compiles specified files with logging codes, and execute them.
 Arguments are compatible with "go run". See "go run --help" to get more information about arguments.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
 		fmt.Println("run called")
-	},
+		return runRun(conf, cmd.Flags(), cmd.OutOrStdout(), cmd.OutOrStderr(), args)
+	}),
+}
+
+func runRun(conf *config.Config, flags *pflag.FlagSet, stdout, stderr io.Writer, targets []string) error {
+	//cmd := exec.Command("echo", buildArgs(flags, targets)...)
+	//cmd.Stdout = stdout
+	//cmd.Run()
+	//os.Exit(0)
+
+	srv, err := getLogServer(conf)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	files, cmdArgs := separateGofilesAndArgs(targets)
+	if len(files) == 0 {
+		log.Panic("goapptrace run: no go files listed")
+	}
+
+	tmpdir, err := ioutil.TempDir("", ".goapptrace.run")
+	if err != nil {
+		return err
+	}
+	log.Println("tmpdir:", tmpdir)
+	//defer os.RemoveAll(tmpdir) // nolint: errcheck
+
+	b, err := prepareRepo(tmpdir, files)
+	if err != nil {
+		fmt.Fprintf(stderr, err.Error()+"\n")
+		log.Fatal("Fail")
+	}
+
+	// ビルド対象のファイルパスを修正する。
+	newFiles := make([]string, len(files))
+	for i := range files {
+		newFiles[i] = path.Join(b.MainPkgDir(), path.Base(files[i]))
+	}
+
+	runCmd := exec.Command("go", runArgs(flags, newFiles, cmdArgs)...)
+	runCmd.Stdout = stdout
+	runCmd.Stderr = stderr
+	// 実行用の環境変数を追加しなきゃ鳴らない
+	runCmd.Env = runEnv(srv, b.Goroot, b.Gopath)
+	return runCmd.Run()
+}
+
+// "go run"の引数を返す
+func runArgs(flagset *pflag.FlagSet, files, cmdArgs []string) []string {
+	return append(append(append(
+		[]string{"run"},
+		toShortPrefixFlag(flagset, runFlags)...),
+		files...),
+		cmdArgs...)
+}
+
+// "go run"コマンドの実行前にセットするべき環境変数を返す
+func runEnv(srv restapi.ServerStatus, goroot, gopath string) []string {
+	env := buildEnv(goroot, gopath)
+	env = append(env, procRunEnv(srv)...)
+	return env
+}
+
+func separateGofilesAndArgs(args []string) (files, cmdArgs []string) {
+	i := 0
+	for i < len(args) && strings.HasSuffix(args[i], ".go") {
+		i++
+	}
+	files, cmdArgs = args[:i], args[i:]
+	return
 }
 
 func init() {

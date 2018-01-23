@@ -62,47 +62,32 @@ func runBuild(conf *config.Config, flags *pflag.FlagSet, stdout, stderr io.Write
 	log.Println("tmpdir:", tmpdir)
 	//defer os.RemoveAll(tmpdir) // nolint: errcheck
 
-	goroot := path.Join(tmpdir, "goroot")
-	gopath := path.Join(tmpdir, "gopath")
-
-	b := builder.RepoBuilder{
-		Goroot: goroot,
-		Gopath: gopath,
-		IgnorePkgs: map[string]bool{
-			"github.com/yuuki0xff/goapptrace/tracer/logger": true,
-		},
-		IgnoreStdPkgs: true,
-	}
-	if err := b.Init(); err != nil {
+	b, err := prepareRepo(tmpdir, targets)
+	if err != nil {
 		fmt.Fprintf(stderr, err.Error()+"\n")
 		log.Fatal("Fail")
 	}
 
+	var newTargets []string
 	isGofiles, err := builder.IsGofiles(targets)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	// insert logging codes
-	if err = b.EditAll(targets); err != nil {
-		fmt.Fprintf(stderr, err.Error()+"\n")
-		log.Fatal("Fail")
-	}
-	log.Println("OK")
-	//os.Exit(0)
-
-	newTargets := targets
 	if isGofiles {
+		// ビルド対象のファイルパスを修正する。
 		newTargets = make([]string, len(targets))
 		for i := range targets {
 			newTargets[i] = path.Join(b.MainPkgDir(), path.Base(targets[i]))
 		}
+	} else {
+		// import pathは変更不要。
+		newTargets = targets
 	}
 
 	buildCmd := exec.Command("go", buildArgs(flags, newTargets)...)
 	buildCmd.Stdout = stdout
 	buildCmd.Stderr = stderr
-	buildCmd.Env = buildEnv(goroot, gopath)
+	buildCmd.Env = buildEnv(b.Goroot, b.Gopath)
 	return buildCmd.Run()
 }
 
@@ -115,35 +100,11 @@ func buildEnv(goroot, gopath string) []string {
 }
 
 // "go build"の引数を返す
-func buildArgs(flags *pflag.FlagSet, targets []string) []string {
-	buildArgs := []string{"build"}
-	flags.Visit(func(flag *pflag.Flag) {
-		var flagname string
-		if flag.Shorthand != "" {
-			flagname = "-" + flag.Shorthand
-		} else {
-			flagname = "-" + flag.Name
-		}
-
-		value := flag.Value.String()
-		switch flag.Value.Type() {
-		case "bool":
-			if value == "true" {
-				buildArgs = append(buildArgs, flagname)
-			}
-		case "string":
-			if value != "" {
-				buildArgs = append(buildArgs, flagname, value)
-			}
-		case "int":
-			if value != "0" {
-				buildArgs = append(buildArgs, flagname, value)
-			}
-		default:
-			log.Panicf("invalid type name: %s", flag.Value.Type())
-		}
-	})
-	return append(buildArgs, targets...)
+func buildArgs(flagset *pflag.FlagSet, targets []string) []string {
+	return append(append(
+		[]string{"build"},
+		toShortPrefixFlag(flagset, buildFlags)...),
+		targets...)
 }
 
 func init() {

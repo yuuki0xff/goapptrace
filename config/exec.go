@@ -12,7 +12,7 @@ type ExecProcess struct {
 }
 
 // Start execute a command but does not wait for exit
-func (ep *ExecProcess) Start() (*exec.Cmd, error) {
+func (ep *ExecProcess) Start(env []string) (*exec.Cmd, error) {
 	args := ep.Args
 	if len(args) == 0 {
 		args = []string{
@@ -20,5 +20,5 @@ func (ep *ExecProcess) Start() (*exec.Cmd, error) {
 			"." + string(filepath.Separator) + info.DEFAULT_EXE_NAME,
 		}
 	}
-	return startCmd(args)
+	return startCmd(args, env)
 }

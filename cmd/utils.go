@@ -1,14 +1,17 @@
 package cmd
 
 import (
+	"log"
 	"os"
 	"os/exec"
+	"path"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/yuuki0xff/goapptrace/config"
+	"github.com/yuuki0xff/goapptrace/tracer/builder"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 )
 
@@ -103,4 +106,72 @@ func fixFlagName(flagNames map[string]bool) func(command *cobra.Command, e error
 		cmd.Stderr = os.Stderr
 		return cmd.Run()
 	}
+}
+
+// FlagSetからgolang標準のflagパッケージが解釈可能な形式の引数へと変換する。
+func toShortPrefixFlag(flagset *pflag.FlagSet, flags map[string]bool) []string {
+	args := []string{}
+	flagset.Visit(func(flag *pflag.Flag) {
+		if !flags[flag.Name] {
+			return
+		}
+		flagname := "-" + flag.Name
+
+		value := flag.Value.String()
+		switch flag.Value.Type() {
+		case "bool":
+			if value == "true" {
+				args = append(args, flagname)
+			}
+		case "string":
+			if value != "" {
+				args = append(args, flagname, value)
+			}
+		case "int":
+			if value != "0" {
+				args = append(args, flagname, value)
+			}
+		default:
+			log.Panicf("invalid type name: %s", flag.Value.Type())
+		}
+	})
+	return args
+}
+
+func prepareRepo(tmpdir string, targets []string) (*builder.RepoBuilder, error) {
+	goroot := path.Join(tmpdir, "goroot")
+	gopath := path.Join(tmpdir, "gopath")
+
+	b := &builder.RepoBuilder{
+		Goroot: goroot,
+		Gopath: gopath,
+		IgnorePkgs: map[string]bool{
+			"github.com/yuuki0xff/goapptrace/tracer/logger": true,
+		},
+		IgnoreStdPkgs: true,
+	}
+	if err := b.Init(); err != nil {
+		return nil, err
+	}
+
+	// insert logging codes
+	if err := b.EditAll(targets); err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+func getLogServer(conf *config.Config) (srv restapi.ServerStatus, err error) {
+	api, err := getAPIClient(conf)
+	if err != nil {
+		return
+	}
+	srvs, err := api.Servers()
+	if err != nil {
+		return
+	}
+	for _, srv = range srvs {
+		return
+	}
+	return srv, errors.New("log servers is not running")
 }
