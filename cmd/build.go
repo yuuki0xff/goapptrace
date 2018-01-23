@@ -37,11 +37,12 @@ import (
 
 // buildCmd represents the build command
 var buildCmd = &cobra.Command{
-	Use:   "build",
-	Short: "Add trace codes and compile the packages",
-	Long: `Build is an useful command like "go build".
-Add trace codes to specified files before build, and build them.
-Source code is no change!`,
+	Use:   "build [-o output] [-i] [packages]",
+	Short: "compile packages and dependencies with goapptrace logger",
+	Long: `"goapptrace build" is a useful command like "go build".
+This command adds logging codes to specified files before build, and build them.
+Original source code is not change!
+Arguments are compatible with "go build". See "go build --help" to get more information about arguments.`,
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
 		fmt.Println("build called")
 		return runBuild(conf, cmd.Flags(), cmd.OutOrStdout(), cmd.OutOrStderr(), args)

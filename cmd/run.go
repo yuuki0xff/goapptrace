@@ -28,10 +28,11 @@ import (
 
 // runCmd represents the run command
 var runCmd = &cobra.Command{
-	Use:   "run",
-	Short: "Add trace codes and compile the packages",
-	Long: `Run is an useful command like "go run".
-Add trace codes to specified files before build, And build & execute them.`,
+	Use:   "run [build flags] [-exec xprog] gofiles...",
+	Short: "compile and run Go program",
+	Long: `"goapptrace run" is a useful command like "go run".
+This command compiles specified files with logging codes, and execute them.
+Arguments are compatible with "go run". See "go run --help" to get more information about arguments.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("run called")
 	},
