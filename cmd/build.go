@@ -191,7 +191,6 @@ func init() {
 
 		var converted bool
 		args := []string{}
-		// TODO: fix flag names
 		for _, arg := range os.Args[1:] {
 			if strings.HasPrefix(arg, "-") && flagNames[arg[1:]] {
 				// "-flag"から"--flag"形式に変換する。
