@@ -13,8 +13,9 @@ import (
 )
 
 const (
-	// 自動作成されたディレクトリの、デフォルトのパーミッション
-	DefaultDirPerm = 0777
+	// goapptraceによって作成されたディレクトリとファイルの、デフォルトのパーミッション
+	DefaultDirPerm  = 0777
+	DefaultFilePerm = 0666
 )
 
 // ディレクトリ構造を抽象化する。
@@ -175,7 +176,7 @@ func (f File) OpenReadOnly() (io.ReadCloser, error) {
 // WriteOnlyモードで開く。
 // 既存のデータがあった場合、開いた直後にtruncateされる。
 func (f File) OpenWriteOnly() (io.WriteCloser, error) {
-	file, err := os.OpenFile(string(f), os.O_CREATE|os.O_WRONLY, 0666)
+	file, err := os.OpenFile(string(f), os.O_CREATE|os.O_WRONLY, DefaultFilePerm)
 	if err != nil {
 		return nil, fmt.Errorf("cannot open %s for writing: %s", string(f), err)
 	}
@@ -184,7 +185,7 @@ func (f File) OpenWriteOnly() (io.WriteCloser, error) {
 
 // AppendOnlyモードで開く。
 func (f File) OpenAppendOnly() (io.WriteCloser, error) {
-	file, err := os.OpenFile(string(f), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	file, err := os.OpenFile(string(f), os.O_CREATE|os.O_WRONLY|os.O_APPEND, DefaultFilePerm)
 	if err != nil {
 		return nil, fmt.Errorf("cannot open %s for appending: %s", string(f), err)
 	}
