@@ -81,7 +81,7 @@ func (s *Symbols) addFuncNolock(symbol *FuncSymbol) (id FuncID, added bool) {
 		}
 	} else {
 		symbol.ID = FuncID(len(s.Funcs))
-		// increase length of Funcs array
+		// increase length of the Funcs array
 		s.Funcs = append(s.Funcs, nil)
 	}
 	s.Funcs[symbol.ID] = symbol
@@ -113,7 +113,7 @@ func (s *Symbols) addFuncStatusNolock(status *FuncStatus) (id FuncStatusID, adde
 		}
 	} else {
 		status.ID = FuncStatusID(len(s.FuncStatus))
-		// increase length of Funcs array
+		// increase length of the FuncStatus array
 		s.FuncStatus = append(s.FuncStatus, status)
 	}
 	s.FuncStatus[status.ID] = status
