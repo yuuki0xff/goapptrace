@@ -91,12 +91,13 @@ type FuncID uint64
 type FuncStatusID uint64
 
 type Symbols struct {
+	Writable bool
+	KeepID   bool
+
 	Funcs      []*FuncSymbol
 	FuncStatus []*FuncStatus
 
-	isWritable bool
-	lock       sync.RWMutex
-	keepID     bool
+	lock sync.RWMutex
 
 	// SymbolName(string)とFuncIDの対応関係を保持する
 	// isWritableがfalseなら、nil

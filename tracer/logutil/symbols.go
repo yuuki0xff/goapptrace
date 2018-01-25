@@ -8,9 +8,9 @@ import (
 func (s *Symbols) Init(writable bool, keepID bool) {
 	s.Funcs = make([]*FuncSymbol, 0)
 	s.FuncStatus = make([]*FuncStatus, 0)
-	s.isWritable = writable
-	s.keepID = keepID
-	if s.isWritable {
+	s.Writable = writable
+	s.KeepID = keepID
+	if s.Writable {
 		s.name2FuncID = make(map[string]FuncID)
 		s.status2FSID = make(map[FuncStatus]FuncStatusID)
 	}
@@ -60,7 +60,7 @@ func (sr *Symbols) AddFunc(symbol *FuncSymbol) (id FuncID, added bool) {
 }
 
 func (sr *Symbols) addFuncNolock(symbol *FuncSymbol) (id FuncID, added bool) {
-	if !sr.isWritable {
+	if !sr.Writable {
 		log.Panic("Symbols is not writable")
 	}
 
@@ -70,7 +70,7 @@ func (sr *Symbols) addFuncNolock(symbol *FuncSymbol) (id FuncID, added bool) {
 		return id, false
 	}
 
-	if sr.keepID {
+	if sr.KeepID {
 		// symbol.IDの値が、配列の長さを超えている場合、配列の長さを伸ばす。
 		for symbol.ID >= FuncID(len(sr.Funcs)) {
 			sr.Funcs = append(sr.Funcs, nil)
@@ -92,7 +92,7 @@ func (sr *Symbols) AddFuncStatus(status *FuncStatus) (id FuncStatusID, added boo
 }
 
 func (sr *Symbols) addFuncStatusNolock(status *FuncStatus) (id FuncStatusID, added bool) {
-	if !sr.isWritable {
+	if !sr.Writable {
 		log.Panic("Symbols is not writable")
 	}
 
@@ -102,7 +102,7 @@ func (sr *Symbols) addFuncStatusNolock(status *FuncStatus) (id FuncStatusID, add
 		return id, false
 	}
 
-	if sr.keepID {
+	if sr.KeepID {
 		// status.IDの値が配列の長さを超えている場合、配列の長さを伸ばす。
 		for status.ID >= FuncStatusID(len(sr.FuncStatus)) {
 			sr.FuncStatus = append(sr.FuncStatus, nil)
