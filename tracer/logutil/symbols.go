@@ -14,6 +14,12 @@ func (s *Symbols) Init() {
 	}
 }
 
+func (s *Symbols) Load(funcs []*FuncSymbol, funcStatus []*FuncStatus) {
+	s.Init()
+	s.Funcs = funcs
+	s.FuncStatus = funcStatus
+}
+
 func (s Symbols) FuncID(id FuncStatusID) FuncID {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
