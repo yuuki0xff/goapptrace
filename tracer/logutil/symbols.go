@@ -1,6 +1,8 @@
 package logutil
 
-import "strings"
+import (
+	"strings"
+)
 
 func (s *Symbols) Init() {
 	s.Funcs = make([]*FuncSymbol, 0)
@@ -8,10 +10,14 @@ func (s *Symbols) Init() {
 }
 
 func (s Symbols) FuncID(id FuncStatusID) FuncID {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 	return s.FuncStatus[id].Func
 }
 
 func (s Symbols) FuncName(id FuncStatusID) string {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 	return s.Funcs[s.FuncID(id)].Name
 }
 
@@ -29,21 +35,34 @@ func (s Symbols) ModuleName(id FuncStatusID) string {
 
 func (sr *SymbolsEditor) Init(symbols *Symbols) {
 	sr.symbols = symbols
+
+	sr.symbols.lock.Lock()
+	defer sr.symbols.lock.Unlock()
+
 	sr.funcs = make(map[string]FuncID)
 	sr.funcStatus = make(map[FuncStatus]FuncStatusID)
 }
 
 // 注意: 引数(symbols)のIDは引き継がれない。
 func (sr *SymbolsEditor) AddSymbols(symbols *Symbols) {
+	sr.symbols.lock.Lock()
+	defer sr.symbols.lock.Unlock()
+
 	for _, fsymbol := range symbols.Funcs {
-		sr.AddFunc(fsymbol)
+		sr.addFuncNolock(fsymbol)
 	}
 	for _, fsatus := range symbols.FuncStatus {
-		sr.AddFuncStatus(fsatus)
+		sr.addFuncStatusNolock(fsatus)
 	}
 }
 
 func (sr *SymbolsEditor) AddFunc(symbol *FuncSymbol) (id FuncID, added bool) {
+	sr.symbols.lock.Lock()
+	defer sr.symbols.lock.Unlock()
+	return sr.addFuncNolock(symbol)
+}
+
+func (sr *SymbolsEditor) addFuncNolock(symbol *FuncSymbol) (id FuncID, added bool) {
 	id, ok := sr.funcs[symbol.Name]
 	if ok {
 		// if exists, nothing to do
@@ -66,6 +85,12 @@ func (sr *SymbolsEditor) AddFunc(symbol *FuncSymbol) (id FuncID, added bool) {
 }
 
 func (sr *SymbolsEditor) AddFuncStatus(status *FuncStatus) (id FuncStatusID, added bool) {
+	sr.symbols.lock.Lock()
+	defer sr.symbols.lock.Unlock()
+	return sr.addFuncStatusNolock(status)
+}
+
+func (sr *SymbolsEditor) addFuncStatusNolock(status *FuncStatus) (id FuncStatusID, added bool) {
 	id, ok := sr.funcStatus[*status]
 	if ok {
 		// if exists, nothing to do

@@ -93,6 +93,8 @@ type FuncStatusID uint64
 type Symbols struct {
 	Funcs      []*FuncSymbol
 	FuncStatus []*FuncStatus
+
+	lock sync.RWMutex
 }
 
 type FuncSymbol struct {
