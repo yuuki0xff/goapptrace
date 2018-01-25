@@ -39,78 +39,78 @@ func (s Symbols) ModuleName(id FuncStatusID) string {
 }
 
 // 注意: 引数(symbols)のIDは引き継がれない。
-func (sr *Symbols) AddSymbols(symbols *Symbols) {
-	sr.lock.Lock()
-	defer sr.lock.Unlock()
+func (s *Symbols) AddSymbols(symbols *Symbols) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
 
 	for _, fsymbol := range symbols.Funcs {
-		sr.addFuncNolock(fsymbol)
+		s.addFuncNolock(fsymbol)
 	}
 	for _, fsatus := range symbols.FuncStatus {
-		sr.addFuncStatusNolock(fsatus)
+		s.addFuncStatusNolock(fsatus)
 	}
 }
 
-func (sr *Symbols) AddFunc(symbol *FuncSymbol) (id FuncID, added bool) {
-	sr.lock.Lock()
-	defer sr.lock.Unlock()
-	return sr.addFuncNolock(symbol)
+func (s *Symbols) AddFunc(symbol *FuncSymbol) (id FuncID, added bool) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	return s.addFuncNolock(symbol)
 }
 
-func (sr *Symbols) addFuncNolock(symbol *FuncSymbol) (id FuncID, added bool) {
-	if !sr.Writable {
+func (s *Symbols) addFuncNolock(symbol *FuncSymbol) (id FuncID, added bool) {
+	if !s.Writable {
 		log.Panic("Symbols is not writable")
 	}
 
-	id, ok := sr.name2FuncID[symbol.Name]
+	id, ok := s.name2FuncID[symbol.Name]
 	if ok {
 		// if exists, nothing to do
 		return id, false
 	}
 
-	if sr.KeepID {
+	if s.KeepID {
 		// symbol.IDの値が、配列の長さを超えている場合、配列の長さを伸ばす。
-		for symbol.ID >= FuncID(len(sr.Funcs)) {
-			sr.Funcs = append(sr.Funcs, nil)
+		for symbol.ID >= FuncID(len(s.Funcs)) {
+			s.Funcs = append(s.Funcs, nil)
 		}
 	} else {
-		symbol.ID = FuncID(len(sr.Funcs))
+		symbol.ID = FuncID(len(s.Funcs))
 		// increase length of Funcs array
-		sr.Funcs = append(sr.Funcs, nil)
+		s.Funcs = append(s.Funcs, nil)
 	}
-	sr.Funcs[symbol.ID] = symbol
-	sr.name2FuncID[symbol.Name] = symbol.ID
+	s.Funcs[symbol.ID] = symbol
+	s.name2FuncID[symbol.Name] = symbol.ID
 	return symbol.ID, true
 }
 
-func (sr *Symbols) AddFuncStatus(status *FuncStatus) (id FuncStatusID, added bool) {
-	sr.lock.Lock()
-	defer sr.lock.Unlock()
-	return sr.addFuncStatusNolock(status)
+func (s *Symbols) AddFuncStatus(status *FuncStatus) (id FuncStatusID, added bool) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	return s.addFuncStatusNolock(status)
 }
 
-func (sr *Symbols) addFuncStatusNolock(status *FuncStatus) (id FuncStatusID, added bool) {
-	if !sr.Writable {
+func (s *Symbols) addFuncStatusNolock(status *FuncStatus) (id FuncStatusID, added bool) {
+	if !s.Writable {
 		log.Panic("Symbols is not writable")
 	}
 
-	id, ok := sr.status2FSID[*status]
+	id, ok := s.status2FSID[*status]
 	if ok {
 		// if exists, nothing to do
 		return id, false
 	}
 
-	if sr.KeepID {
+	if s.KeepID {
 		// status.IDの値が配列の長さを超えている場合、配列の長さを伸ばす。
-		for status.ID >= FuncStatusID(len(sr.FuncStatus)) {
-			sr.FuncStatus = append(sr.FuncStatus, nil)
+		for status.ID >= FuncStatusID(len(s.FuncStatus)) {
+			s.FuncStatus = append(s.FuncStatus, nil)
 		}
 	} else {
-		status.ID = FuncStatusID(len(sr.FuncStatus))
+		status.ID = FuncStatusID(len(s.FuncStatus))
 		// increase length of Funcs array
-		sr.FuncStatus = append(sr.FuncStatus, status)
+		s.FuncStatus = append(s.FuncStatus, status)
 	}
-	sr.FuncStatus[status.ID] = status
-	sr.status2FSID[*status] = status.ID
+	s.FuncStatus[status.ID] = status
+	s.status2FSID[*status] = status.ID
 	return status.ID, true
 }
