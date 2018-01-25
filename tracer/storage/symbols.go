@@ -13,9 +13,9 @@ type SymbolsWriter struct {
 // Symbolファイルからメモリ(logutil.Symbols)へ読み込む。
 // logutil.Symbolsへの更新は、logutil.SymbolsEditor経由で行う。
 type SymbolsReader struct {
-	File          File
-	SymbolsEditor *logutil.SymbolsEditor
-	dec           Decoder
+	File    File
+	Symbols *logutil.Symbols
+	dec     Decoder
 }
 
 func (s *SymbolsWriter) Open() error {
@@ -43,7 +43,7 @@ func (s *SymbolsReader) Load() error {
 		},
 		func(val interface{}) error {
 			symbol := val.(*logutil.Symbols)
-			s.SymbolsEditor.AddSymbols(symbol)
+			s.Symbols.AddSymbols(symbol)
 			return nil
 		},
 	)

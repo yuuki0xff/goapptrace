@@ -25,16 +25,14 @@ var (
 	MaxStackSize = 1024
 	ClosedError  = errors.New("already closed")
 
-	lock          = sync.Mutex{}
-	symbols       = logutil.Symbols{}
-	symbolsEditor = logutil.SymbolsEditor{}
-	patchGuard    *monkey.PatchGuard
-	sender        Sender
+	lock       = sync.Mutex{}
+	symbols    = logutil.Symbols{}
+	patchGuard *monkey.PatchGuard
+	sender     Sender
 )
 
 func init() {
-	symbols.Init()
-	symbolsEditor.Init(&symbols)
+	symbols.Init(true, false)
 
 	// os.Exitにフックを仕掛ける
 	// TODO: don't work!
@@ -72,12 +70,12 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 			break
 		}
 
-		funcID, added1 := symbolsEditor.AddFunc(&logutil.FuncSymbol{
+		funcID, added1 := symbols.AddFunc(&logutil.FuncSymbol{
 			Name:  frame.Function,
 			File:  frame.File,
 			Entry: frame.Entry,
 		})
-		funcStatusID, added2 := symbolsEditor.AddFuncStatus(&logutil.FuncStatus{
+		funcStatusID, added2 := symbols.AddFuncStatus(&logutil.FuncStatus{
 			Func: funcID,
 			Line: uint64(frame.Line),
 			PC:   frame.PC,
@@ -88,7 +86,7 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 			if newSymbols == nil {
 				// prepare newSymbols
 				newSymbols = &logutil.Symbols{}
-				newSymbols.Init()
+				newSymbols.Init(true, true)
 			}
 
 			if added1 {

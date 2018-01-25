@@ -49,8 +49,7 @@ type Log struct {
 
 	index         *Index
 	symbols       *logutil.Symbols
-	symbolsEditor *logutil.SymbolsEditor // readonlyならnil
-	symbolsWriter *SymbolsWriter         // readonlyならnil
+	symbolsWriter *SymbolsWriter // readonlyならnil
 
 	funcLog      SplitReadWriter
 	rawFuncLog   SplitReadWriter
@@ -155,10 +154,8 @@ func (l *Log) Open() error {
 		return fmt.Errorf("failed to open Index: File=%s err=%s", l.index.File, err)
 	}
 	l.symbols = &logutil.Symbols{}
-	l.symbols.Init()
+	l.symbols.Init(!l.ReadOnly, true)
 	if !l.ReadOnly {
-		l.symbolsEditor = &logutil.SymbolsEditor{}
-		l.symbolsEditor.Init(l.symbols)
 		l.symbolsWriter = &SymbolsWriter{
 			File: l.Root.SymbolFile(l.ID),
 		}
@@ -174,15 +171,12 @@ func (l *Log) Open() error {
 
 		// load Symbols
 		symbolsReader := &SymbolsReader{
-			File: l.Root.SymbolFile(l.ID),
-			SymbolsEditor: &logutil.SymbolsEditor{
-				KeepID: true,
-			},
+			File:    l.Root.SymbolFile(l.ID),
+			Symbols: l.symbols,
 		}
 		if err := symbolsReader.Open(); err != nil {
 			return fmt.Errorf("failed to load Symbols: File=%s err=%s", symbolsReader.File, err)
 		}
-		symbolsReader.SymbolsEditor.Init(l.symbols)
 		if err := symbolsReader.Load(); err != nil {
 			return fmt.Errorf("failed to load Symbols: File=%s err=%s", symbolsReader.File, err)
 		}
@@ -486,7 +480,7 @@ func (l *Log) AppendSymbols(symbols *logutil.Symbols) error {
 	if err := l.symbolsWriter.Append(symbols); err != nil {
 		return err
 	}
-	l.symbolsEditor.AddSymbols(symbols)
+	l.symbols.AddSymbols(symbols)
 	return nil
 }
 

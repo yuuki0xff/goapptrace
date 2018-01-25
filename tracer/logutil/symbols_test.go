@@ -47,26 +47,25 @@ func TestSymbolResolver(t *testing.T) {
 	}
 
 	sym := Symbols{}
-	editor := SymbolsEditor{}
-	editor.Init(&sym)
-	fs1.Func, _ = editor.AddFunc(&f1)
+	sym.Init(true, false)
+	fs1.Func, _ = sym.AddFunc(&f1)
 	if f1.ID != FuncID(0) || f1.ID != fs1.Func {
 		// FuncSymbol.IDが更新されていない OR 正しいIDを返していない
 		t.Errorf("mismatch FuncID: expect 0, actual %d and %d", f1.ID, fs1.Func)
 	}
 
-	fsid1, _ := editor.AddFuncStatus(&fs1)
+	fsid1, _ := sym.AddFuncStatus(&fs1)
 	if fs1.ID != FuncStatusID(0) || fs1.ID != fsid1 {
 		// FuncStatus.IDが更新されていない OR 正しいIDを返していない
 		t.Errorf("mismatch FuncStatusID: expect 0, actual %d and %d", fs1.ID, fsid1)
 	}
 
-	fs2.Func, _ = editor.AddFunc(&f2)
+	fs2.Func, _ = sym.AddFunc(&f2)
 	if f2.ID != FuncID(1) {
 		t.Errorf("mismatch FuncID: expect 0, actual %d", f2.ID)
 	}
 
-	editor.AddFuncStatus(&fs2)
+	sym.AddFuncStatus(&fs2)
 	if fs2.ID != FuncStatusID(1) {
 		t.Errorf("mismatch FuncStatusID: expect 0, actual %d", fs2.ID)
 	}

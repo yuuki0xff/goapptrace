@@ -94,7 +94,17 @@ type Symbols struct {
 	Funcs      []*FuncSymbol
 	FuncStatus []*FuncStatus
 
-	lock sync.RWMutex
+	isWritable bool
+	lock       sync.RWMutex
+	keepID     bool
+
+	// SymbolName(string)とFuncIDの対応関係を保持する
+	// isWritableがfalseなら、nil
+	funcs map[string]FuncID
+	// FuncStatusとFuncStatusIDの対応関係を保持する。
+	// 同一の内容のFuncStatusを追加しないようにするために使用する。
+	// なお、FuncStatus.IDは常に0にすること。
+	funcStatus map[FuncStatus]FuncStatusID
 }
 
 type FuncSymbol struct {
@@ -109,11 +119,4 @@ type FuncStatus struct {
 	Func FuncID
 	Line uint64
 	PC   uintptr
-}
-
-type SymbolsEditor struct {
-	KeepID     bool
-	symbols    *Symbols
-	funcs      map[string]FuncID
-	funcStatus map[FuncStatus]FuncStatusID // FuncStatus.IDは常に0
 }

@@ -1,12 +1,19 @@
 package logutil
 
 import (
+	"log"
 	"strings"
 )
 
-func (s *Symbols) Init() {
+func (s *Symbols) Init(writable bool, keepID bool) {
 	s.Funcs = make([]*FuncSymbol, 0)
 	s.FuncStatus = make([]*FuncStatus, 0)
+	s.isWritable = writable
+	s.keepID = keepID
+	if s.isWritable {
+		s.funcs = make(map[string]FuncID)
+		s.funcStatus = make(map[FuncStatus]FuncStatusID)
+	}
 }
 
 func (s Symbols) FuncID(id FuncStatusID) FuncID {
@@ -18,7 +25,7 @@ func (s Symbols) FuncID(id FuncStatusID) FuncID {
 func (s Symbols) FuncName(id FuncStatusID) string {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	return s.Funcs[s.FuncID(id)].Name
+	return s.Funcs[s.FuncStatus[id].Func].Name
 }
 
 func (s Symbols) ModuleName(id FuncStatusID) string {
@@ -33,20 +40,10 @@ func (s Symbols) ModuleName(id FuncStatusID) string {
 	return moduleName
 }
 
-func (sr *SymbolsEditor) Init(symbols *Symbols) {
-	sr.symbols = symbols
-
-	sr.symbols.lock.Lock()
-	defer sr.symbols.lock.Unlock()
-
-	sr.funcs = make(map[string]FuncID)
-	sr.funcStatus = make(map[FuncStatus]FuncStatusID)
-}
-
 // 注意: 引数(symbols)のIDは引き継がれない。
-func (sr *SymbolsEditor) AddSymbols(symbols *Symbols) {
-	sr.symbols.lock.Lock()
-	defer sr.symbols.lock.Unlock()
+func (sr *Symbols) AddSymbols(symbols *Symbols) {
+	sr.lock.Lock()
+	defer sr.lock.Unlock()
 
 	for _, fsymbol := range symbols.Funcs {
 		sr.addFuncNolock(fsymbol)
@@ -56,58 +53,66 @@ func (sr *SymbolsEditor) AddSymbols(symbols *Symbols) {
 	}
 }
 
-func (sr *SymbolsEditor) AddFunc(symbol *FuncSymbol) (id FuncID, added bool) {
-	sr.symbols.lock.Lock()
-	defer sr.symbols.lock.Unlock()
+func (sr *Symbols) AddFunc(symbol *FuncSymbol) (id FuncID, added bool) {
+	sr.lock.Lock()
+	defer sr.lock.Unlock()
 	return sr.addFuncNolock(symbol)
 }
 
-func (sr *SymbolsEditor) addFuncNolock(symbol *FuncSymbol) (id FuncID, added bool) {
+func (sr *Symbols) addFuncNolock(symbol *FuncSymbol) (id FuncID, added bool) {
+	if !sr.isWritable {
+		log.Panic("Symbols is not writable")
+	}
+
 	id, ok := sr.funcs[symbol.Name]
 	if ok {
 		// if exists, nothing to do
 		return id, false
 	}
 
-	if sr.KeepID {
+	if sr.keepID {
 		// symbol.IDの値が、配列の長さを超えている場合、配列の長さを伸ばす。
-		for symbol.ID >= FuncID(len(sr.symbols.Funcs)) {
-			sr.symbols.Funcs = append(sr.symbols.Funcs, nil)
+		for symbol.ID >= FuncID(len(sr.Funcs)) {
+			sr.Funcs = append(sr.Funcs, nil)
 		}
 	} else {
-		symbol.ID = FuncID(len(sr.symbols.Funcs))
+		symbol.ID = FuncID(len(sr.Funcs))
 		// increase length of Funcs array
-		sr.symbols.Funcs = append(sr.symbols.Funcs, nil)
+		sr.Funcs = append(sr.Funcs, nil)
 	}
-	sr.symbols.Funcs[symbol.ID] = symbol
+	sr.Funcs[symbol.ID] = symbol
 	sr.funcs[symbol.Name] = symbol.ID
 	return symbol.ID, true
 }
 
-func (sr *SymbolsEditor) AddFuncStatus(status *FuncStatus) (id FuncStatusID, added bool) {
-	sr.symbols.lock.Lock()
-	defer sr.symbols.lock.Unlock()
+func (sr *Symbols) AddFuncStatus(status *FuncStatus) (id FuncStatusID, added bool) {
+	sr.lock.Lock()
+	defer sr.lock.Unlock()
 	return sr.addFuncStatusNolock(status)
 }
 
-func (sr *SymbolsEditor) addFuncStatusNolock(status *FuncStatus) (id FuncStatusID, added bool) {
+func (sr *Symbols) addFuncStatusNolock(status *FuncStatus) (id FuncStatusID, added bool) {
+	if !sr.isWritable {
+		log.Panic("Symbols is not writable")
+	}
+
 	id, ok := sr.funcStatus[*status]
 	if ok {
 		// if exists, nothing to do
 		return id, false
 	}
 
-	if sr.KeepID {
+	if sr.keepID {
 		// status.IDの値が配列の長さを超えている場合、配列の長さを伸ばす。
-		for status.ID >= FuncStatusID(len(sr.symbols.FuncStatus)) {
-			sr.symbols.FuncStatus = append(sr.symbols.FuncStatus, nil)
+		for status.ID >= FuncStatusID(len(sr.FuncStatus)) {
+			sr.FuncStatus = append(sr.FuncStatus, nil)
 		}
 	} else {
-		status.ID = FuncStatusID(len(sr.symbols.FuncStatus))
+		status.ID = FuncStatusID(len(sr.FuncStatus))
 		// increase length of Funcs array
-		sr.symbols.FuncStatus = append(sr.symbols.FuncStatus, status)
+		sr.FuncStatus = append(sr.FuncStatus, status)
 	}
-	sr.symbols.FuncStatus[status.ID] = status
+	sr.FuncStatus[status.ID] = status
 	sr.funcStatus[*status] = status.ID
 	return status.ID, true
 }

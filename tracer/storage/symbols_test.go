@@ -7,15 +7,6 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
-func newSymbols() (*logutil.Symbols, *logutil.SymbolsEditor) {
-	symbols := &logutil.Symbols{}
-	symbols.Init()
-
-	editor := &logutil.SymbolsEditor{}
-	editor.Init(symbols)
-	return symbols, editor
-}
-
 func doTestSymbolsReaderWriter(
 	t *testing.T,
 	writerFunc func(sw *SymbolsWriter),
@@ -38,13 +29,11 @@ func doTestSymbolsReaderWriter(
 	// reading phase
 	{
 		symbols := &logutil.Symbols{}
-		symbols.Init()
-		editor := &logutil.SymbolsEditor{}
-		editor.Init(symbols)
+		symbols.Init(true, true)
 
 		sr := SymbolsReader{
-			File:          file,
-			SymbolsEditor: editor,
+			File:    file,
+			Symbols: symbols,
 		}
 		must(t, sr.Open(), "SymbolsReader.Open():")
 		must(t, sr.Load(), "SymbolsReader.Load():")
@@ -76,13 +65,16 @@ func TestSymbolsReaderWriter_emptySymbols(t *testing.T) {
 		t,
 		// write
 		func(sw *SymbolsWriter) {
-			symbols, _ := newSymbols()
+			symbols := &logutil.Symbols{}
+			symbols.Init(true, true)
 			must(t, sw.Append(symbols), "SymbolsWriter.Append():")
 
-			symbols, _ = newSymbols()
+			symbols = &logutil.Symbols{}
+			symbols.Init(true, true)
 			must(t, sw.Append(symbols), "SymbolsWriter.Append():")
 
-			symbols, _ = newSymbols()
+			symbols = &logutil.Symbols{}
+			symbols.Init(true, true)
 			must(t, sw.Append(symbols), "SymbolsWriter.Append():")
 		},
 		// check data
@@ -126,14 +118,16 @@ func TestSymbolsReaderWrieter_data(t *testing.T) {
 		t,
 		// write
 		func(sw *SymbolsWriter) {
-			s, se := newSymbols()
-			fIDs[0], _ = se.AddFunc(funcSymbols[0])
-			funcStatuses[0].Func = fIDs[0]
-			fsIDs[0], _ = se.AddFuncStatus(funcStatuses[0])
+			s := &logutil.Symbols{}
+			s.Init(true, false)
 
-			fIDs[1], _ = se.AddFunc(funcSymbols[1])
+			fIDs[0], _ = s.AddFunc(funcSymbols[0])
+			funcStatuses[0].Func = fIDs[0]
+			fsIDs[0], _ = s.AddFuncStatus(funcStatuses[0])
+
+			fIDs[1], _ = s.AddFunc(funcSymbols[1])
 			funcStatuses[1].Func = fIDs[1]
-			fsIDs[1], _ = se.AddFuncStatus(funcStatuses[1])
+			fsIDs[1], _ = s.AddFuncStatus(funcStatuses[1])
 			sw.Append(s)
 		},
 		// check data
