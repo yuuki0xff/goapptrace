@@ -58,7 +58,7 @@ func runProcRun(conf *config.Config, stdout, stderr io.Writer, targets []string)
 		fmt.Fprintln(stderr, err.Error())
 	}
 
-	env := procRunEnv(srv)
+	env := append(os.Environ(), procRunEnv(srv)...)
 
 	var lastErr error
 	wg := sync.WaitGroup{}
@@ -87,8 +87,7 @@ func runProcRun(conf *config.Config, stdout, stderr io.Writer, targets []string)
 }
 
 // トレース対象のプロセスの環境変数を返す
-func procRunEnv(srv restapi.ServerStatus) []string {
-	env := os.Environ()
+func procRunEnv(srv restapi.ServerStatus) (env []string) {
 	env = append(env, info.DEFAULT_LOGSRV_ENV+"="+srv.Addr)
 	return env
 }

@@ -25,6 +25,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"os"
 	"os/exec"
 	"path"
 	"strings"
@@ -92,7 +93,7 @@ func runRun(conf *config.Config, flags *pflag.FlagSet, stdout, stderr io.Writer,
 	runCmd.Stdout = stdout
 	runCmd.Stderr = stderr
 	// 実行用の環境変数を追加しなきゃ鳴らない
-	runCmd.Env = runEnv(srv, b.Goroot, b.Gopath)
+	runCmd.Env = append(os.Environ(), runEnv(srv, b.Goroot, b.Gopath)...)
 	return runCmd.Run()
 }
 
