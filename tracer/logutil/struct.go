@@ -100,10 +100,11 @@ type Symbols struct {
 	lock sync.RWMutex
 
 	// SymbolName(string)とFuncIDの対応関係を保持する
-	// isWritableがfalseなら、nil
+	// Writableがfalseなら、nil。
 	name2FuncID map[string]FuncID
 	// FuncStatusとFuncStatusIDの対応関係を保持する。
 	// 同一の内容のFuncStatusを追加しないようにするために使用する。
+	// Writableがfalseなら、nil。
 	// なお、FuncStatus.IDは常に0にすること。
 	status2FSID map[FuncStatus]FuncStatusID
 }
