@@ -11,8 +11,8 @@ func (s *Symbols) Init(writable bool, keepID bool) {
 	s.isWritable = writable
 	s.keepID = keepID
 	if s.isWritable {
-		s.funcs = make(map[string]FuncID)
-		s.funcStatus = make(map[FuncStatus]FuncStatusID)
+		s.name2FuncID = make(map[string]FuncID)
+		s.status2FSID = make(map[FuncStatus]FuncStatusID)
 	}
 }
 
@@ -64,7 +64,7 @@ func (sr *Symbols) addFuncNolock(symbol *FuncSymbol) (id FuncID, added bool) {
 		log.Panic("Symbols is not writable")
 	}
 
-	id, ok := sr.funcs[symbol.Name]
+	id, ok := sr.name2FuncID[symbol.Name]
 	if ok {
 		// if exists, nothing to do
 		return id, false
@@ -81,7 +81,7 @@ func (sr *Symbols) addFuncNolock(symbol *FuncSymbol) (id FuncID, added bool) {
 		sr.Funcs = append(sr.Funcs, nil)
 	}
 	sr.Funcs[symbol.ID] = symbol
-	sr.funcs[symbol.Name] = symbol.ID
+	sr.name2FuncID[symbol.Name] = symbol.ID
 	return symbol.ID, true
 }
 
@@ -96,7 +96,7 @@ func (sr *Symbols) addFuncStatusNolock(status *FuncStatus) (id FuncStatusID, add
 		log.Panic("Symbols is not writable")
 	}
 
-	id, ok := sr.funcStatus[*status]
+	id, ok := sr.status2FSID[*status]
 	if ok {
 		// if exists, nothing to do
 		return id, false
@@ -113,6 +113,6 @@ func (sr *Symbols) addFuncStatusNolock(status *FuncStatus) (id FuncStatusID, add
 		sr.FuncStatus = append(sr.FuncStatus, status)
 	}
 	sr.FuncStatus[status.ID] = status
-	sr.funcStatus[*status] = status.ID
+	sr.status2FSID[*status] = status.ID
 	return status.ID, true
 }

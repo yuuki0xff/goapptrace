@@ -100,11 +100,11 @@ type Symbols struct {
 
 	// SymbolName(string)とFuncIDの対応関係を保持する
 	// isWritableがfalseなら、nil
-	funcs map[string]FuncID
+	name2FuncID map[string]FuncID
 	// FuncStatusとFuncStatusIDの対応関係を保持する。
 	// 同一の内容のFuncStatusを追加しないようにするために使用する。
 	// なお、FuncStatus.IDは常に0にすること。
-	funcStatus map[FuncStatus]FuncStatusID
+	status2FSID map[FuncStatus]FuncStatusID
 }
 
 type FuncSymbol struct {
