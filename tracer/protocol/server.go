@@ -2,9 +2,7 @@ package protocol
 
 import (
 	"fmt"
-	"log"
 	"net"
-	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -145,9 +143,6 @@ func (s *Server) ActualAddr() string {
 }
 
 func (s *Server) Close() error {
-	log.Println("INFO: Server: closeing a connection")
-	defer log.Println("DEBUG: Server: closing a connection ... done")
-
 	s.stopOnce.Do(func() {
 		// Stop method MUST NOT be called many times.
 		s.xtcpsrv.Stop(xtcp.StopGracefullyAndWait)
@@ -169,23 +164,17 @@ func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 	switch et {
 	case xtcp.EventAccept:
-		log.Println("DEBUG: Server: accepted a connection. wait for receives a ClientHelloPacket")
 		// wait for client header packet to be received.
 	case xtcp.EventRecv:
-		log.Printf("DEBUG: Server: received a Packet: %+v", p)
 		if !s.isNegotiated {
 			// check client header.
 			pkt, ok := p.(*ClientHelloPacket)
 			if !ok {
-				log.Printf("ERROR: Server: invalid ClientHelloPacket")
 				conn.Stop(xtcp.StopImmediately)
 				return
 			}
-			log.Printf("DEBUG: Server: received a ClientHelloPacket: %+v", pkt)
-			log.Printf("DEBUG: Server: ProtocolVersion server=%s client=%s", ProtocolVersion, pkt.ProtocolVersion)
 			if !isCompatibleVersion(pkt.ProtocolVersion) {
 				// 対応していないバージョンなら、切断する。
-				log.Printf("ERROR: Server: mismatch the protocol version: server=%s client=%s", ProtocolVersion, pkt.ProtocolVersion)
 				conn.Stop(xtcp.StopImmediately)
 				return
 			}
@@ -193,14 +182,12 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 			packet := &ServerHelloPacket{
 				ProtocolVersion: ProtocolVersion,
 			}
-			log.Printf("DEBUG: Server: send a ServerHelloPacket: %+v", packet)
 			if err := conn.Send(packet); err != nil {
 				// TODO: try to reconnect
 				panic(err)
 			}
 			s.isNegotiated = true
 
-			log.Println("DEBUG: Server: success negotiation process")
 			if s.Handler.Connected != nil {
 				s.Handler.Connected(s.ID)
 			}
@@ -209,15 +196,12 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 			case *PingPacket:
 				// do nothing
 			case *ShutdownPacket:
-				log.Println("INFO: Server: get a shutdown msg")
 				conn.Stop(xtcp.StopImmediately)
 				return
 			case *StartTraceCmdPacket:
-				log.Println("ERROR: Server: invalid packet: StartTraceCmdPacket is not allowed")
 				conn.Stop(xtcp.StopImmediately)
 				return
 			case *StopTraceCmdPacket:
-				log.Println("ERROR: Server: invalid packet: StopTraceCmdPacket is not allowed")
 				conn.Stop(xtcp.StopImmediately)
 				return
 			case *SymbolPacket:
@@ -229,12 +213,10 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 					s.Handler.RawFuncLog(s.ID, pkt.FuncLog)
 				}
 			default:
-				log.Panicf("BUG: Server: Server receives a invalid Packet: %+v %+v", pkt, reflect.TypeOf(pkt))
 			}
 		}
 	case xtcp.EventSend:
 	case xtcp.EventClosed:
-		log.Println("INFO: Server: disconnected")
 		if s.Handler.Disconnected != nil {
 			s.Handler.Disconnected(s.ID)
 		}

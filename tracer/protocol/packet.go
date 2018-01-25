@@ -2,7 +2,6 @@ package protocol
 
 import (
 	"fmt"
-	"log"
 	"reflect"
 
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
@@ -52,7 +51,6 @@ func detectPacketType(packet xtcp.Packet) PacketType {
 	case RawFuncLogNewPacket:
 		return RawFuncLogNewPacketType
 	default:
-		log.Panic(fmt.Sprintf("bug: invalid Packet: %+v", packet))
 		return UnknownPacketType
 	}
 }
@@ -79,7 +77,6 @@ func createPacket(packetType PacketType) xtcp.Packet {
 	case RawFuncLogNewPacketType:
 		return &RawFuncLogNewPacket{}
 	default:
-		log.Panic(fmt.Sprintf("bug: invalid PacketType: %+v", packetType))
 		return nil
 	}
 }

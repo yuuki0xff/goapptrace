@@ -2,14 +2,13 @@ package protocol
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"log"
 	"reflect"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/yuuki0xff/xtcp"
 )
 
@@ -77,7 +76,6 @@ func (c *Client) Init() {
 // Serve connects to the server and serve.
 // this method is block until disconnected.
 func (c *Client) Serve() error {
-	log.Println("INFO: Client: connected")
 	c.Init()
 
 	var addr string
@@ -116,35 +114,28 @@ func (c *Client) Serve() error {
 }
 
 func (c *Client) Send(data xtcp.Packet) error {
-	log.Printf("DEBUG: Client: send packet: %+v\n", data)
 	return c.xtcpconn.Send(data)
 }
 
 func (c *Client) Close() error {
-	log.Println("INFO: Client: closing a connection")
-	defer log.Println("DEBUG: Client: closed a connection")
+	var err error
 	c.closeOnce.Do(func() {
 		// send a shutdown message
-		if err := c.Send(&ShutdownPacket{}); err != nil {
-			log.Printf("WARN: Client: can not send ShutdownPacket")
+		if err = c.Send(&ShutdownPacket{}); err != nil {
+			err = errors.Wrap(err, "WARN: Client: can not send ShutdownPacket")
 		}
 		// request to worker shutdown
 		c.cancel()
 
 		// wait for worker ended before close TCP connection
-		log.Println("DEBUG: Client: wait for worker ended")
 		c.workerWg.Wait()
 
-		log.Println("DEBUG: Client: closing a connection")
 		c.xtcpconn.Stop(xtcp.StopGracefullyAndWait)
-		log.Println("DEBUG: Client: closed a connection")
 	})
-	return nil
+	return err
 }
 
 func (c *Client) pingWorker() {
-	log.Println("DEBUG: Client: start ping worker")
-	defer log.Println("DEBUG: Client: stop ping worker")
 	defer c.workerWg.Done()
 
 	timer := time.NewTicker(c.PingInterval)
@@ -152,7 +143,6 @@ func (c *Client) pingWorker() {
 	for {
 		select {
 		case <-timer.C:
-			log.Println("DEBUG: Client: send ping message")
 			if err := c.Send(&PingPacket{}); err != nil {
 				// TODO: try to reconnect
 				panic(err)
@@ -168,14 +158,12 @@ func (c *Client) pingWorker() {
 func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 	switch et {
 	case xtcp.EventConnected:
-		log.Println("DEBUG: Client: connected to the server")
 		// send client header packet
 		pkt := &ClientHelloPacket{
 			AppName:         c.AppName,
 			ClientSecret:    c.Secret,
 			ProtocolVersion: ProtocolVersion,
 		}
-		log.Printf("DEBUG: Client: send a ClientHelloPacket: %+v", pkt)
 		if err := c.xtcpconn.Send(pkt); err != nil {
 			// TODO: try to reconnect
 			panic(err)
@@ -185,19 +173,14 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 		if !c.isNegotiated {
 			pkt, ok := p.(*ServerHelloPacket)
 			if !ok {
-				log.Printf("ERROR: Client: invalid ServerHelloPacket")
 				c.xtcpconn.Stop(xtcp.StopImmediately)
 				return
 			}
-			log.Printf("DEBUG: Client: received a ServerHelloPacket: %+v", pkt)
-			log.Printf("DEBUG: Client: ProtocolVersion server=%s client=%s", pkt.ProtocolVersion, ProtocolVersion)
 			if !isCompatibleVersion(pkt.ProtocolVersion) {
 				// 対応していないバージョンなら、切断する。
-				log.Printf("ERROR: Client: mismatch the protocol version: server=%s client=%s", pkt.ProtocolVersion, ProtocolVersion)
 				conn.Stop(xtcp.StopImmediately)
 				return
 			}
-			log.Println("DEBUG: Client: success negotiation process")
 
 			c.workerWg.Add(1)
 			go c.pingWorker()
@@ -208,12 +191,10 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 				c.Handler.Connected()
 			}
 		} else {
-			log.Printf("DEBUG: Client: recieved a packet: %+v", p)
 			switch pkt := p.(type) {
 			case *PingPacket:
 				// do nothing
 			case *ShutdownPacket:
-				log.Println("INFO: Client: get a shutdown msg")
 				conn.Stop(xtcp.StopImmediately)
 				return
 			case *StartTraceCmdPacket:
@@ -225,10 +206,8 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 					c.Handler.StopTrace(pkt)
 				}
 			case *SymbolPacket:
-				log.Println("ERROR: Client: invalid packet: SymbolPacket is not allowed")
 				conn.Stop(xtcp.StopImmediately)
 			case *RawFuncLogNewPacket:
-				log.Println("ERROR: Client: invalid packet: RawFuncLogNewPacket is not allowed")
 				conn.Stop(xtcp.StopImmediately)
 			default:
 				panic(fmt.Sprintf("BUG: Client: Client receives a invalid Packet: %+v %+v", pkt, reflect.TypeOf(pkt)))
@@ -236,7 +215,6 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 		}
 	case xtcp.EventSend:
 	case xtcp.EventClosed:
-		log.Println("DEBUG: Client: connection closed")
 
 		// request worker shutdown
 		c.cancel()
