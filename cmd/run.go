@@ -87,7 +87,8 @@ func runRun(conf *config.Config, flags *pflag.FlagSet, stdout, stderr io.Writer,
 		newFiles[i] = path.Join(b.MainPkgDir(), path.Base(files[i]))
 	}
 
-	runCmd := exec.Command("go", runArgs(flags, newFiles, cmdArgs)...)
+	// ignore an error of "Subprocess launching with variable" because arguments are specified by the trusted user.
+	runCmd := exec.Command("go", runArgs(flags, newFiles, cmdArgs)...) // nolint: gas
 	runCmd.Stdout = stdout
 	runCmd.Stderr = stderr
 	// 実行用の環境変数を追加しなきゃ鳴らない

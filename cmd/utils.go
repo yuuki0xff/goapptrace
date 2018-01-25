@@ -100,7 +100,8 @@ func fixFlagName(flagNames map[string]bool) func(command *cobra.Command, e error
 			return err
 		}
 
-		cmd := exec.Command(exe, args...)
+		// ignore an error of "Subprocess launching with variable" because arguments are specified by the trusted user.
+		cmd := exec.Command(exe, args...) // nolint: gas
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr

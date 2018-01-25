@@ -84,7 +84,8 @@ func runBuild(conf *config.Config, flags *pflag.FlagSet, stdout, stderr io.Write
 		newTargets = targets
 	}
 
-	buildCmd := exec.Command("go", buildArgs(flags, newTargets)...)
+	// ignore an error of "Subprocess launching with variable" because arguments are specified by the trusted user.
+	buildCmd := exec.Command("go", buildArgs(flags, newTargets)...) // nolint: gas
 	buildCmd.Stdout = stdout
 	buildCmd.Stderr = stderr
 	buildCmd.Env = buildEnv(b.Goroot, b.Gopath)

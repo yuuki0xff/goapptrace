@@ -37,7 +37,8 @@ func runCmd(args []string, env []string) (*exec.Cmd, error) {
 // If env is nil, the new process uses the current process's
 // environment.
 func startCmd(args []string, env []string) (*exec.Cmd, error) {
-	cmd := exec.Command(args[0], args[1:]...)
+	// ignore an error of "Subprocess launching with variable" because arguments are specified by the trusted user.
+	cmd := exec.Command(args[0], args[1:]...) // nolint: gas
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

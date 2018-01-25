@@ -93,7 +93,7 @@ func (srv *HttpServer) Wait() error {
 
 // HTTPサーバと全てのハンドラを停止する。
 func (srv *HttpServer) Stop() {
-	srv.server.Shutdown(srv.ctx) // nolint: errcheck
+	srv.server.Shutdown(srv.ctx) // nolint: errcheck, gas
 	srv.cancel()                 // stop all handlers
 }
 
