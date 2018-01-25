@@ -28,8 +28,11 @@ func doTestSymbolsReaderWriter(
 
 	// reading phase
 	{
-		symbols := &logutil.Symbols{}
-		symbols.Init(true, true)
+		symbols := &logutil.Symbols{
+			Writable: true,
+			KeepID:   true,
+		}
+		symbols.Init()
 
 		sr := SymbolsReader{
 			File:    file,
@@ -61,21 +64,21 @@ func TestSymbolsReaderWriter_loadEmptyFile(t *testing.T) {
 }
 
 func TestSymbolsReaderWriter_emptySymbols(t *testing.T) {
+	newSymbols := func() *logutil.Symbols {
+		symbols := &logutil.Symbols{
+			Writable: true,
+			KeepID:   true,
+		}
+		symbols.Init()
+		return symbols
+	}
 	doTestSymbolsReaderWriter(
 		t,
 		// write
 		func(sw *SymbolsWriter) {
-			symbols := &logutil.Symbols{}
-			symbols.Init(true, true)
-			must(t, sw.Append(symbols), "SymbolsWriter.Append():")
-
-			symbols = &logutil.Symbols{}
-			symbols.Init(true, true)
-			must(t, sw.Append(symbols), "SymbolsWriter.Append():")
-
-			symbols = &logutil.Symbols{}
-			symbols.Init(true, true)
-			must(t, sw.Append(symbols), "SymbolsWriter.Append():")
+			must(t, sw.Append(newSymbols()), "SymbolsWriter.Append():")
+			must(t, sw.Append(newSymbols()), "SymbolsWriter.Append():")
+			must(t, sw.Append(newSymbols()), "SymbolsWriter.Append():")
 		},
 		// check data
 		func(symbols *logutil.Symbols) {
@@ -118,8 +121,11 @@ func TestSymbolsReaderWrieter_data(t *testing.T) {
 		t,
 		// write
 		func(sw *SymbolsWriter) {
-			s := &logutil.Symbols{}
-			s.Init(true, false)
+			s := &logutil.Symbols{
+				Writable: true,
+				KeepID:   false,
+			}
+			s.Init()
 
 			fIDs[0], _ = s.AddFunc(funcSymbols[0])
 			funcStatuses[0].Func = fIDs[0]

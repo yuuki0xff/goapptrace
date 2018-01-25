@@ -5,11 +5,9 @@ import (
 	"strings"
 )
 
-func (s *Symbols) Init(writable bool, keepID bool) {
+func (s *Symbols) Init() {
 	s.Funcs = make([]*FuncSymbol, 0)
 	s.FuncStatus = make([]*FuncStatus, 0)
-	s.Writable = writable
-	s.KeepID = keepID
 	if s.Writable {
 		s.name2FuncID = make(map[string]FuncID)
 		s.status2FSID = make(map[FuncStatus]FuncStatusID)

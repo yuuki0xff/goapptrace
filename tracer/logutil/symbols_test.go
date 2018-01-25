@@ -46,8 +46,11 @@ func TestSymbolResolver(t *testing.T) {
 		ID: dummyFSID,
 	}
 
-	sym := Symbols{}
-	sym.Init(true, false)
+	sym := Symbols{
+		Writable: true,
+		KeepID:   false,
+	}
+	sym.Init()
 	fs1.Func, _ = sym.AddFunc(&f1)
 	if f1.ID != FuncID(0) || f1.ID != fs1.Func {
 		// FuncSymbol.IDが更新されていない OR 正しいIDを返していない

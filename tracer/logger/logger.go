@@ -25,14 +25,17 @@ var (
 	MaxStackSize = 1024
 	ClosedError  = errors.New("already closed")
 
-	lock       = sync.Mutex{}
-	symbols    = logutil.Symbols{}
+	lock    = sync.Mutex{}
+	symbols = logutil.Symbols{
+		Writable: true,
+		KeepID:   false,
+	}
 	patchGuard *monkey.PatchGuard
 	sender     Sender
 )
 
 func init() {
-	symbols.Init(true, false)
+	symbols.Init()
 
 	// os.Exitにフックを仕掛ける
 	// TODO: don't work!
@@ -85,8 +88,11 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 		if added1 || added2 {
 			if newSymbols == nil {
 				// prepare newSymbols
-				newSymbols = &logutil.Symbols{}
-				newSymbols.Init(true, true)
+				newSymbols = &logutil.Symbols{
+					Writable: true,
+					KeepID:   true,
+				}
+				newSymbols.Init()
 			}
 
 			if added1 {

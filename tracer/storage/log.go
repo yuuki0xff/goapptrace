@@ -153,8 +153,11 @@ func (l *Log) Open() error {
 	if err := l.index.Open(); err != nil {
 		return fmt.Errorf("failed to open Index: File=%s err=%s", l.index.File, err)
 	}
-	l.symbols = &logutil.Symbols{}
-	l.symbols.Init(!l.ReadOnly, true)
+	l.symbols = &logutil.Symbols{
+		Writable: !l.ReadOnly,
+		KeepID:   true,
+	}
+	l.symbols.Init()
 	if !l.ReadOnly {
 		l.symbolsWriter = &SymbolsWriter{
 			File: l.Root.SymbolFile(l.ID),
