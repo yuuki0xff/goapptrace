@@ -45,7 +45,11 @@ func (s *Symbols) Func(id FuncID) (FuncSymbol, bool) {
 	if FuncID(len(s.funcs)) <= id {
 		return FuncSymbol{}, false
 	}
-	return *s.funcs[id], true
+	f := s.funcs[id]
+	if f == nil {
+		return FuncSymbol{}, false
+	}
+	return *f, true
 }
 
 func (s *Symbols) FuncStatus(id FuncStatusID) (FuncStatus, bool) {
@@ -54,7 +58,11 @@ func (s *Symbols) FuncStatus(id FuncStatusID) (FuncStatus, bool) {
 	if FuncStatusID(len(s.funcStatus)) <= id {
 		return FuncStatus{}, false
 	}
-	return *s.funcStatus[id], true
+	fs := s.funcStatus[id]
+	if fs == nil {
+		return FuncStatus{}, false
+	}
+	return *fs, true
 }
 
 func (s *Symbols) FuncsSize() int {
