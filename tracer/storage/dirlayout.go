@@ -16,6 +16,8 @@ const (
 	// goapptraceによって作成されたディレクトリとファイルの、デフォルトのパーミッション
 	DefaultDirPerm  = 0777
 	DefaultFilePerm = 0666
+
+	DefaultCompressionLevel = gzip.BestSpeed
 )
 
 // ディレクトリ構造を抽象化する。
@@ -180,7 +182,7 @@ func (f File) OpenWriteOnly() (io.WriteCloser, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot open %s for writing: %s", string(f), err)
 	}
-	return gzip.NewWriterLevel(file, gzip.BestCompression)
+	return gzip.NewWriterLevel(file, DefaultCompressionLevel)
 }
 
 // AppendOnlyモードで開く。
@@ -189,7 +191,7 @@ func (f File) OpenAppendOnly() (io.WriteCloser, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot open %s for appending: %s", string(f), err)
 	}
-	return gzip.NewWriterLevel(file, gzip.BestCompression)
+	return gzip.NewWriterLevel(file, DefaultCompressionLevel)
 }
 
 // ファイルから全て読み込み、[]byteを返す。
