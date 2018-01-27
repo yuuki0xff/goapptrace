@@ -254,15 +254,11 @@ func getServerHandler(strg *storage.Storage, store *logutil.StateSimulatorStore)
 			log.Printf("ERROR: Server: connID=%d err=%s", id, err.Error())
 		},
 		Symbols: func(id protocol.ConnID, s *logutil.Symbols) {
-			log.Printf("DEBUG: Server: add symbols: %+v\n", s)
-
 			chMapLock.RLock()
 			chMap[id] <- s
 			chMapLock.RUnlock()
 		},
 		RawFuncLog: func(id protocol.ConnID, f *logutil.RawFuncLog) {
-			log.Printf("DEBUG: Server: got RawFuncLog: %+v\n", f)
-
 			chMapLock.RLock()
 			chMap[id] <- f
 			chMapLock.RUnlock()
