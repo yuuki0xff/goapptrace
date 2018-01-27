@@ -2,8 +2,27 @@ package logutil
 
 import (
 	"log"
+	"strconv"
 	"strings"
 )
+
+func (f *FuncID) UnmarshalText(text []byte) error {
+	id, err := strconv.ParseUint(string(text), 10, 64)
+	if err != nil {
+		return err
+	}
+	*f = FuncID(id)
+	return nil
+}
+
+func (f *FuncStatusID) UnmarshalText(text []byte) error {
+	id, err := strconv.ParseUint(string(text), 10, 64)
+	if err != nil {
+		return err
+	}
+	*f = FuncStatusID(id)
+	return nil
+}
 
 func (s *Symbols) Init() {
 	s.funcs = make([]*FuncSymbol, 0)
@@ -18,6 +37,24 @@ func (s *Symbols) Load(funcs []*FuncSymbol, funcStatus []*FuncStatus) {
 	s.Init()
 	s.funcs = funcs
 	s.funcStatus = funcStatus
+}
+
+func (s *Symbols) Func(id FuncID) (FuncSymbol, bool) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	if FuncID(len(s.funcs)) >= id {
+		return FuncSymbol{}, false
+	}
+	return *s.funcs[id], true
+}
+
+func (s *Symbols) FuncStatus(id FuncStatusID) (FuncStatus, bool) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	if FuncStatusID(len(s.funcStatus)) >= id {
+		return FuncStatus{}, false
+	}
+	return *s.funcStatus[id], true
 }
 
 func (s Symbols) FuncID(id FuncStatusID) FuncID {

@@ -421,18 +421,17 @@ func (api APIv0) funcSymbol(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	strFid := mux.Vars(r)["func-id"]
-	fid, err := strconv.Atoi(strFid)
-	if err != nil {
-		http.Error(w, "invalid func-id because id is not integer", http.StatusBadRequest)
+	var fid logutil.FuncID
+	if err := fid.UnmarshalText([]byte(mux.Vars(r)["func-id"])); err != nil {
+		http.Error(w, "invalid func-id because id is not unsigned integer", http.StatusBadRequest)
 		return
 	}
 
-	if fid < 0 || len(logobj.Symbols().funcs) <= fid {
-		http.Error(w, "invalid func-id because id is out-of-range", http.StatusBadRequest)
+	f, ok := logobj.Symbols().Func(fid)
+	if !ok {
+		http.Error(w, "func is not found", http.StatusNotFound)
 		return
 	}
-	f := logobj.Symbols().funcs[fid]
 
 	js, err := json.Marshal(f)
 	if err != nil {
@@ -447,17 +446,16 @@ func (api APIv0) funcStatusSymbol(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	strFsid := mux.Vars(r)["func-status-id"]
-	fsid, err := strconv.Atoi(strFsid)
-	if err != nil {
+	var fsid logutil.FuncStatusID
+	if err := fsid.UnmarshalText([]byte(mux.Vars(r)["func-status-id"])); err != nil {
 		http.Error(w, "invalid func-status-id because id is not integer", http.StatusBadRequest)
 		return
 	}
 
-	if fsid < 0 || len(logobj.Symbols().funcStatus) <= fsid {
-		http.Error(w, "invalid func-status-id because id is out-of-range", http.StatusBadRequest)
+	fs, ok := logobj.Symbols().FuncStatus(fsid)
+	if !ok {
+		http.Error(w, "func status is not found", http.StatusNotFound)
 	}
-	fs := logobj.Symbols().funcStatus[fsid]
 
 	js, err := json.Marshal(fs)
 	if err != nil {
