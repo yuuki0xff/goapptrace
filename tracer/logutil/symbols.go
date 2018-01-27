@@ -109,19 +109,19 @@ func (s *Symbols) WalkFuncStatus(fn func(fs FuncStatus) error) error {
 	return nil
 }
 
-func (s Symbols) FuncID(id FuncStatusID) FuncID {
+func (s *Symbols) FuncID(id FuncStatusID) FuncID {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	return s.funcStatus[id].Func
 }
 
-func (s Symbols) FuncName(id FuncStatusID) string {
+func (s *Symbols) FuncName(id FuncStatusID) string {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	return s.funcs[s.funcStatus[id].Func].Name
 }
 
-func (s Symbols) ModuleName(id FuncStatusID) string {
+func (s *Symbols) ModuleName(id FuncStatusID) string {
 	funcName := s.FuncName(id)
 
 	// strip function name from funcName
