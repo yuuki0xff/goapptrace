@@ -55,11 +55,11 @@ func TestRetrySender(t *testing.T) {
 	// send a log.
 	if err := sender.Send(
 		&logutil.Symbols{
-			Funcs: []*logutil.FuncSymbol{
+			funcs: []*logutil.FuncSymbol{
 				{logutil.FuncID(0), "module.f1", "/go/src/module/src.go", 1},
 				{logutil.FuncID(1), "module.f2", "/go/src/module/src.go", 2},
 			},
-			FuncStatus: []*logutil.FuncStatus{
+			funcStatus: []*logutil.FuncStatus{
 				{logutil.FuncStatusID(0), logutil.FuncID(0), 10, 100},
 				{logutil.FuncStatusID(1), logutil.FuncID(1), 20, 200},
 			},
@@ -81,8 +81,8 @@ func TestRetrySender(t *testing.T) {
 	}
 	if err := sender.Send(
 		&logutil.Symbols{
-			Funcs: []*logutil.FuncSymbol{},
-			FuncStatus: []*logutil.FuncStatus{
+			funcs: []*logutil.FuncSymbol{},
+			funcStatus: []*logutil.FuncStatus{
 				{logutil.FuncStatusID(2), logutil.FuncID(1), 21, 210},
 			},
 		},

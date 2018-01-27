@@ -53,11 +53,11 @@ func TestSymbolsReaderWriter_loadEmptyFile(t *testing.T) {
 		func(sw *SymbolsWriter) {},
 		// check data
 		func(symbols *logutil.Symbols) {
-			if len(symbols.FuncStatus) != 0 {
-				t.Errorf("Expected FuncStatus is empty, but %+v", symbols.FuncStatus)
+			if len(symbols.funcStatus) != 0 {
+				t.Errorf("Expected FuncStatus is empty, but %+v", symbols.funcStatus)
 			}
-			if len(symbols.Funcs) != 0 {
-				t.Errorf("Expected Funcs is empty, but %+v", symbols.Funcs)
+			if len(symbols.funcs) != 0 {
+				t.Errorf("Expected Funcs is empty, but %+v", symbols.funcs)
 			}
 		},
 	)
@@ -82,11 +82,11 @@ func TestSymbolsReaderWriter_emptySymbols(t *testing.T) {
 		},
 		// check data
 		func(symbols *logutil.Symbols) {
-			if len(symbols.FuncStatus) != 0 {
-				t.Errorf("Expected FuncStatus is empty, but %+v", symbols.FuncStatus)
+			if len(symbols.funcStatus) != 0 {
+				t.Errorf("Expected FuncStatus is empty, but %+v", symbols.funcStatus)
 			}
-			if len(symbols.Funcs) != 0 {
-				t.Errorf("Expected Funcs is empty, but %+v", symbols.Funcs)
+			if len(symbols.funcs) != 0 {
+				t.Errorf("Expected Funcs is empty, but %+v", symbols.funcs)
 			}
 		},
 	)
@@ -138,23 +138,23 @@ func TestSymbolsReaderWrieter_data(t *testing.T) {
 		},
 		// check data
 		func(symbols *logutil.Symbols) {
-			for i := range symbols.Funcs {
-				t.Logf("Funcs[%d] = %+v", i, symbols.Funcs[i])
+			for i := range symbols.funcs {
+				t.Logf("Funcs[%d] = %+v", i, symbols.funcs[i])
 			}
-			for i := range symbols.FuncStatus {
-				t.Logf("FuncStatu[%d] = %+v", i, symbols.FuncStatus[i])
+			for i := range symbols.funcStatus {
+				t.Logf("FuncStatu[%d] = %+v", i, symbols.funcStatus[i])
 			}
 
-			if len(symbols.Funcs) != 2 {
-				t.Errorf("Mismatched length of Funcs array: len(Funcs)=%d != 2", len(symbols.Funcs))
+			if len(symbols.funcs) != 2 {
+				t.Errorf("Mismatched length of Funcs array: len(Funcs)=%d != 2", len(symbols.funcs))
 			}
-			if !(*symbols.Funcs[fIDs[0]] == *funcSymbols[0] && *symbols.Funcs[fIDs[1]] == *funcSymbols[1]) {
+			if !(*symbols.funcs[fIDs[0]] == *funcSymbols[0] && *symbols.funcs[fIDs[1]] == *funcSymbols[1]) {
 				t.Errorf("Mismatched FuncSymbol object")
 			}
-			if len(symbols.FuncStatus) != 2 {
-				t.Errorf("Mismatched length of FuncStatus array: len(FuncStatus)=%d != 2", len(symbols.FuncStatus))
+			if len(symbols.funcStatus) != 2 {
+				t.Errorf("Mismatched length of FuncStatus array: len(FuncStatus)=%d != 2", len(symbols.funcStatus))
 			}
-			if !(*symbols.FuncStatus[fsIDs[0]] == *funcStatuses[0] && *symbols.FuncStatus[fsIDs[1]] == *funcStatuses[1]) {
+			if !(*symbols.funcStatus[fsIDs[0]] == *funcStatuses[0] && *symbols.funcStatus[fsIDs[1]] == *funcStatuses[1]) {
 				t.Errorf("Mismatched FuncStatus object")
 			}
 		},

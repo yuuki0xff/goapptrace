@@ -9,13 +9,13 @@ func TestSymbols_ModuleName(t *testing.T) {
 	funcSID := FuncStatusID(0)
 
 	sym := Symbols{
-		Funcs: []*FuncSymbol{
+		funcs: []*FuncSymbol{
 			{
 				Name: funcName,
 				ID:   funcID,
 			},
 		},
-		FuncStatus: []*FuncStatus{
+		funcStatus: []*FuncStatus{
 			{
 				ID:   funcSID,
 				Func: funcID,

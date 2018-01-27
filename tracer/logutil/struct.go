@@ -94,8 +94,9 @@ type Symbols struct {
 	Writable bool
 	KeepID   bool
 
-	Funcs      []*FuncSymbol
-	FuncStatus []*FuncStatus
+	// TODO: private fieldにする
+	funcs      []*FuncSymbol
+	funcStatus []*FuncStatus
 
 	lock sync.RWMutex
 

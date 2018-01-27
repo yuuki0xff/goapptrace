@@ -96,10 +96,10 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 			}
 
 			if added1 {
-				newSymbols.Funcs = append(newSymbols.Funcs, symbols.Funcs[funcID])
+				newSymbols.funcs = append(newSymbols.funcs, symbols.funcs[funcID])
 			}
 			if added2 {
-				newSymbols.FuncStatus = append(newSymbols.FuncStatus, symbols.FuncStatus[funcStatusID])
+				newSymbols.funcStatus = append(newSymbols.funcStatus, symbols.funcStatus[funcStatusID])
 			}
 		}
 	}

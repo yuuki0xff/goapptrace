@@ -428,11 +428,11 @@ func (api APIv0) funcSymbol(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if fid < 0 || len(logobj.Symbols().Funcs) <= fid {
+	if fid < 0 || len(logobj.Symbols().funcs) <= fid {
 		http.Error(w, "invalid func-id because id is out-of-range", http.StatusBadRequest)
 		return
 	}
-	f := logobj.Symbols().Funcs[fid]
+	f := logobj.Symbols().funcs[fid]
 
 	js, err := json.Marshal(f)
 	if err != nil {
@@ -454,10 +454,10 @@ func (api APIv0) funcStatusSymbol(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if fsid < 0 || len(logobj.Symbols().FuncStatus) <= fsid {
+	if fsid < 0 || len(logobj.Symbols().funcStatus) <= fsid {
 		http.Error(w, "invalid func-status-id because id is out-of-range", http.StatusBadRequest)
 	}
-	fs := logobj.Symbols().FuncStatus[fsid]
+	fs := logobj.Symbols().funcStatus[fsid]
 
 	js, err := json.Marshal(fs)
 	if err != nil {
