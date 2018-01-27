@@ -42,7 +42,7 @@ func (s *Symbols) Load(funcs []*FuncSymbol, funcStatus []*FuncStatus) {
 func (s *Symbols) Func(id FuncID) (FuncSymbol, bool) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	if FuncID(len(s.funcs)) >= id {
+	if FuncID(len(s.funcs)) <= id {
 		return FuncSymbol{}, false
 	}
 	return *s.funcs[id], true
@@ -51,7 +51,7 @@ func (s *Symbols) Func(id FuncID) (FuncSymbol, bool) {
 func (s *Symbols) FuncStatus(id FuncStatusID) (FuncStatus, bool) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	if FuncStatusID(len(s.funcStatus)) >= id {
+	if FuncStatusID(len(s.funcStatus)) <= id {
 		return FuncStatus{}, false
 	}
 	return *s.funcStatus[id], true
