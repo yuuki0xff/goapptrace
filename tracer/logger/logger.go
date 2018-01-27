@@ -95,11 +95,17 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 				newSymbols.Init()
 			}
 
+			// TODO: パフォーマンスを改善する
+			// newSymbols.Add*()は、IDが大きくなるに連れ確保するバッファサイズが大きくなる。
 			if added1 {
-				newSymbols.funcs = append(newSymbols.funcs, symbols.funcs[funcID])
+				f := &logutil.FuncSymbol{}
+				*f, _ = symbols.Func(funcID)
+				newSymbols.AddFunc(f)
 			}
 			if added2 {
-				newSymbols.funcStatus = append(newSymbols.funcStatus, symbols.funcStatus[funcStatusID])
+				f := &logutil.FuncStatus{}
+				*f, _ = symbols.FuncStatus(funcStatusID)
+				newSymbols.AddFuncStatus(f)
 			}
 		}
 	}

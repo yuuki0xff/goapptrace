@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"bytes"
+	"fmt"
 	"os"
 	"testing"
 
@@ -53,11 +55,12 @@ func TestSymbolsReaderWriter_loadEmptyFile(t *testing.T) {
 		func(sw *SymbolsWriter) {},
 		// check data
 		func(symbols *logutil.Symbols) {
-			if len(symbols.funcStatus) != 0 {
-				t.Errorf("Expected FuncStatus is empty, but %+v", symbols.funcStatus)
+			t.Log(symbols2string(symbols))
+			if symbols.FuncsSize() != 0 {
+				t.Errorf("Expected Funcs slice is empty, but it has %d elements", symbols.FuncsSize())
 			}
-			if len(symbols.funcs) != 0 {
-				t.Errorf("Expected Funcs is empty, but %+v", symbols.funcs)
+			if symbols.FuncStatusSize() != 0 {
+				t.Errorf("Expected FuncStatus slice is empty, but it has %d elements", symbols.FuncStatusSize())
 			}
 		},
 	)
@@ -82,11 +85,12 @@ func TestSymbolsReaderWriter_emptySymbols(t *testing.T) {
 		},
 		// check data
 		func(symbols *logutil.Symbols) {
-			if len(symbols.funcStatus) != 0 {
-				t.Errorf("Expected FuncStatus is empty, but %+v", symbols.funcStatus)
+			t.Log(symbols2string(symbols))
+			if symbols.FuncsSize() != 0 {
+				t.Errorf("Expected Funcs slice is empty, but it has %d elements", symbols.FuncsSize())
 			}
-			if len(symbols.funcs) != 0 {
-				t.Errorf("Expected Funcs is empty, but %+v", symbols.funcs)
+			if symbols.FuncStatusSize() != 0 {
+				t.Errorf("Expected FuncStatus slice is empty, but it has %d elements", symbols.FuncStatusSize())
 			}
 		},
 	)
@@ -138,25 +142,42 @@ func TestSymbolsReaderWrieter_data(t *testing.T) {
 		},
 		// check data
 		func(symbols *logutil.Symbols) {
-			for i := range symbols.funcs {
-				t.Logf("Funcs[%d] = %+v", i, symbols.funcs[i])
-			}
-			for i := range symbols.funcStatus {
-				t.Logf("FuncStatu[%d] = %+v", i, symbols.funcStatus[i])
-			}
+			t.Log(symbols2string(symbols))
 
-			if len(symbols.funcs) != 2 {
-				t.Errorf("Mismatched length of Funcs array: len(Funcs)=%d != 2", len(symbols.funcs))
+			if symbols.FuncsSize() != 2 {
+				t.Errorf("Mismatched length of Funcs array: len(Funcs)=%d != 2", symbols.FuncsSize())
 			}
-			if !(*symbols.funcs[fIDs[0]] == *funcSymbols[0] && *symbols.funcs[fIDs[1]] == *funcSymbols[1]) {
+			f1, _ := symbols.Func(0)
+			f2, _ := symbols.Func(1)
+			if !(f1 == *funcSymbols[0] && f2 == *funcSymbols[1]) {
 				t.Errorf("Mismatched FuncSymbol object")
 			}
-			if len(symbols.funcStatus) != 2 {
-				t.Errorf("Mismatched length of FuncStatus array: len(FuncStatus)=%d != 2", len(symbols.funcStatus))
+
+			if symbols.FuncStatusSize() != 2 {
+				t.Errorf("Mismatched length of FuncStatus array: len(FuncStatus)=%d != 2", symbols.FuncStatusSize())
 			}
-			if !(*symbols.funcStatus[fsIDs[0]] == *funcStatuses[0] && *symbols.funcStatus[fsIDs[1]] == *funcStatuses[1]) {
+			fs1, _ := symbols.FuncStatus(0)
+			fs2, _ := symbols.FuncStatus(1)
+			if !(fs1 == *funcStatuses[0] && fs2 == *funcStatuses[1]) {
 				t.Errorf("Mismatched FuncStatus object")
 			}
 		},
 	)
+}
+
+func symbols2string(symbols *logutil.Symbols) string {
+	buf := bytes.NewBuffer(nil)
+
+	fmt.Println(buf, "Symbols.Funcs:")
+	symbols.WalkFuncs(func(fs logutil.FuncSymbol) error {
+		fmt.Fprintf(buf, "  Funcs[%d] = %+v", fs.ID, fs)
+		return nil
+	})
+
+	fmt.Println(buf, "Symbols.FuncStatus:")
+	symbols.WalkFuncStatus(func(fs logutil.FuncStatus) error {
+		fmt.Fprintf(buf, "  FuncStatu[%d] = %+v", fs.ID, fs)
+		return nil
+	})
+	return buf.String()
 }

@@ -57,6 +57,44 @@ func (s *Symbols) FuncStatus(id FuncStatusID) (FuncStatus, bool) {
 	return *s.funcStatus[id], true
 }
 
+func (s *Symbols) FuncsSize() int {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	return len(s.funcs)
+}
+
+func (s *Symbols) FuncStatusSize() int {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	return len(s.funcStatus)
+}
+
+func (s *Symbols) WalkFuncs(fn func(fs FuncSymbol) error) error {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	for _, fs := range s.funcs {
+		if fs != nil {
+			if err := fn(*fs); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (s *Symbols) WalkFuncStatus(fn func(fs FuncStatus) error) error {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	for _, fs := range s.funcStatus {
+		if fs != nil {
+			if err := fn(*fs); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func (s Symbols) FuncID(id FuncStatusID) FuncID {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
