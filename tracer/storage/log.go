@@ -14,6 +14,10 @@ import (
 
 type LogID = logutil.LogID
 
+const (
+	rotateInterval = 100000
+)
+
 // 指定したLogIDに対応するログの作成・読み書き・削除を行う。
 // 現時点では完全なスレッドセーフではない。読み書きを複数のgoroutineから同時に行うのは推薦しない。
 // Open()するとMaxFileSize程度のオンメモリキャッシュが確保される。メモリ使用量に注意。
@@ -43,6 +47,10 @@ type Log struct {
 	// rotate()内部で発生するBeforeRotate eventの実行中は、ロックを外さなければならない。
 	// そのイベント実行中に、並行してrotate()が実行されないように排他制御するためのフラグ。
 	rotating bool
+	// autoRotate()の呼び出しを連続してスキップした回数。
+	// この変数は、AppendRawFuncLog()を呼び出すたびにincrementされる。
+	// 値がrotateIntervalより大きくなったときは、値が0に戻り、autoRotate()が実行される。
+	autorotateSkips int
 	// フィアルがcloseされていたらtrue。
 	// trueなら全ての操作を受け付けてはならない。
 	closed bool
@@ -442,8 +450,17 @@ func (l *Log) AppendRawFuncLog(raw *logutil.RawFuncLog) error {
 		return os.ErrClosed
 	}
 
-	if err := l.autoRotate(); err != nil {
-		return err
+	// AppendRawFuncLog()を高速化するために、autoRotate()の実行回数を減らす。
+	l.autorotateSkips++
+	if l.autorotateSkips > rotateInterval {
+		// *SLOW PATH*
+		l.autorotateSkips = 0
+
+		// ファイルの自動ローテーションするか否かをチェックするためにファイルサイズを参照する。
+		// そのファイルサイズの参照が意外と重たい。。。
+		if err := l.autoRotate(); err != nil {
+			return err
+		}
 	}
 
 	l.lock.Lock()
