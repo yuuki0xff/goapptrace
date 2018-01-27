@@ -94,7 +94,6 @@ type Symbols struct {
 	Writable bool
 	KeepID   bool
 
-	// TODO: private fieldにする
 	funcs      []*FuncSymbol
 	funcStatus []*FuncStatus
 
