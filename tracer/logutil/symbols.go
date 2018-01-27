@@ -39,6 +39,12 @@ func (s *Symbols) Load(funcs []*FuncSymbol, funcStatus []*FuncStatus) {
 	s.funcStatus = funcStatus
 }
 
+func (s *Symbols) Save(fn func(funcs []*FuncSymbol, funcStatus []*FuncStatus) error) error {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	return fn(s.funcs, s.funcStatus)
+}
+
 func (s *Symbols) Func(id FuncID) (FuncSymbol, bool) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()

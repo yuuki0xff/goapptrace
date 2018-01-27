@@ -18,13 +18,23 @@ type SymbolsReader struct {
 	dec     Decoder
 }
 
+type symbolsData struct {
+	Funcs      []*logutil.FuncSymbol
+	FuncStatus []*logutil.FuncStatus
+}
+
 func (s *SymbolsWriter) Open() error {
 	s.enc = Encoder{File: s.File}
 	return s.enc.Open()
 }
 
 func (s *SymbolsWriter) Append(symbols *logutil.Symbols) error {
-	return s.enc.Append(symbols)
+	return symbols.Save(func(funcs []*logutil.FuncSymbol, funcStatus []*logutil.FuncStatus) error {
+		return s.enc.Append(symbolsData{
+			Funcs:      funcs,
+			FuncStatus: funcStatus,
+		})
+	})
 }
 
 func (s *SymbolsWriter) Close() error {
@@ -39,14 +49,19 @@ func (s *SymbolsReader) Open() error {
 func (s *SymbolsReader) Load() error {
 	return s.dec.Walk(
 		func() interface{} {
-			return &logutil.Symbols{}
+			return &symbolsData{}
 		},
 		func(val interface{}) error {
-			symbol := val.(*logutil.Symbols)
-			s.Symbols.AddSymbols(symbol)
+			data := val.(*symbolsData)
+
+			sym := &logutil.Symbols{}
+			sym.Load(data.Funcs, data.FuncStatus)
+
+			s.Symbols.AddSymbols(sym)
 			return nil
 		},
 	)
+
 }
 
 func (s *SymbolsReader) Close() error {
