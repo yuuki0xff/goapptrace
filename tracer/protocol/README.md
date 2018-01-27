@@ -7,7 +7,7 @@ Unix socket supports is planned, but it is not supported currently.
 
 ## Packet Specification
 Packet is unit of encode/decode.
-Packet MUST encode to binary by the gob encoder.
+Packet MUST encode to binary by `*Packet.Marshal()` method and `*Packet.Unmarshal()` method.
 Packet can classable to _HelloPacket_ type, _HeaderPacket_ type and _DataPacket_ type.
 
 * `HeaderPacket` notify about a _DataPacket_ and _HelloPacket_ of packet type and packet length.

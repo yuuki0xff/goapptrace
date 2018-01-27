@@ -3,7 +3,6 @@ package protocol
 import (
 	"bytes"
 	"encoding/binary"
-	"encoding/gob"
 	"io"
 	"log"
 
@@ -51,11 +50,10 @@ func (pr Proto) Pack(p xtcp.Packet) ([]byte, error) {
 	buf.WriteByte(0)
 
 	// build buf
-	enc := gob.NewEncoder(&buf)
-	if err := enc.Encode(&hp); err != nil {
+	if err := marshalPacket(&hp, &buf); err != nil {
 		return nil, err
 	}
-	if err := enc.Encode(p); err != nil {
+	if err := marshalPacket(p, &buf); err != nil {
 		return nil, err
 	}
 
@@ -67,7 +65,6 @@ func (pr Proto) Pack(p xtcp.Packet) ([]byte, error) {
 }
 func (pr Proto) Unpack(b []byte) (xtcp.Packet, int, error) {
 	var hp HeaderPacket
-	var buf bytes.Buffer
 
 	if len(b) < 4 {
 		// buf size not enough for unpack
@@ -82,16 +79,24 @@ func (pr Proto) Unpack(b []byte) (xtcp.Packet, int, error) {
 		return nil, 0, nil
 	}
 
-	buf.Write(packetData)
-	dec := gob.NewDecoder(&buf)
-	if err := dec.Decode(&hp); err != nil {
+	buf := bytes.NewBuffer(packetData)
+	if err := hp.Unmarshal(buf); err != nil {
 		return nil, packetSize, err
 	}
 
-	p := createPacket(hp.PacketType)
-	err := dec.Decode(p)
-	if err != nil {
+	p := createPacket(PacketType(hp.PacketType))
+	if err := unmarshalPacket(p, buf); err != nil {
 		return nil, packetSize, err
 	}
 	return p, packetSize, nil
+}
+
+func marshalPacket(p xtcp.Packet, buf io.Writer) error {
+	m := p.(Marshalable)
+	return m.Marshal(buf)
+}
+
+func unmarshalPacket(p xtcp.Packet, r io.Reader) error {
+	m := p.(Marshalable)
+	return m.Unmarshal(r)
 }
