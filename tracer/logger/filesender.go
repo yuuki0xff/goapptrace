@@ -37,11 +37,11 @@ func (f *FileSender) Close() error {
 }
 
 // write Symbols and RawFuncLog to the log file.
-func (f *FileSender) Send(symbols *logutil.Symbols, funclog *logutil.RawFuncLog) error {
+func (f *FileSender) Send(diff *logutil.SymbolsDiff, funclog *logutil.RawFuncLog) error {
 	if f.w == nil {
 		return ClosedError
 	}
-	return f.w.Write(symbols, funclog)
+	return f.w.Write(diff, funclog)
 }
 
 // returns absolute path of log file.

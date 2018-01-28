@@ -27,7 +27,7 @@ type ServerHandler struct {
 
 	Error func(id ConnID, err error)
 
-	Symbols    func(id ConnID, symbols *logutil.Symbols)
+	Symbols    func(id ConnID, diff *logutil.SymbolsDiff)
 	RawFuncLog func(id ConnID, funclog *logutil.RawFuncLog)
 }
 
@@ -206,7 +206,7 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 				return
 			case *SymbolPacket:
 				if s.Handler.Symbols != nil {
-					s.Handler.Symbols(s.ID, pkt.Symbols)
+					s.Handler.Symbols(s.ID, &pkt.SymbolsDiff)
 				}
 			case *RawFuncLogNewPacket:
 				if s.Handler.RawFuncLog != nil {

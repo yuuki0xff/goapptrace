@@ -108,6 +108,10 @@ type Symbols struct {
 	// なお、FuncStatus.IDは常に0にすること。
 	status2FSID map[FuncStatus]FuncStatusID
 }
+type SymbolsDiff struct {
+	Funcs      []*FuncSymbol
+	FuncStatus []*FuncStatus
+}
 
 type FuncSymbol struct {
 	ID    FuncID

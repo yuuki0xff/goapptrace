@@ -44,11 +44,11 @@ func (c *CompactLogWriter) Open() error {
 
 // ログを書き込む
 // symbolsとfunclogはnon-nullでなければならない。
-func (c *CompactLogWriter) Write(symbols *logutil.Symbols, funclog *logutil.RawFuncLog) error {
-	if symbols == nil || funclog == nil {
-		log.Panicf("symbols or funclog is null: symbols=%+v, funclog=%+v", symbols, funclog)
+func (c *CompactLogWriter) Write(diff *logutil.SymbolsDiff, funclog *logutil.RawFuncLog) error {
+	if diff == nil || funclog == nil {
+		log.Panicf("diff or funclog is null: diff=%+v, funclog=%+v", diff, funclog)
 	}
-	if err := c.enc.Encode(symbols); err != nil {
+	if err := c.enc.Encode(diff); err != nil {
 		return err
 	}
 	if err := c.enc.Encode(funclog); err != nil {
@@ -72,16 +72,16 @@ func (c *CompactLogReader) Open() error {
 	c.dec = gob.NewDecoder(c.r)
 	return err
 }
-func (c *CompactLogReader) Read() (*logutil.Symbols, *logutil.RawFuncLog, error) {
-	symbols := &logutil.Symbols{}
+func (c *CompactLogReader) Read() (*logutil.SymbolsDiff, *logutil.RawFuncLog, error) {
+	diff := &logutil.SymbolsDiff{}
 	funclog := &logutil.RawFuncLog{}
-	if err := c.dec.Decode(symbols); err != nil {
+	if err := c.dec.Decode(diff); err != nil {
 		return nil, nil, err
 	}
 	if err := c.dec.Decode(funclog); err != nil {
 		return nil, nil, err
 	}
-	return symbols, funclog, nil
+	return diff, funclog, nil
 }
 func (c *CompactLogReader) Close() error {
 	return c.r.Close()

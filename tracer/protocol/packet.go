@@ -175,7 +175,7 @@ type StopTraceCmdPacket struct {
 }
 
 type SymbolPacket struct {
-	Symbols *logutil.Symbols
+	logutil.SymbolsDiff
 }
 type RawFuncLogNewPacket struct {
 	FuncLog *logutil.RawFuncLog
@@ -229,19 +229,15 @@ func (p *StopTraceCmdPacket) Unmarshal(r io.Reader) error {
 }
 
 func (p *SymbolPacket) Marshal(w io.Writer) error {
-	return p.Symbols.Save(func(funcs []*logutil.FuncSymbol, funcStatus []*logutil.FuncStatus) error {
-		return panicHandler(func() {
-			marshalFuncSymbolSlice(w, funcs)
-			marshalFuncStatusSlice(w, funcStatus)
-		})
+	return panicHandler(func() {
+		marshalFuncSymbolSlice(w, p.Funcs)
+		marshalFuncStatusSlice(w, p.FuncStatus)
 	})
 }
 func (p *SymbolPacket) Unmarshal(r io.Reader) error {
 	return panicHandler(func() {
-		funcs := unmarshalFuncSymbolSlice(r)
-		funcStatus := unmarshalFuncStatusSlice(r)
-		p.Symbols = &logutil.Symbols{}
-		p.Symbols.Load(funcs, funcStatus)
+		p.Funcs = unmarshalFuncSymbolSlice(r)
+		p.FuncStatus = unmarshalFuncStatusSlice(r)
 	})
 }
 

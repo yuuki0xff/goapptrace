@@ -6,5 +6,5 @@ import "github.com/yuuki0xff/goapptrace/tracer/logutil"
 type Sender interface {
 	Open() error
 	Close() error
-	Send(*logutil.Symbols, *logutil.RawFuncLog) error
+	Send(diff *logutil.SymbolsDiff, raw *logutil.RawFuncLog) error
 }

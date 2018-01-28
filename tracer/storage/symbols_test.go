@@ -67,21 +67,13 @@ func TestSymbolsReaderWriter_loadEmptyFile(t *testing.T) {
 }
 
 func TestSymbolsReaderWriter_emptySymbols(t *testing.T) {
-	newSymbols := func() *logutil.Symbols {
-		symbols := &logutil.Symbols{
-			Writable: true,
-			KeepID:   true,
-		}
-		symbols.Init()
-		return symbols
-	}
 	doTestSymbolsReaderWriter(
 		t,
 		// write
 		func(sw *SymbolsWriter) {
-			must(t, sw.Append(newSymbols()), "SymbolsWriter.Append():")
-			must(t, sw.Append(newSymbols()), "SymbolsWriter.Append():")
-			must(t, sw.Append(newSymbols()), "SymbolsWriter.Append():")
+			must(t, sw.Append(&logutil.SymbolsDiff{}), "SymbolsWriter.Append():")
+			must(t, sw.Append(&logutil.SymbolsDiff{}), "SymbolsWriter.Append():")
+			must(t, sw.Append(&logutil.SymbolsDiff{}), "SymbolsWriter.Append():")
 		},
 		// check data
 		func(symbols *logutil.Symbols) {
@@ -138,7 +130,13 @@ func TestSymbolsReaderWrieter_data(t *testing.T) {
 			fIDs[1], _ = s.AddFunc(funcSymbols[1])
 			funcStatuses[1].Func = fIDs[1]
 			fsIDs[1], _ = s.AddFuncStatus(funcStatuses[1])
-			sw.Append(s)
+
+			must(t, s.Save(func(funcs []*logutil.FuncSymbol, funcStatus []*logutil.FuncStatus) error {
+				return sw.Append(&logutil.SymbolsDiff{
+					Funcs:      funcs,
+					FuncStatus: funcStatus,
+				})
+			}), "failed to write symbols diff")
 		},
 		// check data
 		func(symbols *logutil.Symbols) {

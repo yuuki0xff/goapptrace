@@ -50,7 +50,7 @@ func init() {
 }
 
 func sendLog(tag logutil.TagName, id logutil.TxID) {
-	var newSymbols *logutil.Symbols
+	diff := &logutil.SymbolsDiff{}
 
 	logmsg := &logutil.RawFuncLog{}
 	logmsg.Timestamp = logutil.NewTime(time.Now())
@@ -86,26 +86,15 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 		logmsg.Frames = append(logmsg.Frames, funcStatusID)
 
 		if added1 || added2 {
-			if newSymbols == nil {
-				// prepare newSymbols
-				newSymbols = &logutil.Symbols{
-					Writable: true,
-					KeepID:   true,
-				}
-				newSymbols.Init()
-			}
-
-			// TODO: パフォーマンスを改善する
-			// newSymbols.Add*()は、IDが大きくなるに連れ確保するバッファサイズが大きくなる。
 			if added1 {
 				f := &logutil.FuncSymbol{}
 				*f, _ = symbols.Func(funcID)
-				newSymbols.AddFunc(f)
+				diff.Funcs = append(diff.Funcs, f)
 			}
 			if added2 {
 				f := &logutil.FuncStatus{}
 				*f, _ = symbols.FuncStatus(funcStatusID)
-				newSymbols.AddFuncStatus(f)
+				diff.FuncStatus = append(diff.FuncStatus, f)
 			}
 		}
 	}
@@ -126,7 +115,7 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 	if sender == nil {
 		setOutput()
 	}
-	if err := sender.Send(newSymbols, logmsg); err != nil {
+	if err := sender.Send(diff, logmsg); err != nil {
 		log.Panicf("failed to sender.Send():err=%s sender=%+v ", err, sender)
 	}
 }

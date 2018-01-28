@@ -54,16 +54,16 @@ func TestRetrySender(t *testing.T) {
 
 	// send a log.
 	if err := sender.Send(
-		newSymbols(
-			[]*logutil.FuncSymbol{
+		&logutil.SymbolsDiff{
+			Funcs: []*logutil.FuncSymbol{
 				{logutil.FuncID(0), "module.f1", "/go/src/module/src.go", 1},
 				{logutil.FuncID(1), "module.f2", "/go/src/module/src.go", 2},
 			},
-			[]*logutil.FuncStatus{
+			FuncStatus: []*logutil.FuncStatus{
 				{logutil.FuncStatusID(0), logutil.FuncID(0), 10, 100},
 				{logutil.FuncStatusID(1), logutil.FuncID(1), 20, 200},
 			},
-		),
+		},
 		&logutil.RawFuncLog{
 			ID:        logutil.RawFuncLogID(0),
 			Tag:       "funcStart",
@@ -80,12 +80,12 @@ func TestRetrySender(t *testing.T) {
 		t.Fatalf("failed to FileSender.Close(): %s", err)
 	}
 	if err := sender.Send(
-		newSymbols(
-			[]*logutil.FuncSymbol{},
-			[]*logutil.FuncStatus{
+		&logutil.SymbolsDiff{
+			Funcs: []*logutil.FuncSymbol{},
+			FuncStatus: []*logutil.FuncStatus{
 				{logutil.FuncStatusID(2), logutil.FuncID(1), 21, 210},
 			},
-		),
+		},
 		&logutil.RawFuncLog{
 			ID:        logutil.RawFuncLogID(1),
 			Tag:       "funcEnd",
@@ -98,12 +98,6 @@ func TestRetrySender(t *testing.T) {
 	if err := sender.Close(); err != nil {
 		t.Fatalf("failed to sender.Close(): %s", err)
 	}
-}
-
-func newSymbols(funcs []*logutil.FuncSymbol, funcStatus []*logutil.FuncStatus) *logutil.Symbols {
-	s := &logutil.Symbols{}
-	s.Load(funcs, funcStatus)
-	return s
 }
 
 func checkFileSender(t *testing.T, prefix string) {

@@ -134,14 +134,14 @@ func (s *Symbols) ModuleName(id FuncStatusID) string {
 }
 
 // 注意: 引数(symbols)のIDは引き継がれない。
-func (s *Symbols) AddSymbols(symbols *Symbols) {
+func (s *Symbols) AddSymbolsDiff(diff *SymbolsDiff) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	for _, fsymbol := range symbols.funcs {
+	for _, fsymbol := range diff.Funcs {
 		s.addFuncNolock(fsymbol)
 	}
-	for _, fsatus := range symbols.funcStatus {
+	for _, fsatus := range diff.FuncStatus {
 		s.addFuncStatusNolock(fsatus)
 	}
 }

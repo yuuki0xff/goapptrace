@@ -495,17 +495,17 @@ func (l *Log) AppendRawFuncLog(raw *logutil.RawFuncLog) error {
 }
 
 // Symbolsを書き込む。
-func (l *Log) AppendSymbols(symbols *logutil.Symbols) error {
+func (l *Log) AppendSymbolsDiff(diff *logutil.SymbolsDiff) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 	if l.closed {
 		return os.ErrClosed
 	}
 
-	if err := l.symbolsWriter.Append(symbols); err != nil {
+	if err := l.symbolsWriter.Append(diff); err != nil {
 		return err
 	}
-	l.symbols.AddSymbols(symbols)
+	l.symbols.AddSymbolsDiff(diff)
 	return nil
 }
 
