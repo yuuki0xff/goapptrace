@@ -249,3 +249,61 @@ func TestSymbols_FuncStatus(t *testing.T) {
 	a.Equal(true, ok)
 	a.Equal(id1, fs.ID)
 }
+
+func TestSymbols_FuncIDFromName(t *testing.T) {
+	a := assert.New(t)
+	s := Symbols{}
+	s.Load(
+		[]*FuncSymbol{
+			{
+				ID:    0,
+				Name:  "main.test",
+				File:  "main.go",
+				Entry: 1000,
+			},
+		},
+		[]*FuncStatus{},
+	)
+
+	id, ok := s.FuncIDFromName("main.test")
+	a.Equal(true, ok)
+	a.Equal(FuncID(0), id)
+
+	id, ok = s.FuncIDFromName("not-found")
+	a.Equal(false, ok)
+}
+
+func TestSymbols_FuncStatusIDFromPC(t *testing.T) {
+	a := assert.New(t)
+	s := Symbols{}
+	s.Load(
+		[]*FuncSymbol{
+			{
+				ID:    0,
+				Name:  "main.test",
+				File:  "main.go",
+				Entry: 1000,
+			},
+		},
+		[]*FuncStatus{
+			{
+				ID:   0,
+				Func: FuncID(0),
+				Line: 30,
+				PC:   1030,
+			},
+		},
+	)
+
+	id, ok := s.FuncStatusIDFromPC(1030)
+	a.Equal(true, ok)
+	a.Equal(FuncStatusID(0), id)
+
+	// FuncSymbolのEntry pointの値は検索対象外
+	_, ok = s.FuncStatusIDFromPC(1000)
+	a.Equal(false, ok)
+
+	// 関数の範囲ぽくても、未登録ならfalseを返す。
+	_, ok = s.FuncStatusIDFromPC(1010)
+	a.Equal(false, ok)
+}
