@@ -102,11 +102,11 @@ type Symbols struct {
 	// SymbolName(string)とFuncIDの対応関係を保持する
 	// Writableがfalseなら、nil。
 	name2FuncID map[string]FuncID
-	// FuncStatusとFuncStatusIDの対応関係を保持する。
+	// PC(Program Counter)とFuncStatusIDの対応関係を保持する。
 	// 同一の内容のFuncStatusを追加しないようにするために使用する。
+	// inline化やループ展開などの最適化をされると破綻してしまうので、コンパイル時に最適化をoffにしているのが前提。
 	// Writableがfalseなら、nil。
-	// なお、FuncStatus.IDは常に0にすること。
-	status2FSID map[FuncStatus]FuncStatusID
+	pc2FSID map[uintptr]FuncStatusID
 }
 type SymbolsDiff struct {
 	Funcs      []*FuncSymbol

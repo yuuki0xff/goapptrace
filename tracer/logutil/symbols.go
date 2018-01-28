@@ -29,7 +29,7 @@ func (s *Symbols) Init() {
 	s.funcStatus = make([]*FuncStatus, 0)
 	if s.Writable {
 		s.name2FuncID = make(map[string]FuncID)
-		s.status2FSID = make(map[FuncStatus]FuncStatusID)
+		s.pc2FSID = make(map[uintptr]FuncStatusID)
 	}
 }
 
@@ -189,7 +189,7 @@ func (s *Symbols) addFuncStatusNolock(status *FuncStatus) (id FuncStatusID, adde
 		log.Panic("Symbols is not writable")
 	}
 
-	id, ok := s.status2FSID[*status]
+	id, ok := s.pc2FSID[status.PC]
 	if ok {
 		// if exists, nothing to do
 		return id, false
@@ -206,6 +206,6 @@ func (s *Symbols) addFuncStatusNolock(status *FuncStatus) (id FuncStatusID, adde
 		s.funcStatus = append(s.funcStatus, status)
 	}
 	s.funcStatus[status.ID] = status
-	s.status2FSID[*status] = status.ID
+	s.pc2FSID[status.PC] = status.ID
 	return status.ID, true
 }
