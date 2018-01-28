@@ -67,17 +67,6 @@ func unmarshalUint64(r io.Reader) uint64 {
 	return binary.BigEndian.Uint64(data[:])
 }
 
-func marshalByteSlice(w io.Writer, data []byte) {
-	marshalUint64(w, uint64(len(data)))
-	mustWrite(w, data)
-}
-func unmarshalByteSlice(r io.Reader) []byte {
-	length := unmarshalUint64(r)
-	data := make([]byte, length)
-	mustRead(r, data)
-	return data
-}
-
 func marshalString(w io.Writer, str string) {
 	marshalUint64(w, uint64(len(str)))
 	mustWrite(w, []byte(str))
