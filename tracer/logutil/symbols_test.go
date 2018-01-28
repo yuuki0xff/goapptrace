@@ -269,7 +269,7 @@ func TestSymbols_FuncIDFromName(t *testing.T) {
 	a.Equal(true, ok)
 	a.Equal(FuncID(0), id)
 
-	id, ok = s.FuncIDFromName("not-found")
+	_, ok = s.FuncIDFromName("not-found")
 	a.Equal(false, ok)
 }
 
