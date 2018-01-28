@@ -197,3 +197,55 @@ func TestSymbols_AddFuncStatus_dedup(t *testing.T) {
 	a.Equal(false, added)
 	a.Equal(FuncStatusID(2), id)
 }
+
+func TestSymbols_Func(t *testing.T) {
+	a := assert.New(t)
+	s := Symbols{
+		Writable: true,
+		KeepID:   true,
+	}
+	s.Init()
+
+	// 存在しない関数は取得できない
+	_, ok := s.Func(FuncID(10))
+	a.Equal(false, ok)
+
+	id1, added := s.AddFunc(&FuncSymbol{
+		ID:    10,
+		Name:  "main.test2",
+		File:  "test2.go",
+		Entry: 200,
+	})
+	a.Equal(true, added)
+	a.Equal(FuncID(10), id1)
+
+	// 存在するものは取得できる
+	f, ok := s.Func(id1)
+	a.Equal(true, ok)
+	a.Equal(id1, f.ID)
+}
+
+func TestSymbols_FuncStatus(t *testing.T) {
+	a := assert.New(t)
+	s := Symbols{
+		Writable: true,
+		KeepID:   true,
+	}
+	s.Init()
+
+	_, ok := s.FuncStatus(FuncStatusID(1000))
+	a.Equal(false, ok)
+
+	id1, ok := s.AddFuncStatus(&FuncStatus{
+		ID:   1000,
+		Func: 10, // dummy
+		Line: 100,
+		PC:   101,
+	})
+	a.Equal(true, ok)
+	a.Equal(FuncStatusID(1000), id1)
+
+	fs, ok := s.FuncStatus(id1)
+	a.Equal(true, ok)
+	a.Equal(id1, fs.ID)
+}
