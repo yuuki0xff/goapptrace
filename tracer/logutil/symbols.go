@@ -28,18 +28,24 @@ func (f *FuncStatusID) UnmarshalText(text []byte) error {
 func (s *Symbols) Init() {
 	s.funcs = make([]*FuncSymbol, 0)
 	s.funcStatus = make([]*FuncStatus, 0)
-	if s.Writable {
-		s.name2FuncID = make(map[string]FuncID)
-		s.pc2FSID = make(map[uintptr]FuncStatusID)
-	}
+	s.name2FuncID = make(map[string]FuncID)
+	s.pc2FSID = make(map[uintptr]FuncStatusID)
 }
 
 // 指定した状態で初期化する。
 // Init()を呼び出す必要はない。
 func (s *Symbols) Load(funcs []*FuncSymbol, funcStatus []*FuncStatus) {
-	s.Init()
 	s.funcs = funcs
 	s.funcStatus = funcStatus
+	s.name2FuncID = make(map[string]FuncID)
+	s.pc2FSID = make(map[uintptr]FuncStatusID)
+
+	for _, f := range s.funcs {
+		s.name2FuncID[f.Name] = f.ID
+	}
+	for _, fs := range s.funcStatus {
+		s.pc2FSID[fs.PC] = fs.ID
+	}
 }
 
 // 現在保持している全てのFuncSymbolとFuncStatusのsliceをコールバックする。

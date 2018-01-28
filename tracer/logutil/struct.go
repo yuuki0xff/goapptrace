@@ -104,12 +104,10 @@ type Symbols struct {
 	lock sync.RWMutex
 
 	// SymbolName(string)とFuncIDの対応関係を保持する
-	// Writableがfalseなら、nil。
 	name2FuncID map[string]FuncID
 	// PC(Program Counter)とFuncStatusIDの対応関係を保持する。
 	// 同一の内容のFuncStatusを追加しないようにするために使用する。
 	// inline化やループ展開などの最適化をされると破綻してしまうので、コンパイル時に最適化をoffにしているのが前提。
-	// Writableがfalseなら、nil。
 	pc2FSID map[uintptr]FuncStatusID
 }
 type SymbolsDiff struct {
