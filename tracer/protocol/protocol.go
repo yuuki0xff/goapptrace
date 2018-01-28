@@ -84,7 +84,7 @@ func (pr Proto) Unpack(b []byte) (xtcp.Packet, int, error) {
 		return nil, packetSize, err
 	}
 
-	p := createPacket(PacketType(hp.PacketType))
+	p := createPacket(hp.PacketType)
 	if err := unmarshalPacket(p, buf); err != nil {
 		return nil, packetSize, err
 	}
