@@ -15,7 +15,7 @@ import (
 type LogID = logutil.LogID
 
 const (
-	rotateInterval = 100000
+	defaultRotateInterval = 100000
 )
 
 // 指定したLogIDに対応するログの作成・読み書き・削除を行う。
@@ -51,6 +51,8 @@ type Log struct {
 	// この変数は、AppendRawFuncLog()を呼び出すたびにincrementされる。
 	// 値がrotateIntervalより大きくなったときは、値が0に戻り、autoRotate()が実行される。
 	autorotateSkips int
+	// autoRotate()を呼び出す間隔。詳細はautorotateSkipsのドキュメントを参照すること。
+	rotateInterval int
 	// フィアルがcloseされていたらtrue。
 	// trueなら全ての操作を受け付けてはならない。
 	closed bool
@@ -154,6 +156,9 @@ func (l *Log) Open() error {
 
 	// initialize fields
 	l.closed = false
+	if l.rotateInterval == 0 {
+		l.rotateInterval = defaultRotateInterval
+	}
 	l.index = &Index{
 		File:     l.Root.IndexFile(l.ID),
 		ReadOnly: l.ReadOnly,
@@ -452,7 +457,7 @@ func (l *Log) AppendRawFuncLog(raw *logutil.RawFuncLog) error {
 
 	// AppendRawFuncLog()を高速化するために、autoRotate()の実行回数を減らす。
 	l.autorotateSkips++
-	if l.autorotateSkips > rotateInterval {
+	if l.autorotateSkips > l.rotateInterval {
 		// *SLOW PATH*
 		l.autorotateSkips = 0
 

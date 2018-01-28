@@ -87,6 +87,8 @@ func TestLog_AppendRawFuncLog(t *testing.T) {
 		Root:        dirlayout,
 		Metadata:    &LogMetadata{},
 		MaxFileSize: 1,
+		// 自動ローテーションを発生させるため
+		rotateInterval: 1,
 	}
 	must(t, l.Open(), "Log.Open():")
 	must(t, l.AppendRawFuncLog(&logutil.RawFuncLog{}), "Log.AppendRawFuncLog():")
@@ -141,6 +143,8 @@ func TestLog_ReadDuringWriting(t *testing.T) {
 		Root:        dirlayout,
 		Metadata:    &LogMetadata{},
 		MaxFileSize: 1000,
+		// 自動ローテーションを発生させるため
+		rotateInterval: 10,
 	}
 	must(t, l.Open(), "Log.Open():")
 
