@@ -37,17 +37,21 @@ func (s *SymbolsReader) Open() error {
 }
 
 func (s *SymbolsReader) Load() error {
-	return s.dec.Walk(
+	mergedDiff := logutil.SymbolsDiff{}
+	if err := s.dec.Walk(
 		func() interface{} {
 			return &logutil.SymbolsDiff{}
 		},
 		func(val interface{}) error {
 			diff := val.(*logutil.SymbolsDiff)
-			s.Symbols.AddSymbolsDiff(diff)
+			mergedDiff.Merge(diff)
 			return nil
 		},
-	)
-
+	); err != nil {
+		return err
+	}
+	s.Symbols.Load(mergedDiff)
+	return nil
 }
 
 func (s *SymbolsReader) Close() error {
