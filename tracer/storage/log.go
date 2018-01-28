@@ -43,6 +43,9 @@ type Log struct {
 	ReadOnly    bool
 
 	lock sync.RWMutex
+	// フィアルがcloseされていたらtrue。
+	// trueなら全ての操作を受け付けてはならない。
+	closed bool
 	// rotate()を実行中ならtrue。
 	// rotate()内部で発生するBeforeRotate eventの実行中は、ロックを外さなければならない。
 	// そのイベント実行中に、並行してrotate()が実行されないように排他制御するためのフラグ。
@@ -53,9 +56,6 @@ type Log struct {
 	autorotateSkips int
 	// autoRotate()を呼び出す間隔。詳細はautorotateSkipsのドキュメントを参照すること。
 	rotateInterval int
-	// フィアルがcloseされていたらtrue。
-	// trueなら全ての操作を受け付けてはならない。
-	closed bool
 
 	index         *Index
 	symbols       *logutil.Symbols
