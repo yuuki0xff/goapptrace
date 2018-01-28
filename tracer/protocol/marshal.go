@@ -3,6 +3,7 @@ package protocol
 import (
 	"encoding/binary"
 	"io"
+	"log"
 
 	"github.com/pkg/errors"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
@@ -13,115 +14,103 @@ var (
 	falseBytes = []byte{0}
 )
 
-func marshalBool(w io.Writer, val bool) {
-	if val {
-		w.Write(trueBytes)
-	} else {
-		w.Write(falseBytes)
+func panicHandler(fn func()) (err error) {
+	defer func() {
+		if obj := recover(); obj != nil {
+			err = obj.(error)
+		}
+	}()
+	fn()
+	return nil
+}
+
+func mustWrite(w io.Writer, data []byte) {
+	n, err := w.Write(data)
+	if err != nil {
+		log.Panic(err)
+	}
+	if n != len(data) {
+		log.Panic(errors.New("partial write error"))
 	}
 }
-func unmarshalBool(r io.Reader) (bool, error) {
-	var data [1]byte
-	n, err := r.Read(data[:])
+func mustRead(r io.Reader, data []byte) {
+	n, err := r.Read(data)
 	if err != nil {
-		return false, err
+		log.Panic(err)
 	}
-	if n != 1 {
-		return false, errors.New("enough length")
+	if n != len(data) {
+		log.Panic(errors.New("partial read error"))
 	}
-	return data[0] != 0, nil
+}
+
+func marshalBool(w io.Writer, val bool) {
+	if val {
+		mustWrite(w, trueBytes)
+	} else {
+		mustWrite(w, falseBytes)
+	}
+}
+func unmarshalBool(r io.Reader) bool {
+	var data [1]byte
+	mustRead(r, data[:])
+	return data[0] != 0
 }
 
 func marshalUint64(w io.Writer, val uint64) {
 	var data [8]byte
 	binary.BigEndian.PutUint64(data[:], val)
-	w.Write(data[:])
+	mustWrite(w, data[:])
 }
-func unmarshalUint64(r io.Reader) (uint64, error) {
+func unmarshalUint64(r io.Reader) uint64 {
 	var data [8]byte
-	n, err := r.Read(data[:])
-	if err != nil {
-		return 0, err
-	}
-	if n != len(data) {
-		return 0, errors.New("lack of length")
-	}
-	return binary.BigEndian.Uint64(data[:]), nil
+	mustRead(r, data[:])
+	return binary.BigEndian.Uint64(data[:])
 }
 
 func marshalByteSlice(w io.Writer, data []byte) {
 	marshalUint64(w, uint64(len(data)))
-	w.Write(data)
+	mustWrite(w, data)
 }
-func unmarshalByteSlice(r io.Reader) ([]byte, error) {
-	length, err := unmarshalUint64(r)
-	if err != nil {
-		return nil, err
-	}
-
+func unmarshalByteSlice(r io.Reader) []byte {
+	length := unmarshalUint64(r)
 	data := make([]byte, length)
-	n, err := r.Read(data)
-	if err != nil {
-		return nil, err
-	}
-	if uint64(n) != length {
-		return nil, errors.New("lack of length")
-	}
-	return data, nil
+	mustRead(r, data)
+	return data
 }
 
 func marshalString(w io.Writer, str string) {
 	marshalUint64(w, uint64(len(str)))
-	w.Write([]byte(str))
+	mustWrite(w, []byte(str))
 }
-func unmarshalString(r io.Reader) (string, error) {
-	length, err := unmarshalUint64(r)
-	if err != nil {
-		return "", err
-	}
-
+func unmarshalString(r io.Reader) string {
+	length := unmarshalUint64(r)
 	binstr := make([]byte, length)
-	n, err := r.Read(binstr)
-	if err != nil {
-		return "", err
-	}
-	if uint64(n) != length {
-		return "", errors.New("lack of length")
-	}
-	return string(binstr), nil
+	mustRead(r, binstr)
+	return string(binstr)
 }
 
 func marshalFuncID(w io.Writer, fid logutil.FuncID) {
 	marshalUint64(w, uint64(fid))
 }
-func unmarshalFuncID(r io.Reader) (logutil.FuncID, error) {
-	val, err := unmarshalUint64(r)
-	if err != nil {
-		return logutil.FuncID(0), err
-	}
-	return logutil.FuncID(val), nil
+func unmarshalFuncID(r io.Reader) logutil.FuncID {
+	val := unmarshalUint64(r)
+	return logutil.FuncID(val)
 }
 
 func marshalRawFuncLogID(w io.Writer, id logutil.RawFuncLogID) {
 	marshalUint64(w, uint64(id))
 }
-func unmarshalRawFuncLogID(r io.Reader) (logutil.RawFuncLogID, error) {
-	val, err := unmarshalUint64(r)
-	if err != nil {
-		return logutil.RawFuncLogID(0), err
-	}
-	return logutil.RawFuncLogID(val), nil
+func unmarshalRawFuncLogID(r io.Reader) logutil.RawFuncLogID {
+	val := unmarshalUint64(r)
+	return logutil.RawFuncLogID(val)
 }
 
 func marshalFuncStatusID(w io.Writer, fsid logutil.FuncStatusID) {
 	marshalUint64(w, uint64(fsid))
 }
-func unmarshalFuncStatusID(r io.Reader) (logutil.FuncStatusID, error) {
-	val, err := unmarshalUint64(r)
-	if err != nil {
-		return logutil.FuncStatusID(0), err
-	}
-	return logutil.FuncStatusID(val), nil
+func unmarshalFuncStatusID(r io.Reader) logutil.FuncStatusID {
+	val := unmarshalUint64(r)
+	return logutil.FuncStatusID(val)
 }
 
 func marshalFuncSymbolSlice(w io.Writer, funcs []*logutil.FuncSymbol) {
@@ -133,26 +122,16 @@ func marshalFuncSymbolSlice(w io.Writer, funcs []*logutil.FuncSymbol) {
 		}
 	}
 }
-func unmarshalFuncSymbolSlice(r io.Reader) ([]*logutil.FuncSymbol, error) {
-	length, err := unmarshalUint64(r)
-	if err != nil {
-		return nil, err
-	}
-
+func unmarshalFuncSymbolSlice(r io.Reader) []*logutil.FuncSymbol {
+	length := unmarshalUint64(r)
 	funcs := make([]*logutil.FuncSymbol, length)
 	for i := range funcs {
-		isNonNil, err := unmarshalBool(r)
-		if err != nil {
-			return nil, err
-		}
+		isNonNil := unmarshalBool(r)
 		if isNonNil {
-			funcs[i], err = unmarshalFuncSymbol(r)
-			if err != nil {
-				return nil, err
-			}
+			funcs[i] = unmarshalFuncSymbol(r)
 		}
 	}
-	return funcs, nil
+	return funcs
 }
 
 func marshalFuncSymbol(w io.Writer, s *logutil.FuncSymbol) {
@@ -161,14 +140,14 @@ func marshalFuncSymbol(w io.Writer, s *logutil.FuncSymbol) {
 	marshalString(w, s.File)
 	marshalUint64(w, uint64(s.Entry))
 }
-func unmarshalFuncSymbol(r io.Reader) (*logutil.FuncSymbol, error) {
+func unmarshalFuncSymbol(r io.Reader) *logutil.FuncSymbol {
 	s := &logutil.FuncSymbol{}
-	s.ID, _ = unmarshalFuncID(r)
-	s.Name, _ = unmarshalString(r)
-	s.File, _ = unmarshalString(r)
-	ptr, _ := unmarshalUint64(r)
+	s.ID = unmarshalFuncID(r)
+	s.Name = unmarshalString(r)
+	s.File = unmarshalString(r)
+	ptr := unmarshalUint64(r)
 	s.Entry = uintptr(ptr)
-	return s, nil
+	return s
 }
 
 func marshalFuncStatusSlice(w io.Writer, status []*logutil.FuncStatus) {
@@ -180,26 +159,16 @@ func marshalFuncStatusSlice(w io.Writer, status []*logutil.FuncStatus) {
 		}
 	}
 }
-func unmarshalFuncStatusSlice(r io.Reader) ([]*logutil.FuncStatus, error) {
-	length, err := unmarshalUint64(r)
-	if err != nil {
-		return nil, err
-	}
-
+func unmarshalFuncStatusSlice(r io.Reader) []*logutil.FuncStatus {
+	length := unmarshalUint64(r)
 	funcs := make([]*logutil.FuncStatus, length)
 	for i := range funcs {
-		isNonNil, err := unmarshalBool(r)
-		if err != nil {
-			return nil, err
-		}
+		isNonNil := unmarshalBool(r)
 		if isNonNil {
-			funcs[i], err = unmarshalFuncStatus(r)
-			if err != nil {
-				return nil, err
-			}
+			funcs[i] = unmarshalFuncStatus(r)
 		}
 	}
-	return funcs, nil
+	return funcs
 }
 
 func marshalFuncStatus(w io.Writer, s *logutil.FuncStatus) {
@@ -208,14 +177,14 @@ func marshalFuncStatus(w io.Writer, s *logutil.FuncStatus) {
 	marshalUint64(w, s.Line)
 	marshalUint64(w, uint64(s.PC))
 }
-func unmarshalFuncStatus(r io.Reader) (*logutil.FuncStatus, error) {
+func unmarshalFuncStatus(r io.Reader) *logutil.FuncStatus {
 	s := &logutil.FuncStatus{}
-	s.ID, _ = unmarshalFuncStatusID(r)
-	s.Func, _ = unmarshalFuncID(r)
-	s.Line, _ = unmarshalUint64(r)
-	ptr, _ := unmarshalUint64(r)
+	s.ID = unmarshalFuncStatusID(r)
+	s.Func = unmarshalFuncID(r)
+	s.Line = unmarshalUint64(r)
+	ptr := unmarshalUint64(r)
 	s.PC = uintptr(ptr)
-	return s, nil
+	return s
 }
 
 func marshalFuncStatusIDSlice(w io.Writer, slice []logutil.FuncStatusID) {
@@ -224,64 +193,45 @@ func marshalFuncStatusIDSlice(w io.Writer, slice []logutil.FuncStatusID) {
 		marshalFuncStatusID(w, slice[i])
 	}
 }
-func unmarshalFuncStatusIDSlice(r io.Reader) ([]logutil.FuncStatusID, error) {
-	length, err := unmarshalUint64(r)
-	if err != nil {
-		return nil, err
-	}
-
+func unmarshalFuncStatusIDSlice(r io.Reader) []logutil.FuncStatusID {
+	length := unmarshalUint64(r)
 	slice := make([]logutil.FuncStatusID, length)
 	for i := range slice {
-		slice[i], err = unmarshalFuncStatusID(r)
-		if err != nil {
-			return nil, err
-		}
+		slice[i] = unmarshalFuncStatusID(r)
 	}
-	return slice, nil
+	return slice
 }
 
 func marshalGID(w io.Writer, gid logutil.GID) {
 	marshalUint64(w, uint64(gid))
 }
-func unmarshalGID(r io.Reader) (logutil.GID, error) {
-	val, err := unmarshalUint64(r)
-	if err != nil {
-		return logutil.GID(0), err
-	}
-	return logutil.GID(val), nil
+func unmarshalGID(r io.Reader) logutil.GID {
+	val := unmarshalUint64(r)
+	return logutil.GID(val)
 }
 
 func marshalTxID(w io.Writer, id logutil.TxID) {
 	marshalUint64(w, uint64(id))
 }
-func unmarshalTxID(r io.Reader) (logutil.TxID, error) {
-	val, err := unmarshalUint64(r)
-	if err != nil {
-		return logutil.TxID(0), err
-	}
-	return logutil.TxID(val), nil
+func unmarshalTxID(r io.Reader) logutil.TxID {
+	val := unmarshalUint64(r)
+	return logutil.TxID(val)
 }
 
 func marshalTime(w io.Writer, time logutil.Time) {
 	marshalUint64(w, uint64(time))
 }
-func unmarshalTime(r io.Reader) (logutil.Time, error) {
-	val, err := unmarshalUint64(r)
-	if err != nil {
-		return logutil.Time(0), err
-	}
-	return logutil.Time(val), nil
+func unmarshalTime(r io.Reader) logutil.Time {
+	val := unmarshalUint64(r)
+	return logutil.Time(val)
 }
 
 func marshalTagName(w io.Writer, tag logutil.TagName) {
 	marshalString(w, string(tag))
 }
-func unmarshalTagName(r io.Reader) (logutil.TagName, error) {
-	str, err := unmarshalString(r)
-	if err != nil {
-		return logutil.TagName(""), err
-	}
-	return logutil.TagName(str), nil
+func unmarshalTagName(r io.Reader) logutil.TagName {
+	str := unmarshalString(r)
+	return logutil.TagName(str)
 }
 func marshalRawFuncLog(w io.Writer, r *logutil.RawFuncLog) {
 	marshalRawFuncLogID(w, r.ID)
@@ -291,13 +241,13 @@ func marshalRawFuncLog(w io.Writer, r *logutil.RawFuncLog) {
 	marshalGID(w, r.GID)
 	marshalTxID(w, r.TxID)
 }
-func unmarshalRawFuncLog(r io.Reader) (*logutil.RawFuncLog, error) {
+func unmarshalRawFuncLog(r io.Reader) *logutil.RawFuncLog {
 	fl := &logutil.RawFuncLog{}
-	fl.ID, _ = unmarshalRawFuncLogID(r)
-	fl.Tag, _ = unmarshalTagName(r)
-	fl.Timestamp, _ = unmarshalTime(r)
-	fl.Frames, _ = unmarshalFuncStatusIDSlice(r)
-	fl.GID, _ = unmarshalGID(r)
-	fl.TxID, _ = unmarshalTxID(r)
-	return fl, nil
+	fl.ID = unmarshalRawFuncLogID(r)
+	fl.Tag = unmarshalTagName(r)
+	fl.Timestamp = unmarshalTime(r)
+	fl.Frames = unmarshalFuncStatusIDSlice(r)
+	fl.GID = unmarshalGID(r)
+	fl.TxID = unmarshalTxID(r)
+	return fl
 }

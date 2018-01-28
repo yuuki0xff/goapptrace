@@ -88,16 +88,15 @@ type Marshalable interface {
 }
 
 func (p PacketType) Marshal(w io.Writer) error {
-	marshalUint64(w, uint64(p))
-	return nil
+	return panicHandler(func() {
+		marshalUint64(w, uint64(p))
+	})
 }
 func (p *PacketType) Unmarshal(r io.Reader) error {
-	val, err := unmarshalUint64(r)
-	if err != nil {
-		return err
-	}
-	*p = PacketType(val)
-	return nil
+	return panicHandler(func() {
+		val := unmarshalUint64(r)
+		*p = PacketType(val)
+	})
 }
 
 ////////////////////////////////////////////////////////////////
@@ -117,25 +116,28 @@ func (p ClientHelloPacket) String() string { return "<ClientHelloPacket>" }
 func (p ServerHelloPacket) String() string { return "<ServerHelloPacket>" }
 
 func (p *ClientHelloPacket) Marshal(w io.Writer) error {
-	marshalString(w, p.AppName)
-	marshalString(w, p.ClientSecret)
-	marshalString(w, p.ProtocolVersion)
-	return nil
+	return panicHandler(func() {
+		marshalString(w, p.AppName)
+		marshalString(w, p.ClientSecret)
+		marshalString(w, p.ProtocolVersion)
+	})
 }
 func (p *ClientHelloPacket) Unmarshal(r io.Reader) error {
-	p.AppName, _ = unmarshalString(r)
-	p.ClientSecret, _ = unmarshalString(r)
-	p.ProtocolVersion, _ = unmarshalString(r)
-	return nil
+	return panicHandler(func() {
+		p.AppName = unmarshalString(r)
+		p.ClientSecret = unmarshalString(r)
+		p.ProtocolVersion = unmarshalString(r)
+	})
 }
 func (p *ServerHelloPacket) Marshal(w io.Writer) error {
-	marshalString(w, p.ProtocolVersion)
-	return nil
+	return panicHandler(func() {
+		marshalString(w, p.ProtocolVersion)
+	})
 }
 func (p *ServerHelloPacket) Unmarshal(r io.Reader) error {
-	var err error
-	p.ProtocolVersion, err = unmarshalString(r)
-	return err
+	return panicHandler(func() {
+		p.ProtocolVersion = unmarshalString(r)
+	})
 }
 
 ////////////////////////////////////////////////////////////////
@@ -201,54 +203,55 @@ func (p *ShutdownPacket) Marshal(w io.Writer) error   { return nil }
 func (p *ShutdownPacket) Unmarshal(r io.Reader) error { return nil }
 
 func (p *StartTraceCmdPacket) Marshal(w io.Writer) error {
-	marshalFuncID(w, p.FuncID)
-	marshalString(w, p.ModuleName)
-	return nil
+	return panicHandler(func() {
+		marshalFuncID(w, p.FuncID)
+		marshalString(w, p.ModuleName)
+	})
 }
 func (p *StartTraceCmdPacket) Unmarshal(r io.Reader) error {
-	p.FuncID, _ = unmarshalFuncID(r)
-	p.ModuleName, _ = unmarshalString(r)
-	return nil
+	return panicHandler(func() {
+		p.FuncID = unmarshalFuncID(r)
+		p.ModuleName = unmarshalString(r)
+	})
 }
 
 func (p *StopTraceCmdPacket) Marshal(w io.Writer) error {
-	marshalFuncID(w, p.FuncID)
-	marshalString(w, p.ModuleName)
-	return nil
+	return panicHandler(func() {
+		marshalFuncID(w, p.FuncID)
+		marshalString(w, p.ModuleName)
+	})
 }
 func (p *StopTraceCmdPacket) Unmarshal(r io.Reader) error {
-	p.FuncID, _ = unmarshalFuncID(r)
-	p.ModuleName, _ = unmarshalString(r)
-	return nil
+	return panicHandler(func() {
+		p.FuncID = unmarshalFuncID(r)
+		p.ModuleName = unmarshalString(r)
+	})
 }
 
 func (p *SymbolPacket) Marshal(w io.Writer) error {
 	return p.Symbols.Save(func(funcs []*logutil.FuncSymbol, funcStatus []*logutil.FuncStatus) error {
-		marshalFuncSymbolSlice(w, funcs)
-		marshalFuncStatusSlice(w, funcStatus)
-		return nil
+		return panicHandler(func() {
+			marshalFuncSymbolSlice(w, funcs)
+			marshalFuncStatusSlice(w, funcStatus)
+		})
 	})
 }
 func (p *SymbolPacket) Unmarshal(r io.Reader) error {
-	funcs, err := unmarshalFuncSymbolSlice(r)
-	if err != nil {
-		return err
-	}
-	funcStatus, err := unmarshalFuncStatusSlice(r)
-	if err != nil {
-		return err
-	}
-	p.Symbols = &logutil.Symbols{}
-	p.Symbols.Load(funcs, funcStatus)
-	return nil
+	return panicHandler(func() {
+		funcs := unmarshalFuncSymbolSlice(r)
+		funcStatus := unmarshalFuncStatusSlice(r)
+		p.Symbols = &logutil.Symbols{}
+		p.Symbols.Load(funcs, funcStatus)
+	})
 }
 
 func (p *RawFuncLogNewPacket) Marshal(w io.Writer) error {
-	marshalRawFuncLog(w, p.FuncLog)
-	return nil
+	return panicHandler(func() {
+		marshalRawFuncLog(w, p.FuncLog)
+	})
 }
 func (p *RawFuncLogNewPacket) Unmarshal(r io.Reader) error {
-	var err error
-	p.FuncLog, err = unmarshalRawFuncLog(r)
-	return err
+	return panicHandler(func() {
+		p.FuncLog = unmarshalRawFuncLog(r)
+	})
 }
