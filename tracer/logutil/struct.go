@@ -92,9 +92,13 @@ type FuncStatusID uint64
 
 type Symbols struct {
 	Writable bool
-	KeepID   bool
+	// KeepIDがtrueのとき、FuncIDおよびFuncStatusIDは、追加時に指定されたIDを使用する。
+	// KeepIDがfalseのとき、追加時に指定されたIDは無視し、新たなIDを付与する。
+	KeepID bool
 
-	funcs      []*FuncSymbol
+	// index: FuncID
+	funcs []*FuncSymbol
+	// index: FuncStatusID
 	funcStatus []*FuncStatus
 
 	lock sync.RWMutex

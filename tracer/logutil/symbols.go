@@ -24,6 +24,7 @@ func (f *FuncStatusID) UnmarshalText(text []byte) error {
 	return nil
 }
 
+// 初期化する。使用前に必ず呼び出すこと。
 func (s *Symbols) Init() {
 	s.funcs = make([]*FuncSymbol, 0)
 	s.funcStatus = make([]*FuncStatus, 0)
@@ -33,18 +34,25 @@ func (s *Symbols) Init() {
 	}
 }
 
+// 指定した状態で初期化する。
+// Init()を呼び出す必要はない。
 func (s *Symbols) Load(funcs []*FuncSymbol, funcStatus []*FuncStatus) {
 	s.Init()
 	s.funcs = funcs
 	s.funcStatus = funcStatus
 }
 
+// 現在保持している全てのFuncSymbolとFuncStatusのsliceをコールバックする。
+// fnの内部でファイルへの書き出しなどの処理を行うこと。
+// fnに渡された引数の参照先は、fn実行終了後は非同期的に変更される可能性がある。
+// fnの外部で使用する場合は、全てのオブジェクトをコピーすること。
 func (s *Symbols) Save(fn func(funcs []*FuncSymbol, funcStatus []*FuncStatus) error) error {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	return fn(s.funcs, s.funcStatus)
 }
 
+// FuncIDに対応するFuncSymbolを返す。
 func (s *Symbols) Func(id FuncID) (FuncSymbol, bool) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
@@ -58,6 +66,7 @@ func (s *Symbols) Func(id FuncID) (FuncSymbol, bool) {
 	return *f, true
 }
 
+// FuncStatusIDに対応するFuncStatusを返す。
 func (s *Symbols) FuncStatus(id FuncStatusID) (FuncStatus, bool) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
@@ -71,18 +80,22 @@ func (s *Symbols) FuncStatus(id FuncStatusID) (FuncStatus, bool) {
 	return *fs, true
 }
 
+// 登録済みのFuncの数を返す。
 func (s *Symbols) FuncsSize() int {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	return len(s.funcs)
 }
 
+// 登録済みのFuncStatusの数を返す。
 func (s *Symbols) FuncStatusSize() int {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	return len(s.funcStatus)
 }
 
+// 登録済みの全てのFuncをコールバックする。。
+// fnがエラーを返すと、中断する。
 func (s *Symbols) WalkFuncs(fn func(fs FuncSymbol) error) error {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
@@ -96,6 +109,8 @@ func (s *Symbols) WalkFuncs(fn func(fs FuncSymbol) error) error {
 	return nil
 }
 
+// 登録済みの全てのFuncStatusをコールバックする。
+// fnがエラーを返すと、中断する。
 func (s *Symbols) WalkFuncStatus(fn func(fs FuncStatus) error) error {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
@@ -109,18 +124,21 @@ func (s *Symbols) WalkFuncStatus(fn func(fs FuncStatus) error) error {
 	return nil
 }
 
+// FuncStatusIDからFuncIDを取得する。
 func (s *Symbols) FuncID(id FuncStatusID) FuncID {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	return s.funcStatus[id].Func
 }
 
+// FuncStatusIDから関数名を取得する。
 func (s *Symbols) FuncName(id FuncStatusID) string {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	return s.funcs[s.funcStatus[id].Func].Name
 }
 
+// FuncStatusIDからモジュール名を返す。
 func (s *Symbols) ModuleName(id FuncStatusID) string {
 	funcName := s.FuncName(id)
 
@@ -133,7 +151,8 @@ func (s *Symbols) ModuleName(id FuncStatusID) string {
 	return moduleName
 }
 
-// 注意: 引数(symbols)のIDは引き継がれない。
+// diffからシンボルを一括追加する。
+// 注意: KeepIDがfalseのときは、FuncIDやFuncStatusIDのIDは引き継がれない。
 func (s *Symbols) AddSymbolsDiff(diff *SymbolsDiff) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -146,6 +165,9 @@ func (s *Symbols) AddSymbolsDiff(diff *SymbolsDiff) {
 	}
 }
 
+// Funcを追加する。
+// 同一のFuncが既に存在する場合、一致したFunc.IDとadded=falseを返す。
+// IDが衝突した場合の動作は不定。
 func (s *Symbols) AddFunc(symbol *FuncSymbol) (id FuncID, added bool) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -178,6 +200,9 @@ func (s *Symbols) addFuncNolock(symbol *FuncSymbol) (id FuncID, added bool) {
 	return symbol.ID, true
 }
 
+// FuncStatusを追加する。
+// 同一のFuncStatusが既に存在する場合、一致したFuncStatus.IDとadded=falseを返す。
+// IDが衝突した場合の動作は不定。
 func (s *Symbols) AddFuncStatus(status *FuncStatus) (id FuncStatusID, added bool) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
