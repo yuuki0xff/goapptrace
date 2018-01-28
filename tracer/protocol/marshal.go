@@ -10,9 +10,9 @@ import (
 
 func marshalBool(w io.Writer, val bool) {
 	if val {
-		w.Write([]byte{0})
-	} else {
 		w.Write([]byte{1})
+	} else {
+		w.Write([]byte{0})
 	}
 }
 func unmarshalBool(r io.Reader) (bool, error) {
