@@ -8,6 +8,25 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
+func marshalBool(w io.Writer, val bool) {
+	if val {
+		w.Write([]byte{0})
+	} else {
+		w.Write([]byte{1})
+	}
+}
+func unmarshalBool(r io.Reader) (bool, error) {
+	var data [1]byte
+	n, err := r.Read(data[:])
+	if err != nil {
+		return false, err
+	}
+	if n != 1 {
+		return false, errors.New("enough length")
+	}
+	return data[0] != 0, nil
+}
+
 func marshalUint64(w io.Writer, val uint64) {
 	var data [8]byte
 	binary.BigEndian.PutUint64(data[:], val)
@@ -103,7 +122,10 @@ func unmarshalFuncStatusID(r io.Reader) (logutil.FuncStatusID, error) {
 func marshalFuncSymbolSlice(w io.Writer, funcs []*logutil.FuncSymbol) {
 	marshalUint64(w, uint64(len(funcs)))
 	for i := range funcs {
-		marshalFuncSymbol(w, funcs[i])
+		marshalBool(w, funcs[i] != nil)
+		if funcs[i] != nil {
+			marshalFuncSymbol(w, funcs[i])
+		}
 	}
 }
 func unmarshalFuncSymbolSlice(r io.Reader) ([]*logutil.FuncSymbol, error) {
@@ -114,9 +136,15 @@ func unmarshalFuncSymbolSlice(r io.Reader) ([]*logutil.FuncSymbol, error) {
 
 	funcs := make([]*logutil.FuncSymbol, length)
 	for i := range funcs {
-		funcs[i], err = unmarshalFuncSymbol(r)
+		isNonNil, err := unmarshalBool(r)
 		if err != nil {
 			return nil, err
+		}
+		if isNonNil {
+			funcs[i], err = unmarshalFuncSymbol(r)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 	return funcs, nil
@@ -141,7 +169,10 @@ func unmarshalFuncSymbol(r io.Reader) (*logutil.FuncSymbol, error) {
 func marshalFuncStatusSlice(w io.Writer, status []*logutil.FuncStatus) {
 	marshalUint64(w, uint64(len(status)))
 	for i := range status {
-		marshalFuncStatus(w, status[i])
+		marshalBool(w, status[i] != nil)
+		if status[i] != nil {
+			marshalFuncStatus(w, status[i])
+		}
 	}
 }
 func unmarshalFuncStatusSlice(r io.Reader) ([]*logutil.FuncStatus, error) {
@@ -152,9 +183,15 @@ func unmarshalFuncStatusSlice(r io.Reader) ([]*logutil.FuncStatus, error) {
 
 	funcs := make([]*logutil.FuncStatus, length)
 	for i := range funcs {
-		funcs[i], err = unmarshalFuncStatus(r)
+		isNonNil, err := unmarshalBool(r)
 		if err != nil {
 			return nil, err
+		}
+		if isNonNil {
+			funcs[i], err = unmarshalFuncStatus(r)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 	return funcs, nil
