@@ -1,6 +1,10 @@
 package logutil
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestSymbols_ModuleName(t *testing.T) {
 	moduleName := "github.com/yuuki0xff/goapptrace/tracer/logutil"
@@ -28,48 +32,168 @@ func TestSymbols_ModuleName(t *testing.T) {
 	}
 }
 
-func TestSymbolResolver(t *testing.T) {
-	dummyFID := FuncID(9999)
-	dummyFSID := FuncStatusID(1111)
-	f1 := FuncSymbol{
-		ID:   dummyFID,
-		Name: "example.com/foo/bar.testFunc1",
+func TestSymbols_AddFunc_readOnly(t *testing.T) {
+	a := assert.New(t)
+	s := Symbols{
+		Writable: false,
 	}
-	f2 := FuncSymbol{
-		ID:   dummyFID,
-		Name: "example.jp/hoge/mage.testFunc2",
-	}
-	fs1 := FuncStatus{
-		ID: dummyFSID,
-	}
-	fs2 := FuncStatus{
-		ID: dummyFSID,
-	}
+	s.Init()
+	a.Panics(func() {
+		s.AddFunc(&FuncSymbol{
+			Name:  "test",
+			File:  "test.go",
+			Entry: 100,
+		})
+	}, "Symbols is not writable")
+}
 
-	sym := Symbols{
+func TestSymbols_AddFunc_simple(t *testing.T) {
+	a := assert.New(t)
+	s := Symbols{
 		Writable: true,
-		KeepID:   false,
 	}
-	sym.Init()
-	fs1.Func, _ = sym.AddFunc(&f1)
-	if f1.ID != FuncID(0) || f1.ID != fs1.Func {
-		// FuncSymbol.IDが更新されていない OR 正しいIDを返していない
-		t.Errorf("mismatch FuncID: expect 0, actual %d and %d", f1.ID, fs1.Func)
-	}
+	s.Init()
+	id, added := s.AddFunc(&FuncSymbol{
+		ID:    10,
+		Name:  "main.test",
+		File:  "test.go",
+		Entry: 100,
+	})
+	a.Equal(true, added)
+	a.Equal(FuncID(0), id, "First function id is 0. Should not keep original function id.")
+	a.Len(s.funcs, 1)
 
-	fsid1, _ := sym.AddFuncStatus(&fs1)
-	if fs1.ID != FuncStatusID(0) || fs1.ID != fsid1 {
-		// FuncStatus.IDが更新されていない OR 正しいIDを返していない
-		t.Errorf("mismatch FuncStatusID: expect 0, actual %d and %d", fs1.ID, fsid1)
+	id, added = s.AddFunc(&FuncSymbol{
+		Name:  "main.test2",
+		File:  "test2.go",
+		Entry: 200,
+	})
+	a.Equal(true, added)
+	a.Equal(FuncID(1), id)
+	a.Len(s.funcs, 2)
+}
+func TestSymbols_AddFunc_dedupRecords(t *testing.T) {
+	a := assert.New(t)
+	s := Symbols{
+		Writable: true,
 	}
+	s.Init()
+	fs := &FuncSymbol{
+		Name:  "main.test2",
+		File:  "test2.go",
+		Entry: 200,
+	}
+	id, added := s.AddFunc(fs)
+	a.Equal(true, added)
+	a.Equal(FuncID(0), id)
+	a.Len(s.funcs, 1)
 
-	fs2.Func, _ = sym.AddFunc(&f2)
-	if f2.ID != FuncID(1) {
-		t.Errorf("mismatch FuncID: expect 0, actual %d", f2.ID)
-	}
+	id, added = s.AddFunc(fs)
+	a.Equal(false, added)
+	a.Equal(FuncID(0), id)
+	a.Len(s.funcs, 1)
 
-	sym.AddFuncStatus(&fs2)
-	if fs2.ID != FuncStatusID(1) {
-		t.Errorf("mismatch FuncStatusID: expect 0, actual %d", fs2.ID)
+	// 関数名が一致すれば、その他のフィールドが異なっていても問題ない
+	id, added = s.AddFunc(&FuncSymbol{
+		Name: "main.test2",
+	})
+	a.Equal(false, added)
+	a.Equal(FuncID(0), id)
+}
+
+func TestSymbols_AddFunc_keepID(t *testing.T) {
+	a := assert.New(t)
+	s := Symbols{
+		Writable: true,
+		KeepID:   true,
 	}
+	s.Init()
+	id, added := s.AddFunc(&FuncSymbol{
+		ID:    10,
+		Name:  "main.test2",
+		File:  "test2.go",
+		Entry: 200,
+	})
+	a.Equal(true, added)
+	a.Equal(FuncID(10), id)
+}
+
+func TestSymbols_AddFuncStatus_simple(t *testing.T) {
+	a := assert.New(t)
+	s := Symbols{
+		Writable: true,
+	}
+	s.Init()
+	id, added := s.AddFuncStatus(&FuncStatus{
+		Func: 10, // dummy
+		Line: 100,
+		PC:   101,
+	})
+	a.Equal(true, added)
+	a.Equal(FuncStatusID(0), id)
+	a.Len(s.funcStatus, 1)
+
+	id, added = s.AddFuncStatus(&FuncStatus{
+		Func: 22, // dummy
+		Line: 200,
+		PC:   201,
+	})
+	a.Equal(true, added)
+	a.Equal(FuncStatusID(1), id)
+	a.Len(s.funcStatus, 2)
+}
+
+func TestSymbols_AddFuncStatus_keepID(t *testing.T) {
+	a := assert.New(t)
+	s := Symbols{
+		Writable: true,
+		KeepID:   true,
+	}
+	s.Init()
+	id, added := s.AddFuncStatus(&FuncStatus{
+		ID:   1000,
+		Func: 10, // dummy
+		Line: 100,
+		PC:   101,
+	})
+	a.Equal(true, added)
+	a.Equal(FuncStatusID(1000), id)
+
+	id, added = s.AddFuncStatus(&FuncStatus{
+		ID:   2200,
+		Func: 22, // dummy
+		Line: 200,
+		PC:   201,
+	})
+	a.Equal(true, added)
+	a.Equal(FuncStatusID(2200), id)
+}
+
+func TestSymbols_AddFuncStatus_dedup(t *testing.T) {
+	a := assert.New(t)
+	s := Symbols{
+		Writable: true,
+		KeepID:   true,
+	}
+	s.Init()
+	rec := &FuncStatus{
+		ID:   2,
+		Func: 10, // dummy
+		Line: 100,
+		PC:   101,
+	}
+	id, added := s.AddFuncStatus(rec)
+	a.Equal(true, added)
+	a.Equal(FuncStatusID(2), id)
+
+	id, added = s.AddFuncStatus(rec)
+	a.Equal(false, added)
+	a.Equal(FuncStatusID(2), id)
+
+	// PCが一致していれば、他のフィールドの値が異なっていても一致として判定する。
+	id, added = s.AddFuncStatus(&FuncStatus{
+		PC: 101,
+	})
+	a.Equal(false, added)
+	a.Equal(FuncStatusID(2), id)
 }
