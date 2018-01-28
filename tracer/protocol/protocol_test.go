@@ -32,7 +32,7 @@ func TestProto_PackUnpack(t *testing.T) {
 	hp := HeaderPacket{}
 	pp := PingPacket{}
 
-	if err := hp.Unmarshal(buff); err != nil {
+	if err = hp.Unmarshal(buff); err != nil {
 		t.Errorf("Should not occurs error when deserializing of HeaderPacket: err=%s", err)
 		return
 	}
