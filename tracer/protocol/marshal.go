@@ -8,11 +8,16 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
+var (
+	trueBytes  = []byte{1}
+	falseBytes = []byte{0}
+)
+
 func marshalBool(w io.Writer, val bool) {
 	if val {
-		w.Write([]byte{1})
+		w.Write(trueBytes)
 	} else {
-		w.Write([]byte{0})
+		w.Write(falseBytes)
 	}
 }
 func unmarshalBool(r io.Reader) (bool, error) {
