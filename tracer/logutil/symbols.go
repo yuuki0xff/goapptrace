@@ -34,9 +34,9 @@ func (s *Symbols) Init() {
 
 // 指定した状態で初期化する。
 // Init()を呼び出す必要はない。
-func (s *Symbols) Load(funcs []*FuncSymbol, funcStatus []*FuncStatus) {
-	s.funcs = funcs
-	s.funcStatus = funcStatus
+func (s *Symbols) Load(diff SymbolsDiff) {
+	s.funcs = diff.Funcs
+	s.funcStatus = diff.FuncStatus
 	s.name2FuncID = make(map[string]FuncID)
 	s.pc2FSID = make(map[uintptr]FuncStatusID)
 
@@ -52,10 +52,13 @@ func (s *Symbols) Load(funcs []*FuncSymbol, funcStatus []*FuncStatus) {
 // fnの内部でファイルへの書き出しなどの処理を行うこと。
 // fnに渡された引数の参照先は、fn実行終了後は非同期的に変更される可能性がある。
 // fnの外部で使用する場合は、全てのオブジェクトをコピーすること。
-func (s *Symbols) Save(fn func(funcs []*FuncSymbol, funcStatus []*FuncStatus) error) error {
+func (s *Symbols) Save(fn func(diff SymbolsDiff) error) error {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	return fn(s.funcs, s.funcStatus)
+	return fn(SymbolsDiff{
+		Funcs:      s.funcs,
+		FuncStatus: s.funcStatus,
+	})
 }
 
 // FuncIDに対応するFuncSymbolを返す。

@@ -131,11 +131,8 @@ func TestSymbolsReaderWrieter_data(t *testing.T) {
 			funcStatuses[1].Func = fIDs[1]
 			fsIDs[1], _ = s.AddFuncStatus(funcStatuses[1])
 
-			must(t, s.Save(func(funcs []*logutil.FuncSymbol, funcStatus []*logutil.FuncStatus) error {
-				return sw.Append(&logutil.SymbolsDiff{
-					Funcs:      funcs,
-					FuncStatus: funcStatus,
-				})
+			must(t, s.Save(func(diff logutil.SymbolsDiff) error {
+				return sw.Append(&diff)
 			}), "failed to write symbols diff")
 		},
 		// check data

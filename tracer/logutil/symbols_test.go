@@ -253,8 +253,8 @@ func TestSymbols_FuncStatus(t *testing.T) {
 func TestSymbols_FuncIDFromName(t *testing.T) {
 	a := assert.New(t)
 	s := Symbols{}
-	s.Load(
-		[]*FuncSymbol{
+	s.Load(SymbolsDiff{
+		Funcs: []*FuncSymbol{
 			{
 				ID:    0,
 				Name:  "main.test",
@@ -262,8 +262,8 @@ func TestSymbols_FuncIDFromName(t *testing.T) {
 				Entry: 1000,
 			},
 		},
-		[]*FuncStatus{},
-	)
+		FuncStatus: []*FuncStatus{},
+	})
 
 	id, ok := s.FuncIDFromName("main.test")
 	a.Equal(true, ok)
@@ -276,8 +276,8 @@ func TestSymbols_FuncIDFromName(t *testing.T) {
 func TestSymbols_FuncStatusIDFromPC(t *testing.T) {
 	a := assert.New(t)
 	s := Symbols{}
-	s.Load(
-		[]*FuncSymbol{
+	s.Load(SymbolsDiff{
+		Funcs: []*FuncSymbol{
 			{
 				ID:    0,
 				Name:  "main.test",
@@ -285,7 +285,7 @@ func TestSymbols_FuncStatusIDFromPC(t *testing.T) {
 				Entry: 1000,
 			},
 		},
-		[]*FuncStatus{
+		FuncStatus: []*FuncStatus{
 			{
 				ID:   0,
 				Func: FuncID(0),
@@ -293,7 +293,7 @@ func TestSymbols_FuncStatusIDFromPC(t *testing.T) {
 				PC:   1030,
 			},
 		},
-	)
+	})
 
 	id, ok := s.FuncStatusIDFromPC(1030)
 	a.Equal(true, ok)
