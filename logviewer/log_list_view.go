@@ -3,6 +3,8 @@ package logviewer
 import (
 	"context"
 	"errors"
+	"sort"
+	"strings"
 
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 	"github.com/yuuki0xff/tui-go"
@@ -91,6 +93,16 @@ func (v *LogListView) Update() {
 			if err != nil {
 				return
 			}
+
+			// Timestamp(降順),ID(昇順)に並び替える。
+			sort.Slice(logs, func(i, j int) bool {
+				t1 := logs[i].Metadata.Timestamp.Unix()
+				t2 := logs[j].Metadata.Timestamp.Unix()
+				if t1 == t2 {
+					return strings.Compare(logs[i].ID, logs[j].ID) < 0
+				}
+				return t1 > t2
+			})
 
 			if len(logs) == 0 {
 				err = errors.New(NoLogFiles)
