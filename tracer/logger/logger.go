@@ -19,13 +19,13 @@ const (
 	defaultRetryInterval = 1 * time.Second
 	skips                = 3
 	backtraceSize        = 1 << 16 // about 64KiB
+	maxStackSize         = 1024
 
 	useCallersFrames = false
 )
 
 var (
-	MaxStackSize = 1024
-	ClosedError  = errors.New("already closed")
+	ClosedError = errors.New("already closed")
 
 	lock    = sync.Mutex{}
 	symbols = logutil.Symbols{
@@ -57,7 +57,7 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 	logmsg := &logutil.RawFuncLog{}
 	logmsg.Timestamp = logutil.NewTime(time.Now())
 	logmsg.Tag = tag
-	logmsg.Frames = make([]logutil.FuncStatusID, 0, MaxStackSize)
+	logmsg.Frames = make([]logutil.FuncStatusID, 0, maxStackSize)
 	logmsg.TxID = id
 
 	// メモリ確保のオーバーヘッドを削減するために、stack allocateされる固定長配列を使用する。
@@ -160,10 +160,10 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 	}
 
 	// get GoroutineID (GID)
-	buf := make([]byte, backtraceSize)
-	runtime.Stack(buf, false) // First line is "goroutine xxx [running]"
+	var buf [backtraceSize]byte
+	runtime.Stack(buf[:], false) // First line is "goroutine xxx [running]"
 	re := regexp.MustCompile(`^goroutine (\d+)`)
-	matches := re.FindSubmatch(buf)
+	matches := re.FindSubmatch(buf[:])
 	gid, err := strconv.ParseInt(string(matches[1]), 10, 64)
 	if err != nil {
 		log.Panic(err)
