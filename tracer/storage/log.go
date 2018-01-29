@@ -1,21 +1,23 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"os"
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
 type LogID = logutil.LogID
 
 const (
-	defaultRotateInterval = 100000
+	defaultRotateInterval         = 100000
+	defaultMetadataUpdateInterval = 1 * time.Second
 )
 
 // 指定したLogIDに対応するログの作成・読み書き・削除を行う。
@@ -42,7 +44,10 @@ type Log struct {
 	MaxFileSize int64
 	ReadOnly    bool
 
-	lock sync.RWMutex
+	lock   sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
 	// フィアルがcloseされていたらtrue。
 	// trueなら全ての操作を受け付けてはならない。
 	closed bool
@@ -155,6 +160,7 @@ func (l *Log) Open() error {
 	}
 
 	// initialize fields
+	l.ctx, l.cancel = context.WithCancel(context.Background())
 	l.closed = false
 	if l.rotateInterval == 0 {
 		l.rotateInterval = defaultRotateInterval
@@ -230,10 +236,22 @@ func (l *Log) Open() error {
 	if err := l.goroutineLog.Open(); err != nil {
 		return err
 	}
+
+	if !l.ReadOnly {
+		// 買い込み可能なので、定期的にMetadataのタイムスタンプを更新する必要がある。。
+		l.wg.Add(1)
+		go l.timestampUpdateWorker()
+	}
 	return nil
 }
 
 func (l *Log) Close() error {
+	l.lock.Lock()
+	l.cancel()
+	l.lock.Unlock()
+
+	l.wg.Wait()
+
 	l.lock.Lock()
 	defer l.lock.Unlock()
 	l.closed = true
@@ -631,5 +649,50 @@ func (l *Log) LogInfo() LogInfo {
 		Metadata:    *l.Metadata,
 		MaxFileSize: l.MaxFileSize,
 		ReadOnly:    l.ReadOnly,
+	}
+}
+
+// タイムスタンプを定期的に更新する
+func (l *Log) timestampUpdateWorker() {
+	defer l.wg.Done()
+	ticker := time.NewTicker(defaultMetadataUpdateInterval)
+	defer ticker.Stop()
+
+	update := func() {
+		var needUpdate bool
+		var meta *LogMetadata
+		var ver int
+		func() {
+			l.lock.RLock()
+			defer l.lock.RUnlock()
+
+			if l.index.Len() == 0 {
+				return
+			}
+			ir := l.index.Last()
+			if ir.Timestamp.UnixTime() == l.Metadata.Timestamp {
+				return
+			}
+			needUpdate = true
+			meta = &LogMetadata{}
+			*meta = *l.Metadata
+			meta.Timestamp = ir.Timestamp.UnixTime()
+			ver = l.Version
+		}()
+		if needUpdate {
+			if err := l.UpdateMetadata(ver, meta); err != nil {
+				log.Println(errors.Wrap(err, "can not update timestamp"))
+			}
+		}
+	}
+
+	for {
+		select {
+		case <-l.ctx.Done():
+			update()
+			return
+		case <-ticker.C:
+			update()
+		}
 	}
 }
