@@ -6,6 +6,7 @@ import (
 	"reflect"
 
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	. "github.com/yuuki0xff/goapptrace/tracer/util"
 	"github.com/yuuki0xff/xtcp"
 )
 
@@ -88,12 +89,12 @@ type Marshalable interface {
 }
 
 func (p PacketType) Marshal(w io.Writer) error {
-	return panicHandler(func() {
+	return PanicHandler(func() {
 		marshalUint64(w, uint64(p))
 	})
 }
 func (p *PacketType) Unmarshal(r io.Reader) error {
-	return panicHandler(func() {
+	return PanicHandler(func() {
 		val := unmarshalUint64(r)
 		*p = PacketType(val)
 	})
@@ -116,26 +117,26 @@ func (p ClientHelloPacket) String() string { return "<ClientHelloPacket>" }
 func (p ServerHelloPacket) String() string { return "<ServerHelloPacket>" }
 
 func (p *ClientHelloPacket) Marshal(w io.Writer) error {
-	return panicHandler(func() {
+	return PanicHandler(func() {
 		marshalString(w, p.AppName)
 		marshalString(w, p.ClientSecret)
 		marshalString(w, p.ProtocolVersion)
 	})
 }
 func (p *ClientHelloPacket) Unmarshal(r io.Reader) error {
-	return panicHandler(func() {
+	return PanicHandler(func() {
 		p.AppName = unmarshalString(r)
 		p.ClientSecret = unmarshalString(r)
 		p.ProtocolVersion = unmarshalString(r)
 	})
 }
 func (p *ServerHelloPacket) Marshal(w io.Writer) error {
-	return panicHandler(func() {
+	return PanicHandler(func() {
 		marshalString(w, p.ProtocolVersion)
 	})
 }
 func (p *ServerHelloPacket) Unmarshal(r io.Reader) error {
-	return panicHandler(func() {
+	return PanicHandler(func() {
 		p.ProtocolVersion = unmarshalString(r)
 	})
 }
@@ -203,51 +204,51 @@ func (p *ShutdownPacket) Marshal(w io.Writer) error   { return nil }
 func (p *ShutdownPacket) Unmarshal(r io.Reader) error { return nil }
 
 func (p *StartTraceCmdPacket) Marshal(w io.Writer) error {
-	return panicHandler(func() {
+	return PanicHandler(func() {
 		marshalFuncID(w, p.FuncID)
 		marshalString(w, p.ModuleName)
 	})
 }
 func (p *StartTraceCmdPacket) Unmarshal(r io.Reader) error {
-	return panicHandler(func() {
+	return PanicHandler(func() {
 		p.FuncID = unmarshalFuncID(r)
 		p.ModuleName = unmarshalString(r)
 	})
 }
 
 func (p *StopTraceCmdPacket) Marshal(w io.Writer) error {
-	return panicHandler(func() {
+	return PanicHandler(func() {
 		marshalFuncID(w, p.FuncID)
 		marshalString(w, p.ModuleName)
 	})
 }
 func (p *StopTraceCmdPacket) Unmarshal(r io.Reader) error {
-	return panicHandler(func() {
+	return PanicHandler(func() {
 		p.FuncID = unmarshalFuncID(r)
 		p.ModuleName = unmarshalString(r)
 	})
 }
 
 func (p *SymbolPacket) Marshal(w io.Writer) error {
-	return panicHandler(func() {
+	return PanicHandler(func() {
 		marshalFuncSymbolSlice(w, p.Funcs)
 		marshalFuncStatusSlice(w, p.FuncStatus)
 	})
 }
 func (p *SymbolPacket) Unmarshal(r io.Reader) error {
-	return panicHandler(func() {
+	return PanicHandler(func() {
 		p.Funcs = unmarshalFuncSymbolSlice(r)
 		p.FuncStatus = unmarshalFuncStatusSlice(r)
 	})
 }
 
 func (p *RawFuncLogNewPacket) Marshal(w io.Writer) error {
-	return panicHandler(func() {
+	return PanicHandler(func() {
 		marshalRawFuncLog(w, p.FuncLog)
 	})
 }
 func (p *RawFuncLogNewPacket) Unmarshal(r io.Reader) error {
-	return panicHandler(func() {
+	return PanicHandler(func() {
 		p.FuncLog = unmarshalRawFuncLog(r)
 	})
 }

@@ -3,10 +3,9 @@ package protocol
 import (
 	"encoding/binary"
 	"io"
-	"log"
 
-	"github.com/pkg/errors"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	. "github.com/yuuki0xff/goapptrace/tracer/util"
 )
 
 var (
@@ -14,67 +13,38 @@ var (
 	falseBytes = []byte{0}
 )
 
-func panicHandler(fn func()) (err error) {
-	defer func() {
-		if obj := recover(); obj != nil {
-			err = obj.(error)
-		}
-	}()
-	fn()
-	return nil
-}
-
-func mustWrite(w io.Writer, data []byte) {
-	n, err := w.Write(data)
-	if err != nil {
-		log.Panic(err)
-	}
-	if n != len(data) {
-		log.Panic(errors.New("partial write error"))
-	}
-}
-func mustRead(r io.Reader, data []byte) {
-	n, err := r.Read(data)
-	if err != nil {
-		log.Panic(err)
-	}
-	if n != len(data) {
-		log.Panic(errors.New("partial read error"))
-	}
-}
-
 func marshalBool(w io.Writer, val bool) {
 	if val {
-		mustWrite(w, trueBytes)
+		MustWrite(w, trueBytes)
 	} else {
-		mustWrite(w, falseBytes)
+		MustWrite(w, falseBytes)
 	}
 }
 func unmarshalBool(r io.Reader) bool {
 	var data [1]byte
-	mustRead(r, data[:])
+	MustRead(r, data[:])
 	return data[0] != 0
 }
 
 func marshalUint64(w io.Writer, val uint64) {
 	var data [8]byte
 	binary.BigEndian.PutUint64(data[:], val)
-	mustWrite(w, data[:])
+	MustWrite(w, data[:])
 }
 func unmarshalUint64(r io.Reader) uint64 {
 	var data [8]byte
-	mustRead(r, data[:])
+	MustRead(r, data[:])
 	return binary.BigEndian.Uint64(data[:])
 }
 
 func marshalString(w io.Writer, str string) {
 	marshalUint64(w, uint64(len(str)))
-	mustWrite(w, []byte(str))
+	MustWrite(w, []byte(str))
 }
 func unmarshalString(r io.Reader) string {
 	length := unmarshalUint64(r)
 	binstr := make([]byte, length)
-	mustRead(r, binstr)
+	MustRead(r, binstr)
 	return string(binstr)
 }
 
