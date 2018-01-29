@@ -51,6 +51,9 @@ func (v *Controller) Run() error {
 		Fg:   tui.ColorRed,
 		Bold: tui.DecorationOn,
 	})
+	theme.SetStyle("label."+RunningStyleName, tui.Style{
+		Fg: tui.ColorYellow,
+	})
 	theme.SetStyle("line.stopped", tui.Style{
 		Fg: tui.ColorBlue,
 	})

@@ -108,7 +108,17 @@ func (v *LogListView) Update() {
 				err = errors.New(NoLogFiles)
 			} else {
 				for _, l := range logs {
+					var status *tui.Label
+					if l.ReadOnly {
+						status = tui.NewLabel(StatusStoppedText)
+						status.SetStyleName(StoppedStyleName)
+					} else {
+						status = tui.NewLabel(StatusRunningText)
+						status.SetStyleName(RunningStyleName)
+					}
+
 					table.AppendRow(
+						status,
 						tui.NewLabel(l.ID),
 						tui.NewLabel(l.Metadata.Timestamp.String()),
 					)
@@ -133,6 +143,7 @@ func (v *LogListView) onSelectedLog(table *tui.Table) {
 
 func (v *LogListView) newTable() *headerTable {
 	t := newHeaderTable(
+		tui.NewLabel("Status"),
 		tui.NewLabel("LogID"),
 		tui.NewLabel("Timestamp"),
 	)
