@@ -134,10 +134,11 @@ func (s *Symbols) WalkFuncStatus(fn func(fs FuncStatus) error) error {
 }
 
 // 関数名からFuncIDを取得する.
+// この処理は高速で完了するので、追加済みのシンボルかどうかの判定に使用できる。
 func (s *Symbols) FuncIDFromName(name string) (id FuncID, ok bool) {
 	s.lock.RLock()
-	defer s.lock.RUnlock()
 	id, ok = s.name2FuncID[name]
+	s.lock.RUnlock()
 	return
 }
 
@@ -145,8 +146,8 @@ func (s *Symbols) FuncIDFromName(name string) (id FuncID, ok bool) {
 // この処理は高速で完了するので、追加済みのシンボルかどうかの判定に使用できる。
 func (s *Symbols) FuncStatusIDFromPC(pc uintptr) (id FuncStatusID, ok bool) {
 	s.lock.RLock()
-	defer s.lock.RUnlock()
 	id, ok = s.pc2FSID[pc]
+	s.lock.RUnlock()
 	return
 }
 
