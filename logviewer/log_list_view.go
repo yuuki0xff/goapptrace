@@ -93,6 +93,7 @@ func (v *LogListView) Update() {
 				for _, l := range logs {
 					table.AppendRow(
 						tui.NewLabel(l.ID),
+						tui.NewLabel(l.Metadata.Timestamp.String()),
 					)
 				}
 			}
@@ -116,6 +117,7 @@ func (v *LogListView) onSelectedLog(table *tui.Table) {
 func (v *LogListView) newTable() *headerTable {
 	t := newHeaderTable(
 		tui.NewLabel("LogID"),
+		tui.NewLabel("Timestamp"),
 	)
 	t.OnItemActivated(v.onSelectedLog)
 	return t
