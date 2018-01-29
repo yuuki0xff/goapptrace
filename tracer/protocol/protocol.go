@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"io"
 	"log"
+	"sync"
 
 	. "github.com/yuuki0xff/goapptrace/tracer/util"
 	"github.com/yuuki0xff/xtcp"
@@ -12,6 +13,16 @@ import (
 
 const (
 	ProtocolVersion = "1"
+
+	DefaultPacketBufferSize = 1024
+)
+
+var (
+	bufferPool = sync.Pool{
+		New: func() interface{} {
+			return bytes.NewBuffer(make([]byte, DefaultPacketBufferSize))
+		},
+	}
 )
 
 // isCompatibleVersion returns true if "version" has compatibility of current version
@@ -23,26 +34,22 @@ func isCompatibleVersion(version string) bool {
 // size =  hp.size() + p.size()
 type Proto struct{}
 
+// このメソッドはどこからも使用されていないため、実装していない。
+// もしこのメソッドを呼び出すと、panicする。
 func (pr Proto) PackSize(p xtcp.Packet) int {
-	b, err := pr.Pack(p)
-	if err != nil {
-		log.Panic(err)
-	}
-	return len(b)
+	log.Panic("this method is not implemented")
+	panic(nil)
 }
 func (pr Proto) PackTo(p xtcp.Packet, w io.Writer) (int, error) {
-	b, err := pr.Pack(p)
-	if err != nil {
-		return 0, err
-	}
-	return w.Write(b)
-}
-func (pr Proto) Pack(p xtcp.Packet) ([]byte, error) {
-	var hp HeaderPacket
-	var buf bytes.Buffer
+	buf := bufferPool.Get().(*bytes.Buffer)
+	// deferのオーバーヘッドを削減するため、bufferPool.Put(buf)は関数の末尾で行う。
+	// この関数の実行中にpanicすると、このbufはpoolに戻されない可能性がある。
+	buf.Reset()
 
 	// prepare header packet
-	hp.PacketType = detectPacketType(p)
+	hp := HeaderPacket{
+		PacketType: detectPacketType(p),
+	}
 
 	// ensure uint32 space
 	buf.WriteByte(0)
@@ -52,17 +59,30 @@ func (pr Proto) Pack(p xtcp.Packet) ([]byte, error) {
 
 	// build buf
 	if err := PanicHandler(func() {
-		marshalPacket(&hp, &buf)
-		marshalPacket(p, &buf)
+		marshalPacket(&hp, buf)
+		marshalPacket(p, buf)
 	}); err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	// write data size
 	b := buf.Bytes()
 	packetSize := uint32(len(b) - 4)
 	binary.BigEndian.PutUint32(b[:4], packetSize)
-	return b, nil
+
+	// write to connection
+	n, err := w.Write(b)
+
+	// return the bytes.Buffer object to bufferPool.
+	bufferPool.Put(buf)
+	return n, err
+}
+
+// このメソッドはどこからも使用されていないため、実装していない。
+// もしこのメソッドを呼び出すと、panicする。
+func (pr Proto) Pack(p xtcp.Packet) ([]byte, error) {
+	log.Panic("this method is not implemented")
+	panic(nil)
 }
 func (pr Proto) Unpack(b []byte) (xtcp.Packet, int, error) {
 	var hp HeaderPacket
