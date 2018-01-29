@@ -19,6 +19,8 @@ const (
 	defaultRetryInterval = 1 * time.Second
 	skips                = 3
 	backtraceSize        = 1 << 16 // about 64KiB
+
+	useCallersFrames = false
 )
 
 var (
@@ -58,44 +60,102 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 	logmsg.Frames = make([]logutil.FuncStatusID, 0, MaxStackSize)
 	logmsg.TxID = id
 
-	pc := make([]uintptr, MaxStackSize)
-	pclen := runtime.Callers(skips, pc)
-	pc = pc[:pclen]
+	// メモリ確保のオーバーヘッドを削減するために、stack allocateされる固定長配列を使用する。
+	// MaxStackSizeを超えている場合、正しいログが取得できない。
+	var pcsBuff [maxStackSize]uintptr
+	pclen := runtime.Callers(skips, pcsBuff[:])
+	pcs := pcsBuff[:pclen]
 
-	// TODO: improve performance
-	//       CallersFrames()で全てのフレームをframeを取得 & symbolsに追加するのは非効率。
-	//       symbols.FindFunStatusIDByPC(pc)をまず試す。
-	//       idを取得できなかったら、runtime.FuncForPC()でframeが取得後、symbolsに追加する。
-	frames := runtime.CallersFrames(pc)
-	for {
-		frame, more := frames.Next()
-		if !more {
-			break
+	// symbolsに必要なシンボルを追加とlogmsg.Framesの作成を行う。
+	if useCallersFrames {
+		// runtime.CallersFrames()を使用する。
+		// インライン化やループ展開がされた場合に、行番号や呼び出し元関数の調整を行うことができる。
+		// しかし、オーバーヘッドが大きくなる。
+		// コンパイラの最適化を簡単に無効化できない場合に使用することを推薦する。
+
+		frames := runtime.CallersFrames(pcs)
+		for {
+			frame, more := frames.Next()
+			if !more {
+				break
+			}
+			fsid, ok := symbols.FuncStatusIDFromPC(frame.PC)
+			if !ok {
+				// SLOW PATH
+				fid, ok := symbols.FuncIDFromName(frame.Function)
+				if !ok {
+					// FuncSymbolが未登録なので、追加する。
+					var funcWasAdded bool
+					fid, funcWasAdded = symbols.AddFunc(&logutil.FuncSymbol{
+						Name:  frame.Function,
+						File:  frame.File,
+						Entry: frame.Entry,
+					})
+					if funcWasAdded {
+						f := &logutil.FuncSymbol{}
+						*f, _ = symbols.Func(fid)
+						diff.Funcs = append(diff.Funcs, f)
+					}
+				}
+
+				// FuncSymbolを追加する。
+				var funcStatusWasAdded bool
+				fsid, funcStatusWasAdded = symbols.AddFuncStatus(&logutil.FuncStatus{
+					Func: fid,
+					Line: uint64(frame.Line),
+					PC:   frame.PC,
+				})
+				if funcStatusWasAdded {
+					f := &logutil.FuncStatus{}
+					*f, _ = symbols.FuncStatus(fsid)
+					diff.FuncStatus = append(diff.FuncStatus, f)
+				}
+			}
+			logmsg.Frames = append(logmsg.Frames, fsid)
 		}
+	} else {
+		// runtime.FuncForPC()を使用する。
+		// runtime.CallersFrames()を使用するよりもオーバーヘッドが少ない。
+		// ただし、最適化が行われると呼び出し元の判定が狂ってしまう。
+		// これを使用するときは、*最適化を無効*にしてコンパイルすること。
 
-		funcID, added1 := symbols.AddFunc(&logutil.FuncSymbol{
-			Name:  frame.Function,
-			File:  frame.File,
-			Entry: frame.Entry,
-		})
-		funcStatusID, added2 := symbols.AddFuncStatus(&logutil.FuncStatus{
-			Func: funcID,
-			Line: uint64(frame.Line),
-			PC:   frame.PC,
-		})
-		logmsg.Frames = append(logmsg.Frames, funcStatusID)
+		for _, pc := range pcs {
+			fsid, ok := symbols.FuncStatusIDFromPC(pc)
+			if !ok {
+				// SLOW PATH
+				f := runtime.FuncForPC(pc)
+				fid, ok := symbols.FuncIDFromName(f.Name())
+				if !ok {
+					// FuncSymbolが未登録なので、追加する。
+					var funcWasAdded bool
+					file, _ := f.FileLine(f.Entry())
+					fid, funcWasAdded = symbols.AddFunc(&logutil.FuncSymbol{
+						Name:  f.Name(),
+						File:  file,
+						Entry: f.Entry(),
+					})
+					if funcWasAdded {
+						f := &logutil.FuncSymbol{}
+						*f, _ = symbols.Func(fid)
+						diff.Funcs = append(diff.Funcs, f)
+					}
+				}
 
-		if added1 || added2 {
-			if added1 {
-				f := &logutil.FuncSymbol{}
-				*f, _ = symbols.Func(funcID)
-				diff.Funcs = append(diff.Funcs, f)
+				// FuncSymbolを追加する。
+				var funcStatusWasAdded bool
+				_, line := f.FileLine(pc)
+				fsid, funcStatusWasAdded = symbols.AddFuncStatus(&logutil.FuncStatus{
+					Func: fid,
+					Line: uint64(line),
+					PC:   pc,
+				})
+				if funcStatusWasAdded {
+					f := &logutil.FuncStatus{}
+					*f, _ = symbols.FuncStatus(fsid)
+					diff.FuncStatus = append(diff.FuncStatus, f)
+				}
 			}
-			if added2 {
-				f := &logutil.FuncStatus{}
-				*f, _ = symbols.FuncStatus(funcStatusID)
-				diff.FuncStatus = append(diff.FuncStatus, f)
-			}
+			logmsg.Frames = append(logmsg.Frames, fsid)
 		}
 	}
 
