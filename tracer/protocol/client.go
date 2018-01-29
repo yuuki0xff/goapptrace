@@ -197,7 +197,7 @@ func (c *Client) mergeWorker() {
 	}
 	mergePkt := c.mergePktPool.Get().(*MergePacket)
 
-	timer := time.NewTimer(c.RefreshInterval)
+	timer := time.NewTicker(c.RefreshInterval)
 	for {
 		select {
 		case pkt := <-c.pktCh:
