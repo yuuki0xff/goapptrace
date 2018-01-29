@@ -81,7 +81,7 @@ func (s *LogServerSender) Send(diff *logutil.SymbolsDiff, funclog *logutil.RawFu
 		}
 	}
 	if funclog != nil {
-		if err := s.client.Send(&protocol.RawFuncLogNewPacket{
+		if err := s.client.Send(&protocol.RawFuncLogPacket{
 			FuncLog: funclog,
 		}); err != nil {
 			return err

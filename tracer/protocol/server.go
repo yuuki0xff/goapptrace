@@ -208,7 +208,7 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 				if s.Handler.Symbols != nil {
 					s.Handler.Symbols(s.ID, &pkt.SymbolsDiff)
 				}
-			case *RawFuncLogNewPacket:
+			case *RawFuncLogPacket:
 				if s.Handler.RawFuncLog != nil {
 					s.Handler.RawFuncLog(s.ID, pkt.FuncLog)
 				}

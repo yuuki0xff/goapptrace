@@ -184,7 +184,7 @@ func TestLog_ReadDuringWriting(t *testing.T) {
 			TxID: logutil.TxID(rand.Int()),
 		}), "Log.AppendRawFuncLog():")
 
-		// RawFuncLogNewが1つあたり0.1バイト未満で書き込まれるのは考えにくい。
+		// RawFuncLogが1つあたり0.1バイト未満で書き込まれるのは考えにくい。
 		// 十分な回数だけ試行しても終了しない場合、テスト失敗として扱う。
 		if i > l.MaxFileSize*30 {
 			t.Fatal("loop count limit reached")

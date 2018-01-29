@@ -22,7 +22,7 @@ const (
 	StartTraceCmdPacketType
 	StopTraceCmdPacketType
 	SymbolPacketType
-	RawFuncLogNewPacketType
+	RawFuncLogPacketType
 )
 
 // detectPacketType returns PacketType of packet.
@@ -46,8 +46,8 @@ func detectPacketType(packet xtcp.Packet) PacketType {
 		return StopTraceCmdPacketType
 	case *SymbolPacket:
 		return SymbolPacketType
-	case *RawFuncLogNewPacket:
-		return RawFuncLogNewPacketType
+	case *RawFuncLogPacket:
+		return RawFuncLogPacketType
 	default:
 		log.Panicf("unknown packet type: type=%T value=%+v", packet, packet)
 		panic(nil)
@@ -73,8 +73,8 @@ func createPacket(packetType PacketType) xtcp.Packet {
 		return &StopTraceCmdPacket{}
 	case SymbolPacketType:
 		return &SymbolPacket{}
-	case RawFuncLogNewPacketType:
-		return &RawFuncLogNewPacket{}
+	case RawFuncLogPacketType:
+		return &RawFuncLogPacket{}
 	default:
 		return nil
 	}
@@ -191,7 +191,7 @@ type StopTraceCmdPacket struct {
 type SymbolPacket struct {
 	logutil.SymbolsDiff
 }
-type RawFuncLogNewPacket struct {
+type RawFuncLogPacket struct {
 	FuncLog *logutil.RawFuncLog
 }
 
@@ -201,7 +201,7 @@ func (p ShutdownPacket) String() string      { return "<ShutdownPacket>" }
 func (p StartTraceCmdPacket) String() string { return "<StartTraceCmdPacket>" }
 func (p StopTraceCmdPacket) String() string  { return "<StopTraceCmdPacket>" }
 func (p SymbolPacket) String() string        { return "<SymbolPacket>" }
-func (p RawFuncLogNewPacket) String() string { return "<RawFuncLogNewPacket>" }
+func (p RawFuncLogPacket) String() string    { return "<RawFuncLogPacket>" }
 
 func (p *LogPacket) Marshal(w io.Writer) {
 	panic("not implemented")
@@ -243,9 +243,9 @@ func (p *SymbolPacket) Unmarshal(r io.Reader) {
 	p.FuncStatus = unmarshalFuncStatusSlice(r)
 }
 
-func (p *RawFuncLogNewPacket) Marshal(w io.Writer) {
+func (p *RawFuncLogPacket) Marshal(w io.Writer) {
 	marshalRawFuncLog(w, p.FuncLog)
 }
-func (p *RawFuncLogNewPacket) Unmarshal(r io.Reader) {
+func (p *RawFuncLogPacket) Unmarshal(r io.Reader) {
 	p.FuncLog = unmarshalRawFuncLog(r)
 }

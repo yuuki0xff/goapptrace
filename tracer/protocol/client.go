@@ -276,7 +276,7 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 				}
 			case *SymbolPacket:
 				conn.Stop(xtcp.StopImmediately)
-			case *RawFuncLogNewPacket:
+			case *RawFuncLogPacket:
 				conn.Stop(xtcp.StopImmediately)
 			default:
 				panic(fmt.Sprintf("BUG: Client: Client receives a invalid Packet: %+v %+v", pkt, reflect.TypeOf(pkt)))
