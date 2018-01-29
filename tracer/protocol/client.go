@@ -118,7 +118,13 @@ func (c *Client) Serve() error {
 		return InvalidProtocolError
 	}
 
+	// xtcpのバッファサイズが足りないと、パケットの送信に失敗していまう。
+	// この問題を防ぐために、バッファサイズの最大サイズは十分に大きくしておく。
 	c.opt = xtcp.NewOpts(c, &c.proto)
+	c.opt.SetRecvBufInitSize(c.BufferSize * 2)
+	c.opt.SetSendBufInitSize(c.BufferSize * 2)
+	c.opt.SetRecvBufMaxSize(c.BufferSize * 10)
+	c.opt.SetSendBufMaxSize(c.BufferSize * 10)
 	c.xtcpconn = xtcp.NewConn(c.opt)
 
 	// retry loop
