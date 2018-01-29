@@ -3,6 +3,7 @@ package protocol
 import (
 	"fmt"
 	"io"
+	"log"
 
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/xtcp"
@@ -47,7 +48,8 @@ func detectPacketType(packet xtcp.Packet) PacketType {
 	case *RawFuncLogNewPacket:
 		return RawFuncLogNewPacketType
 	default:
-		return UnknownPacketType
+		log.Panicf("unknown packet type: type=%T value=%+v", packet, packet)
+		panic(nil)
 	}
 }
 
