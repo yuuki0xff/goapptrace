@@ -167,11 +167,10 @@ func (c *Client) Close() error {
 func (c *Client) pingWorker() {
 	defer c.workerWg.Done()
 
-	timer := time.NewTicker(c.PingInterval)
-
+	ticker := time.NewTicker(c.PingInterval)
 	for {
 		select {
-		case <-timer.C:
+		case <-ticker.C:
 			if err := c.Send(&PingPacket{}); err != nil {
 				// TODO: try to reconnect
 				panic(err)
@@ -197,7 +196,7 @@ func (c *Client) mergeWorker() {
 	}
 	mergePkt := c.mergePktPool.Get().(*MergePacket)
 
-	timer := time.NewTicker(c.RefreshInterval)
+	ticker := time.NewTicker(c.RefreshInterval)
 	for {
 		select {
 		case pkt := <-c.pktCh:
@@ -208,14 +207,14 @@ func (c *Client) mergeWorker() {
 				mergePkt = c.mergePktPool.Get().(*MergePacket)
 				mergePkt.Reset()
 			}
-		case <-timer.C:
+		case <-ticker.C:
 			if mergePkt.Len() > 0 {
 				c.xtcpconn.Send(mergePkt)
 				mergePkt = c.mergePktPool.Get().(*MergePacket)
 				mergePkt.Reset()
 			}
 		case <-c.workerCtx.Done():
-			timer.Stop()
+			ticker.Stop()
 			c.xtcpconn.Send(mergePkt)
 			return
 		}
