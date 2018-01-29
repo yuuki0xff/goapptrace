@@ -1,6 +1,8 @@
 package logviewer
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
@@ -15,12 +17,10 @@ type View interface {
 	FocusChain() tui.FocusChain
 	// Viewが表示状態になったときに呼び出される。
 	// 定期更新のためのworkerを起動することなどを想定。
+	// Viewが破棄された、もしくは非表示状態になったときは、ctxがキャンセルされる。
 	// 実行中はUIのレンダリングが止まるため、可能な限り実行時間が短い処理のみにすること。
 	// なお、別途Update()メソッドが呼び出されるため、Start()メソッドの中でUpdate()メソッドを呼ぶのは推薦しない。
-	Start()
-	// Viewが破棄された、もしくは非表示状態になったときに呼び出される。
-	// 定期更新のために起動したworkerを終了したり、リソース開放などを行うことを想定している。
-	Stop()
+	Start(ctx context.Context)
 }
 
 type Controller struct {
