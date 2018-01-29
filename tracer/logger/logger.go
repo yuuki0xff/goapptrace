@@ -34,6 +34,9 @@ var (
 	}
 	patchGuard *monkey.PatchGuard
 	sender     Sender
+
+	// stack traceからGID(Goroutine ID)を取得するための正規表現
+	gidRegExp = regexp.MustCompile(`^goroutine (\d+)`)
 )
 
 func init() {
@@ -162,8 +165,7 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 	// get GoroutineID (GID)
 	var buf [backtraceSize]byte
 	runtime.Stack(buf[:], false) // First line is "goroutine xxx [running]"
-	re := regexp.MustCompile(`^goroutine (\d+)`)
-	matches := re.FindSubmatch(buf[:])
+	matches := gidRegExp.FindSubmatch(buf[:])
 	gid, err := strconv.ParseInt(string(matches[1]), 10, 64)
 	if err != nil {
 		log.Panic(err)
