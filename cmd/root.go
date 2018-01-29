@@ -100,5 +100,8 @@ func defaultTable(w io.Writer) *tablewriter.Table {
 	table.SetColumnSeparator(" ")
 	table.SetCenterSeparator(" ")
 	table.SetRowSeparator("-")
+	// デフォルトの行の幅は狭すぎるため、無駄な折り返しが生じる。
+	// これを回避するために、大きめの値を設定する。
+	table.SetColWidth(120)
 	return table
 }
