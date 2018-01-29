@@ -21,7 +21,8 @@ const (
 	backtraceSize        = 1 << 16 // about 64KiB
 	maxStackSize         = 1024
 
-	useCallersFrames = false
+	useCallersFrames      = false
+	useNonStandardRuntime = true
 )
 
 var (
@@ -163,14 +164,20 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 	}
 
 	// get GoroutineID (GID)
-	var buf [backtraceSize]byte
-	runtime.Stack(buf[:], false) // First line is "goroutine xxx [running]"
-	matches := gidRegExp.FindSubmatch(buf[:])
-	gid, err := strconv.ParseInt(string(matches[1]), 10, 64)
-	if err != nil {
-		log.Panic(err)
+	if useNonStandardRuntime {
+		// runtime.GoID()は、標準のruntimeパッケージ内に存在しない関数である。
+		// tracer/builderパッケージによってパッチが当てられた環境でのみ使用可能。
+		logmsg.GID = logutil.GID(runtime.GoID()) // nolint
+	} else {
+		var buf [backtraceSize]byte
+		runtime.Stack(buf[:], false) // First line is "goroutine xxx [running]"
+		matches := gidRegExp.FindSubmatch(buf[:])
+		gid, err := strconv.ParseInt(string(matches[1]), 10, 64)
+		if err != nil {
+			log.Panic(err)
+		}
+		logmsg.GID = logutil.GID(gid)
 	}
-	logmsg.GID = logutil.GID(gid)
 
 	lock.Lock()
 	defer lock.Unlock()

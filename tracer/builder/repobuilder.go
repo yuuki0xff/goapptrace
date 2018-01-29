@@ -17,6 +17,21 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/srceditor"
 )
 
+const (
+	runtimePatch = `
+package runtime
+
+func GoID() int64 {
+	var goid int64
+	systemstack(func() {
+		gp := getg()
+		goid = gp.goid
+	})
+	return goid
+}
+`
+)
+
 // トレース用のコードを追加したレポジトリを構築する。
 // 編集後のコードは、Gorootとgopathで指定したディレクトリの下に出力される。
 // オリジナルのコードは改変しない。
@@ -135,6 +150,16 @@ func (b *RepoBuilder) EditFiles(gofiles []string) error {
 		if err := copyPkg(pkg, destDir); err != nil {
 			return err
 		}
+	}
+
+	// runtimeにパッチを当てる
+	runtimeDir := path.Join(b.Goroot, "src", "runtime")
+	patchFileName := path.Join(runtimeDir, "goapptrace.go")
+	if err := os.MkdirAll(runtimeDir, 0777); err != nil {
+		return err
+	}
+	if err := ioutil.WriteFile(patchFileName, []byte(runtimePatch), 0666); err != nil {
+		return err
 	}
 	return nil
 }
