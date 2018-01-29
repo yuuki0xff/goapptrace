@@ -3,7 +3,6 @@ package protocol
 import (
 	"fmt"
 	"io"
-	"reflect"
 
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/xtcp"
@@ -25,31 +24,27 @@ const (
 )
 
 // detectPacketType returns PacketType of packet.
+// packet MUST be pointer type.
 // If packet is not PacketType, will be occurs panic.
 func detectPacketType(packet xtcp.Packet) PacketType {
-	if reflect.TypeOf(packet).Kind() == reflect.Ptr {
-		// dereference the packet of pointer type.
-		packet = reflect.ValueOf(packet).Elem().Interface().(xtcp.Packet)
-	}
-
 	switch packet.(type) {
-	case ClientHelloPacket:
+	case *ClientHelloPacket:
 		return ClientHelloPacketType
-	case ServerHelloPacket:
+	case *ServerHelloPacket:
 		return ServerHelloPacketType
-	case LogPacket:
+	case *LogPacket:
 		return LogPacketType
-	case PingPacket:
+	case *PingPacket:
 		return PingPacketType
-	case ShutdownPacket:
+	case *ShutdownPacket:
 		return ShutdownPacketType
-	case StartTraceCmdPacket:
+	case *StartTraceCmdPacket:
 		return StartTraceCmdPacketType
-	case StopTraceCmdPacket:
+	case *StopTraceCmdPacket:
 		return StopTraceCmdPacketType
-	case SymbolPacket:
+	case *SymbolPacket:
 		return SymbolPacketType
-	case RawFuncLogNewPacket:
+	case *RawFuncLogNewPacket:
 		return RawFuncLogNewPacketType
 	default:
 		return UnknownPacketType
