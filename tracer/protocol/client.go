@@ -197,7 +197,7 @@ func (c *Client) mergeWorker() {
 	}
 	mergePkt := c.mergePktPool.Get().(*MergePacket)
 
-	timer := time.NewTimer(c.RefreshInterval)
+	ticker := time.NewTicker(c.RefreshInterval)
 	for {
 		select {
 		case pkt := <-c.pktCh:
@@ -208,14 +208,14 @@ func (c *Client) mergeWorker() {
 				mergePkt = c.mergePktPool.Get().(*MergePacket)
 				mergePkt.Reset()
 			}
-		case <-timer.C:
+		case <-ticker.C:
 			if mergePkt.Len() > 0 {
 				c.xtcpconn.Send(mergePkt)
 				mergePkt = c.mergePktPool.Get().(*MergePacket)
 				mergePkt.Reset()
 			}
 		case <-c.workerCtx.Done():
-			timer.Stop()
+			ticker.Stop()
 			c.xtcpconn.Send(mergePkt)
 			return
 		}
