@@ -56,6 +56,7 @@ func init() {
 }
 
 func sendLog(tag logutil.TagName, id logutil.TxID) {
+	shouldSendDiff := false
 	diff := &logutil.SymbolsDiff{}
 
 	logmsg := &logutil.RawFuncLog{}
@@ -86,6 +87,8 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 			fsid, ok := symbols.FuncStatusIDFromPC(frame.PC)
 			if !ok {
 				// SLOW PATH
+				shouldSendDiff = true
+
 				fid, ok := symbols.FuncIDFromName(frame.Function)
 				if !ok {
 					// FuncSymbolが未登録なので、追加する。
@@ -127,6 +130,8 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 			fsid, ok := symbols.FuncStatusIDFromPC(pc)
 			if !ok {
 				// SLOW PATH
+				shouldSendDiff = true
+
 				f := runtime.FuncForPC(pc)
 				fid, ok := symbols.FuncIDFromName(f.Name())
 				if !ok {
@@ -177,6 +182,10 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 			log.Panic(err)
 		}
 		logmsg.GID = logutil.GID(gid)
+	}
+
+	if !shouldSendDiff {
+		diff = nil
 	}
 
 	lock.Lock()

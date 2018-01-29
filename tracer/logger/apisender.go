@@ -73,15 +73,19 @@ func (s *LogServerSender) Send(diff *logutil.SymbolsDiff, funclog *logutil.RawFu
 		return ClosedError
 	}
 
-	if err := s.client.Send(&protocol.SymbolPacket{
-		SymbolsDiff: *diff,
-	}); err != nil {
-		return err
+	if diff != nil {
+		if err := s.client.Send(&protocol.SymbolPacket{
+			SymbolsDiff: *diff,
+		}); err != nil {
+			return err
+		}
 	}
-	if err := s.client.Send(&protocol.RawFuncLogNewPacket{
-		FuncLog: funclog,
-	}); err != nil {
-		return err
+	if funclog != nil {
+		if err := s.client.Send(&protocol.RawFuncLogNewPacket{
+			FuncLog: funclog,
+		}); err != nil {
+			return err
+		}
 	}
 	return nil
 }

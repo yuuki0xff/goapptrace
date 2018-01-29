@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -90,6 +91,34 @@ func (p PacketType) Marshal(w io.Writer) {
 func (p *PacketType) Unmarshal(r io.Reader) {
 	val := unmarshalUint64(r)
 	*p = PacketType(val)
+}
+
+////////////////////////////////////////////////////////////////
+// SpecialPacket
+
+// MergePacket can merge several short packets.
+// It helps to increase performance by reduce short packets.
+type MergePacket struct {
+	Proto *Proto
+	buff  bytes.Buffer
+}
+
+func (p *MergePacket) String() string { return "<MergePacket>" }
+func (p *MergePacket) Merge(packet xtcp.Packet) {
+	_, err := p.Proto.PackTo(packet, &p.buff)
+	if err != nil {
+		log.Panic(err)
+	}
+}
+func (p *MergePacket) Reset() {
+	p.buff.Reset()
+}
+func (p *MergePacket) Len() int {
+	return p.buff.Len()
+}
+func (p *MergePacket) WriteTo(w io.Writer) (int, error) {
+	n, err := p.buff.WriteTo(w)
+	return int(n), err
 }
 
 ////////////////////////////////////////////////////////////////

@@ -3,9 +3,13 @@ package storage
 import (
 	"encoding/gob"
 	"io"
-	"log"
 
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+)
+
+var (
+	nilDiff       = &logutil.SymbolsDiff{}
+	nilRawFuncLog = &logutil.RawFuncLog{}
 )
 
 // CompactLogフォーマットは、"1つのファイル"に全てのシンボルデータと関数呼び出しのログを記録する方式である。
@@ -43,11 +47,14 @@ func (c *CompactLogWriter) Open() error {
 }
 
 // ログを書き込む
-// symbolsとfunclogはnon-nullでなければならない。
 func (c *CompactLogWriter) Write(diff *logutil.SymbolsDiff, funclog *logutil.RawFuncLog) error {
-	if diff == nil || funclog == nil {
-		log.Panicf("diff or funclog is null: diff=%+v, funclog=%+v", diff, funclog)
+	if diff == nil {
+		diff = nilDiff
 	}
+	if funclog == nil {
+		funclog = nilRawFuncLog
+	}
+
 	if err := c.enc.Encode(diff); err != nil {
 		return err
 	}

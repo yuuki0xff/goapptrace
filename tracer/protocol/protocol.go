@@ -41,6 +41,11 @@ func (pr Proto) PackSize(p xtcp.Packet) int {
 	panic(nil)
 }
 func (pr Proto) PackTo(p xtcp.Packet, w io.Writer) (int, error) {
+	if mergePkt, ok := p.(*MergePacket); ok {
+		// MergePacketは、シリアライズ済みデータをストリームに書き込むだけで良い。
+		return mergePkt.WriteTo(w)
+	}
+
 	buf := bufferPool.Get().(*bytes.Buffer)
 	// deferのオーバーヘッドを削減するため、bufferPool.Put(buf)は関数の末尾で行う。
 	// この関数の実行中にpanicすると、このbufはpoolに戻されない可能性がある。

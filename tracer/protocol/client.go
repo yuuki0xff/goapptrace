@@ -15,6 +15,13 @@ import (
 const (
 	DefaultMaxRetries = 10
 	MinWaitTime       = 10 * time.Millisecond
+	// 送信バッファに溜まっているパケットを強制的に排出する間隔。
+	DefaultRefreshInterval = 100 * time.Millisecond
+	// 送信バッファのサイズ。
+	// 送信されるパケットサイズはこれよりも少し大きくなることがある。
+	DefaultSendBufferSize = 1 << 20 // 1MiB
+
+	packetChannelBufferSize = 1000000
 )
 
 var (
@@ -46,12 +53,27 @@ type Client struct {
 	PingInterval time.Duration
 	MaxRetries   int
 
+	// 送信バッファに溜まっているパケットを強制的に送信する間隔。
+	RefreshInterval time.Duration
+	// 送信バッファのサイズ。
+	// このサイズを超えた場合、バッファに溜まっているパケットをまとめて送信する。
+	// 送信されるパケットのサイズは、BufferSizeよりも大きいことに留意すること。
+	BufferSize int
+
 	initOnce     sync.Once
 	closeOnce    sync.Once
 	negotiatedCh chan interface{}
 	cancel       context.CancelFunc
 	workerCtx    context.Context
 	workerWg     sync.WaitGroup
+
+	proto Proto
+	// 送信バッファに入るのを待機しているパケット。
+	// 突発的に多量のログが生成される状況でのパフォーマンス改善のため、バッファサイズは大きくしている。
+	pktCh chan xtcp.Packet
+	// MergePacketのpool。
+	// 送信バッファのメモリ確保の回数削減のために使用している。
+	mergePktPool sync.Pool
 
 	opt          *xtcp.Options
 	xtcpconn     *xtcp.Conn
@@ -70,6 +92,13 @@ func (c *Client) Init() {
 		if c.PingInterval == time.Duration(0) {
 			c.PingInterval = DefaultPingInterval
 		}
+		if c.RefreshInterval == 0 {
+			c.RefreshInterval = DefaultRefreshInterval
+		}
+		if c.BufferSize == 0 {
+			c.BufferSize = DefaultSendBufferSize
+		}
+		c.pktCh = make(chan xtcp.Packet, packetChannelBufferSize)
 	})
 }
 
@@ -89,8 +118,7 @@ func (c *Client) Serve() error {
 		return InvalidProtocolError
 	}
 
-	prt := &Proto{}
-	c.opt = xtcp.NewOpts(c, prt)
+	c.opt = xtcp.NewOpts(c, &c.proto)
 	c.xtcpconn = xtcp.NewConn(c.opt)
 
 	// retry loop
@@ -113,8 +141,9 @@ func (c *Client) Serve() error {
 	}
 }
 
-func (c *Client) Send(data xtcp.Packet) error {
-	return c.xtcpconn.Send(data)
+func (c *Client) Send(pkt xtcp.Packet) error {
+	c.pktCh <- pkt
+	return nil
 }
 
 func (c *Client) Close() error {
@@ -154,6 +183,45 @@ func (c *Client) pingWorker() {
 	}
 }
 
+// pktChから送られてくるshort packetを統合して、large packetにしてから送信する。
+// RefreshInterval間隔で、強制的にバッファの中身を送信する。
+func (c *Client) mergeWorker() {
+	defer c.workerWg.Done()
+
+	c.mergePktPool = sync.Pool{
+		New: func() interface{} {
+			return &MergePacket{
+				Proto: &c.proto,
+			}
+		},
+	}
+	mergePkt := c.mergePktPool.Get().(*MergePacket)
+
+	timer := time.NewTimer(c.RefreshInterval)
+	for {
+		select {
+		case pkt := <-c.pktCh:
+			// TODO: mergePkt.Merge(pkt)は時間がかかる処理である。マルチスレッド化する。
+			mergePkt.Merge(pkt)
+			if mergePkt.Len() >= c.BufferSize {
+				c.xtcpconn.Send(mergePkt)
+				mergePkt = c.mergePktPool.Get().(*MergePacket)
+				mergePkt.Reset()
+			}
+		case <-timer.C:
+			if mergePkt.Len() > 0 {
+				c.xtcpconn.Send(mergePkt)
+				mergePkt = c.mergePktPool.Get().(*MergePacket)
+				mergePkt.Reset()
+			}
+		case <-c.workerCtx.Done():
+			timer.Stop()
+			c.xtcpconn.Send(mergePkt)
+			return
+		}
+	}
+}
+
 // p will be nil when event is EventAccept/EventConnected/EventClosed
 func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 	switch et {
@@ -182,8 +250,9 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 				return
 			}
 
-			c.workerWg.Add(1)
+			c.workerWg.Add(2)
 			go c.pingWorker()
+			go c.mergeWorker()
 
 			c.negotiated()
 
@@ -214,6 +283,10 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 			}
 		}
 	case xtcp.EventSend:
+		if _, ok := p.(*MergePacket); ok {
+			// 送信が完了したMergePacketは、poolに追加して再利用する。
+			c.mergePktPool.Put(p)
+		}
 	case xtcp.EventClosed:
 
 		// request worker shutdown
