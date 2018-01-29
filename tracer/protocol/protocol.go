@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 
+	. "github.com/yuuki0xff/goapptrace/tracer/util"
 	"github.com/yuuki0xff/xtcp"
 )
 
@@ -50,10 +51,10 @@ func (pr Proto) Pack(p xtcp.Packet) ([]byte, error) {
 	buf.WriteByte(0)
 
 	// build buf
-	if err := marshalPacket(&hp, &buf); err != nil {
-		return nil, err
-	}
-	if err := marshalPacket(p, &buf); err != nil {
+	if err := PanicHandler(func() {
+		marshalPacket(&hp, &buf)
+		marshalPacket(p, &buf)
+	}); err != nil {
 		return nil, err
 	}
 
@@ -65,6 +66,7 @@ func (pr Proto) Pack(p xtcp.Packet) ([]byte, error) {
 }
 func (pr Proto) Unpack(b []byte) (xtcp.Packet, int, error) {
 	var hp HeaderPacket
+	var p xtcp.Packet
 
 	if len(b) < 4 {
 		// buf size not enough for unpack
@@ -79,24 +81,23 @@ func (pr Proto) Unpack(b []byte) (xtcp.Packet, int, error) {
 		return nil, 0, nil
 	}
 
-	buf := bytes.NewBuffer(packetData)
-	if err := hp.Unmarshal(buf); err != nil {
-		return nil, packetSize, err
-	}
-
-	p := createPacket(hp.PacketType)
-	if err := unmarshalPacket(p, buf); err != nil {
+	if err := PanicHandler(func() {
+		buf := bytes.NewBuffer(packetData)
+		hp.Unmarshal(buf)
+		p = createPacket(hp.PacketType)
+		unmarshalPacket(p, buf)
+	}); err != nil {
 		return nil, packetSize, err
 	}
 	return p, packetSize, nil
 }
 
-func marshalPacket(p xtcp.Packet, buf io.Writer) error {
+func marshalPacket(p xtcp.Packet, buf io.Writer) {
 	m := p.(Marshalable)
-	return m.Marshal(buf)
+	m.Marshal(buf)
 }
 
-func unmarshalPacket(p xtcp.Packet, r io.Reader) error {
+func unmarshalPacket(p xtcp.Packet, r io.Reader) {
 	m := p.(Marshalable)
-	return m.Unmarshal(r)
+	m.Unmarshal(r)
 }

@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"encoding/binary"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestProto_PackUnpack(t *testing.T) {
+	a := assert.New(t)
 	pkt := PingPacket{}
 	proto := Proto{}
 	pktData, err := proto.Pack(&pkt)
@@ -32,17 +35,16 @@ func TestProto_PackUnpack(t *testing.T) {
 	hp := HeaderPacket{}
 	pp := PingPacket{}
 
-	if err = hp.Unmarshal(buff); err != nil {
-		t.Errorf("Should not occurs error when deserializing of HeaderPacket: err=%s", err)
-		return
-	}
+	a.NotPanics(func() {
+		hp.Unmarshal(buff)
+	}, "unmarshal of HeaderPacket")
+
 	if hp.PacketType != PingPacketType {
 		t.Errorf("PacketType is mismatch: expected=%d actual=%d", PingPacketType, hp.PacketType)
 		return
 	}
 
-	if err = pp.Unmarshal(buff); err != nil {
-		t.Errorf("Should not occurse error when deserializing of PingPacket: err=%s", err)
-		return
-	}
+	a.NotPanics(func() {
+		pp.Unmarshal(buff)
+	}, "unmarshal of PingPacket")
 }
