@@ -28,12 +28,16 @@ type Controller struct {
 	Api    *restapi.Client
 	LogID  string
 	UI     tui.UI
-	view   View
+
+	view       View
+	viewCancel context.CancelFunc
+
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func (v *Controller) Run() error {
 	var err error
-	v.view = newSelectLogView(v)
 
 	v.UI, err = tui.New(tui.NewSpacer())
 	if err != nil {
@@ -75,7 +79,12 @@ func (v *Controller) Run() error {
 		Bold: tui.DecorationOn,
 	})
 	v.UI.SetTheme(theme)
-	v.setView(v.view)
+
+	v.ctx, v.cancel = context.WithCancel(context.Background())
+	defer v.cancel()
+
+	view := newSelectLogView(v)
+	v.setView(view)
 
 	if err := v.UI.Run(); err != nil {
 		return errors.Wrap(err, "failed to initialize TUI")
@@ -90,6 +99,11 @@ func (v *Controller) setKeybindings() {
 	v.UI.SetKeybinding("Esc", v.Quit)
 }
 func (v *Controller) setView(view View) {
+	if v.view != nil {
+		// stop old view.
+		v.viewCancel()
+	}
+
 	v.view = view
 	v.UI.SetWidget(v.view)
 
@@ -101,5 +115,8 @@ func (v *Controller) setView(view View) {
 	// update focus chain
 	v.UI.SetFocusChain(v.view.FocusChain())
 
+	var viewCtx context.Context
+	viewCtx, v.viewCancel = context.WithCancel(v.ctx)
+	v.view.Start(viewCtx)
 	go v.UI.Update(v.view.Update)
 }

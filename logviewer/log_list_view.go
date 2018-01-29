@@ -1,6 +1,7 @@
 package logviewer
 
 import (
+	"context"
 	"errors"
 
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
@@ -13,9 +14,10 @@ type LogListView struct {
 	logs []restapi.LogStatus
 
 	tui.Widget
-
 	wrap        wrapWidget
 	updateGroup singleflight.Group
+
+	running uint32
 
 	// ログの一覧を表示するためのテーブル
 	table  *headerTable
@@ -53,12 +55,8 @@ func (v *LogListView) SetKeybindings() {
 func (v *LogListView) FocusChain() tui.FocusChain {
 	return v.fc
 }
-func (v *LogListView) Start() {
-	// do nothing
-	// TODO
-}
-func (v *LogListView) Stop() {
-	// do nothing
+func (v *LogListView) Start(ctx context.Context) {
+	startAutoUpdateWorker(&v.running, ctx, v.Update)
 }
 
 // ログ一覧を最新の状態に更新する。

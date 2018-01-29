@@ -1,6 +1,7 @@
 package logviewer
 
 import (
+	"context"
 	"sort"
 	"strconv"
 	"sync"
@@ -20,6 +21,8 @@ type LogRecordView struct {
 	tui.Widget
 	wrap        wrapWidget
 	updateGroup singleflight.Group
+
+	running uint32
 
 	table   *headerTable
 	status  *tui.StatusBar
@@ -67,12 +70,8 @@ func (v *LogRecordView) SetKeybindings() {
 func (v *LogRecordView) FocusChain() tui.FocusChain {
 	return v.fc
 }
-func (v *LogRecordView) Start() {
-	// do nothing
-	// TODO
-}
-func (v *LogRecordView) Stop() {
-	// do nothing
+func (v *LogRecordView) Start(ctx context.Context) {
+	startAutoUpdateWorker(&v.running, ctx, v.Update)
 }
 func (v *LogRecordView) Update() {
 	v.status.SetText(LoadingText)

@@ -1,6 +1,7 @@
 package logviewer
 
 import (
+	"context"
 	"log"
 	"strconv"
 
@@ -15,6 +16,7 @@ type FuncCallDetailView struct {
 	Record *restapi.FuncCall
 	Root   *Controller
 
+	running     uint32
 	updateGroup singleflight.Group
 
 	// focusChainに渡す値が常に同じになるようにしないと、クラッシュしてしまう問題を回避するため。
@@ -105,13 +107,8 @@ func (v *FuncCallDetailView) SetKeybindings() {
 func (v *FuncCallDetailView) FocusChain() tui.FocusChain {
 	return v.fc
 }
-func (v *FuncCallDetailView) Start() {
-	// do nothing
-	// TODO
-}
-func (v *FuncCallDetailView) Stop() {
-	// do nothing
-	// TODO
+func (v *FuncCallDetailView) Start(ctx context.Context) {
+	startAutoUpdateWorker(&v.running, ctx, v.Update)
 }
 
 func (v *FuncCallDetailView) onSelectedFilter(funcInfoTable *tui.Table) {

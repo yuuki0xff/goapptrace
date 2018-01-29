@@ -1,6 +1,7 @@
 package logviewer
 
 import (
+	"context"
 	"image"
 	"log"
 	"sort"
@@ -19,6 +20,7 @@ type GraphView struct {
 	LogID string
 	Root  *Controller
 
+	running     uint32
 	updateGroup singleflight.Group
 
 	status *tui.StatusBar
@@ -131,12 +133,8 @@ func (v *GraphView) SetKeybindings() {
 func (v *GraphView) FocusChain() tui.FocusChain {
 	return v.fc
 }
-func (v *GraphView) Start() {
-	// do nothing
-	// TODO
-}
-func (v *GraphView) Stop() {
-	// do nothing
+func (v *GraphView) Start(ctx context.Context) {
+	startAutoUpdateWorker(&v.running, ctx, v.Update)
 }
 
 // buildLinesは、graphを構成する線分を構築して返す。
