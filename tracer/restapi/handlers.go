@@ -512,7 +512,7 @@ func parseTimestamp(value string, defaultValue logutil.Time) (logutil.Time, erro
 		return defaultValue, nil
 	}
 	var ts logutil.Time
-	err := ts.UnmarshalText([]byte(value))
+	err := ts.UnmarshalJSON([]byte(value))
 	if err != nil {
 		return 0, err
 	}
