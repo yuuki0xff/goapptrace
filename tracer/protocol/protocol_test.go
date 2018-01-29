@@ -8,43 +8,24 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestProto_PackUnpack(t *testing.T) {
+func TestProto_PackTo_Unpack(t *testing.T) {
 	a := assert.New(t)
-	pkt := PingPacket{}
+	buff := &bytes.Buffer{}
 	proto := Proto{}
-	pktData, err := proto.Pack(&pkt)
-	if err != nil {
-		t.Errorf("Proto.Pack() should not returns error: err=%s", err)
-		return
-	}
 
-	persistPktSize := proto.PackSize(&pkt)
-	if persistPktSize != len(pktData) {
-		t.Errorf("PacketSize mismatch: PackSize()=%d actual=%d", persistPktSize, len(pktData))
-	}
+	// PackTo
+	sendPkt := PingPacket{}
+	_, err := proto.PackTo(&sendPkt, buff)
+	a.NoError(err, "Proto.PackTo()")
 
+	pktData := buff.Bytes()
 	pktSize := int(binary.BigEndian.Uint32(pktData[:4]))
 	pktBody := pktData[4:]
-	if pktSize != len(pktBody) {
-		t.Errorf("Invalid PacketSize: persist=%d actual=%d", pktSize, len(pktBody))
-	}
+	a.Equal(len(pktBody), pktSize)
 
-	buff := bytes.NewBuffer(nil)
-	buff.Write(pktBody)
-
-	hp := HeaderPacket{}
-	pp := PingPacket{}
-
-	a.NotPanics(func() {
-		hp.Unmarshal(buff)
-	}, "unmarshal of HeaderPacket")
-
-	if hp.PacketType != PingPacketType {
-		t.Errorf("PacketType is mismatch: expected=%d actual=%d", PingPacketType, hp.PacketType)
-		return
-	}
-
-	a.NotPanics(func() {
-		pp.Unmarshal(buff)
-	}, "unmarshal of PingPacket")
+	// UnpackTo
+	recevPkt, n, err := proto.Unpack(pktData)
+	a.NoError(err, "Proto.Unpack")
+	a.Equal(len(pktData), n)
+	a.Equal(&sendPkt, recevPkt)
 }
