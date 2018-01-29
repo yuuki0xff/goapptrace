@@ -53,7 +53,11 @@ func (v *LogListView) SetKeybindings() {
 func (v *LogListView) FocusChain() tui.FocusChain {
 	return v.fc
 }
-func (v *LogListView) Quit() {
+func (v *LogListView) Start() {
+	// do nothing
+	// TODO
+}
+func (v *LogListView) Stop() {
 	// do nothing
 }
 

@@ -131,7 +131,11 @@ func (v *GraphView) SetKeybindings() {
 func (v *GraphView) FocusChain() tui.FocusChain {
 	return v.fc
 }
-func (v *GraphView) Quit() {
+func (v *GraphView) Start() {
+	// do nothing
+	// TODO
+}
+func (v *GraphView) Stop() {
 	// do nothing
 }
 

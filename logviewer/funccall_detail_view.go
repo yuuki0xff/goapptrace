@@ -105,8 +105,13 @@ func (v *FuncCallDetailView) SetKeybindings() {
 func (v *FuncCallDetailView) FocusChain() tui.FocusChain {
 	return v.fc
 }
-func (v *FuncCallDetailView) Quit() {
+func (v *FuncCallDetailView) Start() {
 	// do nothing
+	// TODO
+}
+func (v *FuncCallDetailView) Stop() {
+	// do nothing
+	// TODO
 }
 
 func (v *FuncCallDetailView) onSelectedFilter(funcInfoTable *tui.Table) {
