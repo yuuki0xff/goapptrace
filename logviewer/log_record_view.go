@@ -13,7 +13,7 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
-type showLogView struct {
+type LogRecordView struct {
 	LogID string
 	Root  *Controller
 
@@ -27,8 +27,8 @@ type showLogView struct {
 	fc      tui.FocusChain
 }
 
-func newShowLogView(logID string, root *Controller) *showLogView {
-	v := &showLogView{
+func newShowLogView(logID string, root *Controller) *LogRecordView {
+	v := &LogRecordView{
 		LogID:  logID,
 		Root:   root,
 		status: tui.NewStatusBar(LoadingText),
@@ -47,7 +47,7 @@ func newShowLogView(logID string, root *Controller) *showLogView {
 	)
 	return v
 }
-func (v *showLogView) SetKeybindings() {
+func (v *LogRecordView) SetKeybindings() {
 	gotoLogList := func() {
 		v.Root.setView(newSelectLogView(v.Root))
 	}
@@ -64,13 +64,13 @@ func (v *showLogView) SetKeybindings() {
 	v.Root.UI.SetKeybinding("l", gotoDetailView)
 	v.Root.UI.SetKeybinding("t", gotoGraph)
 }
-func (v *showLogView) FocusChain() tui.FocusChain {
+func (v *LogRecordView) FocusChain() tui.FocusChain {
 	return v.fc
 }
-func (v *showLogView) Quit() {
+func (v *LogRecordView) Quit() {
 	// do nothing
 }
-func (v *showLogView) Update() {
+func (v *LogRecordView) Update() {
 	v.status.SetText(LoadingText)
 
 	go v.updateGroup.Do("update", func() (interface{}, error) { // nolint: errcheck
@@ -185,14 +185,14 @@ func (v *showLogView) Update() {
 		return nil, nil
 	})
 }
-func (v *showLogView) onSelectedFuncCallRecord(table *tui.Table) {
+func (v *LogRecordView) onSelectedFuncCallRecord(table *tui.Table) {
 	if v.table.Selected() <= 0 {
 		return
 	}
 	rec := &v.records[v.table.Selected()-1]
 	v.Root.setView(newFuncCallDetailView(v.LogID, rec, v.Root))
 }
-func (v *showLogView) newTable() *headerTable {
+func (v *LogRecordView) newTable() *headerTable {
 	t := newHeaderTable(
 		tui.NewLabel("StartTime"),
 		tui.NewLabel("ExecTime (ns)"),

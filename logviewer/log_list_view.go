@@ -8,7 +8,7 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
-type selectLogView struct {
+type LogListView struct {
 	Root *Controller
 	logs []restapi.LogStatus
 
@@ -23,8 +23,8 @@ type selectLogView struct {
 	fc     tui.FocusChain
 }
 
-func newSelectLogView(root *Controller) *selectLogView {
-	v := &selectLogView{
+func newSelectLogView(root *Controller) *LogListView {
+	v := &LogListView{
 		Root:   root,
 		status: tui.NewStatusBar(LoadingText),
 	}
@@ -42,7 +42,7 @@ func newSelectLogView(root *Controller) *selectLogView {
 	)
 	return v
 }
-func (v *selectLogView) SetKeybindings() {
+func (v *LogListView) SetKeybindings() {
 	gotoLogView := func() {
 		v.onSelectedLog(nil)
 	}
@@ -50,15 +50,15 @@ func (v *selectLogView) SetKeybindings() {
 	v.Root.UI.SetKeybinding("Right", gotoLogView)
 	v.Root.UI.SetKeybinding("l", gotoLogView)
 }
-func (v *selectLogView) FocusChain() tui.FocusChain {
+func (v *LogListView) FocusChain() tui.FocusChain {
 	return v.fc
 }
-func (v *selectLogView) Quit() {
+func (v *LogListView) Quit() {
 	// do nothing
 }
 
 // ログ一覧を最新の状態に更新する。
-func (v *selectLogView) Update() {
+func (v *LogListView) Update() {
 	v.status.SetText(LoadingText)
 
 	go v.updateGroup.Do("update", func() (interface{}, error) { // nolint: errcheck
@@ -100,7 +100,7 @@ func (v *selectLogView) Update() {
 }
 
 // ログを選択したときにコールバックされる関数。
-func (v *selectLogView) onSelectedLog(table *tui.Table) {
+func (v *LogListView) onSelectedLog(table *tui.Table) {
 	if v.table.Selected() <= 0 {
 		return
 	}
@@ -111,7 +111,7 @@ func (v *selectLogView) onSelectedLog(table *tui.Table) {
 	))
 }
 
-func (v *selectLogView) newTable() *headerTable {
+func (v *LogListView) newTable() *headerTable {
 	t := newHeaderTable(
 		tui.NewLabel("LogID"),
 	)
