@@ -13,6 +13,8 @@ type View interface {
 	Update()
 	SetKeybindings()
 	FocusChain() tui.FocusChain
+	// 画面が破棄された、もしくは非表示状態になったときに呼び出される。
+	// 画面の定期更新のために起動したworkerを終了したり、リソース開放などを行うことを想定している。
 	Quit()
 }
 
