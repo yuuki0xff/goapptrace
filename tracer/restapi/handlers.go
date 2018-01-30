@@ -1,12 +1,15 @@
 package restapi
 
 import (
+	"container/heap"
+	"context"
 	"encoding/json"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 
 	"github.com/gorilla/mux"
@@ -14,6 +17,18 @@ import (
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
+	"golang.org/x/sync/errgroup"
+)
+
+type SortOrder int
+
+const (
+	AscendingSortOrder SortOrder = iota
+	DescendingSortOrder
+)
+
+var (
+	errStopIterator = errors.New("stop iterator")
 )
 
 type RouterArgs struct {
@@ -26,6 +41,38 @@ type RouterArgs struct {
 type APIv0 struct {
 	RouterArgs
 	Logger *log.Logger
+}
+
+// APIのレスポンスの生成を支援するworker。
+// api.worker() メソッドから作成し APIWorker.wait() で待ち合わせをする。
+// パイプラインモデルの並列処理を行う。
+type APIWorker struct {
+	Api        *APIv0
+	Args       *RouterArgs
+	Logger     *log.Logger
+	BufferSize int
+	Logobj     *storage.Log
+
+	group *errgroup.Group
+	ctx   context.Context
+}
+
+type FuncLogAPIWorker struct {
+	api  *APIWorker
+	inCh chan logutil.FuncLog
+}
+
+type Encoder interface {
+	Encode(v interface{}) error
+}
+
+// メソッドの処理を置き換え可能なheap.Interfaceの実装。
+type GenericHeap struct {
+	LenFn  func() int
+	LessFn func(i, j int) bool
+	SwapFn func(i, j int)
+	PushFn func(x interface{})
+	PopFn  func() interface{}
 }
 
 type HttpRequestHandler func(w http.ResponseWriter, r *http.Request)
@@ -323,49 +370,23 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 		}
 		return false
 	}
-	// read all records in the search range, and filter by gid and fid.
-	ch := make(chan logutil.FuncLog, 1<<20) // buffer size is 1M records
-	go func() {
-		defer close(ch)
-		for i := minIdx; i <= maxIdx; i++ {
-			err = logobj.WalkFuncLogFile(i, func(evt logutil.FuncLog) error {
-				if !isFiltered(&evt) {
-					ch <- evt
-				}
-				return nil
-			})
-			if err != nil {
-				api.Logger.Println(errors.Wrap(err, "failed to read FuncLogFile"))
-				return
-			}
-		}
 
-		if maxIdx == indexLen-1 {
-			ss := api.SimulatorStore.Get(logobj.ID)
-			if ss != nil {
-				for _, evt := range ss.FuncLogs() {
-					if !isFiltered(evt) {
-						ch <- *evt
-					}
-				}
-			}
-		}
-	}()
-
-	defer func() {
-		// in order to stop the background goroutine, we consume all items from ch.
-		for range ch {
-		}
-	}()
-
-	// encode and send records to client.
+	// TODO: この値を、query stringから指定できるようにする
+	limit := 1000
+	order := AscendingSortOrder
 	enc := json.NewEncoder(w)
-	for evt := range ch {
-		err = enc.Encode(&evt)
-		if err != nil {
-			api.Logger.Println(errors.Wrap(err, "failed to json.Encoder.Encode()"))
-			return
-		}
+
+	parentCtx := context.Background()
+	worker := api.worker(parentCtx, logobj)
+	fw := worker.readFuncLog(minIdx, maxId, indexLen)
+	fw = fw.filterFuncLog(isFiltered)
+	fw = fw.sortAndLimit(func(f1, f2 *logutil.FuncLog) bool {
+		return f1.EndTime < f2.EndTime
+	}, order, limit)
+	fw.sendTo(enc)
+
+	if err = worker.wait(); err != nil {
+		log.Println(errors.Wrap(err, "funcCallSearch:"))
 	}
 }
 
@@ -495,6 +516,200 @@ func (api APIv0) getLog(w http.ResponseWriter, r *http.Request) (*storage.Log, b
 	}
 	return logobj, true
 }
+
+func (api *APIv0) worker(parent context.Context, logobj *storage.Log) *APIWorker {
+	group, ctx := errgroup.WithContext(parent)
+	return &APIWorker{
+		Api:        api,
+		Args:       &api.RouterArgs,
+		Logger:     api.Logger,
+		BufferSize: 1 << 10,
+		Logobj:     logobj,
+		group:      group,
+		ctx:        ctx,
+	}
+}
+
+func (w *APIWorker) wait() error {
+	return w.group.Wait()
+}
+func (w *APIWorker) readFuncLog(minIdx, maxIdx, indexLen int64) *FuncLogAPIWorker {
+	ch := make(chan logutil.FuncLog, w.BufferSize)
+	w.group.Go(func() error {
+		defer close(ch)
+		for i := minIdx; i <= maxIdx; i++ {
+			err := w.Logobj.WalkFuncLogFile(i, func(evt logutil.FuncLog) error {
+				select {
+				case ch <- evt:
+				case <-w.ctx.Done():
+					return errStopIterator
+				}
+				return nil
+			})
+			if err != nil {
+				if err == errStopIterator {
+					return nil
+				}
+				w.Logger.Println(errors.Wrap(err, "failed to read FuncLogFile"))
+				return err
+			}
+		}
+
+		if maxIdx == indexLen-1 {
+			ss := w.Api.SimulatorStore.Get(w.Logobj.ID)
+			if ss != nil {
+				for _, evt := range ss.FuncLogs() {
+					select {
+					case ch <- *evt:
+					case <-w.ctx.Done():
+						return nil
+					}
+				}
+			}
+		}
+		return nil
+	})
+	return &FuncLogAPIWorker{
+		api:  w,
+		inCh: ch,
+	}
+}
+
+func (w *FuncLogAPIWorker) filterFuncLog(isFiltered func(evt *logutil.FuncLog) bool) *FuncLogAPIWorker {
+	ch := make(chan logutil.FuncLog, w.api.BufferSize)
+	w.api.group.Go(func() error {
+		for {
+			select {
+			case evt, ok := <-w.inCh:
+				if ok {
+					if !isFiltered(&evt) {
+						ch <- evt
+					}
+				} else {
+					return nil
+				}
+			case <-w.api.ctx.Done():
+				return nil
+			}
+		}
+		return nil
+	})
+	return &FuncLogAPIWorker{
+		api:  w.api,
+		inCh: ch,
+	}
+}
+
+func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *logutil.FuncLog) bool, order SortOrder, limit int) *FuncLogAPIWorker {
+	ch := make(chan logutil.FuncLog, w.api.BufferSize)
+
+	var compare func(f1, f2 *logutil.FuncLog) bool
+	switch order {
+	case AscendingSortOrder:
+		compare = less
+	case DescendingSortOrder:
+		// 降順にするために、大小を入れ替える
+		compare = func(f1, f2 *logutil.FuncLog) bool {
+			return less(f2, f1)
+		}
+	default:
+		log.Panicf("unsupported sort order: %+v", order)
+	}
+
+	w.api.group.Go(func() error {
+		var items []logutil.FuncLog
+		itemCompare := func(i, j int) bool {
+			return compare(&items[i], &items[j])
+		}
+		if limit == 0 {
+			// read all items from input.
+			for evt := range w.inCh {
+				items = append(items, evt)
+			}
+			sort.Slice(items, itemCompare)
+			for i := range items {
+				ch <- items[i]
+			}
+		} else {
+			// read limited items from input.
+			h := GenericHeap{
+				LenFn:  func() int { return len(items) },
+				LessFn: itemCompare,
+				SwapFn: func(i, j int) { items[i], items[j] = items[j], items[i] },
+				PushFn: func(x interface{}) { items = append(items, x.(logutil.FuncLog)) },
+				PopFn: func() interface{} {
+					first := items[0]
+					items = items[1:]
+					return first
+				},
+			}
+
+			// fill the items slice from inCh.
+		FillItemsLoop:
+			for len(items) < limit {
+				select {
+				case evt, ok := <-w.inCh:
+					if ok {
+						items = append(items, evt)
+					} else {
+						break FillItemsLoop
+					}
+				case <-w.api.ctx.Done():
+					return nil
+				}
+			}
+			heap.Init(&h)
+
+		UpdateItemsLoop:
+			for {
+				select {
+				case evt, ok := <-w.inCh:
+					if ok {
+						if compare(&items[0], &evt) {
+							// replace minimum (or maximum) item from other
+							items[0] = evt
+							heap.Fix(&h, 0)
+						}
+					} else {
+						break UpdateItemsLoop
+					}
+				case <-w.api.ctx.Done():
+					return nil
+				}
+			}
+
+			for h.Len() > 0 {
+				select {
+				case ch <- heap.Pop(&h).(logutil.FuncLog):
+				case <-w.api.ctx.Done():
+				}
+			}
+		}
+		return nil
+	})
+	return &FuncLogAPIWorker{
+		api:  w.api,
+		inCh: ch,
+	}
+}
+
+func (w *FuncLogAPIWorker) sendTo(enc Encoder) {
+	w.api.group.Go(func() error {
+		for evt := range w.inCh {
+			if err := enc.Encode(evt); err != nil {
+				w.api.Logger.Println(errors.Wrap(err, "failed to json.Encoder.Encode()"))
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (h *GenericHeap) Len() int           { return h.Len() }
+func (h *GenericHeap) Less(i, j int) bool { return h.Less(i, j) }
+func (h *GenericHeap) Swap(i, j int)      { h.Swap(i, j) }
+func (h *GenericHeap) Push(x interface{}) { h.Push(x) }
+func (h *GenericHeap) Pop() interface{}   { return h.Pop() }
 
 func parseInt(value string, defaultValue int64) (int64, error) {
 	if value == "" {
