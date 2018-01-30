@@ -18,6 +18,12 @@ func startAutoUpdateWorker(running *uint32, ctx context.Context, update func()) 
 	started = true
 
 	go func() {
+		defer func() {
+			if !atomic.CompareAndSwapUint32(running, 1, 0) {
+				log.Panic("invalid state")
+			}
+		}()
+
 		timer := time.NewTicker(UpdateInterval)
 		defer timer.Stop()
 		for {
@@ -25,12 +31,8 @@ func startAutoUpdateWorker(running *uint32, ctx context.Context, update func()) 
 			case <-timer.C:
 				update()
 			case <-ctx.Done():
-				break
+				return
 			}
-		}
-
-		if !atomic.CompareAndSwapUint32(running, 1, 0) {
-			log.Panic("invalid state")
 		}
 	}()
 	return
