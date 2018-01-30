@@ -88,6 +88,7 @@ func (s *StateSimulator) Next(fl RawFuncLog) {
 }
 
 // この期間に動作していた全ての関数についてのログを返す
+// 返されるログの順序は、不定である。
 func (s *StateSimulator) FuncLogs() []*FuncLog {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
