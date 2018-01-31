@@ -592,7 +592,6 @@ func (w *FuncLogAPIWorker) filterFuncLog(isFiltered func(evt *logutil.FuncLog) b
 				return nil
 			}
 		}
-		return nil
 	})
 	return &FuncLogAPIWorker{
 		api:  w.api,
