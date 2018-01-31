@@ -21,11 +21,21 @@ func (w *wrapWidget) SetWidget(widget tui.Widget) {
 		// un-focus the old widget.
 		focused = w.Widget.IsFocused()
 		w.Widget.SetFocused(false)
+
+		w.copyWidgetState(widget, w.Widget)
 	}
 
 	// focus the new widget.
 	w.Widget = widget
 	w.Widget.SetFocused(focused)
+}
+
+func (w *wrapWidget) copyWidgetState(dest, src tui.Widget) {
+	dt, ok1 := dest.(*headerTable)
+	st, ok2 := src.(*headerTable)
+	if ok1 && ok2 {
+		dt.Select(st.Selected())
+	}
 }
 
 func (w *wrapWidget) Draw(p *tui.Painter)                          { w.Widget.Draw(p) }

@@ -71,11 +71,6 @@ func (v *LogListView) Update() {
 		table := v.newTable()
 
 		defer v.Root.UI.Update(func() {
-			if v.table != nil {
-				// 更新をしても、選択している場所を維持する。
-				table.Select(v.table.Selected())
-			}
-
 			v.logs = logs
 			v.table = table
 
