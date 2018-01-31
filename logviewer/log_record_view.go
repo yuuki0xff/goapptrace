@@ -180,7 +180,11 @@ func (v *LogRecordView) Update() {
 
 			for _, fc := range records {
 			// TODO: リファクタする
-			for _, fc := range records[:tableRecords] {
+			n := len(records)
+			if maxTableRecords < n {
+				n = maxTableRecords
+			}
+			for _, fc := range records[:n] {
 				currentFrame := fc.Frames[0]
 
 				fs := fsMap[currentFrame]
