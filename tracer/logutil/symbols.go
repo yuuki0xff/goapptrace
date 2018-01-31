@@ -135,6 +135,7 @@ func (s *Symbols) WalkFuncStatus(fn func(fs FuncStatus) error) error {
 
 // 関数名からFuncIDを取得する.
 // この処理は高速で完了するので、追加済みのシンボルかどうかの判定に使用できる。
+//go:nosplit
 func (s *Symbols) FuncIDFromName(name string) (id FuncID, ok bool) {
 	s.lock.RLock()
 	id, ok = s.name2FuncID[name]
@@ -144,6 +145,7 @@ func (s *Symbols) FuncIDFromName(name string) (id FuncID, ok bool) {
 
 // PC(Program Counter)の値からFuncStatusIDを取得する。
 // この処理は高速で完了するので、追加済みのシンボルかどうかの判定に使用できる。
+//go:nosplit
 func (s *Symbols) FuncStatusIDFromPC(pc uintptr) (id FuncStatusID, ok bool) {
 	s.lock.RLock()
 	id, ok = s.pc2FSID[pc]
