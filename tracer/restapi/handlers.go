@@ -704,11 +704,11 @@ func (w *FuncLogAPIWorker) sendTo(enc Encoder) {
 	})
 }
 
-func (h *GenericHeap) Len() int           { return h.Len() }
-func (h *GenericHeap) Less(i, j int) bool { return h.Less(i, j) }
-func (h *GenericHeap) Swap(i, j int)      { h.Swap(i, j) }
-func (h *GenericHeap) Push(x interface{}) { h.Push(x) }
-func (h *GenericHeap) Pop() interface{}   { return h.Pop() }
+func (h *GenericHeap) Len() int           { return h.LenFn() }
+func (h *GenericHeap) Less(i, j int) bool { return h.LessFn(i, j) }
+func (h *GenericHeap) Swap(i, j int)      { h.SwapFn(i, j) }
+func (h *GenericHeap) Push(x interface{}) { h.PushFn(x) }
+func (h *GenericHeap) Pop() interface{}   { return h.PopFn() }
 
 func parseInt(value string, defaultValue int64) (int64, error) {
 	if value == "" {
