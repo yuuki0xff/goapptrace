@@ -504,6 +504,18 @@ paths:
           in: query
           description: Maximum of timestamp.
           type: integer
+        - name: limit
+          in: query
+          description: Maximum number of results. I recommend that specify parameters of "sort" and "order" in addition to "limit" parameter.
+          type: integer
+        - name: sort
+          in: query
+          description: Sort key. This parameter takes only "id" or "start-time" or "end-time".
+          type: string
+        - name: order
+          in: query
+          description: Sort order. This parameter takes only of “asc” (default) and “desc”.
+          type: string
       responses:
         '200':
           description: Returns function call log records.

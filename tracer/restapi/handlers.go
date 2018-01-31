@@ -4,6 +4,7 @@ import (
 	"container/heap"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -11,6 +12,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -60,6 +62,15 @@ type APIWorker struct {
 type FuncLogAPIWorker struct {
 	api  *APIWorker
 	inCh chan logutil.FuncLog
+	// 呼び出すと、readerとfilterが終了する。
+	stopReader func()
+	// readerとfilterに対するcontext。
+	// limiterは最後までchannelを読み取らなかったときに、readerやfilterを終了させるために使用する。
+	readCtx context.Context
+	// sorterとlimiterに対するcontext。
+	sortCtx context.Context
+	// senderに対するcontext。
+	sendCtx context.Context
 }
 
 type Encoder interface {
@@ -288,6 +299,9 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 	var maxId int64
 	var minTs logutil.Time
 	var maxTs logutil.Time
+	var limit int64
+	var sortKey string
+	var order SortOrder
 	var err error
 
 	gid, err = parseInt(q.Get("gid"), -1)
@@ -319,6 +333,36 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "invalid max-timestamp", http.StatusBadRequest)
 		return
+	}
+	limit, err = parseInt(q.Get("limit"), -1)
+	if err != nil {
+		http.Error(w, "invalid limit", http.StatusBadRequest)
+		return
+	}
+	sortKey = q.Get("sort")
+	order, err = parseOrder(q.Get("order"), AscendingSortOrder)
+	if err != nil {
+		http.Error(w, "invalid order", http.StatusBadRequest)
+		return
+	}
+
+	var sortFn func(f1, f2 *logutil.FuncLog) bool
+	switch sortKey {
+	case "id":
+		sortFn = func(f1, f2 *logutil.FuncLog) bool {
+			return f1.ID < f2.ID
+		}
+	case "start-time":
+		sortFn = func(f1, f2 *logutil.FuncLog) bool {
+			return f1.StartTime < f2.StartTime
+		}
+	case "end-time":
+		sortFn = func(f1, f2 *logutil.FuncLog) bool {
+			return f1.EndTime < f2.EndTime
+		}
+	case "":
+	default:
+		http.Error(w, "invalid sort", http.StatusBadRequest)
 	}
 
 	indexLen := logobj.IndexLen()
@@ -384,18 +428,13 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 		return false
 	}
 
-	// TODO: この値を、query stringから指定できるようにする
-	limit := 1000
-	order := AscendingSortOrder
 	enc := json.NewEncoder(w)
 
 	parentCtx := context.Background()
 	worker := api.worker(parentCtx, logobj)
 	fw := worker.readFuncLog(minIdx, maxIdx, indexLen)
 	fw = fw.filterFuncLog(isFiltered)
-	fw = fw.sortAndLimit(func(f1, f2 *logutil.FuncLog) bool {
-		return f1.EndTime < f2.EndTime
-	}, order, limit)
+	fw = fw.sortAndLimit(sortFn, order, limit)
 	fw.sendTo(enc)
 
 	if err = worker.wait(); err != nil {
@@ -548,13 +587,27 @@ func (w *APIWorker) wait() error {
 }
 func (w *APIWorker) readFuncLog(minIdx, maxIdx, indexLen int64) *FuncLogAPIWorker {
 	ch := make(chan logutil.FuncLog, w.BufferSize)
+	newctx, cancel := context.WithCancel(w.ctx)
+	fw := &FuncLogAPIWorker{
+		api:        w,
+		inCh:       ch,
+		stopReader: cancel,
+		readCtx:    newctx,
+		sortCtx:    w.ctx,
+		sendCtx:    w.ctx,
+	}
+
 	w.group.Go(func() error {
+		log.Printf("readFuncLog: start")
+		log.Printf("readFuncLog: minIdx=%d maxIdx=%d indexLen=%d", minIdx, maxIdx, indexLen)
 		defer close(ch)
+		defer log.Print("readFuncLog: done")
 		for i := minIdx; i <= maxIdx; i++ {
+			log.Println("readFuncLog: read from file:", i)
 			err := w.Logobj.WalkFuncLogFile(i, func(evt logutil.FuncLog) error {
 				select {
 				case ch <- evt:
-				case <-w.ctx.Done():
+				case <-fw.readCtx.Done():
 					return errStopIterator
 				}
 				return nil
@@ -569,12 +622,14 @@ func (w *APIWorker) readFuncLog(minIdx, maxIdx, indexLen int64) *FuncLogAPIWorke
 		}
 
 		if maxIdx == indexLen-1 {
+			log.Println("readFuncLog: try to read from simulator")
 			ss := w.Api.SimulatorStore.Get(w.Logobj.ID)
 			if ss != nil {
+				log.Println("readFuncLog: read from simulator")
 				for _, evt := range ss.FuncLogs() {
 					select {
 					case ch <- *evt:
-					case <-w.ctx.Done():
+					case <-fw.readCtx.Done():
 						return nil
 					}
 				}
@@ -582,16 +637,22 @@ func (w *APIWorker) readFuncLog(minIdx, maxIdx, indexLen int64) *FuncLogAPIWorke
 		}
 		return nil
 	})
-	return &FuncLogAPIWorker{
-		api:  w,
-		inCh: ch,
-	}
+	return fw
+}
+
+func (w *FuncLogAPIWorker) nextWorker(inCh chan logutil.FuncLog) *FuncLogAPIWorker {
+	worker := &FuncLogAPIWorker{}
+	*worker = *w
+	worker.inCh = inCh
+	return worker
 }
 
 func (w *FuncLogAPIWorker) filterFuncLog(isFiltered func(evt *logutil.FuncLog) bool) *FuncLogAPIWorker {
 	ch := make(chan logutil.FuncLog, w.api.BufferSize)
 	w.api.group.Go(func() error {
+		log.Print("filterFuncLog: start")
 		defer close(ch)
+		defer log.Print("filterFuncLog: done")
 		for {
 			select {
 			case evt, ok := <-w.inCh:
@@ -602,19 +663,52 @@ func (w *FuncLogAPIWorker) filterFuncLog(isFiltered func(evt *logutil.FuncLog) b
 				} else {
 					return nil
 				}
-			case <-w.api.ctx.Done():
+			case <-w.readCtx.Done():
 				return nil
 			}
 		}
 	})
-	return &FuncLogAPIWorker{
-		api:  w.api,
-		inCh: ch,
-	}
+	return w.nextWorker(ch)
 }
 
-func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *logutil.FuncLog) bool, order SortOrder, limit int) *FuncLogAPIWorker {
+func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *logutil.FuncLog) bool, order SortOrder, limit int64) *FuncLogAPIWorker {
 	ch := make(chan logutil.FuncLog, w.api.BufferSize)
+
+	if less == nil {
+		// sortしない
+		if limit <= 0 {
+			// sortしない & limitしない。
+			// つまり何もしない。
+			return w
+		} else {
+			// 先頭からlimit個だけ取得して返す。
+			w.api.group.Go(func() error {
+				log.Print("limit: start")
+				defer w.stopReader()
+				defer close(ch)
+				defer log.Println("limit: done")
+				var i int64
+				for {
+					select {
+					case evt, ok := <-w.inCh:
+						if ok {
+							ch <- evt
+							i++
+							if i >= limit {
+								return nil
+							}
+						} else {
+							return nil
+						}
+					case <-w.sortCtx.Done():
+						return nil
+					}
+				}
+				return nil
+			})
+			return w.nextWorker(ch)
+		}
+	}
 
 	var compare func(f1, f2 *logutil.FuncLog) bool
 	switch order {
@@ -630,19 +724,39 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *logutil.FuncLog) bool,
 	}
 
 	w.api.group.Go(func() error {
+		start := time.Now()
+		log.Print("sortAndLimit: start")
+		defer w.stopReader()
 		defer close(ch)
+		defer log.Print("sortAndLimit: done exec-time=", time.Now().Sub(start))
 		var items []logutil.FuncLog
 		itemCompare := func(i, j int) bool {
 			return compare(&items[i], &items[j])
 		}
-		if limit == 0 {
+		if limit <= 0 {
 			// read all items from input.
-			for evt := range w.inCh {
-				items = append(items, evt)
+		ReadAllLoop:
+			for {
+				select {
+				case evt, ok := <-w.inCh:
+					if ok {
+						items = append(items, evt)
+					} else {
+						break ReadAllLoop
+					}
+				case <-w.sortCtx.Done():
+					return nil
+				}
 			}
+			// sort all items.
 			sort.Slice(items, itemCompare)
+			// send all items to next worker.
 			for i := range items {
-				ch <- items[i]
+				select {
+				case ch <- items[i]:
+				case <-w.sortCtx.Done():
+					return nil
+				}
 			}
 		} else {
 			// read limited items from input.
@@ -660,7 +774,7 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *logutil.FuncLog) bool,
 
 			// fill the items slice from inCh.
 		FillItemsLoop:
-			for len(items) < limit {
+			for int64(len(items)) < limit {
 				select {
 				case evt, ok := <-w.inCh:
 					if ok {
@@ -668,7 +782,7 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *logutil.FuncLog) bool,
 					} else {
 						break FillItemsLoop
 					}
-				case <-w.api.ctx.Done():
+				case <-w.sortCtx.Done():
 					return nil
 				}
 			}
@@ -687,7 +801,7 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *logutil.FuncLog) bool,
 					} else {
 						break UpdateItemsLoop
 					}
-				case <-w.api.ctx.Done():
+				case <-w.sortCtx.Done():
 					return nil
 				}
 			}
@@ -695,24 +809,33 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *logutil.FuncLog) bool,
 			for h.Len() > 0 {
 				select {
 				case ch <- heap.Pop(&h).(logutil.FuncLog):
-				case <-w.api.ctx.Done():
+				case <-w.sortCtx.Done():
+					return nil
 				}
 			}
 		}
 		return nil
 	})
-	return &FuncLogAPIWorker{
-		api:  w.api,
-		inCh: ch,
-	}
+	return w.nextWorker(ch)
 }
 
 func (w *FuncLogAPIWorker) sendTo(enc Encoder) {
 	w.api.group.Go(func() error {
-		for evt := range w.inCh {
-			if err := enc.Encode(evt); err != nil {
-				w.api.Logger.Println(errors.Wrap(err, "failed to json.Encoder.Encode()"))
-				return err
+		log.Print("sendTo: start")
+		defer log.Print("sendTo: done")
+		for {
+			select {
+			case evt, ok := <-w.inCh:
+				if ok {
+					if err := enc.Encode(evt); err != nil {
+						w.api.Logger.Println(errors.Wrap(err, "failed to json.Encoder.Encode()"))
+						return err
+					}
+				} else {
+					return nil
+				}
+			case <-w.sendCtx.Done():
+				return nil
 			}
 		}
 		return nil
@@ -746,4 +869,17 @@ func parseTimestamp(value string, defaultValue logutil.Time) (logutil.Time, erro
 		return 0, err
 	}
 	return ts, nil
+}
+
+func parseOrder(order string, defaultOrder SortOrder) (SortOrder, error) {
+	switch order {
+	case "asc":
+		return AscendingSortOrder, nil
+	case "desc":
+		return DescendingSortOrder, nil
+	case "":
+		return defaultOrder, nil
+	default:
+		return 0, fmt.Errorf("invalid SortOrder: %s", order)
+	}
 }
