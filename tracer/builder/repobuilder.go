@@ -22,12 +22,8 @@ const (
 package runtime
 
 func GoID() int64 {
-	var goid int64
-	systemstack(func() {
-		gp := getg()
-		goid = gp.goid
-	})
-	return goid
+	gp := getg()
+	return gp.goid
 }
 `
 )
