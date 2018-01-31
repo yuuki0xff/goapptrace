@@ -378,7 +378,7 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 
 	parentCtx := context.Background()
 	worker := api.worker(parentCtx, logobj)
-	fw := worker.readFuncLog(minIdx, maxId, indexLen)
+	fw := worker.readFuncLog(minIdx, maxIdx, indexLen)
 	fw = fw.filterFuncLog(isFiltered)
 	fw = fw.sortAndLimit(func(f1, f2 *logutil.FuncLog) bool {
 		return f1.EndTime < f2.EndTime
