@@ -22,11 +22,14 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type SortOrder int
-
 const (
 	AscendingSortOrder SortOrder = iota
 	DescendingSortOrder
+
+	DoNotSort       SortKey = ""
+	SortByID        SortKey = "id"
+	SortByStartTime SortKey = "start-time"
+	SortByEndTime   SortKey = "end-time"
 )
 
 var (
@@ -300,7 +303,7 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 	var minTs logutil.Time
 	var maxTs logutil.Time
 	var limit int64
-	var sortKey string
+	var sortKey SortKey
 	var order SortOrder
 	var err error
 
@@ -339,7 +342,11 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid limit", http.StatusBadRequest)
 		return
 	}
-	sortKey = q.Get("sort")
+	sortKey, err = parseSortKey(q.Get("sort"), DoNotSort)
+	if err != nil {
+		http.Error(w, "invalid sort", http.StatusBadRequest)
+		return
+	}
 	order, err = parseOrder(q.Get("order"), AscendingSortOrder)
 	if err != nil {
 		http.Error(w, "invalid order", http.StatusBadRequest)
@@ -347,23 +354,22 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var sortFn func(f1, f2 *logutil.FuncLog) bool
-	switch sortKey {
-	case "id":
+	switch SortKey(sortKey) {
+	case SortByID:
 		sortFn = func(f1, f2 *logutil.FuncLog) bool {
 			return f1.ID < f2.ID
 		}
-	case "start-time":
+	case SortByStartTime:
 		sortFn = func(f1, f2 *logutil.FuncLog) bool {
 			return f1.StartTime < f2.StartTime
 		}
-	case "end-time":
+	case SortByEndTime:
 		sortFn = func(f1, f2 *logutil.FuncLog) bool {
 			return f1.EndTime < f2.EndTime
 		}
-	case "":
+	case DoNotSort:
 	default:
-		http.Error(w, "invalid sort", http.StatusBadRequest)
-		return
+		log.Panic("bug")
 	}
 
 	switch order {
@@ -883,6 +889,24 @@ func parseTimestamp(value string, defaultValue logutil.Time) (logutil.Time, erro
 		return 0, err
 	}
 	return ts, nil
+}
+
+func parseSortKey(key string, defaultKey SortKey) (SortKey, error) {
+	if key == "" {
+		return defaultKey, nil
+	}
+	switch key {
+	case string(DoNotSort):
+		fallthrough
+	case string(SortByID):
+		fallthrough
+	case string(SortByStartTime):
+		fallthrough
+	case string(SortByEndTime):
+		return SortKey(key), nil
+	default:
+		return SortKey(""), fmt.Errorf("invalid sort key: %s", key)
+	}
 }
 
 func parseOrder(order string, defaultOrder SortOrder) (SortOrder, error) {

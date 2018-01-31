@@ -22,6 +22,9 @@ type FuncCall = logutil.FuncLog
 type FuncInfo = logutil.FuncSymbol
 type FuncStatusInfo = logutil.FuncStatus
 
+type SortOrder int
+type SortKey string
+
 type SearchFuncCallParams struct {
 	Gid int64
 	Fid int64
@@ -30,6 +33,9 @@ type SearchFuncCallParams struct {
 	MaxId        int64
 	MinTimestamp int64
 	MaxTimestamp int64
+	Limit        int64
+	SortKey      SortKey
+	SortOrder    SortOrder
 }
 
 // ToParamMap converts this to url parameters map.
@@ -55,6 +61,15 @@ func (s SearchFuncCallParams) ToParamMap() map[string]string {
 	}
 	if s.MaxTimestamp != 0 {
 		m["max-timestamp"] = strconv.Itoa(int(s.MaxTimestamp))
+	}
+	if s.Limit != 0 {
+		m["limit"] = strconv.FormatInt(s.Limit, 10)
+	}
+	if s.SortKey != DoNotSort {
+		m["sort"] = string(s.SortKey)
+	}
+	if s.SortOrder != 0 {
+		m["order"] = strconv.FormatInt(int64(s.SortOrder), 10)
 	}
 	return m
 }
