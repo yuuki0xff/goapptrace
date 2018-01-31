@@ -96,8 +96,16 @@ func (v *LogRecordView) Update() {
 
 		// update contents
 		func() {
+			// TODO: リファクタする
+			fetchRecords := int64(v.Size().Y * 5)
+			tableRecords := v.Size().Y * 5
+
 			var ch chan restapi.FuncCall
-			ch, err = v.Root.Api.SearchFuncCalls(v.LogID, restapi.SearchFuncCallParams{})
+			ch, err = v.Root.Api.SearchFuncCalls(v.LogID, restapi.SearchFuncCallParams{
+				Limit:     fetchRecords,
+				SortKey:   restapi.SortByEndTime,
+				SortOrder: restapi.DescendingSortOrder,
+			})
 			if err != nil {
 				return
 			}
@@ -171,6 +179,8 @@ func (v *LogRecordView) Update() {
 			}
 
 			for _, fc := range records {
+			// TODO: リファクタする
+			for _, fc := range records[:tableRecords] {
 				currentFrame := fc.Frames[0]
 
 				fs := fsMap[currentFrame]

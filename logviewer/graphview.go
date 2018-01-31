@@ -73,8 +73,15 @@ func (v *GraphView) Update() {
 		})
 
 		func() {
+			// TODO: リファクタする
+			fetchRecords := int64(v.Size().X * 5)
+
 			var ch chan restapi.FuncCall
-			ch, err = v.Root.Api.SearchFuncCalls(v.LogID, restapi.SearchFuncCallParams{})
+			ch, err = v.Root.Api.SearchFuncCalls(v.LogID, restapi.SearchFuncCallParams{
+				Limit:     fetchRecords,
+				SortKey:   restapi.SortByEndTime,
+				SortOrder: restapi.DescendingSortOrder,
+			})
 			if err != nil {
 				return
 			}
