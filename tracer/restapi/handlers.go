@@ -361,11 +361,24 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// evtが除外されるべきレコードなら、trueを返す。
 	isFiltered := func(evt *logutil.FuncLog) bool {
 		if gid >= 0 && evt.GID != logutil.GID(gid) {
 			return true
 		}
 		if fid >= 0 && logobj.Symbols().FuncID(evt.Frames[0]) != logutil.FuncID(fid) {
+			return true
+		}
+		if minId >= 0 && evt.ID < logutil.FuncLogID(minId) {
+			return true
+		}
+		if maxId >= 0 && logutil.FuncLogID(maxId) < evt.ID {
+			return true
+		}
+		if minTs >= 0 && (evt.StartTime < minTs && evt.EndTime < minTs) {
+			return true
+		}
+		if maxTs >= 0 && maxTs < evt.StartTime {
 			return true
 		}
 		return false
