@@ -366,6 +366,19 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	switch order {
+	case AscendingSortOrder:
+		// 何もしない
+	case DescendingSortOrder:
+		// 降順にするために、大小を入れ替える。
+		oldSortFn := sortFn
+		sortFn = func(f1, f2 *logutil.FuncLog) bool {
+			return oldSortFn(f2, f1)
+		}
+	default:
+		log.Panic("bug")
+	}
+
 	indexLen := logobj.IndexLen()
 	minIdx := int64(0)     // inclusive
 	maxIdx := indexLen - 1 // inclusive
@@ -435,7 +448,7 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 	worker := api.worker(parentCtx, logobj)
 	fw := worker.readFuncLog(minIdx, maxIdx, indexLen)
 	fw = fw.filterFuncLog(isFiltered)
-	fw = fw.sortAndLimit(sortFn, order, limit)
+	fw = fw.sortAndLimit(sortFn, limit)
 	fw.sendTo(enc)
 
 	if err = worker.wait(); err != nil {
@@ -672,7 +685,7 @@ func (w *FuncLogAPIWorker) filterFuncLog(isFiltered func(evt *logutil.FuncLog) b
 	return w.nextWorker(ch)
 }
 
-func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *logutil.FuncLog) bool, order SortOrder, limit int64) *FuncLogAPIWorker {
+func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *logutil.FuncLog) bool, limit int64) *FuncLogAPIWorker {
 	ch := make(chan logutil.FuncLog, w.api.BufferSize)
 
 	if less == nil {
@@ -711,19 +724,6 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *logutil.FuncLog) bool,
 		}
 	}
 
-	var compare func(f1, f2 *logutil.FuncLog) bool
-	switch order {
-	case AscendingSortOrder:
-		compare = less
-	case DescendingSortOrder:
-		// 降順にするために、大小を入れ替える
-		compare = func(f1, f2 *logutil.FuncLog) bool {
-			return less(f2, f1)
-		}
-	default:
-		log.Panicf("unsupported sort order: %+v", order)
-	}
-
 	w.api.group.Go(func() error {
 		start := time.Now()
 		log.Print("sortAndLimit: start")
@@ -731,9 +731,18 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *logutil.FuncLog) bool,
 		defer close(ch)
 		defer log.Print("sortAndLimit: done exec-time=", time.Now().Sub(start))
 		var items []logutil.FuncLog
-		itemCompare := func(i, j int) bool {
-			return compare(&items[i], &items[j])
+
+		// sort関数用の比較関数。
+		sortComparator := func(i, j int) bool {
+			return less(&items[i], &items[j])
 		}
+		// heap sortをするための比較関数。
+		// heap内の値がより小さくなるようにするために、heapの先頭は最も大きな値が来るようにする。
+		// そのため、比較関数のi, jを入れ替えている。
+		heapComparator := func(j, i int) bool {
+			return less(&items[i], &items[j])
+		}
+
 		if limit <= 0 {
 			// read all items from input.
 		ReadAllLoop:
@@ -750,7 +759,7 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *logutil.FuncLog) bool,
 				}
 			}
 			// sort all items.
-			sort.Slice(items, itemCompare)
+			sort.Slice(items, sortComparator)
 			// send all items to next worker.
 			for i := range items {
 				select {
@@ -763,7 +772,7 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *logutil.FuncLog) bool,
 			// read limited items from input.
 			h := GenericHeap{
 				LenFn:  func() int { return len(items) },
-				LessFn: itemCompare,
+				LessFn: heapComparator,
 				SwapFn: func(i, j int) { items[i], items[j] = items[j], items[i] },
 				PushFn: func(x interface{}) { items = append(items, x.(logutil.FuncLog)) },
 				PopFn: func() interface{} {
@@ -795,8 +804,8 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *logutil.FuncLog) bool,
 				select {
 				case evt, ok := <-w.inCh:
 					if ok {
-						if compare(&items[0], &evt) {
-							// replace minimum (or maximum) item from other
+						if less(&evt, &items[0]) {
+							// replace a largest item with smaller item.
 							items[0] = evt
 							heap.Fix(&h, 0)
 						}
@@ -808,9 +817,10 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *logutil.FuncLog) bool,
 				}
 			}
 
-			for h.Len() > 0 {
+			sort.Slice(items, sortComparator)
+			for i := range items {
 				select {
-				case ch <- heap.Pop(&h).(logutil.FuncLog):
+				case ch <- items[i]:
 				case <-w.sortCtx.Done():
 					return nil
 				}
