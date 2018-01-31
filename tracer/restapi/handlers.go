@@ -578,6 +578,7 @@ func (w *APIWorker) readFuncLog(minIdx, maxIdx, indexLen int64) *FuncLogAPIWorke
 func (w *FuncLogAPIWorker) filterFuncLog(isFiltered func(evt *logutil.FuncLog) bool) *FuncLogAPIWorker {
 	ch := make(chan logutil.FuncLog, w.api.BufferSize)
 	w.api.group.Go(func() error {
+		defer close(ch)
 		for {
 			select {
 			case evt, ok := <-w.inCh:
@@ -616,6 +617,7 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *logutil.FuncLog) bool,
 	}
 
 	w.api.group.Go(func() error {
+		defer close(ch)
 		var items []logutil.FuncLog
 		itemCompare := func(i, j int) bool {
 			return compare(&items[i], &items[j])
