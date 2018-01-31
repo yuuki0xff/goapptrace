@@ -23,10 +23,11 @@ import (
 )
 
 const (
-	AscendingSortOrder SortOrder = iota
-	DescendingSortOrder
+	NoSortOrder         SortOrder = ""
+	AscendingSortOrder  SortOrder = "asc"
+	DescendingSortOrder SortOrder = "desc"
 
-	DoNotSort       SortKey = ""
+	NoSortKey       SortKey = ""
 	SortByID        SortKey = "id"
 	SortByStartTime SortKey = "start-time"
 	SortByEndTime   SortKey = "end-time"
@@ -342,7 +343,7 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid limit", http.StatusBadRequest)
 		return
 	}
-	sortKey, err = parseSortKey(q.Get("sort"), DoNotSort)
+	sortKey, err = parseSortKey(q.Get("sort"))
 	if err != nil {
 		http.Error(w, "invalid sort", http.StatusBadRequest)
 		return
@@ -367,7 +368,7 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 		sortFn = func(f1, f2 *logutil.FuncLog) bool {
 			return f1.EndTime < f2.EndTime
 		}
-	case DoNotSort:
+	case NoSortKey:
 	default:
 		log.Panic("bug")
 	}
@@ -891,12 +892,9 @@ func parseTimestamp(value string, defaultValue logutil.Time) (logutil.Time, erro
 	return ts, nil
 }
 
-func parseSortKey(key string, defaultKey SortKey) (SortKey, error) {
-	if key == "" {
-		return defaultKey, nil
-	}
+func parseSortKey(key string) (SortKey, error) {
 	switch key {
-	case string(DoNotSort):
+	case string(NoSortKey):
 		fallthrough
 	case string(SortByID):
 		fallthrough
@@ -911,13 +909,13 @@ func parseSortKey(key string, defaultKey SortKey) (SortKey, error) {
 
 func parseOrder(order string, defaultOrder SortOrder) (SortOrder, error) {
 	switch order {
-	case "asc":
-		return AscendingSortOrder, nil
-	case "desc":
-		return DescendingSortOrder, nil
-	case "":
+	case string(NoSortOrder):
 		return defaultOrder, nil
+	case string(AscendingSortOrder):
+		fallthrough
+	case string(DescendingSortOrder):
+		return SortOrder(order), nil
 	default:
-		return 0, fmt.Errorf("invalid SortOrder: %s", order)
+		return "", fmt.Errorf("invalid SortOrder: %s", order)
 	}
 }

@@ -22,7 +22,7 @@ type FuncCall = logutil.FuncLog
 type FuncInfo = logutil.FuncSymbol
 type FuncStatusInfo = logutil.FuncStatus
 
-type SortOrder int
+type SortOrder string
 type SortKey string
 
 type SearchFuncCallParams struct {
@@ -65,11 +65,11 @@ func (s SearchFuncCallParams) ToParamMap() map[string]string {
 	if s.Limit != 0 {
 		m["limit"] = strconv.FormatInt(s.Limit, 10)
 	}
-	if s.SortKey != DoNotSort {
+	if s.SortKey != NoSortKey {
 		m["sort"] = string(s.SortKey)
 	}
-	if s.SortOrder != 0 {
-		m["order"] = strconv.FormatInt(int64(s.SortOrder), 10)
+	if s.SortOrder != NoSortOrder {
+		m["order"] = string(s.SortOrder)
 	}
 	return m
 }
