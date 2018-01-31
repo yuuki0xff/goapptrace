@@ -1,9 +1,8 @@
 package main
 
 import (
-	"os"
-
 	"log"
+	"os"
 
 	"github.com/yuuki0xff/goapptrace/cmd"
 )
