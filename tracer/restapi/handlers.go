@@ -670,9 +670,11 @@ func (w *FuncLogAPIWorker) filterFuncLog(isFiltered func(evt *logutil.FuncLog) b
 		for {
 			select {
 			case evt, ok := <-w.inCh:
-				if ok {
-					if !isFiltered(&evt) {
-						ch <- evt
+				if ok && !isFiltered(&evt) {
+					select {
+					case ch <- evt:
+					case <-w.readCtx.Done():
+						return nil
 					}
 				} else {
 					return nil
