@@ -363,6 +363,7 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 	case "":
 	default:
 		http.Error(w, "invalid sort", http.StatusBadRequest)
+		return
 	}
 
 	indexLen := logobj.IndexLen()
