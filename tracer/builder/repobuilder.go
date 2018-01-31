@@ -21,6 +21,7 @@ const (
 	runtimePatch = `
 package runtime
 
+// GoID returns the Goroutine ID.
 func GoID() int64 {
 	gp := getg()
 	return gp.goid
