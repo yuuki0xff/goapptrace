@@ -766,9 +766,10 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *logutil.FuncLog) bool,
 				SwapFn: func(i, j int) { items[i], items[j] = items[j], items[i] },
 				PushFn: func(x interface{}) { items = append(items, x.(logutil.FuncLog)) },
 				PopFn: func() interface{} {
-					first := items[0]
-					items = items[1:]
-					return first
+					n := len(items)
+					last := items[n-1]
+					items = items[:n-1]
+					return last
 				},
 			}
 
