@@ -49,11 +49,11 @@ This command compiles specified files with logging codes, and execute them.
 Arguments are compatible with "go run". See "go run --help" to get more information about arguments.`,
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
 		fmt.Println("run called")
-		return runRun(conf, cmd.Flags(), cmd.OutOrStdout(), cmd.OutOrStderr(), args)
+		return runRun(conf, cmd.Flags(), os.Stdin, cmd.OutOrStdout(), cmd.OutOrStderr(), args)
 	}),
 }
 
-func runRun(conf *config.Config, flags *pflag.FlagSet, stdout, stderr io.Writer, targets []string) error {
+func runRun(conf *config.Config, flags *pflag.FlagSet, stdin io.Reader, stdout, stderr io.Writer, targets []string) error {
 	//cmd := exec.Command("echo", buildArgs(flags, targets)...)
 	//cmd.Stdout = stdout
 	//cmd.Run()
@@ -90,6 +90,7 @@ func runRun(conf *config.Config, flags *pflag.FlagSet, stdout, stderr io.Writer,
 
 	// ignore an error of "Subprocess launching with variable" because arguments are specified by the trusted user.
 	runCmd := exec.Command("go", runArgs(flags, newFiles, cmdArgs)...) // nolint: gas
+	runCmd.Stdin = stdin
 	runCmd.Stdout = stdout
 	runCmd.Stderr = stderr
 	// 実行用の環境変数を追加しなきゃ鳴らない
