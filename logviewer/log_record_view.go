@@ -98,7 +98,7 @@ func (v *LogRecordView) Update() {
 		func() {
 			// TODO: リファクタする
 			fetchRecords := int64(v.Size().Y * 5)
-			tableRecords := v.Size().Y * 5
+			maxTableRecords := v.Size().Y * 5
 
 			var ch chan restapi.FuncCall
 			ch, err = v.Root.Api.SearchFuncCalls(v.LogID, restapi.SearchFuncCallParams{
@@ -178,7 +178,6 @@ func (v *LogRecordView) Update() {
 				return
 			}
 
-			for _, fc := range records {
 			// TODO: リファクタする
 			n := len(records)
 			if maxTableRecords < n {
