@@ -77,7 +77,11 @@ func runBuild(conf *config.Config, flags *pflag.FlagSet, stdout, stderr io.Write
 		// ビルド対象のファイルパスを修正する。
 		newTargets = make([]string, len(targets))
 		for i := range targets {
-			newTargets[i] = path.Join(b.MainPkgDir(), path.Base(targets[i]))
+			dir, err := b.MainPkgDir(targets[i])
+			if err != nil {
+				return err
+			}
+			newTargets[i] = path.Join(dir, path.Base(targets[i]))
 		}
 	} else {
 		// import pathは変更不要。

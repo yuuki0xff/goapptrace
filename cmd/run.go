@@ -85,7 +85,11 @@ func runRun(conf *config.Config, flags *pflag.FlagSet, stdin io.Reader, stdout, 
 	// ビルド対象のファイルパスを修正する。
 	newFiles := make([]string, len(files))
 	for i := range files {
-		newFiles[i] = path.Join(b.MainPkgDir(), path.Base(files[i]))
+		dir, err := b.MainPkgDir(files[i])
+		if err != nil {
+			return err
+		}
+		newFiles[i] = path.Join(dir, path.Base(files[i]))
 	}
 
 	// ignore an error of "Subprocess launching with variable" because arguments are specified by the trusted user.

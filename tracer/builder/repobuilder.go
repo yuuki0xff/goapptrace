@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -30,10 +31,17 @@ func GoID() int64 {
 `
 )
 
+var (
+	ErrOutsideRoot = errors.New("file is outside the root directory")
+)
+
 // トレース用のコードを追加したレポジトリを構築する。
 // 編集後のコードは、Gorootとgopathで指定したディレクトリの下に出力される。
 // オリジナルのコードは改変しない。
 type RepoBuilder struct {
+	// 変更前のGOPATH。
+	// 絶対パスからimport pathに変換するために使用する。
+	OrigGopath string
 	// トレース用コード追加済みのstandard packagesの出力先
 	Goroot string
 	// トレース用コード追加済みのnon-standard packagesの出力先
@@ -106,13 +114,17 @@ func (b *RepoBuilder) EditFiles(gofiles []string) error {
 		}
 	}
 
-	mainpkg := b.MainPkgDir()
-	if err := os.MkdirAll(mainpkg, os.ModePerm); err != nil {
-		return err
-	}
 	for _, gofile := range gofiles {
+		mainpkg, err := b.MainPkgDir(gofile)
+		if err != nil {
+			return err
+		}
+		if err := os.MkdirAll(mainpkg, os.ModePerm); err != nil {
+			return err
+		}
+
 		outfile := path.Join(mainpkg, path.Base(gofile))
-		err := b.Editor.EditFile(gofile, outfile)
+		err = b.Editor.EditFile(gofile, outfile)
 		if err != nil {
 			return err
 		}
@@ -216,8 +228,20 @@ func (b *RepoBuilder) editPackage(pkg *build.Package) error {
 	return nil
 }
 
-func (b *RepoBuilder) MainPkgDir() string {
-	return path.Join(b.Gopath, "mainpkg")
+func (b *RepoBuilder) MainPkgDir(gofile string) (string, error) {
+	if b.OrigGopath != "" {
+		impPath, err := importPath(b.OrigGopath, gofile)
+		if err != nil {
+			if err != ErrOutsideRoot {
+				return "", err
+			}
+		} else {
+			// import pathが同じになるように、ファイルの配置先を変更。
+			// internal packageを使っている場合、main packageの場所次第ではコンパイルできなくなる問題を解消するための処置。
+			return path.Join(b.Gopath, impPath), nil
+		}
+	}
+	return path.Join(b.Gopath, "mainpkg"), nil
 }
 
 // 全てのファイルが".go"で終わるファイルなら、trueを返す
@@ -273,4 +297,22 @@ func copyPkg(pkg *build.Package, destDir string) error {
 		}
 	}
 	return nil
+}
+
+// rootを基点としたときの、fileのimport pathを返す。
+func importPath(root, file string) (string, error) {
+	ar, err := filepath.Abs(root)
+	if err != nil {
+		return "", err
+	}
+	af, err := filepath.Abs(file)
+	if err != nil {
+		return "", err
+	}
+
+	prefix := ar + string(os.PathSeparator)
+	if !strings.HasPrefix(af, prefix) {
+		return "", ErrOutsideRoot
+	}
+	return path.Dir(strings.TrimPrefix(af, prefix)), nil
 }

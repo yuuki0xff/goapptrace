@@ -144,8 +144,9 @@ func prepareRepo(tmpdir string, targets []string) (*builder.RepoBuilder, error) 
 	gopath := path.Join(tmpdir, "gopath")
 
 	b := &builder.RepoBuilder{
-		Goroot: goroot,
-		Gopath: gopath,
+		OrigGopath: os.Getenv("GOPATH"),
+		Goroot:     goroot,
+		Gopath:     gopath,
 		IgnorePkgs: map[string]bool{
 			"github.com/yuuki0xff/goapptrace/tracer/logger": true,
 		},
