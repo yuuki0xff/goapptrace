@@ -2,6 +2,7 @@ package logviewer
 
 import (
 	"context"
+	"fmt"
 	"image"
 	"log"
 	"sort"
@@ -73,7 +74,7 @@ func (v *GraphView) Update() {
 				v.status.SetText(ErrorText)
 			} else {
 				//v.wrap.SetWidget(v.table)
-				v.status.SetText("")
+				v.status.SetText(fmt.Sprintf("%dx%d", v.offsetX, v.offsetY))
 			}
 			lines := v.buildLines(v.graph.Size(), v.selectedFLID, &v.logStatus.Metadata.UI)
 			v.graph.SetLines(lines)
