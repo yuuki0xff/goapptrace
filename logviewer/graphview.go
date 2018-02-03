@@ -51,7 +51,7 @@ func newGraphView(logID string, root *Controller) *GraphView {
 		status: tui.NewStatusBar(LoadingText),
 		graph:  newGraphWidget(),
 	}
-	v.status.SetPermanentText("Function Call Graph")
+	v.status.SetPermanentText("Function Call History")
 
 	fc := &tui.SimpleFocusChain{}
 	fc.Set(v)
