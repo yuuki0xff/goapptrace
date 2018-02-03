@@ -247,7 +247,7 @@ func (v *GraphView) buildLines(size image.Point, selectedFuncCall logutil.FuncLo
 			return total + 2
 		}
 		for i := range fcList {
-			log.Printf("fcList[%d]: %+v", i, fcList[i])
+			//log.Printf("fcList[%d]: %+v", i, fcList[i])
 			if fcLen[i] == 0 {
 				fcLen[i] = length(fcList[i])
 			}
@@ -277,7 +277,7 @@ func (v *GraphView) buildLines(size image.Point, selectedFuncCall logutil.FuncLo
 
 		// GoroutineごとのY座標を決定する
 		for idx, gid := range gidList {
-			log.Printf("GID=%d idx=%d", gid, idx)
+			//log.Printf("GID=%d idx=%d", gid, idx)
 			gidY[gid] = idx + v.offsetY
 		}
 	}()
@@ -324,7 +324,7 @@ func (v *GraphView) buildLines(size image.Point, selectedFuncCall logutil.FuncLo
 			EndDeco:   LineTerminationNormal,
 			StyleName: styleName,
 		}
-		log.Printf("lines[%d]: %+v", len(lines), line)
+		//log.Printf("lines[%d]: %+v", len(lines), line)
 		lines = append(lines, line)
 	}
 	return lines
