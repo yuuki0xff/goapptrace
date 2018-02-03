@@ -41,6 +41,7 @@ func (c Client) Servers() ([]ServerStatus, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to GET /servers")
 	}
+	defer r.Close() // nolint: errcheck
 	if !r.Ok {
 		return nil, errors.Errorf("GET /servers returned unexpected status code: %d", r.StatusCode)
 	}
@@ -60,6 +61,7 @@ func (c Client) Logs() ([]LogStatus, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to GET /logs")
 	}
+	defer r.Close() // nolint: errcheck
 	if r.StatusCode != http.StatusOK {
 		return nil, errors.Errorf("GET /logs returned unexpected status code. expected 200, but %d", r.StatusCode)
 	}
@@ -74,12 +76,13 @@ func (c Client) Logs() ([]LogStatus, error) {
 // RemoveLog removes the specified log
 func (c Client) RemoveLog(id string) error {
 	url := c.url("/log", id)
-	res, err := c.s.Delete(url, nil)
+	r, err := c.s.Delete(url, nil)
 	if err != nil {
 		return errors.Wrapf(err, "failed to DELETE %s", url)
 	}
-	if res.StatusCode != http.StatusNoContent {
-		return errors.Errorf("DELETE %s returned unexpected status code. expected 200, but %d", url, res.StatusCode)
+	defer r.Close() // nolint: errcheck
+	if r.StatusCode != http.StatusNoContent {
+		return errors.Errorf("DELETE %s returned unexpected status code. expected 200, but %d", url, r.StatusCode)
 	}
 	return nil
 }
@@ -93,6 +96,7 @@ func (c Client) LogStatus(id string) (res LogStatus, err error) {
 		err = errors.Wrapf(err, "failed to GET %s", url)
 		return
 	}
+	defer r.Close() // nolint: errcheck
 	if r.StatusCode != http.StatusOK {
 		err = errors.Wrapf(err, "GET %s returned unexpected status code. expected 200, but %d", url, r.StatusCode)
 		return
@@ -121,6 +125,7 @@ func (c Client) UpdateLogStatus(id string, status LogStatus) (newStatus LogStatu
 		err = errors.Wrapf(err, "failed to PUT %s", url)
 		return
 	}
+	defer r.Close() // nolint: errcheck
 	switch r.StatusCode {
 	case http.StatusOK:
 		err = r.JSON(&newStatus)
@@ -145,12 +150,14 @@ func (c Client) SearchFuncCalls(id string, so SearchFuncCallParams) (chan FuncCa
 		return nil, errors.Wrapf(err, "failed to GET %s", url)
 	}
 	if r.StatusCode != http.StatusOK {
+		r.Close() // nolint: errcheck
 		return nil, errors.Wrapf(err, "GET %s returned unexpected status code. expected 200, but %d", url, r.StatusCode)
 	}
 
 	dec := json.NewDecoder(r)
 	ch := make(chan FuncCall, 1<<20)
 	go func() {
+		defer r.Close() // nolint: errcheck
 		defer close(ch)
 		for {
 			var fc FuncCall
@@ -175,6 +182,7 @@ func (c Client) Func(logID, funcID string) (f FuncInfo, err error) {
 		err = errors.Wrapf(err, "failed to GET %s", url)
 		return
 	}
+	defer r.Close() // nolint: errcheck
 	if r.StatusCode != http.StatusOK {
 		err = errors.Wrapf(err, "GET %s returned unexpected status code. expected 200, but %d", url, r.StatusCode)
 		return
@@ -192,6 +200,7 @@ func (c Client) FuncStatus(logID, funcStatusID string) (f FuncStatusInfo, err er
 		err = errors.Wrapf(err, "failed to GET %s", url)
 		return
 	}
+	defer r.Close() // nolint: errcheck
 	if r.StatusCode != http.StatusOK {
 		err = errors.Wrapf(err, "GET %s returned unexpected status code. expected 200, but %d", url, r.StatusCode)
 		return
