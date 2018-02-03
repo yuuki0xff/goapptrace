@@ -48,7 +48,9 @@ type RepoBuilder struct {
 	Gopath string
 
 	// これらのパッケージと、これらが依存しているパッケージには、トレース用のコードを追加しない
-	IgnorePkgs    map[string]bool
+	IgnorePkgs map[string]bool
+	// これらのファイルに書かれた関数は、トレース対象にしない
+	IgnoreFiles   map[string]bool
 	IgnoreStdPkgs bool
 
 	Editor     srceditor.CodeEditor
@@ -220,6 +222,13 @@ func (b *RepoBuilder) editPackage(pkg *build.Package) error {
 	for _, gofile := range pkg.GoFiles {
 		srcfile := path.Join(pkg.Dir, gofile)
 		destfile := path.Join(dir, gofile)
+
+		if b.IgnoreFiles[srcfile] {
+			log.Printf("copying %s => %s", srcfile, destfile)
+			shutil.CopyFile(srcfile, destfile, false)
+			continue
+		}
+
 		log.Printf("editing %s => %s", srcfile, destfile)
 		if err := b.Editor.EditFile(srcfile, destfile); err != nil {
 			return err

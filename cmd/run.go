@@ -76,7 +76,7 @@ func runRun(conf *config.Config, flags *pflag.FlagSet, stdin io.Reader, stdout, 
 	log.Println("tmpdir:", tmpdir)
 	//defer os.RemoveAll(tmpdir) // nolint: errcheck
 
-	b, err := prepareRepo(tmpdir, files)
+	b, err := prepareRepo(tmpdir, files, conf)
 	if err != nil {
 		fmt.Fprintf(stderr, err.Error()+"\n")
 		log.Fatal("Fail")

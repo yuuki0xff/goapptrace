@@ -62,7 +62,7 @@ func runBuild(conf *config.Config, flags *pflag.FlagSet, stdout, stderr io.Write
 	log.Println("tmpdir:", tmpdir)
 	//defer os.RemoveAll(tmpdir) // nolint: errcheck
 
-	b, err := prepareRepo(tmpdir, targets)
+	b, err := prepareRepo(tmpdir, targets, conf)
 	if err != nil {
 		fmt.Fprintf(stderr, err.Error()+"\n")
 		log.Fatal("Fail")

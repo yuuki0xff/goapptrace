@@ -139,9 +139,21 @@ func toShortPrefixFlag(flagset *pflag.FlagSet, flags map[string]bool) []string {
 	return args
 }
 
-func prepareRepo(tmpdir string, targets []string) (*builder.RepoBuilder, error) {
+func prepareRepo(tmpdir string, targets []string, conf *config.Config) (*builder.RepoBuilder, error) {
 	goroot := path.Join(tmpdir, "goroot")
 	gopath := path.Join(tmpdir, "gopath")
+
+	ignoreFiles := map[string]bool{}
+	conf.Targets.Walk(nil, func(t *config.Target) error {
+		for _, f := range t.Files {
+			if trace, ok := t.Trace[f]; ok {
+				if !trace.IsTracing {
+					ignoreFiles[f] = true
+				}
+			}
+		}
+		return nil
+	})
 
 	b := &builder.RepoBuilder{
 		OrigGopath: os.Getenv("GOPATH"),
@@ -150,6 +162,7 @@ func prepareRepo(tmpdir string, targets []string) (*builder.RepoBuilder, error) 
 		IgnorePkgs: map[string]bool{
 			"github.com/yuuki0xff/goapptrace/tracer/logger": true,
 		},
+		IgnoreFiles:   ignoreFiles,
 		IgnoreStdPkgs: true,
 	}
 	if err := b.Init(); err != nil {
