@@ -90,7 +90,7 @@ func (v *GraphView) updateCache() error {
 		var ch chan restapi.FuncCall
 		ch, err = v.Root.Api.SearchFuncCalls(v.LogID, restapi.SearchFuncCallParams{
 			//Limit:     fetchRecords,
-			SortKey:   restapi.SortByEndTime,
+			SortKey:   restapi.SortByID,
 			SortOrder: restapi.DescendingSortOrder,
 		})
 		if err != nil {
