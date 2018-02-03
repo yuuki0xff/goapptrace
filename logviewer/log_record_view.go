@@ -216,5 +216,9 @@ func (v *LogRecordView) newTable() *headerTable {
 		tui.NewLabel("Module.Func:Line"),
 	)
 	t.OnItemActivated(v.onSelectedFuncCallRecord)
+	t.SetColumnStretch(0, 5)
+	t.SetColumnStretch(1, 3)
+	t.SetColumnStretch(2, 1)
+	t.SetColumnStretch(3, 20)
 	return t
 }
