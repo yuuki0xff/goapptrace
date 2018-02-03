@@ -139,6 +139,14 @@ func (v *GraphView) updateCache() error {
 	return err
 }
 
+func (v *GraphView) scrollSpeed() image.Point {
+	speed := v.Size()
+	// 一回のスクロールで、画面の5分の1くらいスクロールされる。
+	speed.X /= 5
+	speed.Y /= 5
+	return speed
+}
+
 func (v *GraphView) SetKeybindings() {
 	// TODO: スクロール処理を高速化する。
 	//       現在は、サーバからのログ取得からレンダリングまでの全ての工程をスクロールのたびに行っている。
@@ -147,25 +155,25 @@ func (v *GraphView) SetKeybindings() {
 		v.Root.setView(newShowLogView(v.LogID, v.Root))
 	}
 	up := func() {
-		v.offsetY++
+		v.offsetY += v.scrollSpeed().Y
 		if v.offsetY > 0 {
 			v.offsetY = 0
 		}
 		go v.Update()
 	}
 	right := func() {
-		v.offsetX--
+		v.offsetX -= v.scrollSpeed().X
 		if v.offsetX < 0 {
 			v.offsetX = 0
 		}
 		go v.Update()
 	}
 	down := func() {
-		v.offsetY--
+		v.offsetY -= v.scrollSpeed().Y
 		go v.Update()
 	}
 	left := func() {
-		v.offsetX++
+		v.offsetX += v.scrollSpeed().X
 		go v.Update()
 	}
 
