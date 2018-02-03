@@ -317,6 +317,9 @@ func (v *GraphView) withFuncIDs(in chan restapi.FuncCall, out chan funcCallWithF
 
 type funcCallWithFuncIDs struct {
 	restapi.FuncCall
+	// 各フレームに対応するlogutil.FuncIDのリスト。
+	// FuncStatusIDから変換するオーバーヘッドが大きいため、ここにキャッシュしておく。
+	// TODO: FuncStatusID -> FuncIDをする共有キャッシュを作る
 	funcs []logutil.FuncID
 }
 
