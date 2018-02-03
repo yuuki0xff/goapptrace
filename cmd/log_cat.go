@@ -64,7 +64,11 @@ func runLogCat(conf *config.Config, stderr io.Writer, logID string, logw LogWrit
 		return err
 	}
 
-	ch, err := api.SearchFuncCalls(logID, restapi.SearchFuncCallParams{})
+	ch, err := api.SearchFuncCalls(logID, restapi.SearchFuncCallParams{
+		SortKey:   restapi.SortByStartTime,
+		SortOrder: restapi.AscendingSortOrder,
+		//Limit:     1000,
+	})
 	if err != nil {
 		return err
 	}
