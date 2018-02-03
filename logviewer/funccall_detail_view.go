@@ -144,5 +144,8 @@ func (v *FuncCallDetailView) newWidgets() (funcInfoTable *headerTable, framesTab
 
 	funcInfoTable.OnItemActivated(v.onSelectedFilter)
 	framesTable.OnItemActivated(v.onSelectedFrame)
+	framesTable.SetColumnStretch(0, 10)
+	framesTable.SetColumnStretch(1, 1)
+	framesTable.SetColumnStretch(2, 3)
 	return
 }
