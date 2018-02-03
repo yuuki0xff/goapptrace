@@ -32,6 +32,13 @@ type GraphView struct {
 	// Y軸方向のスクロール量
 	offsetY int
 
+	// FuncCallのリスト。
+	// スクロールのたびに更新すると重たいので、キャッシュする。
+	fcList []funcCallWithFuncIDs
+	// 表示領域を確保しておくべきgoroutineの集合。
+	gidSet    map[logutil.GID]bool
+	logStatus restapi.LogStatus
+
 	// 現在選択されている状態のFuncCallイベントのID
 	selectedFLID logutil.FuncLogID
 }
@@ -60,8 +67,7 @@ func (v *GraphView) Update() {
 
 	go v.updateGroup.Do("update", func() (interface{}, error) { // nolint: errcheck
 		var err error
-		var lines []Line
-		defer v.Root.UI.Update(func() {
+		v.Root.UI.Update(func() {
 			if err != nil {
 				//v.wrap.SetWidget(newErrorMsg(err))
 				v.status.SetText(ErrorText)
@@ -69,34 +75,69 @@ func (v *GraphView) Update() {
 				//v.wrap.SetWidget(v.table)
 				v.status.SetText("")
 			}
+			lines := v.buildLines(v.graph.Size(), v.selectedFLID, &v.logStatus.Metadata.UI)
 			v.graph.SetLines(lines)
 		})
-
-		func() {
-			// TODO: リファクタする
-			fetchRecords := int64(v.Size().X * 5)
-
-			var ch chan restapi.FuncCall
-			ch, err = v.Root.Api.SearchFuncCalls(v.LogID, restapi.SearchFuncCallParams{
-				Limit:     fetchRecords,
-				SortKey:   restapi.SortByEndTime,
-				SortOrder: restapi.DescendingSortOrder,
-			})
-			if err != nil {
-				return
-			}
-
-			var ls restapi.LogStatus
-			ls, err = v.Root.Api.LogStatus(v.LogID)
-			if err != nil {
-				return
-			}
-
-			lines = v.buildLines(ch, v.graph.Size(), v.selectedFLID, &ls.Metadata.UI)
-		}()
 		return nil, nil
 	})
 }
+
+// fcListおよびgidSetを更新する。
+func (v *GraphView) updateCache() error {
+	// TODO: ctxに対応する
+	_, err, _ := v.updateGroup.Do("updateCache", func() (_ interface{}, err error) {
+		var ch chan restapi.FuncCall
+		ch, err = v.Root.Api.SearchFuncCalls(v.LogID, restapi.SearchFuncCallParams{
+			//Limit:     fetchRecords,
+			SortKey:   restapi.SortByEndTime,
+			SortOrder: restapi.DescendingSortOrder,
+		})
+		if err != nil {
+			return
+		}
+
+		ch2 := make(chan funcCallWithFuncIDs, 10000)
+		go func() {
+			// TODO: 内部でAPI呼び出しを伴う遅い関数。必要に応じて並列度を上げる。
+			v.withFuncIDs(ch, ch2)
+			close(ch2)
+		}()
+
+		var conf restapi.LogStatus
+		conf, err = v.Root.Api.LogStatus(v.LogID)
+		if err != nil {
+			return
+		}
+
+		// 関数呼び出しのログの一覧
+		fcList := make([]funcCallWithFuncIDs, 0, 10000)
+		// 存在するGIDの集合
+		gidSet := make(map[logutil.GID]bool, 1000)
+		for item := range ch2 {
+			// マスクされているイベントを削除する
+			if item.isMasked(&conf.Metadata.UI) {
+				continue
+			}
+
+			fcList = append(fcList, item)
+			gidSet[item.GID] = true
+		}
+
+		// TODO: 不要な再描画を省く
+		// 排他制御を簡素化するためにUI.Update()を使用している。
+		// なぜなら、UIのレンダリングはシングルスレッドで行われるため。
+		v.Root.UI.Update(func() {
+			v.fcList = fcList
+			v.gidSet = gidSet
+			v.logStatus = conf
+		})
+		// キャッシュを更新したので、画面に反映
+		v.Update()
+		return nil, nil
+	})
+	return err
+}
+
 func (v *GraphView) SetKeybindings() {
 	// TODO: スクロール処理を高速化する。
 	//       現在は、サーバからのログ取得からレンダリングまでの全ての工程をスクロールのたびに行っている。
@@ -141,31 +182,19 @@ func (v *GraphView) FocusChain() tui.FocusChain {
 	return v.fc
 }
 func (v *GraphView) Start(ctx context.Context) {
-	startAutoUpdateWorker(&v.running, ctx, v.Update)
+	update := func() {
+		if err := v.updateCache(); err != nil {
+			log.Println(err)
+		}
+	}
+	go update()
+	startAutoUpdateWorker(&v.running, ctx, update)
 }
 
 // buildLinesは、graphを構成する線分を構築して返す。
-func (v *GraphView) buildLines(ch chan restapi.FuncCall, size image.Point, selectedFuncCall logutil.FuncLogID, config *storage.UIConfig) (lines []Line) {
-	ch2 := make(chan funcCallWithFuncIDs, 10000)
-	go func() {
-		// TODO: 内部でAPI呼び出しを伴う遅い関数。必要に応じて並列度を上げる。
-		v.withFuncIDs(ch, ch2)
-		close(ch2)
-	}()
-
-	// 関数呼び出しのログの一覧
-	fcList := make([]funcCallWithFuncIDs, 0, 10000)
-	// 存在するGIDの集合
-	gidSet := make(map[logutil.GID]bool, 1000)
-	for item := range ch2 {
-		// マスクされているイベントを削除する
-		if item.isMasked(config) {
-			continue
-		}
-
-		fcList = append(fcList, item)
-		gidSet[item.GID] = true
-	}
+func (v *GraphView) buildLines(size image.Point, selectedFuncCall logutil.FuncLogID, config *storage.UIConfig) (lines []Line) {
+	fcList := v.fcList
+	gidSet := v.gidSet
 
 	var wg sync.WaitGroup
 	wg.Add(2)
