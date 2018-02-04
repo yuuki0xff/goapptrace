@@ -4,18 +4,15 @@ SHELL=/bin/bash
 all: build
 
 build-deps:
-	cd static && $(MAKE) build-deps
 	go get -u golang.org/x/tools/cmd/goimports
 	go get -u github.com/alecthomas/gometalinter
 	gometalinter -u
 	go get -t -u ./...
 
 build:
-	cd static && $(MAKE) build
 	go build
 
 build-debug:
-	cd static && $(MAKE) build
 	# Turn off optimization
 	# See https://gist.github.com/tetsuok/3025333
 	go build -gcflags '-N -l'
@@ -43,7 +40,6 @@ test: check-formatted
 release: test build
 	git checkout master
 	git merge --no-ff --no-edit develop
-	git add --force static/*.js static/*.css
 	version=$$(grep VERSION info/info.go |sed 's/.*"\(.*\)".*/\1/') && \
 		git commit -m "Release v$${version}" && \
 		git tag -s "v$${version}" -m "Relase v$${version}"

@@ -1,9 +1,0 @@
-{
-  "devDependencies": {
-    "@types/angular": "1.x",
-    "@types/jquery": "3.x",
-    "typescript": "2.x",
-    "ng-content-editable": "*",
-    "svg.js": "2.6.3"
-  }
-}
