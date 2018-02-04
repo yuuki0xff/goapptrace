@@ -1,55 +1,81 @@
-# goapptrace - function call tracer for golang
+# goapptrace
+Goapptrace is a function call tracer for golang.
+
+## Currently State
+The goapptrace has not reached a stable release yet.
+So Interfaces and data formats may be changed without notice.
 
 ## Installation
 ```bash
-$ go get github.com/yuuki0xff/goaptrace
+$ go get -u github.com/yuuki0xff/goaptrace
 ```
 
 ## Usage
+### 1. Start goapptrace server
 ```bash
-$ goapptrace proc run /path/to/project/dir
-$ goapptrace log show
+$ goapptrace server run &
 ```
 
+### 2. Start application with goapptracer
+If target application can be run with "go run" command, we recommnd using "goapptrace run" command.
+```bash
+$ goapptrace run -- ./foo.go
+```
+
+### 3. Show logs
+You can see logs with TUI (Text-based User Interface).
+```bash
+$ goapptrace tui
+```
+
+In addition to TUI, CLI commands are available.
+```bash
+$ goapptrace log ls
+$ goapptrace log cat "$LOG_ID"
+```
+Please see "goapptrace --help" for more infomation about available commands.
+
 ## List of Subcommands
+TODO: update command lists
 ```text
-target ls                         - show tracing targets
-target add [name] [dirs/files]    - add tracing targets. this targets will be added tracing code
-target remove [name] [dirs/files] - remove from tracing targets
-target set-build [name] [cmds...] - set the custom build processes instead of 'go build'
+build - Compile packages using the "go build" command
+run   - Compile and run the Go application using the "go run" command
 
-trace on [name]     - insert tracing codes to targets
-trace off [name]    - remove tracing codes from targets
-trace status [name] - show status of tracer
-trace start [name]  - start tracing of running processes. it must be added tracing codes before processes started
-trace stop [name]   - stop tracing of running processes
+log ls        - Print log IDs
+log cat [id]  - Print logs
 
-proc build [name] - build with tracing codes
-proc run [name]   - start processes, and start tracing
+----- Advanced commands -----
 
-log ls [name]   - show log names and histories
-log show [name] - show logs on web browser
+target ls                         - Show tracing targets
+target add [name] [dirs/files]    - Add tracing targets. This targets will be added tracing code
+target remove [name] [dirs/files] - Remove from tracing targets
+target set-build [name] [cmds...] - Set the custom build processes instead of 'go build'
+target set-run [name] [cmd...]    - Set the custom command for start the application instead of './exe'
+
+trace on [name]     - Insert tracing codes to targets
+trace off [name]    - Remove tracing codes from targets
+trace status [name] - Show status of tracer
+trace start [name]  - Start tracing of running processes. It must be added tracing codes before processes started
+trace stop [name]   - Stop tracing of running processes
+
+proc build [name] - Start a command that defined by "goapptrace target set-build"
+proc run [name]   - Start a command that defined by "goapptrace target set-run"
+
 ```
 
 ## TODO
-* Add unittests.
-* Bundle the html/css/js/font files into a executable file.
+* Reduce traffic between tracee and server.
+* Reduce memory usage.
+* Collect more information from runtime.ReadTrace().
+* Add "targets" API to API spec.
+* Implement TUI completely.
+* Implement CLI completely.
+* Create tests for tracer, builder and CLI commands.
 * Create documents.
+* Release a stable version.
+* Improve performance.
 * Enable linters that are currently disabled.
-* Migrate from Angular v1.6 to Angular v4.x.
-* Improve UX.
 
 ## Copyright and license
 These codes are written by yuuki \<https://github.com/yuuki0xff\>.
 Codes released under the MIT license.  
-
-Licenses of dependent packages are listed below:
-
-* [Bulma](http://bulma.io/) : MIT
-* [Font Awesome](http://fontawesome.io/) : SIL OFL 1.1 (font) and MIT License (CSS)
-* [jQuery](https://jquery.org/) : MIT
-* [TypeScript](https://www.typescriptlang.org/) : Apache 2.0
-* [svg.js](https://svgdotjs.github.io/) : MIT
-* [ng-content-editable](https://github.com/Vizir/ng-contenteditable) : MIT
-
-<!-- TODO: Add dependencies golang packages into this list. -->
