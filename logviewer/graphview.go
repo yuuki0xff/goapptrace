@@ -205,6 +205,13 @@ func (v *GraphView) buildLines(size image.Point, selectedFuncCall logutil.FuncLo
 	fcList := v.fcList
 	gidSet := v.gidSet
 
+	// TODO: 活動していないgoroutineも表示する。goroutineが生きているのか、死んでいるのかを把握できない。
+
+	// goroutineごとの、最も最初に活動のあった時刻に相当するX座標。
+	// 関数呼び出し間のギャップ、つまりgoroutineが何も活動していない？と思われる区間を埋めるための線を描画するために使用する。
+	firstXSet := make(map[logutil.GID]int, len(gidSet))
+	lastXSet := make(map[logutil.GID]int, len(gidSet))
+
 	var wg sync.WaitGroup
 	wg.Add(2)
 
@@ -260,6 +267,24 @@ func (v *GraphView) buildLines(size image.Point, selectedFuncCall logutil.FuncLo
 			fcX[i] = left - fcLen[i] + v.offsetX
 			left--
 		}
+
+		// 関数呼び出しのギャップを埋める線のX座標を計算する。
+		for i := range fcList {
+			gid := fcList[i].GID
+			// firstXSetには、fcXのgoroutineごとの最小値を設定する。
+			if _, ok := firstXSet[gid]; !ok {
+				firstXSet[gid] = fcX[i]
+			} else if firstXSet[gid] > fcX[i] {
+				firstXSet[gid] = fcX[i]
+			}
+			// lastXSetには、fcXのgoroutineごとの最大値を設定する。
+			last := fcX[i] + fcLen[i]
+			if _, ok := lastXSet[gid]; !ok {
+				lastXSet[gid] = fcX[i]
+			} else if lastXSet[gid] < last {
+				lastXSet[gid] = last
+			}
+		}
 	}()
 
 	// Y座標を決める
@@ -282,8 +307,29 @@ func (v *GraphView) buildLines(size image.Point, selectedFuncCall logutil.FuncLo
 		}
 	}()
 
-	lines = make([]Line, 0, len(fcList))
+	lines = make([]Line, 0, len(fcList)+len(gidSet))
 	wg.Wait()
+
+	// 関数呼び出し間のギャップを埋めるための線を追加。
+	for gid := range gidY {
+		length := lastXSet[gid] - firstXSet[gid]
+		if length < 0 {
+			log.Panic("negative length", lastXSet[gid], firstXSet[gid])
+		}
+		line := Line{
+			Start: image.Point{
+				X: firstXSet[gid],
+				Y: gidY[gid],
+			},
+			Length:    length,
+			Type:      HorizontalLine,
+			StartDeco: LineTerminationNone,
+			EndDeco:   LineTerminationNone,
+			StyleName: "line.gap",
+		}
+		lines = append(lines, line)
+	}
+
 	for i, fc := range fcList {
 		if gidY[fc.GID] < 0 || gidY[fc.GID] >= size.Y {
 			// 描画するのは水平線であるため、描画領域外の上下にある線は、絶対に描画されることはない。
