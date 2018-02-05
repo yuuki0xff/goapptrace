@@ -485,6 +485,7 @@ func (api APIv0) goroutineSearch(w http.ResponseWriter, r *http.Request) {
 	// read all records in the search range.
 	ch := make(chan logutil.Goroutine, 1<<20) // buffer size is 1M records
 	go func() {
+		defer close(ch)
 		err = logobj.WalkIndexRecord(func(i int64, ir storage.IndexRecord) error {
 			if (minTs == -1 || minTs <= ir.Timestamp) && (maxTs == -1 || ir.Timestamp <= maxTs) {
 				return logobj.WalkGoroutine(i, func(g logutil.Goroutine) error {
