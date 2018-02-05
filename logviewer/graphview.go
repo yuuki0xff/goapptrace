@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"image"
 	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"sort"
 	"strconv"
 	"sync"
@@ -13,7 +15,9 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
 	"github.com/yuuki0xff/tui-go"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/singleflight"
+	"golang.org/x/tools/container/intsets"
 )
 
 type GraphView struct {
@@ -39,6 +43,8 @@ type GraphView struct {
 	// 表示領域を確保しておくべきgoroutineの集合。
 	gidSet    map[logutil.GID]bool
 	logStatus restapi.LogStatus
+	// Goroutineの状態の一覧
+	gMap map[logutil.GID]restapi.Goroutine
 
 	// 現在選択されている状態のFuncCallイベントのID
 	selectedFLID logutil.FuncLogID
@@ -87,41 +93,24 @@ func (v *GraphView) Update() {
 func (v *GraphView) updateCache() error {
 	// TODO: ctxに対応する
 	_, err, _ := v.updateGroup.Do("updateCache", func() (_ interface{}, err error) {
-		var ch chan restapi.FuncCall
-		ch, err = v.Root.Api.SearchFuncCalls(v.LogID, restapi.SearchFuncCallParams{
-			//Limit:     fetchRecords,
-			SortKey:   restapi.SortByID,
-			SortOrder: restapi.DescendingSortOrder,
-		})
-		if err != nil {
-			return
-		}
-
-		ch2 := make(chan funcCallWithFuncIDs, 10000)
-		go func() {
-			// TODO: 内部でAPI呼び出しを伴う遅い関数。必要に応じて並列度を上げる。
-			v.withFuncIDs(ch, ch2)
-			close(ch2)
-		}()
-
+		var fcList []funcCallWithFuncIDs
+		var gidSet map[logutil.GID]bool
 		var conf restapi.LogStatus
-		conf, err = v.Root.Api.LogStatus(v.LogID)
-		if err != nil {
-			return
-		}
+		var gm map[logutil.GID]restapi.Goroutine
 
-		// 関数呼び出しのログの一覧
-		fcList := make([]funcCallWithFuncIDs, 0, 10000)
-		// 存在するGIDの集合
-		gidSet := make(map[logutil.GID]bool, 1000)
-		for item := range ch2 {
-			// マスクされているイベントを削除する
-			if item.isMasked(&conf.Metadata.UI) {
-				continue
-			}
-
-			fcList = append(fcList, item)
-			gidSet[item.GID] = true
+		var eg errgroup.Group
+		eg.Go(func() error {
+			var err error
+			fcList, gidSet, conf, err = v.getFCLogs()
+			return err
+		})
+		eg.Go(func() error {
+			var err error
+			gm, err = v.getGoroutines()
+			return err
+		})
+		if err := eg.Wait(); err != nil {
+			return nil, err
 		}
 
 		// TODO: 不要な再描画を省く
@@ -131,12 +120,78 @@ func (v *GraphView) updateCache() error {
 			v.fcList = fcList
 			v.gidSet = gidSet
 			v.logStatus = conf
+			v.gMap = gm
 		})
 		// キャッシュを更新したので、画面に反映
 		v.Update()
 		return nil, nil
 	})
 	return err
+}
+
+// getFCLogs returns latest function call logs.
+func (v *GraphView) getFCLogs() ([]funcCallWithFuncIDs, map[logutil.GID]bool, restapi.LogStatus, error) {
+	ch2 := make(chan funcCallWithFuncIDs, 10000)
+	var conf restapi.LogStatus
+
+	var eg errgroup.Group
+	eg.Go(func() error {
+		ch, err := v.Root.Api.SearchFuncCalls(v.LogID, restapi.SearchFuncCallParams{
+			//Limit:     fetchRecords,
+			SortKey:   restapi.SortByID,
+			SortOrder: restapi.DescendingSortOrder,
+		})
+		if err != nil {
+			return err
+		}
+
+		go func() {
+			defer close(ch2)
+			// TODO: 内部でAPI呼び出しを伴う遅い関数。必要に応じて並列度を上げる。
+			v.withFuncIDs(ch, ch2)
+		}()
+		return nil
+	})
+	eg.Go(func() error {
+		var err error
+		conf, err = v.Root.Api.LogStatus(v.LogID)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err := eg.Wait(); err != nil {
+		return nil, nil, restapi.LogStatus{}, err
+	}
+
+	// 関数呼び出しのログの一覧
+	fcList := make([]funcCallWithFuncIDs, 0, 10000)
+	// 存在するGIDの集合
+	gidSet := make(map[logutil.GID]bool, 1000)
+	for item := range ch2 {
+		// マスクされているイベントを削除する
+		if item.isMasked(&conf.Metadata.UI) {
+			continue
+		}
+
+		fcList = append(fcList, item)
+		gidSet[item.GID] = true
+	}
+	return fcList, gidSet, conf, nil
+}
+
+func (v *GraphView) getGoroutines() (map[logutil.GID]restapi.Goroutine, error) {
+	// TODO
+	ch, err := v.Root.Api.Goroutines(v.LogID)
+	if err != nil {
+		return nil, err
+	}
+	gm := make(map[logutil.GID]restapi.Goroutine, 10000)
+	for g := range ch {
+		gm[g.GID] = g
+	}
+	return gm, nil
 }
 
 func (v *GraphView) scrollSpeed() image.Point {
@@ -197,6 +252,9 @@ func (v *GraphView) Start(ctx context.Context) {
 		}
 	}
 	go update()
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 	startAutoUpdateWorker(&v.running, ctx, update)
 }
 
@@ -269,21 +327,41 @@ func (v *GraphView) buildLines(size image.Point, selectedFuncCall logutil.FuncLo
 		}
 
 		// 関数呼び出しのギャップを埋める線のX座標を計算する。
-		for i := range fcList {
-			gid := fcList[i].GID
+		for gid, g := range v.gMap {
 			// firstXSetには、fcXのgoroutineごとの最小値を設定する。
-			if _, ok := firstXSet[gid]; !ok {
-				firstXSet[gid] = fcX[i]
-			} else if firstXSet[gid] > fcX[i] {
-				firstXSet[gid] = fcX[i]
-			}
 			// lastXSetには、fcXのgoroutineごとの最大値を設定する。
-			last := fcX[i] + fcLen[i]
-			if _, ok := lastXSet[gid]; !ok {
-				lastXSet[gid] = fcX[i]
-			} else if lastXSet[gid] < last {
-				lastXSet[gid] = last
+			first := intsets.MaxInt
+			last := intsets.MaxInt
+			exists := false
+
+			for i, f := range fcList {
+				if f.GID != gid {
+					continue
+				}
+				exists = true
+				if first > fcX[i] {
+					first = fcX[i]
+					if g.StartTime < f.StartTime {
+						// goroutineは、関数fより少し早く開始された。
+						// 開始位置を1つ前にする。
+						first--
+					}
+				}
+				x := fcX[i] + fcLen[i]
+				if last < x {
+					last = x
+					if f.EndTime < g.EndTime {
+						// goroutineは、関数fより少し遅く終了した。
+						// 開始位置を1つ後ろにする。
+						last++
+					}
+				}
 			}
+			if !exists {
+				log.Panicf("not found function call logs of GID=%d", gid)
+			}
+			firstXSet[gid] = first
+			lastXSet[gid] = last
 		}
 	}()
 

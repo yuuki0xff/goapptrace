@@ -209,3 +209,37 @@ func (c Client) FuncStatus(logID, funcStatusID string) (f FuncStatusInfo, err er
 	err = r.JSON(&f)
 	return
 }
+func (c Client) Goroutines(logID string) (gl chan Goroutine, err error) {
+	var r *grequests.Response
+	url := c.url("/log", logID, "symbol", "goroutines", "search")
+
+	r, err = c.s.Get(url, nil)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to GET %s", url)
+		return
+	}
+	defer r.Close() // nolint: errcheck
+	if r.StatusCode != http.StatusOK {
+		err = errors.Wrapf(err, "GET %s returned unexpected status code. expected 200, but %s", url, r.StatusCode)
+		return
+	}
+
+	dec := json.NewDecoder(r)
+	ch := make(chan Goroutine, 1<<20)
+	go func() {
+		defer r.Close() // nolint: errcheck
+		defer close(ch)
+		for {
+			var g Goroutine
+			if err := dec.Decode(&g); err != nil {
+				if err == io.EOF {
+					return
+				}
+				log.Println(err)
+				return
+			}
+			ch <- g
+		}
+	}()
+	return ch, nil
+}
