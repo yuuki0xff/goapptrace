@@ -54,11 +54,14 @@ func (v *Controller) Run() error {
 	theme.SetStyle("label."+RunningStyleName, tui.Style{
 		Fg: tui.ColorYellow,
 	})
-	theme.SetStyle("line.stopped", tui.Style{
+	theme.SetStyle("line.gap", tui.Style{
 		Fg: tui.ColorBlue,
 	})
+	theme.SetStyle("line.stopped", tui.Style{
+		Fg: tui.ColorGreen,
+	})
 	theme.SetStyle("line.stopped.selected", tui.Style{
-		Fg:      tui.ColorBlue,
+		Fg:      tui.ColorGreen,
 		Bold:    tui.DecorationOn,
 		Reverse: tui.DecorationOn,
 	})

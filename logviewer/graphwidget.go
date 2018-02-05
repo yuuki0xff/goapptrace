@@ -28,7 +28,7 @@ func (p LineTermination) Rune(defaultRune rune) rune {
 	case LineTerminationNone:
 		return defaultRune
 	case LineTerminationNormal:
-		return '○'
+		return '●'
 	case LineTerminationHighlight:
 		return '◎'
 	default:
