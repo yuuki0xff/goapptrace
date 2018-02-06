@@ -10,13 +10,11 @@ import (
 	"os"
 	"path"
 	"strings"
+
+	"github.com/yuuki0xff/goapptrace/config"
 )
 
 const (
-	// goapptraceによって作成されたディレクトリとファイルの、デフォルトのパーミッション
-	DefaultDirPerm  = 0700
-	DefaultFilePerm = 0600
-
 	DefaultCompressionLevel = gzip.BestSpeed
 )
 
@@ -29,7 +27,7 @@ type DirLayout struct {
 // 必要なディレクトリが存在しない場合、作成する。
 func (d DirLayout) Init() error {
 	// create Root dir
-	if err := os.MkdirAll(d.Root, DefaultDirPerm); err != nil {
+	if err := d.mkdir(d.Root); err != nil {
 		return err
 	}
 
@@ -70,10 +68,10 @@ func (d DirLayout) Init() error {
 	}
 
 	// create subdirectories
-	if err := os.MkdirAll(d.MetaDir(), DefaultDirPerm); err != nil {
+	if err := d.mkdir(d.MetaDir()); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(d.DataDir(), DefaultDirPerm); err != nil {
+	if err := d.mkdir(d.DataDir()); err != nil {
 		return err
 	}
 	return nil
@@ -143,6 +141,10 @@ func (d DirLayout) IndexFile(id LogID) File {
 	return File(path.Join(d.DataDir(), fmt.Sprintf("%s.index.gz", id.Hex())))
 }
 
+func (d DirLayout) mkdir(dir string) error {
+	return os.MkdirAll(dir, config.DefaultDirPerm)
+}
+
 // ファイル操作を抽象化する。
 type File string
 
@@ -178,7 +180,7 @@ func (f File) OpenReadOnly() (io.ReadCloser, error) {
 // WriteOnlyモードで開く。
 // 既存のデータがあった場合、開いた直後にtruncateされる。
 func (f File) OpenWriteOnly() (io.WriteCloser, error) {
-	file, err := os.OpenFile(string(f), os.O_CREATE|os.O_WRONLY, DefaultFilePerm)
+	file, err := f.openFile(string(f), os.O_CREATE|os.O_WRONLY)
 	if err != nil {
 		return nil, fmt.Errorf("cannot open %s for writing: %s", string(f), err)
 	}
@@ -187,7 +189,7 @@ func (f File) OpenWriteOnly() (io.WriteCloser, error) {
 
 // AppendOnlyモードで開く。
 func (f File) OpenAppendOnly() (io.WriteCloser, error) {
-	file, err := os.OpenFile(string(f), os.O_CREATE|os.O_WRONLY|os.O_APPEND, DefaultFilePerm)
+	file, err := f.openFile(string(f), os.O_CREATE|os.O_WRONLY|os.O_APPEND)
 	if err != nil {
 		return nil, fmt.Errorf("cannot open %s for appending: %s", string(f), err)
 	}
@@ -201,4 +203,8 @@ func (f File) ReadAll() ([]byte, error) {
 		return nil, err
 	}
 	return ioutil.ReadAll(file)
+}
+
+func (f File) openFile(name string, flag int) (*os.File, error) {
+	return os.OpenFile(name, flag, config.DefaultFilePerm)
 }

@@ -15,13 +15,11 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/termie/go-shutil"
+	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/tracer/srceditor"
 )
 
 const (
-	DefaultDirPerm  = 0700
-	DefaultFilePerm = 0600
-
 	runtimePatch = `
 package runtime
 
@@ -170,10 +168,10 @@ func (b *RepoBuilder) EditFiles(gofiles []string) error {
 	// runtimeにパッチを当てる
 	runtimeDir := path.Join(b.Goroot, "src", "runtime")
 	patchFileName := path.Join(runtimeDir, "goapptrace.go")
-	if err := os.MkdirAll(runtimeDir, DefaultDirPerm); err != nil {
+	if err := b.mkdir(runtimeDir); err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(patchFileName, []byte(runtimePatch), DefaultFilePerm); err != nil {
+	if err := b.writeFile(patchFileName, []byte(runtimePatch)); err != nil {
 		return err
 	}
 	return nil
@@ -254,6 +252,13 @@ func (b *RepoBuilder) MainPkgDir(gofile string) (string, error) {
 		}
 	}
 	return path.Join(b.Gopath, "mainpkg"), nil
+}
+
+func (b *RepoBuilder) mkdir(dir string) error {
+	return os.MkdirAll(dir, config.DefaultDirPerm)
+}
+func (b *RepoBuilder) writeFile(filename string, data []byte) error {
+	return ioutil.WriteFile(filename, data, config.DefaultFilePerm)
 }
 
 // 全てのファイルが".go"で終わるファイルなら、trueを返す
