@@ -36,19 +36,10 @@ func (c Client) url(relativeUrls ...string) string {
 // Servers returns Log server list.
 func (c Client) Servers() ([]ServerStatus, error) {
 	var res Servers
-
-	r, err := c.s.Get(c.url("/servers"), nil)
+	url := c.url("/servers")
+	err := c.getJSON(url, nil, &res)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to GET /servers")
-	}
-	defer r.Close() // nolint: errcheck
-	if !r.Ok {
-		return nil, errors.Errorf("GET /servers returned unexpected status code: %d", r.StatusCode)
-	}
-
-	err = r.JSON(&res)
-	if err != nil {
-		return nil, errors.Wrap(err, "GET /servers returned invalid JSON")
+		return nil, err
 	}
 	return res.Servers, nil
 }
@@ -56,19 +47,10 @@ func (c Client) Servers() ([]ServerStatus, error) {
 // Logs returns a list of log status.
 func (c Client) Logs() ([]LogStatus, error) {
 	var res Logs
-
-	r, err := c.s.Get(c.url("/logs"), nil)
+	url := c.url("/logs")
+	err := c.getJSON(url, nil, &res)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to GET /logs")
-	}
-	defer r.Close() // nolint: errcheck
-	if r.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("GET /logs returned unexpected status code. expected 200, but %d", r.StatusCode)
-	}
-
-	err = r.JSON(&res)
-	if err != nil {
-		return nil, errors.Wrap(err, "GET /logs returned invalid JSON")
+		return nil, err
 	}
 	return res.Logs, nil
 }
@@ -76,82 +58,38 @@ func (c Client) Logs() ([]LogStatus, error) {
 // RemoveLog removes the specified log
 func (c Client) RemoveLog(id string) error {
 	url := c.url("/log", id)
-	r, err := c.s.Delete(url, nil)
-	if err != nil {
-		return errors.Wrapf(err, "failed to DELETE %s", url)
-	}
-	defer r.Close() // nolint: errcheck
-	if r.StatusCode != http.StatusNoContent {
-		return errors.Errorf("DELETE %s returned unexpected status code. expected 200, but %d", url, r.StatusCode)
-	}
-	return nil
+	return c.delete(url, nil)
 }
 
 // LogStatus returns latest log status
 func (c Client) LogStatus(id string) (res LogStatus, err error) {
-	var r *grequests.Response
 	url := c.url("/log", id)
-	r, err = c.s.Get(url, nil)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to GET %s", url)
-		return
-	}
-	defer r.Close() // nolint: errcheck
-	if r.StatusCode != http.StatusOK {
-		err = errors.Wrapf(err, "GET %s returned unexpected status code. expected 200, but %d", url, r.StatusCode)
-		return
-	}
-
-	err = r.JSON(&res)
-	if err != nil {
-		err = errors.Wrapf(err, "GET %s returned invalid JSON", url)
-		return
-	}
+	err = c.getJSON(url, nil, res)
 	return
 }
 
 // UpdateLogStatus updates the log status.
 // If update operation conflicts, it returns ErrConflict.
 func (c Client) UpdateLogStatus(id string, status LogStatus) (newStatus LogStatus, err error) {
-	var r *grequests.Response
 	url := c.url("/log", id)
-
-	r, err = c.s.Put(url, &grequests.RequestOptions{
+	ro := &grequests.RequestOptions{
 		Params: map[string]string{
 			"version": strconv.Itoa(status.Version),
 		},
-	})
-	if err != nil {
-		err = errors.Wrapf(err, "failed to PUT %s", url)
-		return
 	}
-	defer r.Close() // nolint: errcheck
-	switch r.StatusCode {
-	case http.StatusOK:
-		err = r.JSON(&newStatus)
-		return
-	case http.StatusConflict:
-		err = ErrConflict
-		return
-	default:
-		err = errors.Wrapf(err, "PUT %s returned unexpected status code. expected 200 or 409, but %d", url, r.StatusCode)
-		return
-	}
+	err = c.putJSON(url, ro, &newStatus)
+	return
 }
 
 // SearchFuncCalls filters the function call log records.
 func (c Client) SearchFuncCalls(id string, so SearchFuncCallParams) (chan FuncCall, error) {
 	url := c.url("/log", id, "func-call", "search")
-
-	r, err := c.s.Get(url, &grequests.RequestOptions{
+	ro := &grequests.RequestOptions{
 		Params: so.ToParamMap(),
-	})
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to GET %s", url)
 	}
-	if r.StatusCode != http.StatusOK {
-		r.Close() // nolint: errcheck
-		return nil, errors.Wrapf(err, "GET %s returned unexpected status code. expected 200, but %d", url, r.StatusCode)
+	r, err := c.get(url, ro)
+	if err != nil {
+		return nil, err
 	}
 
 	dec := json.NewDecoder(r)
@@ -174,56 +112,21 @@ func (c Client) SearchFuncCalls(id string, so SearchFuncCallParams) (chan FuncCa
 	return ch, nil
 }
 func (c Client) Func(logID, funcID string) (f FuncInfo, err error) {
-	var r *grequests.Response
 	url := c.url("/log", logID, "symbol", "func", funcID)
-
-	r, err = c.s.Get(url, nil)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to GET %s", url)
-		return
-	}
-	defer r.Close() // nolint: errcheck
-	if r.StatusCode != http.StatusOK {
-		err = errors.Wrapf(err, "GET %s returned unexpected status code. expected 200, but %d", url, r.StatusCode)
-		return
-	}
-
-	err = r.JSON(&f)
+	err = c.getJSON(url, nil, &f)
 	return
 }
 func (c Client) FuncStatus(logID, funcStatusID string) (f FuncStatusInfo, err error) {
-	var r *grequests.Response
 	url := c.url("/log", logID, "symbol", "func-status", funcStatusID)
-
-	r, err = c.s.Get(url, nil)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to GET %s", url)
-		return
-	}
-	defer r.Close() // nolint: errcheck
-	if r.StatusCode != http.StatusOK {
-		err = errors.Wrapf(err, "GET %s returned unexpected status code. expected 200, but %d", url, r.StatusCode)
-		return
-	}
-
-	err = r.JSON(&f)
+	err = c.getJSON(url, nil, &f)
 	return
 }
+
 func (c Client) Goroutines(logID string) (gl chan Goroutine, err error) {
 	var r *grequests.Response
 	url := c.url("/log", logID, "symbol", "goroutines", "search")
-
-	r, err = c.s.Get(url, nil)
+	r, err = c.get(url, nil)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to GET %s", url)
-		return
-	}
-	defer r.Close() // nolint: errcheck
-	if r.StatusCode != http.StatusOK {
-		// TODO: fmt.Errorf()に置き換える
-		// ここでは、必ずerr==nilを満たすため、Wrapfはerr=nilを返してしまう。
-		// そのため、この関数の呼び出し元は、nilチャンネルから読み出そうとして永遠にブロックする問題が発生する。
-		err = errors.Wrapf(err, "GET %s returned unexpected status code. expected 200, but %s", url, r.StatusCode)
 		return
 	}
 
@@ -245,4 +148,69 @@ func (c Client) Goroutines(logID string) (gl chan Goroutine, err error) {
 		}
 	}()
 	return ch, nil
+}
+
+func (c Client) get(url string, ro *grequests.RequestOptions) (*grequests.Response, error) {
+	r, err := wrapResp(c.s.Get(url, nil))
+	if err != nil {
+		return nil, err
+	}
+	switch r.StatusCode {
+	case http.StatusOK:
+		return r, nil
+	default:
+		return nil, errUnexpStatus(r, []int{
+			http.StatusOK,
+		})
+	}
+}
+func (c Client) getJSON(url string, ro *grequests.RequestOptions, data interface{}) (err error) {
+	var r *grequests.Response
+	r, err = c.get(url, nil)
+	if err != nil {
+		return
+	}
+	defer r.Close() // nolint: errcheck
+	err = errors.Wrapf(r.JSON(&data), "GET %s returned invalid JSON", url)
+	return
+}
+func (c Client) delete(url string, ro *grequests.RequestOptions) error {
+	r, err := wrapResp(c.s.Delete(url, ro))
+	if err != nil {
+		return err
+	}
+	switch r.StatusCode {
+	case http.StatusNoContent:
+		return r.Close()
+	default:
+		defer r.Close() // nolint: errcheck
+		return errUnexpStatus(r, []int{
+			http.StatusNoContent,
+		})
+	}
+}
+func (c Client) put(url string, ro *grequests.RequestOptions) (*grequests.Response, error) {
+	r, err := wrapResp(c.s.Put(url, ro))
+	if err != nil {
+		return nil, err
+	}
+
+	switch r.StatusCode {
+	case http.StatusOK:
+		return r, nil
+	case http.StatusConflict:
+		r.Close() // nolint: errcheck
+		return nil, ErrConflict
+	default:
+		r.Close() // nolint: errcheck
+		return nil, errors.Wrapf(err, "PUT %s returned unexpected status code. expected 200 or 409, but %d", url, r.StatusCode)
+	}
+}
+func (c Client) putJSON(url string, ro *grequests.RequestOptions, data interface{}) error {
+	r, err := c.put(url, nil)
+	if err != nil {
+		return err
+	}
+	defer r.Close() // nolint: errcheck
+	return errors.Wrapf(r.JSON(&data), "PUT %s returned invalid JSON", url)
 }
