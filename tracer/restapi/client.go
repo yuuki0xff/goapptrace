@@ -220,6 +220,9 @@ func (c Client) Goroutines(logID string) (gl chan Goroutine, err error) {
 	}
 	defer r.Close() // nolint: errcheck
 	if r.StatusCode != http.StatusOK {
+		// TODO: fmt.Errorf()に置き換える
+		// ここでは、必ずerr==nilを満たすため、Wrapfはerr=nilを返してしまう。
+		// そのため、この関数の呼び出し元は、nilチャンネルから読み出そうとして永遠にブロックする問題が発生する。
 		err = errors.Wrapf(err, "GET %s returned unexpected status code. expected 200, but %s", url, r.StatusCode)
 		return
 	}
