@@ -11,6 +11,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/yuuki0xff/goapptrace/config"
 )
 
@@ -42,7 +43,7 @@ func (d DirLayout) Init() error {
 			return err
 		}
 		if !info.IsCompatible() {
-			return fmt.Errorf("data format is not compatible")
+			return errors.New("data format is not compatible")
 		}
 	} else {
 		// write the current data format version.
@@ -172,7 +173,7 @@ func (f File) Size() (int64, error) {
 func (f File) OpenReadOnly() (io.ReadCloser, error) {
 	file, err := os.Open(string(f))
 	if err != nil {
-		return nil, fmt.Errorf("cannot open %s for reading: %s", string(f), err)
+		return nil, errors.Wrapf(err, "cannot open %s for reading: %s", string(f))
 	}
 	return gzip.NewReader(file)
 }
@@ -182,7 +183,7 @@ func (f File) OpenReadOnly() (io.ReadCloser, error) {
 func (f File) OpenWriteOnly() (io.WriteCloser, error) {
 	file, err := f.openFile(string(f), os.O_CREATE|os.O_WRONLY)
 	if err != nil {
-		return nil, fmt.Errorf("cannot open %s for writing: %s", string(f), err)
+		return nil, errors.Wrapf(err, "cannot open %s for writing: %s", string(f))
 	}
 	return gzip.NewWriterLevel(file, DefaultCompressionLevel)
 }
@@ -191,7 +192,7 @@ func (f File) OpenWriteOnly() (io.WriteCloser, error) {
 func (f File) OpenAppendOnly() (io.WriteCloser, error) {
 	file, err := f.openFile(string(f), os.O_CREATE|os.O_WRONLY|os.O_APPEND)
 	if err != nil {
-		return nil, fmt.Errorf("cannot open %s for appending: %s", string(f), err)
+		return nil, errors.Wrapf(err, "cannot open %s for appending: %s", string(f))
 	}
 	return gzip.NewWriterLevel(file, DefaultCompressionLevel)
 }
