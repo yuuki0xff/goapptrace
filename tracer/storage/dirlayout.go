@@ -14,8 +14,8 @@ import (
 
 const (
 	// goapptraceによって作成されたディレクトリとファイルの、デフォルトのパーミッション
-	DefaultDirPerm  = 0777
-	DefaultFilePerm = 0666
+	DefaultDirPerm  = 0700
+	DefaultFilePerm = 0600
 
 	DefaultCompressionLevel = gzip.BestSpeed
 )

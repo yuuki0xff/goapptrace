@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	DefaultDirPerm  = 0777
-	DefaultFilePerm = 0666
+	DefaultDirPerm  = 0700
+	DefaultFilePerm = 0600
 
 	runtimePatch = `
 package runtime
