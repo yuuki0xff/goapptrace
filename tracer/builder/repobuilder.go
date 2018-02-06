@@ -19,6 +19,9 @@ import (
 )
 
 const (
+	DefaultDirPerm  = 0777
+	DefaultFilePerm = 0666
+
 	runtimePatch = `
 package runtime
 
@@ -167,10 +170,10 @@ func (b *RepoBuilder) EditFiles(gofiles []string) error {
 	// runtimeにパッチを当てる
 	runtimeDir := path.Join(b.Goroot, "src", "runtime")
 	patchFileName := path.Join(runtimeDir, "goapptrace.go")
-	if err := os.MkdirAll(runtimeDir, 0777); err != nil {
+	if err := os.MkdirAll(runtimeDir, DefaultDirPerm); err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(patchFileName, []byte(runtimePatch), 0666); err != nil {
+	if err := ioutil.WriteFile(patchFileName, []byte(runtimePatch), DefaultFilePerm); err != nil {
 		return err
 	}
 	return nil
