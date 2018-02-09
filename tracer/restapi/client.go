@@ -1,6 +1,7 @@
 package restapi
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"log"
@@ -12,6 +13,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	UserAgent = "goapptrace-restapi-client"
+)
+
 var (
 	ErrConflict = errors.New("conflict")
 )
@@ -20,6 +25,11 @@ var (
 type Client struct {
 	BaseUrl string
 	s       *grequests.Session
+}
+
+type ClientWithCtx struct {
+	Client
+	ctx context.Context
 }
 
 // Init initialize the Goapptrace REST API client.
@@ -33,11 +43,30 @@ func (c Client) url(relativeUrls ...string) string {
 	return c.BaseUrl + "/api/v0.1" + strings.Join(relativeUrls, "/")
 }
 
+// ro returns an initialized RequestOptions struct.
+func (c ClientWithCtx) ro() grequests.RequestOptions {
+	return grequests.RequestOptions{
+		UserAgent: UserAgent,
+		Context:   c.ctx,
+	}
+}
+
+// WithCtx returns a new ClientWithCtx object with specified context.
+//
+// this method MUST use value receiver.
+func (c Client) WithCtx(ctx context.Context) ClientWithCtx {
+	var cc ClientWithCtx
+	cc.Client = c
+	cc.ctx = ctx
+	return cc
+}
+
 // Servers returns Log server list.
-func (c Client) Servers() ([]ServerStatus, error) {
+func (c ClientWithCtx) Servers() ([]ServerStatus, error) {
 	var res Servers
 	url := c.url("/servers")
-	err := c.getJSON(url, nil, &res)
+	ro := c.ro()
+	err := c.getJSON(url, &ro, &res)
 	if err != nil {
 		return nil, err
 	}
@@ -45,10 +74,11 @@ func (c Client) Servers() ([]ServerStatus, error) {
 }
 
 // Logs returns a list of log status.
-func (c Client) Logs() ([]LogStatus, error) {
+func (c ClientWithCtx) Logs() ([]LogStatus, error) {
 	var res Logs
 	url := c.url("/logs")
-	err := c.getJSON(url, nil, &res)
+	ro := c.ro()
+	err := c.getJSON(url, &ro, &res)
 	if err != nil {
 		return nil, err
 	}
@@ -56,21 +86,23 @@ func (c Client) Logs() ([]LogStatus, error) {
 }
 
 // RemoveLog removes the specified log
-func (c Client) RemoveLog(id string) error {
+func (c ClientWithCtx) RemoveLog(id string) error {
 	url := c.url("/log", id)
-	return c.delete(url, nil)
+	ro := c.ro()
+	return c.delete(url, &ro)
 }
 
 // LogStatus returns latest log status
-func (c Client) LogStatus(id string) (res LogStatus, err error) {
+func (c ClientWithCtx) LogStatus(id string) (res LogStatus, err error) {
 	url := c.url("/log", id)
-	err = c.getJSON(url, nil, res)
+	ro := c.ro()
+	err = c.getJSON(url, &ro, res)
 	return
 }
 
 // UpdateLogStatus updates the log status.
 // If update operation conflicts, it returns ErrConflict.
-func (c Client) UpdateLogStatus(id string, status LogStatus) (newStatus LogStatus, err error) {
+func (c ClientWithCtx) UpdateLogStatus(id string, status LogStatus) (newStatus LogStatus, err error) {
 	url := c.url("/log", id)
 	ro := &grequests.RequestOptions{
 		Params: map[string]string{
@@ -82,12 +114,11 @@ func (c Client) UpdateLogStatus(id string, status LogStatus) (newStatus LogStatu
 }
 
 // SearchFuncCalls filters the function call log records.
-func (c Client) SearchFuncCalls(id string, so SearchFuncCallParams) (chan FuncCall, error) {
+func (c ClientWithCtx) SearchFuncCalls(id string, so SearchFuncCallParams) (chan FuncCall, error) {
 	url := c.url("/log", id, "func-call", "search")
-	ro := &grequests.RequestOptions{
-		Params: so.ToParamMap(),
-	}
-	r, err := c.get(url, ro)
+	ro := c.ro()
+	ro.Params = so.ToParamMap()
+	r, err := c.get(url, &ro)
 	if err != nil {
 		return nil, err
 	}
@@ -111,21 +142,24 @@ func (c Client) SearchFuncCalls(id string, so SearchFuncCallParams) (chan FuncCa
 	}()
 	return ch, nil
 }
-func (c Client) Func(logID, funcID string) (f FuncInfo, err error) {
+func (c ClientWithCtx) Func(logID, funcID string) (f FuncInfo, err error) {
 	url := c.url("/log", logID, "symbol", "func", funcID)
-	err = c.getJSON(url, nil, &f)
+	ro := c.ro()
+	err = c.getJSON(url, &ro, &f)
 	return
 }
-func (c Client) FuncStatus(logID, funcStatusID string) (f FuncStatusInfo, err error) {
+func (c ClientWithCtx) FuncStatus(logID, funcStatusID string) (f FuncStatusInfo, err error) {
 	url := c.url("/log", logID, "symbol", "func-status", funcStatusID)
-	err = c.getJSON(url, nil, &f)
+	ro := c.ro()
+	err = c.getJSON(url, &ro, &f)
 	return
 }
 
-func (c Client) Goroutines(logID string) (gl chan Goroutine, err error) {
+func (c ClientWithCtx) Goroutines(logID string) (gl chan Goroutine, err error) {
 	var r *grequests.Response
 	url := c.url("/log", logID, "symbol", "goroutines", "search")
-	r, err = c.get(url, nil)
+	ro := c.ro()
+	r, err = c.get(url, &ro)
 	if err != nil {
 		return
 	}
