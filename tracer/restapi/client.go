@@ -151,7 +151,7 @@ func (c Client) Goroutines(logID string) (gl chan Goroutine, err error) {
 }
 
 func (c Client) get(url string, ro *grequests.RequestOptions) (*grequests.Response, error) {
-	r, err := wrapResp(c.s.Get(url, nil))
+	r, err := wrapResp(c.s.Get(url, ro))
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +166,7 @@ func (c Client) get(url string, ro *grequests.RequestOptions) (*grequests.Respon
 }
 func (c Client) getJSON(url string, ro *grequests.RequestOptions, data interface{}) (err error) {
 	var r *grequests.Response
-	r, err = c.get(url, nil)
+	r, err = c.get(url, ro)
 	if err != nil {
 		return
 	}
@@ -207,7 +207,7 @@ func (c Client) put(url string, ro *grequests.RequestOptions) (*grequests.Respon
 	}
 }
 func (c Client) putJSON(url string, ro *grequests.RequestOptions, data interface{}) error {
-	r, err := c.put(url, nil)
+	r, err := c.put(url, ro)
 	if err != nil {
 		return err
 	}
