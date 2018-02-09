@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/exec"
@@ -177,10 +178,12 @@ func prepareRepo(tmpdir string, targets []string, conf *config.Config) (*builder
 }
 
 func getLogServer(conf *config.Config) (srv restapi.ServerStatus, err error) {
-	api, err := getAPIClient(conf)
+	apiNoctx, err := getAPIClient(conf)
 	if err != nil {
 		return
 	}
+	// TODO: ctxを外部から渡す。
+	api := apiNoctx.WithCtx(context.Background())
 	srvs, err := api.Servers()
 	if err != nil {
 		return

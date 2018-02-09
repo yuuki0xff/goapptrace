@@ -18,6 +18,7 @@ type FuncCallDetailView struct {
 
 	running     uint32
 	updateGroup singleflight.Group
+	ctx         context.Context
 
 	// focusChainに渡す値が常に同じになるようにしないと、クラッシュしてしまう問題を回避するため。
 	funcInfoWrap wrapWidget
@@ -76,12 +77,12 @@ func (v *FuncCallDetailView) Update() {
 
 			for _, fsid := range v.Record.Frames {
 				var fs restapi.FuncStatusInfo
-				fs, err = v.Root.Api.FuncStatus(v.LogID, strconv.Itoa(int(fsid)))
+				fs, err = v.api().FuncStatus(v.LogID, strconv.Itoa(int(fsid)))
 				if err != nil {
 					return
 				}
 				var fi restapi.FuncInfo
-				fi, err = v.Root.Api.Func(v.LogID, strconv.Itoa(int(fs.Func)))
+				fi, err = v.api().Func(v.LogID, strconv.Itoa(int(fs.Func)))
 				if err != nil {
 					return
 				}
@@ -148,4 +149,7 @@ func (v *FuncCallDetailView) newWidgets() (funcInfoTable *headerTable, framesTab
 	framesTable.SetColumnStretch(1, 1)
 	framesTable.SetColumnStretch(2, 3)
 	return
+}
+func (v *FuncCallDetailView) api() restapi.ClientWithCtx {
+	return v.Root.Api.WithCtx(v.ctx)
 }

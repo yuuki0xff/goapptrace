@@ -21,6 +21,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -59,10 +60,12 @@ var logCatCmd = &cobra.Command{
 }
 
 func runLogCat(conf *config.Config, stderr io.Writer, logID string, logw LogWriter) error {
-	api, err := getAPIClient(conf)
+	// TODO: timeoutに対応させる
+	apiNoctx, err := getAPIClient(conf)
 	if err != nil {
 		return err
 	}
+	api := apiNoctx.WithCtx(context.Background())
 
 	ch, err := api.SearchFuncCalls(logID, restapi.SearchFuncCallParams{
 		SortKey:   restapi.SortByStartTime,

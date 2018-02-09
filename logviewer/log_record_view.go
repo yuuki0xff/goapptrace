@@ -23,6 +23,7 @@ type LogRecordView struct {
 	updateGroup singleflight.Group
 
 	running uint32
+	ctx     context.Context
 
 	table   *headerTable
 	status  *tui.StatusBar
@@ -71,6 +72,7 @@ func (v *LogRecordView) FocusChain() tui.FocusChain {
 	return v.fc
 }
 func (v *LogRecordView) Start(ctx context.Context) {
+	v.ctx = ctx
 	startAutoUpdateWorker(&v.running, ctx, v.Update)
 }
 func (v *LogRecordView) Update() {
@@ -101,7 +103,7 @@ func (v *LogRecordView) Update() {
 			maxTableRecords := v.Size().Y * 5
 
 			var ch chan restapi.FuncCall
-			ch, err = v.Root.Api.SearchFuncCalls(v.LogID, restapi.SearchFuncCallParams{
+			ch, err = v.api().SearchFuncCalls(v.LogID, restapi.SearchFuncCallParams{
 				Limit:     fetchRecords,
 				SortKey:   restapi.SortByEndTime,
 				SortOrder: restapi.DescendingSortOrder,
@@ -149,7 +151,7 @@ func (v *LogRecordView) Update() {
 							continue
 						}
 						var fs restapi.FuncStatusInfo
-						fs, err = v.Root.Api.FuncStatus(v.LogID, strconv.Itoa(int(id)))
+						fs, err = v.api().FuncStatus(v.LogID, strconv.Itoa(int(id)))
 						if err != nil {
 							return
 						}
@@ -163,7 +165,7 @@ func (v *LogRecordView) Update() {
 							continue
 						}
 						var fi restapi.FuncInfo
-						fi, err = v.Root.Api.Func(v.LogID, strconv.Itoa(int(fs.Func)))
+						fi, err = v.api().Func(v.LogID, strconv.Itoa(int(fs.Func)))
 						if err != nil {
 							return
 						}
@@ -221,4 +223,7 @@ func (v *LogRecordView) newTable() *headerTable {
 	t.SetColumnStretch(2, 1)
 	t.SetColumnStretch(3, 20)
 	return t
+}
+func (v *LogRecordView) api() restapi.ClientWithCtx {
+	return v.Root.Api.WithCtx(v.ctx)
 }

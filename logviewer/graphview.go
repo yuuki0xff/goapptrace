@@ -27,6 +27,7 @@ type GraphView struct {
 
 	running     uint32
 	updateGroup singleflight.Group
+	ctx         context.Context
 
 	status *tui.StatusBar
 	graph  *GraphWidget
@@ -136,7 +137,7 @@ func (v *GraphView) getFCLogs() ([]funcCallWithFuncIDs, map[logutil.GID]bool, re
 
 	var eg errgroup.Group
 	eg.Go(func() error {
-		ch, err := v.Root.Api.SearchFuncCalls(v.LogID, restapi.SearchFuncCallParams{
+		ch, err := v.api().SearchFuncCalls(v.LogID, restapi.SearchFuncCallParams{
 			//Limit:     fetchRecords,
 			SortKey:   restapi.SortByID,
 			SortOrder: restapi.DescendingSortOrder,
@@ -154,7 +155,7 @@ func (v *GraphView) getFCLogs() ([]funcCallWithFuncIDs, map[logutil.GID]bool, re
 	})
 	eg.Go(func() error {
 		var err error
-		conf, err = v.Root.Api.LogStatus(v.LogID)
+		conf, err = v.api().LogStatus(v.LogID)
 		if err != nil {
 			return err
 		}
@@ -183,7 +184,7 @@ func (v *GraphView) getFCLogs() ([]funcCallWithFuncIDs, map[logutil.GID]bool, re
 
 func (v *GraphView) getGoroutines() (map[logutil.GID]restapi.Goroutine, error) {
 	// TODO
-	ch, err := v.Root.Api.Goroutines(v.LogID)
+	ch, err := v.api().Goroutines(v.LogID)
 	if err != nil {
 		return nil, err
 	}
@@ -457,7 +458,7 @@ func (v *GraphView) buildLines(size image.Point, selectedFuncCall logutil.FuncLo
 // frames2funcs converts logutil.FuncStatusID to logutil.FuncID.
 func (v *GraphView) frames2funcs(frames []logutil.FuncStatusID) (funcs []logutil.FuncID) {
 	for _, id := range frames {
-		fs, err := v.Root.Api.FuncStatus(v.LogID, strconv.Itoa(int(id)))
+		fs, err := v.api().FuncStatus(v.LogID, strconv.Itoa(int(id)))
 		if err != nil {
 			log.Panic(err)
 		}
@@ -507,4 +508,7 @@ func (f *funcCallWithFuncIDs) isPinned(config *storage.UIConfig) (pinned bool) {
 		pinned = pinned || g.Pinned
 	}
 	return
+}
+func (v *GraphView) api() restapi.ClientWithCtx {
+	return v.Root.Api.WithCtx(v.ctx)
 }

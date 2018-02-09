@@ -20,6 +20,7 @@ type LogListView struct {
 	updateGroup singleflight.Group
 
 	running uint32
+	ctx     context.Context
 
 	// ログの一覧を表示するためのテーブル
 	table  *headerTable
@@ -84,7 +85,7 @@ func (v *LogListView) Update() {
 		})
 
 		func() {
-			logs, err = v.Root.Api.Logs()
+			logs, err = v.api().Logs()
 			if err != nil {
 				return
 			}
@@ -144,4 +145,7 @@ func (v *LogListView) newTable() *headerTable {
 	)
 	t.OnItemActivated(v.onSelectedLog)
 	return t
+}
+func (v *LogListView) api() restapi.ClientWithCtx {
+	return v.Root.Api.WithCtx(v.ctx)
 }
