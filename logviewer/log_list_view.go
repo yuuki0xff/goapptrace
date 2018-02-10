@@ -2,127 +2,142 @@ package logviewer
 
 import (
 	"context"
-	"errors"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 	"github.com/yuuki0xff/tui-go"
-	"golang.org/x/sync/singleflight"
 )
 
-type LogListView struct {
-	Root *Controller
-	logs []restapi.LogStatus
+// LogListVM implements ViewModel.
+type LogListVM struct {
+	Root   Coordinator
+	Client restapi.ClientWithCtx
 
-	tui.Widget
-	wrap        wrapWidget
-	updateGroup singleflight.Group
+	m     sync.Mutex
+	view  *LogListView
+	state LLState
+	err   error
+	logs  []restapi.LogStatus
 
-	running uint32
-	ctx     context.Context
-
-	// ログの一覧を表示するためのテーブル
-	table  *headerTable
-	status *tui.StatusBar
-	fc     tui.FocusChain
+	selectedLogID string
 }
 
-func newSelectLogView(root *Controller) *LogListView {
-	v := &LogListView{
-		Root:   root,
-		status: tui.NewStatusBar(LoadingText),
+func (vm *LogListVM) UpdateInterval() time.Duration {
+	return 0
+}
+func (vm *LogListVM) Update(ctx context.Context) {
+	logs, err := vm.Client.Logs()
+
+	vm.m.Lock()
+	defer vm.m.Unlock()
+	vm.view = nil
+	vm.state = LLWait
+	vm.logs, vm.err = logs, err
+
+	if vm.err == nil {
+		// Timestamp(降順),ID(昇順)に並び替える。
+		sort.Slice(logs, func(i, j int) bool {
+			t1 := logs[i].Metadata.Timestamp.Unix()
+			t2 := logs[j].Metadata.Timestamp.Unix()
+			if t1 == t2 {
+				return strings.Compare(logs[i].ID, logs[j].ID) < 0
+			}
+			return t1 > t2
+		})
 	}
-	v.status.SetPermanentText("Log List")
-	v.wrap.SetWidget(tui.NewSpacer())
-
-	fc := &tui.SimpleFocusChain{}
-	fc.Set(&v.wrap)
-	v.fc = fc
-
-	v.Widget = tui.NewVBox(
-		&v.wrap,
-		tui.NewSpacer(),
-		v.status,
-	)
-	return v
 }
-func (v *LogListView) SetKeybindings() {
-	gotoLogView := func() {
+func (vm *LogListVM) View() View {
+	vm.m.Lock()
+	defer vm.m.Unlock()
+
+	if vm.view == nil {
+		vm.view = &LogListView{
+			VM:    vm,
+			State: vm.state,
+			Error: vm.err,
+			Logs:  vm.logs,
+		}
+	}
+	return vm.view
+}
+func (vm *LogListVM) onSelectedLog(logID string) {
+	vm.selectedLogID = logID
+	vm.Root.SetState(UIState{
+		LogID: logID,
+	})
+}
+func (vm *LogListVM) SelectedLog() string {
+	return vm.selectedLogID
+}
+
+// LogListView implements View
+type LogListView struct {
+	VM    *LogListVM
+	State LLState
+	Error error
+	Logs  []restapi.LogStatus
+
+	initOnce sync.Once
+	widget   tui.Widget
+	fc       tui.FocusChain
+
+	table *headerTable
+}
+
+func (v *LogListView) init() {
+	switch v.State {
+	case LLLoadingState:
+		v.widget = tui.NewVBox(
+			tui.NewSpacer(),
+			v.newStatusBar(LoadingText),
+		)
+		v.fc = nil
+		return
+	case LLWait:
+		if v.Error != nil {
+			v.widget = tui.NewVBox(
+				newErrorMsg(v.Error),
+				tui.NewSpacer(),
+				v.newStatusBar(ErrorText),
+			)
+			v.fc = nil
+			return
+		} else {
+			v.table = v.newTable(v.Logs)
+			v.widget = tui.NewVBox(
+				v.table,
+				tui.NewSpacer(),
+				v.newStatusBar(""),
+			)
+			v.fc = newFocusChain(v.table)
+			return
+		}
+	case LLSelectedState:
+		// do nothing.
+		v.widget = tui.NewSpacer()
+		return
+	}
+}
+
+func (v *LogListView) Widget() tui.Widget {
+	v.initOnce.Do(v.init)
+	return v.widget
+}
+
+func (v *LogListView) Keybindings() map[string]func() {
+	selected := func() {
 		v.onSelectedLog(nil)
 	}
-
-	v.Root.UI.SetKeybinding("Right", gotoLogView)
-	v.Root.UI.SetKeybinding("l", gotoLogView)
+	return map[string]func(){
+		"Right": selected,
+		"l":     selected,
+	}
 }
 func (v *LogListView) FocusChain() tui.FocusChain {
 	return v.fc
-}
-func (v *LogListView) Start(ctx context.Context) {
-	startAutoUpdateWorker(&v.running, ctx, v.Update)
-}
-
-// ログ一覧を最新の状態に更新する。
-func (v *LogListView) Update() {
-	v.status.SetText(LoadingText)
-
-	go v.updateGroup.Do("update", func() (interface{}, error) { // nolint: errcheck
-		var err error
-		var logs []restapi.LogStatus
-		table := v.newTable()
-
-		defer v.Root.UI.Update(func() {
-			v.logs = logs
-			v.table = table
-
-			if err != nil {
-				v.wrap.SetWidget(newErrorMsg(err))
-				v.status.SetText(ErrorText)
-			} else {
-				v.wrap.SetWidget(v.table)
-				v.status.SetText("")
-			}
-		})
-
-		func() {
-			logs, err = v.api().Logs()
-			if err != nil {
-				return
-			}
-
-			// Timestamp(降順),ID(昇順)に並び替える。
-			sort.Slice(logs, func(i, j int) bool {
-				t1 := logs[i].Metadata.Timestamp.Unix()
-				t2 := logs[j].Metadata.Timestamp.Unix()
-				if t1 == t2 {
-					return strings.Compare(logs[i].ID, logs[j].ID) < 0
-				}
-				return t1 > t2
-			})
-
-			if len(logs) == 0 {
-				err = errors.New(NoLogFiles)
-			} else {
-				for _, l := range logs {
-					var status *tui.Label
-					if l.ReadOnly {
-						status = tui.NewLabel(StatusStoppedText)
-						status.SetStyleName(StoppedStyleName)
-					} else {
-						status = tui.NewLabel(StatusRunningText)
-						status.SetStyleName(RunningStyleName)
-					}
-
-					table.AppendRow(
-						status,
-						tui.NewLabel(l.ID),
-						tui.NewLabel(l.Metadata.Timestamp.String()),
-					)
-				}
-			}
-		}()
-		return nil, nil
-	})
 }
 
 // ログを選択したときにコールバックされる関数。
@@ -131,21 +146,41 @@ func (v *LogListView) onSelectedLog(table *tui.Table) {
 		return
 	}
 
-	v.Root.setView(newShowLogView(
-		v.logs[v.table.Selected()-1].ID,
-		v.Root,
-	))
+	idx := v.table.Selected() - 1
+	id := v.Logs[idx].ID
+	v.VM.onSelectedLog(id)
 }
 
-func (v *LogListView) newTable() *headerTable {
+func (v *LogListView) newStatusBar(text string) *tui.StatusBar {
+	s := tui.NewStatusBar(LoadingText)
+	s.SetPermanentText("Log List")
+	s.SetText(text)
+	return s
+}
+
+func (v *LogListView) newTable(logs []restapi.LogStatus) *headerTable {
 	t := newHeaderTable(
 		tui.NewLabel("Status"),
 		tui.NewLabel("LogID"),
 		tui.NewLabel("Timestamp"),
 	)
 	t.OnItemActivated(v.onSelectedLog)
+
+	for _, l := range logs {
+		var status *tui.Label
+		if l.ReadOnly {
+			status = tui.NewLabel(StatusStoppedText)
+			status.SetStyleName(StoppedStyleName)
+		} else {
+			status = tui.NewLabel(StatusRunningText)
+			status.SetStyleName(RunningStyleName)
+		}
+
+		t.AppendRow(
+			status,
+			tui.NewLabel(l.ID),
+			tui.NewLabel(l.Metadata.Timestamp.String()),
+		)
+	}
 	return t
-}
-func (v *LogListView) api() restapi.ClientWithCtx {
-	return v.Root.Api.WithCtx(v.ctx)
 }
