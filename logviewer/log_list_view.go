@@ -91,20 +91,22 @@ type LogListView struct {
 func (v *LogListView) init() {
 	switch v.State {
 	case LLLoadingState:
+		space := tui.NewSpacer()
 		v.widget = tui.NewVBox(
-			tui.NewSpacer(),
+			space,
 			v.newStatusBar(LoadingText),
 		)
-		v.fc = nil
+		v.fc = newFocusChain(space)
 		return
 	case LLWait:
 		if v.Error != nil {
+			errmsg := newErrorMsg(v.Error)
 			v.widget = tui.NewVBox(
-				newErrorMsg(v.Error),
+				errmsg,
 				tui.NewSpacer(),
 				v.newStatusBar(ErrorText),
 			)
-			v.fc = nil
+			v.fc = newFocusChain(errmsg)
 			return
 		} else {
 			v.table = v.newTable(v.Logs)
@@ -118,7 +120,9 @@ func (v *LogListView) init() {
 		}
 	case LLSelectedState:
 		// do nothing.
-		v.widget = tui.NewSpacer()
+		space := tui.NewSpacer()
+		v.widget = space
+		v.fc = newFocusChain(space)
 		return
 	default:
 		log.Panic("bug")

@@ -189,18 +189,22 @@ type LogRecordView struct {
 func (v *LogRecordView) init() {
 	switch v.State {
 	case LRLoadingState:
+		space := tui.NewSpacer()
 		v.widget = tui.NewVBox(
-			tui.NewSpacer(),
+			space,
 			v.newStatusBar(LoadingText),
 		)
+		v.fc = newFocusChain(space)
 		return
 	case LRWait:
 		if v.Error != nil {
+			errmsg := newErrorMsg(v.Error)
 			v.widget = tui.NewVBox(
-				newErrorMsg(v.Error),
+				errmsg,
 				tui.NewSpacer(),
 				v.newStatusBar(ErrorText),
 			)
+			v.fc = newFocusChain(errmsg)
 			return
 		} else {
 			v.table = v.newTable()
@@ -209,11 +213,14 @@ func (v *LogRecordView) init() {
 				tui.NewSpacer(),
 				v.newStatusBar(""),
 			)
+			v.fc = newFocusChain(v.table)
 			return
 		}
 	case LRSelectedState:
 		// do nothing.
-		v.widget = tui.NewSpacer()
+		space := tui.NewSpacer()
+		v.widget = space
+		v.fc = newFocusChain(space)
 		return
 	default:
 		log.Panic("bug")
