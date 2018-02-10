@@ -17,8 +17,9 @@ type Controller struct {
 	LogID  string
 	UI     tui.UI
 
-	view       View
-	viewCancel context.CancelFunc
+	vm       ViewModel
+	vmCtx    context.Context
+	vmCancel context.CancelFunc
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -36,9 +37,7 @@ func (v *Controller) Run() error {
 	v.ctx, v.cancel = context.WithCancel(context.Background())
 	defer v.cancel()
 
-	view := newSelectLogView(v)
-	v.setView(view)
-
+	go v.SetState(UIState{})
 	if err := v.UI.Run(); err != nil {
 		return errors.Wrap(err, "failed to initialize TUI")
 	}
@@ -47,32 +46,64 @@ func (v *Controller) Run() error {
 func (v *Controller) Quit() {
 	v.UI.Quit()
 }
-func (v *Controller) setKeybindings() {
-	v.UI.SetKeybinding("Q", v.Quit)
-	v.UI.SetKeybinding("Esc", v.Quit)
-}
-func (v *Controller) setView(view View) {
-	if v.view != nil {
-		// stop old view.
-		v.viewCancel()
+func (v *Controller) SetState(s UIState) {
+	if s.LogID == "" {
+		v.newVMCtx()
+		v.setVM(&LogListVM{
+			Root:   v,
+			Client: v.Api.WithCtx(v.vmCtx),
+		})
+		return
 	}
 
-	v.view = view
-	v.UI.SetWidget(v.view)
+	if s.RecordID != "" {
+		v.newVMCtx()
+		// TODO:
+		v.setVM(nil)
+		return
+	}
 
-	// rebuild key bind settings.
-	v.UI.ClearKeybindings()
-	v.setKeybindings()
-	v.view.SetKeybindings()
+	if s.UseGraphView {
+		v.newVMCtx()
+		// TODO: set GraphVM.
+		v.setVM(nil)
+	} else {
+		// TODO: set RecordsListVM.
+		v.setVM(nil)
+	}
+}
+func (v *Controller) setKeybindings(bindings map[string]func()) {
+	v.UI.SetKeybinding("Q", v.Quit)
+	v.UI.SetKeybinding("Esc", v.Quit)
 
-	// update focus chain
-	v.UI.SetFocusChain(v.view.FocusChain())
+	for key, fn := range bindings {
+		v.UI.SetKeybinding(key, fn)
+	}
+}
+func (v *Controller) stopVM() {
+	if v.vm != nil {
+		// stop old ViewModel.
+		v.vmCancel()
+	}
+}
+func (v *Controller) newVMCtx() {
+	v.stopVM()
+	v.vmCtx, v.vmCancel = context.WithCancel(v.ctx)
+}
 
-	var viewCtx context.Context
-	viewCtx, v.viewCancel = context.WithCancel(v.ctx)
+func (v *Controller) setVM(vm ViewModel) {
+	v.vm = vm
+	view := v.vm.View()
+	v.UI.Update(func() {
+		v.UI.SetWidget(view.Widget())
 
-	v.view.Start(viewCtx)
-	go v.UI.Update(v.view.Update)
+		// rebuild key bind settings.
+		v.UI.ClearKeybindings()
+		v.setKeybindings(view.Keybindings())
+
+		// update focus chain
+		v.UI.SetFocusChain(view.FocusChain())
+	})
 }
 
 // theme returns default themes.

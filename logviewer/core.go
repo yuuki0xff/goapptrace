@@ -29,3 +29,9 @@ type View interface {
 	// You MUST call the View.Widget() before call this method.
 	FocusChain() tui.FocusChain
 }
+
+func newFocusChain(widgets ...tui.Widget) tui.FocusChain {
+	fc := &tui.SimpleFocusChain{}
+	fc.Set(widgets...)
+	return fc
+}
