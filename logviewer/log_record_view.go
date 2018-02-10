@@ -178,12 +178,9 @@ type LogRecordView struct {
 
 	initOnce sync.Once
 	widget   tui.Widget
+	fc       tui.FocusChain
 
-	// TODO: remove fields
-	table   *headerTable
-	status  *tui.StatusBar
-	records []restapi.FuncCall
-	fc      tui.FocusChain
+	table *headerTable
 }
 
 func (v *LogRecordView) init() {
@@ -258,7 +255,7 @@ func (v *LogRecordView) onSelectedFuncCallRecord(table *tui.Table) {
 	if v.table.Selected() <= 0 {
 		return
 	}
-	rec := &v.records[v.table.Selected()-1]
+	rec := &v.Records[v.table.Selected()-1]
 	v.VM.onSelectedRecord(rec.ID)
 }
 func (v *LogRecordView) newStatusBar(text string) *tui.StatusBar {
