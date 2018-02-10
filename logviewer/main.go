@@ -56,7 +56,7 @@ func (v *Controller) SetState(s UIState) {
 		return
 	}
 
-	if s.RecordID != "" {
+	if s.RecordID != 0 {
 		v.newVMCtx()
 		// TODO:
 		v.setVM(nil)
