@@ -2,6 +2,7 @@ package logviewer
 
 import (
 	"context"
+	"log"
 	"sort"
 	"strings"
 	"sync"
@@ -119,6 +120,8 @@ func (v *LogListView) init() {
 		// do nothing.
 		v.widget = tui.NewSpacer()
 		return
+	default:
+		log.Panic("bug")
 	}
 }
 
