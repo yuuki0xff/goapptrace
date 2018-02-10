@@ -1,11 +1,15 @@
 package logviewer
 
-import "github.com/yuuki0xff/goapptrace/tracer/logutil"
+import (
+	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	"github.com/yuuki0xff/goapptrace/tracer/restapi"
+)
 
 // UIState is status of Coordinator.
 type UIState struct {
 	LogID        string
 	RecordID     logutil.FuncLogID
+	Record       restapi.FuncCall
 	UseGraphView bool
 }
 
@@ -15,6 +19,9 @@ type LLState int
 // LRState is status of LogRecordVM.
 type LRState int
 
+// FCDState is status of FuncCallDetailVM.
+type FCDState int
+
 const (
 	LLLoadingState LLState = iota
 	LLWait
@@ -23,4 +30,7 @@ const (
 	LRLoadingState LRState = iota
 	LRWait
 	LRSelectedState
+
+	FCDLoading FCDState = iota
+	FCDWait
 )

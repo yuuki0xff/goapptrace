@@ -58,8 +58,12 @@ func (v *Controller) SetState(s UIState) {
 
 	if s.RecordID != 0 {
 		v.newVMCtx()
-		// TODO:
-		v.setVM(nil)
+		v.setVM(&FuncCallDetailVM{
+			Root:   v,
+			Client: v.Api.WithCtx(v.vmCtx),
+			LogID:  s.LogID,
+			Record: s.Record,
+		})
 		return
 	}
 

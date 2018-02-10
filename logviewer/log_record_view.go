@@ -154,10 +154,11 @@ func (vm *LogRecordVM) onUnselectedLog() {
 	// LogIDを指定しない状態に戻す。
 	vm.Root.SetState(UIState{})
 }
-func (vm *LogRecordVM) onSelectedRecord(recordID logutil.FuncLogID) {
+func (vm *LogRecordVM) onSelectedRecord(record restapi.FuncCall) {
 	vm.Root.SetState(UIState{
 		LogID:    vm.LogID,
-		RecordID: recordID,
+		RecordID: record.ID,
+		Record:   record,
 	})
 }
 func (vm *LogRecordVM) onUseGraph() {
@@ -255,8 +256,8 @@ func (v *LogRecordView) onSelectedFuncCallRecord(table *tui.Table) {
 	if v.table.Selected() <= 0 {
 		return
 	}
-	rec := &v.Records[v.table.Selected()-1]
-	v.VM.onSelectedRecord(rec.ID)
+	rec := v.Records[v.table.Selected()-1]
+	v.VM.onSelectedRecord(rec)
 }
 func (v *LogRecordView) newStatusBar(text string) *tui.StatusBar {
 	s := tui.NewStatusBar(LoadingText)

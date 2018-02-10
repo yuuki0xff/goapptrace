@@ -4,114 +4,167 @@ import (
 	"context"
 	"log"
 	"strconv"
+	"sync"
+	"time"
 
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 	"github.com/yuuki0xff/tui-go"
-	"golang.org/x/sync/singleflight"
+	"golang.org/x/sync/errgroup"
 )
 
-type FuncCallDetailView struct {
-	tui.Widget
+type FuncCallDetailVM struct {
+	Root   Coordinator
+	Client restapi.ClientWithCtx
 	LogID  string
-	Record *restapi.FuncCall
-	Root   *Controller
+	Record restapi.FuncCall
 
-	running     uint32
-	updateGroup singleflight.Group
-	ctx         context.Context
-
-	// focusChainに渡す値が常に同じになるようにしないと、クラッシュしてしまう問題を回避するため。
-	funcInfoWrap wrapWidget
-	framesWrap   wrapWidget
-
-	status *tui.StatusBar
-	fc     *tui.SimpleFocusChain
+	m      sync.Mutex
+	view   *FuncCallDetailView
+	state  FCDState
+	err    error
+	fsList []restapi.FuncStatusInfo
+	fList  []restapi.FuncInfo
 }
 
-func newFuncCallDetailView(logID string, record *restapi.FuncCall, root *Controller) *FuncCallDetailView {
-	v := &FuncCallDetailView{
-		LogID:  logID,
-		Record: record,
-		Root:   root,
-
-		status: tui.NewStatusBar(LoadingText),
-		fc:     &tui.SimpleFocusChain{},
-	}
-	v.status.SetPermanentText("Function Call Detail")
-	v.swapWidget(v.newWidgets())
-
-	v.fc.Set(&v.funcInfoWrap, &v.framesWrap)
-	v.Widget = tui.NewVBox(
-		&v.funcInfoWrap,
-		&v.framesWrap,
-		tui.NewSpacer(),
-		v.status,
-	)
-	return v
+func (vm *FuncCallDetailVM) UpdateInterval() time.Duration {
+	return 0
 }
+func (vm *FuncCallDetailVM) Update(ctx context.Context) {
+	length := len(vm.Record.Frames)
+	fsList := make([]restapi.FuncStatusInfo, length)
+	fList := make([]restapi.FuncInfo, length)
 
-func (v *FuncCallDetailView) Update() {
-	v.status.SetText(LoadingText)
-
-	go v.updateGroup.Do("update", func() (interface{}, error) { // nolint: errcheck
-		var err error
-		funcInfoTable, framesTable := v.newWidgets()
-
-		defer func() {
+	var eg errgroup.Group
+	for i, fsid := range vm.Record.Frames {
+		eg.Go(func() error {
+			var fs restapi.FuncStatusInfo
+			fs, err := vm.Client.FuncStatus(vm.LogID, strconv.Itoa(int(fsid)))
 			if err != nil {
-				//v.wrap.SetWidget(newErrorMsg(err))
-				v.status.SetText(ErrorText)
-			} else {
-				//v.wrap.SetWidget(v.table)
-				v.status.SetText("")
+				return err
 			}
-			v.swapWidget(funcInfoTable, framesTable)
-			v.Root.UI.Update(func() {})
-		}()
-
-		func() {
-			funcInfoTable.AppendRow(
-				tui.NewLabel("GID"),
-				tui.NewLabel(strconv.Itoa(int(v.Record.GID))),
-			)
-
-			for _, fsid := range v.Record.Frames {
-				var fs restapi.FuncStatusInfo
-				fs, err = v.api().FuncStatus(v.LogID, strconv.Itoa(int(fsid)))
-				if err != nil {
-					return
-				}
-				var fi restapi.FuncInfo
-				fi, err = v.api().Func(v.LogID, strconv.Itoa(int(fs.Func)))
-				if err != nil {
-					return
-				}
-
-				framesTable.AppendRow(
-					tui.NewLabel(fi.Name),
-					tui.NewLabel(strconv.Itoa(int(fs.Line))),
-					tui.NewLabel("("+strconv.Itoa(int(fs.PC))+")"),
-				)
+			var fi restapi.FuncInfo
+			fi, err = vm.Client.Func(vm.LogID, strconv.Itoa(int(fs.Func)))
+			if err != nil {
+				return err
 			}
-		}()
-		return nil, nil
+
+			fsList[i] = fs
+			fList[i] = fi
+			return nil
+		})
+	}
+	err := eg.Wait()
+
+	vm.m.Lock()
+	defer vm.m.Unlock()
+	vm.state = FCDWait
+	vm.err = err
+	if vm.err != nil {
+		vm.fsList = fsList
+		vm.fList = fList
+	} else {
+		vm.fsList = nil
+		vm.fList = nil
+	}
+}
+func (vm *FuncCallDetailVM) View() View {
+	vm.m.Lock()
+	defer vm.m.Unlock()
+
+	if vm.view == nil {
+		vm.view = &FuncCallDetailView{
+			VM:     vm,
+			State:  vm.state,
+			Error:  vm.err,
+			Record: vm.Record,
+			FsList: vm.fsList,
+			FList:  vm.fList,
+		}
+	}
+	return nil
+}
+func (vm *FuncCallDetailVM) onUnselectedRecord(logID string) {
+	vm.Root.SetState(UIState{
+		LogID: logID,
 	})
 }
-func (v *FuncCallDetailView) SetKeybindings() {
-	gotoLogView := func() {
-		v.Root.setView(newShowLogView(v.LogID, v.Root))
-	}
 
-	v.Root.UI.SetKeybinding("Left", gotoLogView)
-	v.Root.UI.SetKeybinding("h", gotoLogView)
+type FuncCallDetailView struct {
+	VM     *FuncCallDetailVM
+	State  FCDState
+	Error  error
+	LogID  string
+	Record restapi.FuncCall
+	FsList []restapi.FuncStatusInfo
+	FList  []restapi.FuncInfo
+
+	initOnce sync.Once
+	widget   tui.Widget
+	fc       tui.FocusChain
+}
+
+func (v *FuncCallDetailView) init() {
+	switch v.State {
+	case FCDLoading:
+		space := tui.NewSpacer()
+		v.widget = tui.NewVBox(
+			space,
+			v.newStatusBar(LoadingText),
+		)
+		v.fc = newFocusChain(space)
+		return
+	case FCDWait:
+		if v.Error != nil {
+			errmsg := newErrorMsg(v.Error)
+			v.widget = tui.NewVBox(
+				errmsg,
+				tui.NewSpacer(),
+				v.newStatusBar(ErrorText),
+			)
+			v.fc = newFocusChain(errmsg)
+			return
+		} else {
+			fcInfo := tui.NewVBox(
+				tui.NewLabel("Func:"),
+				v.newFuncInfoTable(),
+			)
+
+			framesInfo := tui.NewVBox(
+				tui.NewLabel("Call Stack:"),
+				v.newFramesTable(),
+			)
+
+			v.widget = tui.NewVBox(
+				fcInfo,
+				framesInfo,
+				tui.NewSpacer(),
+				v.newStatusBar(""),
+			)
+			v.fc = newFocusChain(fcInfo, framesInfo)
+			return
+		}
+	default:
+		log.Panic("bug")
+	}
+}
+func (v *FuncCallDetailView) Widget() tui.Widget {
+	v.initOnce.Do(v.init)
+	return v.widget
+}
+func (v *FuncCallDetailView) Keybindings() map[string]func() {
+	v.initOnce.Do(v.init)
+	unselect := func() {
+		v.VM.onUnselectedRecord(v.LogID)
+	}
+	return map[string]func(){
+		"Left": unselect,
+		"h":    unselect,
+	}
 }
 func (v *FuncCallDetailView) FocusChain() tui.FocusChain {
+	v.initOnce.Do(v.init)
 	return v.fc
 }
-func (v *FuncCallDetailView) Start(ctx context.Context) {
-	startAutoUpdateWorker(&v.running, ctx, v.Update)
-}
-
 func (v *FuncCallDetailView) onSelectedFilter(funcInfoTable *tui.Table) {
 	if funcInfoTable.Selected() <= 0 {
 		return
@@ -124,32 +177,44 @@ func (v *FuncCallDetailView) onSelectedFrame(framesTable *tui.Table) {
 	}
 	log.Panic("not implemented")
 }
-
-// swapWidget swaps all widgets in the current view.
-func (v *FuncCallDetailView) swapWidget(funcInfoTable *headerTable, framesTable *headerTable) {
-	v.funcInfoWrap.SetWidget(funcInfoTable)
-	v.framesWrap.SetWidget(framesTable)
-}
-
-// newWidgets returns new widget objects
-func (v *FuncCallDetailView) newWidgets() (funcInfoTable *headerTable, framesTable *headerTable) {
-	funcInfoTable = newHeaderTable(
+func (v *FuncCallDetailView) newFuncInfoTable() *headerTable {
+	t := newHeaderTable(
 		tui.NewLabel("Name"),
 		tui.NewLabel("Value"),
 	)
-	framesTable = newHeaderTable(
+	t.OnItemActivated(v.onSelectedFilter)
+
+	t.AppendRow(
+		tui.NewLabel("GID"),
+		tui.NewLabel(strconv.Itoa(int(v.Record.GID))),
+	)
+	return t
+}
+func (v *FuncCallDetailView) newFramesTable() *headerTable {
+	t := newHeaderTable(
 		tui.NewLabel("Name"),
 		tui.NewLabel("Line"),
 		tui.NewLabel("PC"),
 	)
+	t.OnItemActivated(v.onSelectedFrame)
+	t.SetColumnStretch(0, 10)
+	t.SetColumnStretch(1, 1)
+	t.SetColumnStretch(2, 3)
 
-	funcInfoTable.OnItemActivated(v.onSelectedFilter)
-	framesTable.OnItemActivated(v.onSelectedFrame)
-	framesTable.SetColumnStretch(0, 10)
-	framesTable.SetColumnStretch(1, 1)
-	framesTable.SetColumnStretch(2, 3)
-	return
+	for i := range v.FsList {
+		fs := v.FsList[i]
+		fi := v.FList[i]
+		t.AppendRow(
+			tui.NewLabel(fi.Name),
+			tui.NewLabel(strconv.Itoa(int(fs.Line))),
+			tui.NewLabel("("+strconv.Itoa(int(fs.PC))+")"),
+		)
+	}
+	return t
 }
-func (v *FuncCallDetailView) api() restapi.ClientWithCtx {
-	return v.Root.Api.WithCtx(v.ctx)
+func (v *FuncCallDetailView) newStatusBar(text string) *tui.StatusBar {
+	s := tui.NewStatusBar(LoadingText)
+	s.SetPermanentText("Function Call Detail")
+	s.SetText(text)
+	return s
 }
