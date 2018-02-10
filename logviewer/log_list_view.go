@@ -128,6 +128,7 @@ func (v *LogListView) Widget() tui.Widget {
 }
 
 func (v *LogListView) Keybindings() map[string]func() {
+	v.initOnce.Do(v.init)
 	selected := func() {
 		v.onSelectedLog(nil)
 	}
@@ -137,6 +138,7 @@ func (v *LogListView) Keybindings() map[string]func() {
 	}
 }
 func (v *LogListView) FocusChain() tui.FocusChain {
+	v.initOnce.Do(v.init)
 	return v.fc
 }
 
