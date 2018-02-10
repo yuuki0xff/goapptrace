@@ -187,7 +187,6 @@ type LogRecordView struct {
 }
 
 func (v *LogRecordView) init() {
-	// TODO: create widgets.
 	switch v.State {
 	case LRLoadingState:
 		v.widget = tui.NewVBox(
