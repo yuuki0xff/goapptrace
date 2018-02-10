@@ -14,8 +14,8 @@ type Coordinator interface {
 // ViewModel interface implements the business logic.
 type ViewModel interface {
 	Updatable
-	// State sets state to s.
-	State(s State)
+	// SetState sets state to s.
+	SetState(s State)
 	// Paint builds tui.Widgets from cache.
 	Paint()
 	// LastUpdate returns version number of cache.
