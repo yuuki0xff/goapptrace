@@ -5,6 +5,10 @@ import (
 	"time"
 )
 
+const (
+	DefaultUpdateInterval = 200 * time.Millisecond
+)
+
 type Updatable interface {
 	// Update()を呼び出す頻度。
 	// 負の値を返した場合、Update()は初回のみ呼び出され、それ以降の自動更新は行わない。
@@ -20,7 +24,11 @@ type Updatable interface {
 type Updater struct{}
 
 func (u Updater) Run(ctx context.Context, target Updatable) {
-	t := time.NewTimer(target.UpdateInterval())
+	d := target.UpdateInterval()
+	if d == 0 {
+		d = DefaultUpdateInterval
+	}
+	t := time.NewTimer(d)
 	for {
 		select {
 		case <-t.C:
