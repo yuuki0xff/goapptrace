@@ -53,35 +53,45 @@ func (c *UICoordinator) SetState(s UIState) {
 	defer c.m.Unlock()
 
 	if s.LogID == "" {
-		c.setVM(&LogListVM{
-			Root:   c,
-			Client: c.Api.WithCtx(c.vmCtx),
+		c.setVM(func(ctx context.Context) ViewModel {
+			return &LogListVM{
+				Root:   c,
+				Client: c.Api.WithCtx(ctx),
+			}
 		})
 		return
 	}
 
 	if s.RecordID != 0 {
-		c.setVM(&FuncCallDetailVM{
-			Root:   c,
-			Client: c.Api.WithCtx(c.vmCtx),
-			LogID:  s.LogID,
-			Record: s.Record,
+		c.setVM(func(ctx context.Context) ViewModel {
+			return &FuncCallDetailVM{
+				Root:   c,
+				Client: c.Api.WithCtx(ctx),
+				LogID:  s.LogID,
+				Record: s.Record,
+			}
 		})
 		return
 	}
 
 	if s.UseGraphView {
-		c.setVM(&GraphVM{
-			Root:   c,
-			Client: c.Api.WithCtx(c.vmCtx),
-			LogID:  s.LogID,
+		c.setVM(func(ctx context.Context) ViewModel {
+			return &GraphVM{
+				Root:   c,
+				Client: c.Api.WithCtx(ctx),
+				LogID:  s.LogID,
+			}
 		})
+		return
 	} else {
-		c.setVM(&LogRecordVM{
-			Root:   c,
-			Client: c.Api.WithCtx(c.vmCtx),
-			LogID:  s.LogID,
+		c.setVM(func(ctx context.Context) ViewModel {
+			return &LogRecordVM{
+				Root:   c,
+				Client: c.Api.WithCtx(ctx),
+				LogID:  s.LogID,
+			}
 		})
+		return
 	}
 }
 func (c *UICoordinator) NotifyVMUpdated() {
@@ -115,16 +125,14 @@ func (c *UICoordinator) setKeybindings(bindings map[string]func()) {
 		c.UI.SetKeybinding(key, fn)
 	}
 }
-func (c *UICoordinator) stopVM() {
+func (c *UICoordinator) setVM(fn func(ctx context.Context) ViewModel) {
 	if c.vm != nil {
 		// stop old ViewModel.
 		c.vmCancel()
 	}
-}
-func (c *UICoordinator) setVM(vm ViewModel) {
-	c.stopVM()
+
 	c.vmCtx, c.vmCancel = context.WithCancel(c.ctx)
-	c.vm = vm
+	c.vm = fn(c.vmCtx)
 	c.notifyVMUpdatedNolock(c.vm.View())
 	go c.vm.Update(c.vmCtx)
 }
