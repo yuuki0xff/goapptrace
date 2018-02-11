@@ -550,6 +550,7 @@ func (api APIv0) funcStatusSymbol(w http.ResponseWriter, r *http.Request) {
 	fs, ok := logobj.Symbols().FuncStatus(fsid)
 	if !ok {
 		http.Error(w, "func status is not found", http.StatusNotFound)
+		return
 	}
 
 	js, err := json.Marshal(fs)
