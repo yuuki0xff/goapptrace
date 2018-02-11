@@ -102,6 +102,7 @@ func (v *Controller) setVM(vm ViewModel) {
 		// update focus chain
 		v.UI.SetFocusChain(view.FocusChain())
 	})
+	go v.vm.Update(v.vmCtx)
 }
 
 // theme returns default themes.
