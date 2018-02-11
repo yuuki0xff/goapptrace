@@ -2,6 +2,9 @@ package logviewer
 
 import (
 	"context"
+	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -38,6 +41,10 @@ func (c *UICoordinator) Run() error {
 
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 	defer c.cancel()
+
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 
 	go c.SetState(UIState{})
 	if err := c.UI.Run(); err != nil {
