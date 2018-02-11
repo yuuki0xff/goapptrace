@@ -729,7 +729,7 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *logutil.FuncLog) bool,
 						return nil
 					}
 				}
-				return nil
+				// unreachable
 			})
 			return w.nextWorker(ch)
 		}
@@ -861,7 +861,7 @@ func (w *FuncLogAPIWorker) sendTo(enc Encoder) {
 				return nil
 			}
 		}
-		return nil
+		// unreachable
 	})
 }
 
