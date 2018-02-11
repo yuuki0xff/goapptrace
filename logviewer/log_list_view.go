@@ -31,14 +31,7 @@ func (vm *LogListVM) UpdateInterval() time.Duration {
 }
 func (vm *LogListVM) Update(ctx context.Context) {
 	logs, err := vm.Client.Logs()
-
-	vm.m.Lock()
-	defer vm.m.Unlock()
-	vm.view = nil
-	vm.state = LLWait
-	vm.logs, vm.err = logs, err
-
-	if vm.err == nil {
+	if err == nil {
 		// Timestamp(降順),ID(昇順)に並び替える。
 		sort.Slice(logs, func(i, j int) bool {
 			t1 := logs[i].Metadata.Timestamp.Unix()
@@ -49,6 +42,12 @@ func (vm *LogListVM) Update(ctx context.Context) {
 			return t1 > t2
 		})
 	}
+
+	vm.m.Lock()
+	defer vm.m.Unlock()
+	vm.view = nil
+	vm.state = LLWait
+	vm.logs, vm.err = logs, err
 }
 func (vm *LogListVM) View() View {
 	vm.m.Lock()
