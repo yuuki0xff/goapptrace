@@ -42,12 +42,14 @@ func (vm *LogRecordVM) Update(ctx context.Context) {
 	records, fsMap, fMap, err := vm.fetch()
 
 	vm.m.Lock()
-	defer vm.m.Lock()
 	vm.view = nil
 	vm.records = records
 	vm.fsMap = fsMap
 	vm.fMap = fMap
 	vm.err = err
+	vm.m.Lock()
+
+	vm.Root.NotifyVMUpdated()
 }
 func (vm *LogRecordVM) View() View {
 	vm.m.Lock()

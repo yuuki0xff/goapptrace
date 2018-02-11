@@ -192,10 +192,12 @@ func (vm *GraphVM) Update(ctx context.Context) {
 	}
 
 	vm.m.Lock()
-	defer vm.m.Unlock()
 	vm.state.Error = err
 	vm.state.Lines = lines
 	vm.cache = cache
+	vm.m.Unlock()
+
+	vm.Root.NotifyVMUpdated()
 }
 func (vm *GraphVM) View() View {
 	vm.m.Lock()
@@ -405,7 +407,7 @@ func (vm *GraphVM) onChangedOffset(dx, dy int) {
 	vm.state.UpdateOffset(dx, dy)
 	vm.m.Unlock()
 
-	// todo: viewを再生成したことをcoordinatorに通知
+	vm.Root.NotifyVMUpdated()
 }
 
 type GraphView struct {

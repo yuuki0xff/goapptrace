@@ -8,6 +8,9 @@ import (
 type Coordinator interface {
 	// SetState sets status of the Coordinator to s.
 	SetState(s UIState)
+	// NotifyVMUpdated notifies that current ViewModel is updated.
+	// Coordinator MUST replace views.
+	NotifyVMUpdated()
 }
 
 // ViewModel interface implements the business logic.

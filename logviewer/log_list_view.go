@@ -44,10 +44,12 @@ func (vm *LogListVM) Update(ctx context.Context) {
 	}
 
 	vm.m.Lock()
-	defer vm.m.Unlock()
 	vm.view = nil
 	vm.state = LLWait
 	vm.logs, vm.err = logs, err
+	vm.m.Unlock()
+
+	vm.Root.NotifyVMUpdated()
 }
 func (vm *LogListVM) View() View {
 	vm.m.Lock()

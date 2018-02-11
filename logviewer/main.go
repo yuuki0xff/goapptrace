@@ -73,6 +73,22 @@ func (v *Controller) SetState(s UIState) {
 		v.setVM(nil)
 	}
 }
+func (v *Controller) NotifyVMUpdated() {
+	if v.vm == nil {
+		return
+	}
+	view := v.vm.View()
+	v.UI.Update(func() {
+		v.UI.SetWidget(view.Widget())
+
+		// rebuild key bind settings.
+		v.UI.ClearKeybindings()
+		v.setKeybindings(view.Keybindings())
+
+		// update focus chain
+		v.UI.SetFocusChain(view.FocusChain())
+	})
+}
 func (v *Controller) setKeybindings(bindings map[string]func()) {
 	v.UI.SetKeybinding("Q", v.Quit)
 	v.UI.SetKeybinding("Esc", v.Quit)
@@ -91,17 +107,7 @@ func (v *Controller) setVM(vm ViewModel) {
 	v.stopVM()
 	v.vmCtx, v.vmCancel = context.WithCancel(v.ctx)
 	v.vm = vm
-	view := v.vm.View()
-	v.UI.Update(func() {
-		v.UI.SetWidget(view.Widget())
-
-		// rebuild key bind settings.
-		v.UI.ClearKeybindings()
-		v.setKeybindings(view.Keybindings())
-
-		// update focus chain
-		v.UI.SetFocusChain(view.FocusChain())
-	})
+	v.NotifyVMUpdated()
 	go v.vm.Update(v.vmCtx)
 }
 

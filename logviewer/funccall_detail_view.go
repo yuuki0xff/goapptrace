@@ -56,7 +56,6 @@ func (vm *FuncCallDetailVM) Update(ctx context.Context) {
 	err := eg.Wait()
 
 	vm.m.Lock()
-	defer vm.m.Unlock()
 	vm.state = FCDWait
 	vm.err = err
 	if vm.err != nil {
@@ -66,6 +65,9 @@ func (vm *FuncCallDetailVM) Update(ctx context.Context) {
 		vm.fsList = nil
 		vm.fList = nil
 	}
+	vm.m.Unlock()
+
+	vm.Root.NotifyVMUpdated()
 }
 func (vm *FuncCallDetailVM) View() View {
 	vm.m.Lock()
