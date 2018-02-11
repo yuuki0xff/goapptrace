@@ -22,6 +22,9 @@ type LRState int
 // FCDState is status of FuncCallDetailVM.
 type FCDState int
 
+// GState is status of GraphVM
+type GState int
+
 const (
 	LLLoadingState LLState = iota
 	LLWait
@@ -33,4 +36,7 @@ const (
 
 	FCDLoading FCDState = iota
 	FCDWait
+
+	GLoading GState = iota
+	GWait
 )
