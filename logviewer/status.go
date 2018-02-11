@@ -29,14 +29,17 @@ const (
 	LLLoadingState LLState = iota
 	LLWait
 	LLSelectedState
-
+)
+const (
 	LRLoadingState LRState = iota
 	LRWait
 	LRSelectedState
-
+)
+const (
 	FCDLoading FCDState = iota
 	FCDWait
-
+)
+const (
 	GLoading GState = iota
 	GWait
 )
