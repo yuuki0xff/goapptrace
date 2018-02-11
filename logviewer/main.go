@@ -10,9 +10,8 @@ import (
 	"github.com/yuuki0xff/tui-go"
 )
 
-// Controller implements of Coordinator.
-// TODO: rename to UICoordinator
-type Controller struct {
+// UICoordinator implements of Coordinator.
+type UICoordinator struct {
 	Config *config.Config
 	Api    *restapi.Client
 	LogID  string
@@ -28,7 +27,7 @@ type Controller struct {
 	cancel context.CancelFunc
 }
 
-func (v *Controller) Run() error {
+func (v *UICoordinator) Run() error {
 	var err error
 
 	v.UI, err = tui.New(tui.NewSpacer())
@@ -46,10 +45,10 @@ func (v *Controller) Run() error {
 	}
 	return nil
 }
-func (v *Controller) Quit() {
+func (v *UICoordinator) Quit() {
 	v.UI.Quit()
 }
-func (v *Controller) SetState(s UIState) {
+func (v *UICoordinator) SetState(s UIState) {
 	v.m.Lock()
 	defer v.m.Unlock()
 
@@ -79,7 +78,7 @@ func (v *Controller) SetState(s UIState) {
 		v.setVM(nil)
 	}
 }
-func (v *Controller) NotifyVMUpdated() {
+func (v *UICoordinator) NotifyVMUpdated() {
 	var view View
 
 	v.m.Lock()
@@ -90,7 +89,7 @@ func (v *Controller) NotifyVMUpdated() {
 
 	v.notifyVMUpdatedNolock(view)
 }
-func (v *Controller) notifyVMUpdatedNolock(view View) {
+func (v *UICoordinator) notifyVMUpdatedNolock(view View) {
 	v.UI.Update(func() {
 		v.UI.SetWidget(view.Widget())
 
@@ -102,7 +101,7 @@ func (v *Controller) notifyVMUpdatedNolock(view View) {
 		v.UI.SetFocusChain(view.FocusChain())
 	})
 }
-func (v *Controller) setKeybindings(bindings map[string]func()) {
+func (v *UICoordinator) setKeybindings(bindings map[string]func()) {
 	v.UI.SetKeybinding("Q", v.Quit)
 	v.UI.SetKeybinding("Esc", v.Quit)
 
@@ -110,13 +109,13 @@ func (v *Controller) setKeybindings(bindings map[string]func()) {
 		v.UI.SetKeybinding(key, fn)
 	}
 }
-func (v *Controller) stopVM() {
+func (v *UICoordinator) stopVM() {
 	if v.vm != nil {
 		// stop old ViewModel.
 		v.vmCancel()
 	}
 }
-func (v *Controller) setVM(vm ViewModel) {
+func (v *UICoordinator) setVM(vm ViewModel) {
 	v.stopVM()
 	v.vmCtx, v.vmCancel = context.WithCancel(v.ctx)
 	v.vm = vm
@@ -125,7 +124,7 @@ func (v *Controller) setVM(vm ViewModel) {
 }
 
 // theme returns default themes.
-func (v *Controller) theme() *tui.Theme {
+func (v *UICoordinator) theme() *tui.Theme {
 	theme := tui.NewTheme()
 	theme.SetStyle("list.item.selected", tui.Style{Reverse: tui.DecorationOn})
 	theme.SetStyle("table.cell.selected", tui.Style{Reverse: tui.DecorationOn})
