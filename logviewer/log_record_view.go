@@ -82,7 +82,7 @@ func (vm *LogRecordVM) fetch() (
 		SortKey:   restapi.SortByEndTime,
 		SortOrder: restapi.DescendingSortOrder,
 	})
-	if err == nil {
+	if err != nil {
 		return
 	}
 
