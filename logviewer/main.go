@@ -109,9 +109,9 @@ func (c *UICoordinator) NotifyVMUpdated() {
 	if c.vm != nil {
 		view = c.vm.View()
 	}
-	c.notifyVMUpdatedNolock(view)
+	c.setView(view)
 }
-func (c *UICoordinator) notifyVMUpdatedNolock(view View) {
+func (c *UICoordinator) setView(view View) {
 	c.UI.Update(func() {
 		c.UI.SetWidget(view.Widget())
 
@@ -139,7 +139,7 @@ func (c *UICoordinator) setVM(fn func(ctx context.Context) ViewModel) {
 
 	c.vmCtx, c.vmCancel = context.WithCancel(c.ctx)
 	c.vm = fn(c.vmCtx)
-	c.notifyVMUpdatedNolock(c.vm.View())
+	c.setView(c.vm.View())
 	go c.vm.Update(c.vmCtx)
 }
 
