@@ -2,6 +2,7 @@ package logviewer
 
 import (
 	"context"
+	"sync"
 
 	"github.com/pkg/errors"
 	"github.com/yuuki0xff/goapptrace/config"
@@ -16,6 +17,8 @@ type Controller struct {
 	Api    *restapi.Client
 	LogID  string
 	UI     tui.UI
+
+	m sync.Mutex
 
 	vm       ViewModel
 	vmCtx    context.Context
@@ -47,6 +50,9 @@ func (v *Controller) Quit() {
 	v.UI.Quit()
 }
 func (v *Controller) SetState(s UIState) {
+	v.m.Lock()
+	defer v.m.Unlock()
+
 	if s.LogID == "" {
 		v.setVM(&LogListVM{
 			Root:   v,
@@ -74,10 +80,17 @@ func (v *Controller) SetState(s UIState) {
 	}
 }
 func (v *Controller) NotifyVMUpdated() {
-	if v.vm == nil {
-		return
+	var view View
+
+	v.m.Lock()
+	if v.vm != nil {
+		view = v.vm.View()
 	}
-	view := v.vm.View()
+	v.m.Unlock()
+
+	v.notifyVMUpdatedNolock(view)
+}
+func (v *Controller) notifyVMUpdatedNolock(view View) {
 	v.UI.Update(func() {
 		v.UI.SetWidget(view.Widget())
 
@@ -107,7 +120,7 @@ func (v *Controller) setVM(vm ViewModel) {
 	v.stopVM()
 	v.vmCtx, v.vmCancel = context.WithCancel(v.ctx)
 	v.vm = vm
-	v.NotifyVMUpdated()
+	v.notifyVMUpdatedNolock(v.vm.View())
 	go v.vm.Update(v.vmCtx)
 }
 
