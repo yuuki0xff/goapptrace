@@ -27,43 +27,43 @@ type UICoordinator struct {
 	cancel context.CancelFunc
 }
 
-func (v *UICoordinator) Run() error {
+func (c *UICoordinator) Run() error {
 	var err error
 
-	v.UI, err = tui.New(tui.NewSpacer())
+	c.UI, err = tui.New(tui.NewSpacer())
 	if err != nil {
 		return errors.Wrap(err, "failed to initialize TUI")
 	}
-	v.UI.SetTheme(v.theme())
+	c.UI.SetTheme(c.theme())
 
-	v.ctx, v.cancel = context.WithCancel(context.Background())
-	defer v.cancel()
+	c.ctx, c.cancel = context.WithCancel(context.Background())
+	defer c.cancel()
 
-	go v.SetState(UIState{})
-	if err := v.UI.Run(); err != nil {
+	go c.SetState(UIState{})
+	if err := c.UI.Run(); err != nil {
 		return errors.Wrap(err, "failed to initialize TUI")
 	}
 	return nil
 }
-func (v *UICoordinator) Quit() {
-	v.UI.Quit()
+func (c *UICoordinator) Quit() {
+	c.UI.Quit()
 }
-func (v *UICoordinator) SetState(s UIState) {
-	v.m.Lock()
-	defer v.m.Unlock()
+func (c *UICoordinator) SetState(s UIState) {
+	c.m.Lock()
+	defer c.m.Unlock()
 
 	if s.LogID == "" {
-		v.setVM(&LogListVM{
-			Root:   v,
-			Client: v.Api.WithCtx(v.vmCtx),
+		c.setVM(&LogListVM{
+			Root:   c,
+			Client: c.Api.WithCtx(c.vmCtx),
 		})
 		return
 	}
 
 	if s.RecordID != 0 {
-		v.setVM(&FuncCallDetailVM{
-			Root:   v,
-			Client: v.Api.WithCtx(v.vmCtx),
+		c.setVM(&FuncCallDetailVM{
+			Root:   c,
+			Client: c.Api.WithCtx(c.vmCtx),
 			LogID:  s.LogID,
 			Record: s.Record,
 		})
@@ -72,59 +72,59 @@ func (v *UICoordinator) SetState(s UIState) {
 
 	if s.UseGraphView {
 		// TODO: set GraphVM.
-		v.setVM(nil)
+		c.setVM(nil)
 	} else {
 		// TODO: set RecordsListVM.
-		v.setVM(nil)
+		c.setVM(nil)
 	}
 }
-func (v *UICoordinator) NotifyVMUpdated() {
+func (c *UICoordinator) NotifyVMUpdated() {
 	var view View
 
-	v.m.Lock()
-	if v.vm != nil {
-		view = v.vm.View()
+	c.m.Lock()
+	if c.vm != nil {
+		view = c.vm.View()
 	}
-	v.m.Unlock()
+	c.m.Unlock()
 
-	v.notifyVMUpdatedNolock(view)
+	c.notifyVMUpdatedNolock(view)
 }
-func (v *UICoordinator) notifyVMUpdatedNolock(view View) {
-	v.UI.Update(func() {
-		v.UI.SetWidget(view.Widget())
+func (c *UICoordinator) notifyVMUpdatedNolock(view View) {
+	c.UI.Update(func() {
+		c.UI.SetWidget(view.Widget())
 
 		// rebuild key bind settings.
-		v.UI.ClearKeybindings()
-		v.setKeybindings(view.Keybindings())
+		c.UI.ClearKeybindings()
+		c.setKeybindings(view.Keybindings())
 
 		// update focus chain
-		v.UI.SetFocusChain(view.FocusChain())
+		c.UI.SetFocusChain(view.FocusChain())
 	})
 }
-func (v *UICoordinator) setKeybindings(bindings map[string]func()) {
-	v.UI.SetKeybinding("Q", v.Quit)
-	v.UI.SetKeybinding("Esc", v.Quit)
+func (c *UICoordinator) setKeybindings(bindings map[string]func()) {
+	c.UI.SetKeybinding("Q", c.Quit)
+	c.UI.SetKeybinding("Esc", c.Quit)
 
 	for key, fn := range bindings {
-		v.UI.SetKeybinding(key, fn)
+		c.UI.SetKeybinding(key, fn)
 	}
 }
-func (v *UICoordinator) stopVM() {
-	if v.vm != nil {
+func (c *UICoordinator) stopVM() {
+	if c.vm != nil {
 		// stop old ViewModel.
-		v.vmCancel()
+		c.vmCancel()
 	}
 }
-func (v *UICoordinator) setVM(vm ViewModel) {
-	v.stopVM()
-	v.vmCtx, v.vmCancel = context.WithCancel(v.ctx)
-	v.vm = vm
-	v.notifyVMUpdatedNolock(v.vm.View())
-	go v.vm.Update(v.vmCtx)
+func (c *UICoordinator) setVM(vm ViewModel) {
+	c.stopVM()
+	c.vmCtx, c.vmCancel = context.WithCancel(c.ctx)
+	c.vm = vm
+	c.notifyVMUpdatedNolock(c.vm.View())
+	go c.vm.Update(c.vmCtx)
 }
 
 // theme returns default themes.
-func (v *UICoordinator) theme() *tui.Theme {
+func (c *UICoordinator) theme() *tui.Theme {
 	theme := tui.NewTheme()
 	theme.SetStyle("list.item.selected", tui.Style{Reverse: tui.DecorationOn})
 	theme.SetStyle("table.cell.selected", tui.Style{Reverse: tui.DecorationOn})
