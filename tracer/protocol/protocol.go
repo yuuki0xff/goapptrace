@@ -43,7 +43,8 @@ func (pr Proto) PackSize(p xtcp.Packet) int {
 func (pr Proto) PackTo(p xtcp.Packet, w io.Writer) (int, error) {
 	if mergePkt, ok := p.(*MergePacket); ok {
 		// MergePacketは、シリアライズ済みデータをストリームに書き込むだけで良い。
-		return mergePkt.WriteTo(w)
+		n, err := mergePkt.WriteTo(w)
+		return int(n), err
 	}
 
 	buf := bufferPool.Get().(*bytes.Buffer)

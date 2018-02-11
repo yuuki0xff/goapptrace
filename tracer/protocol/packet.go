@@ -116,9 +116,8 @@ func (p *MergePacket) Reset() {
 func (p *MergePacket) Len() int {
 	return p.buff.Len()
 }
-func (p *MergePacket) WriteTo(w io.Writer) (int, error) {
-	n, err := p.buff.WriteTo(w)
-	return int(n), err
+func (p *MergePacket) WriteTo(w io.Writer) (int64, error) {
+	return p.buff.WriteTo(w)
 }
 
 ////////////////////////////////////////////////////////////////
