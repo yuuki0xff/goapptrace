@@ -48,7 +48,7 @@ func (vm *LogRecordVM) Update(ctx context.Context) {
 	vm.fMap = fMap
 	vm.err = err
 	vm.state = LRWait
-	vm.m.Lock()
+	vm.m.Unlock()
 
 	vm.Root.NotifyVMUpdated()
 }
