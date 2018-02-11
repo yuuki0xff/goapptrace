@@ -105,11 +105,10 @@ func (c *UICoordinator) NotifyVMUpdated() {
 	var view View
 
 	c.m.Lock()
+	defer c.m.Unlock()
 	if c.vm != nil {
 		view = c.vm.View()
 	}
-	c.m.Unlock()
-
 	c.notifyVMUpdatedNolock(view)
 }
 func (c *UICoordinator) notifyVMUpdatedNolock(view View) {
