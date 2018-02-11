@@ -71,11 +71,17 @@ func (c *UICoordinator) SetState(s UIState) {
 	}
 
 	if s.UseGraphView {
-		// TODO: set GraphVM.
-		c.setVM(nil)
+		c.setVM(&GraphVM{
+			Root:   c,
+			Client: c.Api.WithCtx(c.vmCtx),
+			LogID:  s.LogID,
+		})
 	} else {
-		// TODO: set RecordsListVM.
-		c.setVM(nil)
+		c.setVM(&LogRecordVM{
+			Root:   c,
+			Client: c.Api.WithCtx(c.vmCtx),
+			LogID:  s.LogID,
+		})
 	}
 }
 func (c *UICoordinator) NotifyVMUpdated() {
