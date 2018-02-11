@@ -81,7 +81,7 @@ func (vm *FuncCallDetailVM) View() View {
 			FList:  vm.fList,
 		}
 	}
-	return nil
+	return vm.view
 }
 func (vm *FuncCallDetailVM) onUnselectedRecord(logID string) {
 	vm.Root.SetState(UIState{
