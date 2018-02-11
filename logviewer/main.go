@@ -112,7 +112,10 @@ func (c *UICoordinator) NotifyVMUpdated() {
 	c.setView(view)
 }
 func (c *UICoordinator) setView(view View) {
-	c.UI.Update(func() {
+	// setViewは、UI threadから呼び出される可能性が高い。
+	// UI thread上でc.UI.Update()を呼び出すとdead lockする問題を回避するために、
+	// 別のスレッドからアップデーするようにしている。
+	go c.UI.Update(func() {
 		c.UI.SetWidget(view.Widget())
 
 		// rebuild key bind settings.
