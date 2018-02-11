@@ -48,7 +48,6 @@ func (v *Controller) Quit() {
 }
 func (v *Controller) SetState(s UIState) {
 	if s.LogID == "" {
-		v.newVMCtx()
 		v.setVM(&LogListVM{
 			Root:   v,
 			Client: v.Api.WithCtx(v.vmCtx),
@@ -57,7 +56,6 @@ func (v *Controller) SetState(s UIState) {
 	}
 
 	if s.RecordID != 0 {
-		v.newVMCtx()
 		v.setVM(&FuncCallDetailVM{
 			Root:   v,
 			Client: v.Api.WithCtx(v.vmCtx),
@@ -68,7 +66,6 @@ func (v *Controller) SetState(s UIState) {
 	}
 
 	if s.UseGraphView {
-		v.newVMCtx()
 		// TODO: set GraphVM.
 		v.setVM(nil)
 	} else {
@@ -90,12 +87,9 @@ func (v *Controller) stopVM() {
 		v.vmCancel()
 	}
 }
-func (v *Controller) newVMCtx() {
+func (v *Controller) setVM(vm ViewModel) {
 	v.stopVM()
 	v.vmCtx, v.vmCancel = context.WithCancel(v.ctx)
-}
-
-func (v *Controller) setVM(vm ViewModel) {
 	v.vm = vm
 	view := v.vm.View()
 	v.UI.Update(func() {
