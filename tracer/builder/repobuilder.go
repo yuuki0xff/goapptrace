@@ -122,7 +122,7 @@ func (b *RepoBuilder) EditFiles(gofiles []string) error {
 		if err != nil {
 			return err
 		}
-		if err := os.MkdirAll(mainpkg, os.ModePerm); err != nil {
+		if err = os.MkdirAll(mainpkg, os.ModePerm); err != nil {
 			return err
 		}
 
