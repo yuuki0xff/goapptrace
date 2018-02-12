@@ -6,7 +6,16 @@ all: build
 build-deps:
 	go get -u golang.org/x/tools/cmd/goimports
 	go get -u github.com/alecthomas/gometalinter
-	gometalinter -u
+
+	# gometalinterがforkしたリポジトリには最新のbug fixが反映されていない。
+	# そのため、--no-vendored-lintersオプションを使用し、新しいlinterを使えるようにしている。
+	# ただし、govetのリポジトリが無くなってしまったため、govetのインストールには失敗する。
+	# workaroundとして、govetは個別にインストールをする。
+	# See https://github.com/alecthomas/gometalinter/issues/436
+	gometalinter -i -u --no-vendored-linters --debug || :
+	go get -u github.com/golang/go/src/cmd/vet
+	mv ${GOBIN}/vet ${GOBIN}/govet
+
 	go get -t -u ./...
 
 build:
