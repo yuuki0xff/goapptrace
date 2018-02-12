@@ -355,7 +355,7 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var sortFn func(f1, f2 *logutil.FuncLog) bool
-	switch SortKey(sortKey) {
+	switch sortKey {
 	case SortByID:
 		sortFn = func(f1, f2 *logutil.FuncLog) bool {
 			return f1.ID < f2.ID
