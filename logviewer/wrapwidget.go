@@ -10,8 +10,8 @@ import (
 // 表示対象のWidgetを切り替えることが可能なWidget。
 //
 // このwidgetは、現時点ではどこからの使用されていない。
-// deadcodeがwarningを出してくる問題を回避するために、nolintをつけている。
-type wrapWidget struct { // nolint: deadcode
+// いくつかのlinterがwarningを出してくる問題を回避するために、nolintをつけている。
+type wrapWidget struct { // nolint
 	Widget tui.Widget
 }
 

@@ -740,7 +740,7 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *logutil.FuncLog) bool,
 		log.Print("sortAndLimit: start")
 		defer w.stopReader()
 		defer close(ch)
-		defer log.Print("sortAndLimit: done exec-time=", time.Now().Sub(start))
+		defer log.Print("sortAndLimit: done exec-time=", time.Since(start))
 		var items []logutil.FuncLog
 
 		// sort関数用の比較関数。

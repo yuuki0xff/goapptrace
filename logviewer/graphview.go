@@ -108,10 +108,7 @@ func (c *GraphCache) getFCLogs() ([]funcCallWithFuncIDs, map[logutil.GID]bool, r
 	eg.Go(func() error {
 		var err error
 		conf, err = c.client.LogStatus(c.logID)
-		if err != nil {
-			return err
-		}
-		return nil
+		return err
 	})
 
 	if err := eg.Wait(); err != nil {
