@@ -21,8 +21,8 @@ const (
 	backtraceSize        = 1 << 16 // about 64KiB
 	maxStackSize         = 1024
 
-	useCallersFrames      = false
-	useNonStandardRuntime = true
+	useCallersFrames      = false //@@GAT#FLAG#
+	useNonStandardRuntime = false //@@GAT#FLAG#
 )
 
 var (
@@ -172,7 +172,8 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 	if useNonStandardRuntime {
 		// runtime.GoID()は、標準のruntimeパッケージ内に存在しない関数である。
 		// tracer/builderパッケージによってパッチが当てられた環境でのみ使用可能。
-		logmsg.GID = logutil.GID(runtime.GoID()) // nolint
+
+		//@@GAT@useNonStandardRuntime@ logmsg.GID = logutil.GID(runtime.GoID())
 	} else {
 		var buf [backtraceSize]byte
 		runtime.Stack(buf[:], false) // First line is "goroutine xxx [running]"

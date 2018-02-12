@@ -54,6 +54,9 @@ type RepoBuilder struct {
 	IgnoreFiles   map[string]bool
 	IgnoreStdPkgs bool
 
+	// settings of the tracer/logger package。
+	LoggerFlags LoggerFlags
+
 	Editor srceditor.CodeEditor
 }
 
@@ -164,16 +167,7 @@ func (b *RepoBuilder) EditFiles(gofiles []string) error {
 		}
 	}
 
-	// runtimeにパッチを当てる
-	runtimeDir := path.Join(b.Goroot, "src", "runtime")
-	patchFileName := path.Join(runtimeDir, "goapptrace.go")
-	if err := b.mkdir(runtimeDir); err != nil {
-		return err
-	}
-	if err := b.writeFile(patchFileName, []byte(runtimePatch)); err != nil {
-		return err
-	}
-	return nil
+	return b.applyPatches()
 }
 
 // 指定されたパッケージとその依存に、トレース用コードを追加する。
@@ -203,7 +197,8 @@ func (b *RepoBuilder) EditPackages(pkgs []string) error {
 			return err
 		}
 	}
-	return nil
+
+	return b.applyPatches()
 }
 
 // 指定したパッケージにトレース用コードを追加する。
@@ -258,6 +253,41 @@ func (b *RepoBuilder) mkdir(dir string) error {
 }
 func (b *RepoBuilder) writeFile(filename string, data []byte) error {
 	return ioutil.WriteFile(filename, data, config.DefaultFilePerm)
+}
+func (b *RepoBuilder) applyPatches() error {
+	// edit the tracer/logger package by LoggerFlags.
+	loggerDir := path.Join(b.Gopath, "src", "github.com", "yuuki0xff", "goapptrace", "tracer", "logger")
+	files, err := ioutil.ReadDir(loggerDir)
+	if err != nil {
+		return err
+	}
+	for _, f := range files {
+		fullpath := path.Join(loggerDir, f.Name())
+		cnt, err := ioutil.ReadFile(fullpath)
+		if err != nil {
+			return err
+		}
+
+		newCnt := b.LoggerFlags.EditContent(string(cnt))
+
+		err = ioutil.WriteFile(fullpath, []byte(newCnt), f.Mode())
+		if err != nil {
+			return err
+		}
+	}
+
+	if b.LoggerFlags.UseNonStandardRuntime {
+		// apply a patch to the runtime package.
+		runtimeDir := path.Join(b.Goroot, "src", "runtime")
+		patchFileName := path.Join(runtimeDir, "goapptrace.go")
+		if err := b.mkdir(runtimeDir); err != nil {
+			return err
+		}
+		if err := b.writeFile(patchFileName, []byte(runtimePatch)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // 全てのファイルが".go"で終わるファイルなら、trueを返す
