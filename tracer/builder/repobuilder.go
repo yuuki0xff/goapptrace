@@ -54,8 +54,7 @@ type RepoBuilder struct {
 	IgnoreFiles   map[string]bool
 	IgnoreStdPkgs bool
 
-	Editor     srceditor.CodeEditor
-	OutputFile string
+	Editor srceditor.CodeEditor
 }
 
 func (b *RepoBuilder) EditAll(targets []string) error {
