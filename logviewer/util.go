@@ -2,38 +2,26 @@ package logviewer
 
 import (
 	"context"
-	"log"
-	"sync/atomic"
 	"time"
 )
 
-// updateをUpdateInterval間隔で呼び出すworkerを起動する。
-// workerの動作状況はrunning変数に保存される。
-// 既に起動している場合は、何もしない。
-func startAutoUpdateWorker(running *uint32, ctx context.Context, update func()) (started bool) {
-	if !atomic.CompareAndSwapUint32(running, 0, 1) {
-		// 既に起動済みなので何もしない
-		return
+// updateをUpdateInterval間隔で呼び出すworker。
+// 最初にUpdate()を呼び出すのは、upd.UpdateInterval()経過後である。
+// このメソッドはctxが完了するまで制御を返さない。
+func updateWorker(ctx context.Context, upd Updatable) {
+	interval := upd.UpdateInterval()
+	if interval <= 0 {
+		interval = DefaultUpdateInterval
 	}
-	started = true
-
-	go func() {
-		defer func() {
-			if !atomic.CompareAndSwapUint32(running, 1, 0) {
-				log.Panic("invalid state")
-			}
-		}()
-
-		timer := time.NewTicker(UpdateInterval)
-		defer timer.Stop()
-		for {
-			select {
-			case <-timer.C:
-				update()
-			case <-ctx.Done():
-				return
-			}
+	timer := time.NewTicker(interval)
+	defer timer.Stop()
+	for {
+		select {
+		case <-timer.C:
+			upd.Update(ctx)
+		case <-ctx.Done():
+			return
 		}
-	}()
-	return
+	}
+	// unreachable
 }

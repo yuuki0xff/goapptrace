@@ -143,6 +143,7 @@ func (c *UICoordinator) setVM(fn func(ctx context.Context) ViewModel) {
 	c.vmCtx, c.vmCancel = context.WithCancel(c.ctx)
 	c.vm = fn(c.vmCtx)
 	c.setView(c.vm.View())
+	go updateWorker(c.vmCtx, c.vm)
 	go c.vm.Update(c.vmCtx)
 }
 
