@@ -3,6 +3,7 @@ package protocol
 import (
 	"context"
 	"fmt"
+	"log"
 	"reflect"
 	"strings"
 	"sync"
@@ -193,6 +194,13 @@ func (c *Client) pingWorker() {
 func (c *Client) mergeWorker() {
 	defer c.workerWg.Done()
 
+	send := func(pkt *MergePacket) {
+		if err := c.xtcpconn.Send(pkt); err != nil {
+			// TODO: try to reconnect.
+			log.Panic(err)
+		}
+	}
+
 	c.mergePktPool = sync.Pool{
 		New: func() interface{} {
 			return &MergePacket{
@@ -209,19 +217,19 @@ func (c *Client) mergeWorker() {
 			// TODO: mergePkt.Merge(pkt)は時間がかかる処理である。マルチスレッド化する。
 			mergePkt.Merge(pkt)
 			if mergePkt.Len() >= c.BufferSize {
-				c.xtcpconn.Send(mergePkt)
+				send(mergePkt)
 				mergePkt = c.mergePktPool.Get().(*MergePacket)
 				mergePkt.Reset()
 			}
 		case <-ticker.C:
 			if mergePkt.Len() > 0 {
-				c.xtcpconn.Send(mergePkt)
+				send(mergePkt)
 				mergePkt = c.mergePktPool.Get().(*MergePacket)
 				mergePkt.Reset()
 			}
 		case <-c.workerCtx.Done():
 			ticker.Stop()
-			c.xtcpconn.Send(mergePkt)
+			send(mergePkt)
 			return
 		}
 	}

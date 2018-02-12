@@ -220,7 +220,9 @@ func (b *RepoBuilder) editPackage(pkg *build.Package) error {
 
 		if b.IgnoreFiles[srcfile] {
 			log.Printf("copying %s => %s", srcfile, destfile)
-			shutil.CopyFile(srcfile, destfile, false)
+			if err := shutil.CopyFile(srcfile, destfile, false); err != nil {
+				return err
+			}
 			continue
 		}
 
