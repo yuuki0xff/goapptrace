@@ -3,24 +3,23 @@ package logger
 import (
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/yuuki0xff/goapptrace/info"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/protocol"
 )
 
 func TestSetOutput_writeToFile_useDefaultPrefix(t *testing.T) {
+	a := assert.New(t)
 	os.Unsetenv(info.DEFAULT_LOGSRV_ENV)
 	os.Unsetenv(info.DEFAULT_LOGFILE_ENV)
 
 	abspath, err := filepath.Abs(info.DEFAULT_LOGFILE_PREFIX)
-	if err != nil {
-		t.Fatal(err)
-	}
+	a.NoError(err)
 	checkFileSender(t, abspath)
 }
 
@@ -41,6 +40,7 @@ func TestSetOutput_connectToLogServer(t *testing.T) {
 }
 
 func TestRetrySender(t *testing.T) {
+	a := assert.New(t)
 	os.Setenv(info.DEFAULT_LOGFILE_ENV, "/tmp/.goapptrace-logger-test")
 	sender := &RetrySender{
 		Sender:        &FileSender{},
@@ -48,12 +48,10 @@ func TestRetrySender(t *testing.T) {
 		RetryInterval: defaultRetryInterval,
 	}
 
-	if err := sender.Open(); err != nil {
-		t.Fatalf("failed to sender.Open(): %s", err)
-	}
+	a.NoError(sender.Open())
 
 	// send a log.
-	if err := sender.Send(
+	a.NoError(sender.Send(
 		&logutil.SymbolsDiff{
 			Funcs: []*logutil.FuncSymbol{
 				{logutil.FuncID(0), "module.f1", "/go/src/module/src.go", 1},
@@ -70,16 +68,12 @@ func TestRetrySender(t *testing.T) {
 			Timestamp: logutil.NewTime(time.Now()),
 			Frames:    []logutil.FuncStatusID{0, 1},
 		},
-	); err != nil {
-		t.Fatalf("fialed to sender.Send(): %s", err)
-	}
+	))
 
 	// will be occur the send error. but RetrySender will handle error, and try to recovery.
 	// so sender.Send() will return the nil.
-	if err := sender.Sender.Close(); err != nil {
-		t.Fatalf("failed to FileSender.Close(): %s", err)
-	}
-	if err := sender.Send(
+	a.NoError(sender.Sender.Close())
+	a.NoError(sender.Send(
 		&logutil.SymbolsDiff{
 			Funcs: []*logutil.FuncSymbol{},
 			FuncStatus: []*logutil.FuncStatus{
@@ -92,33 +86,26 @@ func TestRetrySender(t *testing.T) {
 			Timestamp: logutil.NewTime(time.Now()),
 			Frames:    []logutil.FuncStatusID{0, 2},
 		},
-	); err != nil {
-		t.Fatalf("failed to error recovery on sender.Send(): %s", err)
-	}
-	if err := sender.Close(); err != nil {
-		t.Fatalf("failed to sender.Close(): %s", err)
-	}
+	))
+
+	a.NoError(sender.Close())
 }
 
 func checkFileSender(t *testing.T, prefix string) {
+	a := assert.New(t)
 	setOutput()
 
 	// check sender type
-	retrySender, ok := sender.(*RetrySender)
-	if !ok {
-		t.Fatalf("mismatch type: expect=*RetrySender actual=%s", reflect.TypeOf(sender))
-	}
-	fileSender, ok := retrySender.Sender.(*FileSender)
-	if !ok {
-		t.Fatalf("mismatch type: expect=*FileSender actual=%s", reflect.TypeOf(sender))
-	}
+	a.IsType(&RetrySender{}, sender)
+	retrySender := sender.(*RetrySender)
+	a.IsType(&FileSender{}, retrySender.Sender)
+	fileSender := retrySender.Sender.(*FileSender)
 
 	// check file path
 	fpath := fileSender.logFilePath()
 	os.Remove(fpath)
-	if !(strings.HasPrefix(fpath, prefix) && strings.HasSuffix(fpath, ".log.gz")) {
-		t.Fatalf("invalid output file fpath: %s", fpath)
-	}
+	a.Truef(strings.HasPrefix(fpath, prefix), "invalid output file fpath: %s", fpath)
+	a.Truef(strings.HasSuffix(fpath, ".log.gz"), "invalid output file fpath: %s", fpath)
 
 	// check sendLog()
 	sendLog(logutil.FuncStart, logutil.TxID(0))
@@ -128,23 +115,18 @@ func checkFileSender(t *testing.T, prefix string) {
 
 	// check close
 	Close()
-	if sender != nil {
-		t.Fatalf("sender should nil, but %+v", sender)
-	}
+	a.Nil(sender)
 }
 
 func checkLogServerSender(t *testing.T, connected, disconnected *bool) {
+	a := assert.New(t)
 	setOutput()
 
 	// check sender type
-	retrySender, ok := sender.(*RetrySender)
-	if !ok {
-		t.Fatalf("mismatch type: expect=*RetrySender actual=%s", reflect.TypeOf(sender))
-	}
-	_, ok = retrySender.Sender.(*LogServerSender)
-	if !ok {
-		t.Fatalf("mismatch type: expect=*LogServerSender actual=%s", reflect.TypeOf(sender))
-	}
+	a.IsType(&RetrySender{}, sender)
+	retrySender := sender.(*RetrySender)
+	a.IsType(&LogServerSender{}, retrySender.Sender)
+	_ = retrySender.Sender.(*LogServerSender)
 
 	// check sendLog()
 	sendLog(logutil.FuncStart, logutil.TxID(0))
@@ -153,15 +135,11 @@ func checkLogServerSender(t *testing.T, connected, disconnected *bool) {
 	sendLog(logutil.FuncEnd, logutil.TxID(3))
 
 	// is handled Connected event?
-	if !*connected {
-		t.Fatal("connected should true, but false")
-	}
+	a.True(*connected)
 
 	// check close
 	Close()
-	if sender != nil {
-		t.Fatalf("sender should nil, but %+v", sender)
-	}
+	a.Nil(sender)
 
 	// is handled Disconnected event until 1000 milliseconds?
 	for i := 0; i < 100; i++ {
@@ -170,12 +148,11 @@ func checkLogServerSender(t *testing.T, connected, disconnected *bool) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	if !*disconnected {
-		t.Fatal("disconnected should true, but false")
-	}
+	a.True(*disconnected)
 }
 
 func startLogServer(t *testing.T, connected, disconnected *bool) *protocol.Server {
+	a := assert.New(t)
 	srv := &protocol.Server{
 		Addr: "",
 		Handler: protocol.ServerHandler{
@@ -192,9 +169,7 @@ func startLogServer(t *testing.T, connected, disconnected *bool) *protocol.Serve
 		AppName: "goapptrace-logger-test",
 		Secret:  "secret",
 	}
-	if err := srv.Listen(); err != nil {
-		t.Fatalf("LogServer can not listen: %s", err)
-	}
+	a.NoError(srv.Listen())
 	go srv.Serve()
 	return srv
 }
