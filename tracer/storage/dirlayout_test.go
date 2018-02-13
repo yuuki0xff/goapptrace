@@ -44,7 +44,7 @@ func TestDirLayout_MetaID(t *testing.T) {
 
 	id, ok := dr.Fname2LogID(goodFname)
 	a.Equal(ok, true)
-	a.Equal(id, goodLogID)
+	a.Equal(goodLogID, id)
 
 	for _, badID := range badFnames {
 		_, ok = dr.Fname2LogID(badID)

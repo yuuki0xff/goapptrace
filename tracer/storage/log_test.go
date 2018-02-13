@@ -31,7 +31,7 @@ func TestLogID_Unhex(t *testing.T) {
 
 	id, err := logID.Unhex("000102030405060708090a0b0c0d0e0f")
 	a.NoError(err, "LogID.Unhex() should not raise error for valid id")
-	a.Equal(id[:], []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15})
+	a.Equal([]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, id[:])
 }
 
 func TestLog_withEmptyFile(t *testing.T) {

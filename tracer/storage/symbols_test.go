@@ -59,8 +59,8 @@ func TestSymbolsReaderWriter_loadEmptyFile(t *testing.T) {
 		// check data
 		func(symbols *logutil.Symbols) {
 			t.Log(symbols2string(symbols))
-			a.Equal(symbols.FuncsSize(), 0)
-			a.Equal(symbols.FuncStatusSize(), 0)
+			a.Equal(0, symbols.FuncsSize())
+			a.Equal(0, symbols.FuncStatusSize())
 		},
 	)
 }
@@ -78,8 +78,8 @@ func TestSymbolsReaderWriter_emptySymbols(t *testing.T) {
 		// check data
 		func(symbols *logutil.Symbols) {
 			t.Log(symbols2string(symbols))
-			a.Equal(symbols.FuncsSize(), 0)
-			a.Equal(symbols.FuncStatusSize(), 0)
+			a.Equal(0, symbols.FuncsSize())
+			a.Equal(0, symbols.FuncStatusSize())
 		},
 	)
 }
@@ -136,17 +136,17 @@ func TestSymbolsReaderWrieter_data(t *testing.T) {
 		func(symbols *logutil.Symbols) {
 			t.Log(symbols2string(symbols))
 
-			a.Equal(symbols.FuncsSize(), 2, "Mismatched length of Funcs array")
+			a.Equal(2, symbols.FuncsSize(), "Mismatched length of Funcs array")
 			f1, _ := symbols.Func(0)
 			f2, _ := symbols.Func(1)
-			a.Equal(f1, *funcSymbols[0], "Mismatched FuncSymbol object")
-			a.Equal(f2, *funcSymbols[1], "Mismatched FuncSymbol object")
+			a.Equal(*funcSymbols[0], f1, "Mismatched FuncSymbol object")
+			a.Equal(*funcSymbols[1], f2, "Mismatched FuncSymbol object")
 
-			a.Equal(symbols.FuncStatusSize(), 2, "Mismatched length of FuncStatus array")
+			a.Equal(2, symbols.FuncStatusSize(), "Mismatched length of FuncStatus array")
 			fs1, _ := symbols.FuncStatus(0)
 			fs2, _ := symbols.FuncStatus(1)
-			a.Equal(fs1, *funcStatuses[0], "Mismatched FuncStatus object")
-			a.Equal(fs2, *funcStatuses[1], "Mismatched FuncStatus object")
+			a.Equal(*funcStatuses[0], fs1, "Mismatched FuncStatus object")
+			a.Equal(*funcStatuses[1], fs2, "Mismatched FuncStatus object")
 		},
 	)
 }
