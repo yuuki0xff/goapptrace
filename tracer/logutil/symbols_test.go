@@ -59,7 +59,7 @@ func TestSymbols_AddFunc_simple(t *testing.T) {
 		File:  "test.go",
 		Entry: 100,
 	})
-	a.Equal(true, added)
+	a.True(added)
 	a.Equal(FuncID(0), id, "First function id is 0. Should not keep original function id.")
 	a.Len(s.funcs, 1)
 
@@ -68,7 +68,7 @@ func TestSymbols_AddFunc_simple(t *testing.T) {
 		File:  "test2.go",
 		Entry: 200,
 	})
-	a.Equal(true, added)
+	a.True(added)
 	a.Equal(FuncID(1), id)
 	a.Len(s.funcs, 2)
 }
@@ -84,7 +84,7 @@ func TestSymbols_AddFunc_dedupRecords(t *testing.T) {
 		Entry: 200,
 	}
 	id, added := s.AddFunc(fs)
-	a.Equal(true, added)
+	a.True(added)
 	a.Equal(FuncID(0), id)
 	a.Len(s.funcs, 1)
 
@@ -114,7 +114,7 @@ func TestSymbols_AddFunc_keepID(t *testing.T) {
 		File:  "test2.go",
 		Entry: 200,
 	})
-	a.Equal(true, added)
+	a.True(added)
 	a.Equal(FuncID(10), id)
 }
 
@@ -129,7 +129,7 @@ func TestSymbols_AddFuncStatus_simple(t *testing.T) {
 		Line: 100,
 		PC:   101,
 	})
-	a.Equal(true, added)
+	a.True(added)
 	a.Equal(FuncStatusID(0), id)
 	a.Len(s.funcStatus, 1)
 
@@ -138,7 +138,7 @@ func TestSymbols_AddFuncStatus_simple(t *testing.T) {
 		Line: 200,
 		PC:   201,
 	})
-	a.Equal(true, added)
+	a.True(added)
 	a.Equal(FuncStatusID(1), id)
 	a.Len(s.funcStatus, 2)
 }
@@ -156,7 +156,7 @@ func TestSymbols_AddFuncStatus_keepID(t *testing.T) {
 		Line: 100,
 		PC:   101,
 	})
-	a.Equal(true, added)
+	a.True(added)
 	a.Equal(FuncStatusID(1000), id)
 
 	id, added = s.AddFuncStatus(&FuncStatus{
@@ -165,7 +165,7 @@ func TestSymbols_AddFuncStatus_keepID(t *testing.T) {
 		Line: 200,
 		PC:   201,
 	})
-	a.Equal(true, added)
+	a.True(added)
 	a.Equal(FuncStatusID(2200), id)
 }
 
@@ -183,7 +183,7 @@ func TestSymbols_AddFuncStatus_dedup(t *testing.T) {
 		PC:   101,
 	}
 	id, added := s.AddFuncStatus(rec)
-	a.Equal(true, added)
+	a.True(added)
 	a.Equal(FuncStatusID(2), id)
 
 	id, added = s.AddFuncStatus(rec)
@@ -216,12 +216,12 @@ func TestSymbols_Func(t *testing.T) {
 		File:  "test2.go",
 		Entry: 200,
 	})
-	a.Equal(true, added)
+	a.True(added)
 	a.Equal(FuncID(10), id1)
 
 	// 存在するものは取得できる
 	f, ok := s.Func(id1)
-	a.Equal(true, ok)
+	a.True(ok)
 	a.Equal(id1, f.ID)
 }
 
@@ -242,11 +242,11 @@ func TestSymbols_FuncStatus(t *testing.T) {
 		Line: 100,
 		PC:   101,
 	})
-	a.Equal(true, ok)
+	a.True(ok)
 	a.Equal(FuncStatusID(1000), id1)
 
 	fs, ok := s.FuncStatus(id1)
-	a.Equal(true, ok)
+	a.True(ok)
 	a.Equal(id1, fs.ID)
 }
 
@@ -266,7 +266,7 @@ func TestSymbols_FuncIDFromName(t *testing.T) {
 	})
 
 	id, ok := s.FuncIDFromName("main.test")
-	a.Equal(true, ok)
+	a.True(ok)
 	a.Equal(FuncID(0), id)
 
 	_, ok = s.FuncIDFromName("not-found")
@@ -296,7 +296,7 @@ func TestSymbols_FuncStatusIDFromPC(t *testing.T) {
 	})
 
 	id, ok := s.FuncStatusIDFromPC(1030)
-	a.Equal(true, ok)
+	a.True(ok)
 	a.Equal(FuncStatusID(0), id)
 
 	// FuncSymbolのEntry pointの値は検索対象外
