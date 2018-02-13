@@ -100,7 +100,7 @@ func (p *PacketType) Unmarshal(r io.Reader) {
 // MergePacket can merge several short packets.
 // It helps to increase performance by reduce short packets.
 type MergePacket struct {
-	Proto *Proto
+	Proto xtcp.Protocol
 	buff  bytes.Buffer
 }
 
