@@ -9,6 +9,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
@@ -23,6 +24,7 @@ func TestLogID_Hex(t *testing.T) {
 }
 
 func TestLogID_Unhex(t *testing.T) {
+	a := assert.New(t)
 	logID := LogID{}
 
 	if _, err := logID.Unhex(""); err == nil {
@@ -43,44 +45,46 @@ func TestLogID_Unhex(t *testing.T) {
 }
 
 func TestLog_withEmptyFile(t *testing.T) {
+	a := assert.New(t)
 	tempdir, err := ioutil.TempDir("", ".goapptrace_storage")
-	must(t, err, "can not create a temporary directory:")
+	a.NoError(err)
 	defer func() {
 		if err = os.RemoveAll(tempdir); err != nil {
 			panic(err)
 		}
 	}()
 	dirlayout := DirLayout{Root: tempdir}
-	must(t, dirlayout.Init(), "DirLayout.Init():")
+	a.NoError(dirlayout.Init())
 
 	l := Log{
 		ID:       LogID{},
 		Root:     dirlayout,
 		Metadata: &LogMetadata{},
 	}
-	must(t, l.Open(), "Log.Open():")
-	must(t, err, "Log.Writer():")
-	must(t, l.Close(), "Log.Close():")
+	a.NoError(l.Open())
+	a.NoError(err)
+	a.NoError(l.Close())
 
 	if l.Symbols() == nil {
-		must(t, errors.New("should returns not nil, but got nil"), "Log.Symbols():")
+		a.NoError(errors.New("should returns not nil, but got nil"))
 	}
-	must(t, l.WalkRawFuncLog(func(evt logutil.RawFuncLog) error {
+	a.NoError(l.WalkRawFuncLog(func(evt logutil.RawFuncLog) error {
 		return errors.New("should not contains any log record, but found a log record")
 	}), "Log.WalkRawFuncLog():")
-	must(t, l.Close(), "Log.Close():")
+	a.NoError(l.Close())
 }
 
 func TestLog_AppendRawFuncLog(t *testing.T) {
+	a := assert.New(t)
 	tempdir, err := ioutil.TempDir("", ".goapptrace_storage")
-	must(t, err, "can not create a temporary directory:")
+	a.NoError(err)
 	defer func() {
 		if err = os.RemoveAll(tempdir); err != nil {
 			panic(err)
 		}
 	}()
 	dirlayout := DirLayout{Root: tempdir}
-	must(t, dirlayout.Init(), "DirLayout.Init():")
+	a.NoError(dirlayout.Init())
 
 	l := Log{
 		ID:          LogID{},
@@ -90,9 +94,9 @@ func TestLog_AppendRawFuncLog(t *testing.T) {
 		// 自動ローテーションを発生させるため
 		rotateInterval: 1,
 	}
-	must(t, l.Open(), "Log.Open():")
-	must(t, l.AppendRawFuncLog(&logutil.RawFuncLog{}), "Log.AppendRawFuncLog():")
-	must(t, l.AppendRawFuncLog(&logutil.RawFuncLog{}), "Log.AppendRawFuncLog():")
+	a.NoError(l.Open())
+	a.NoError(l.AppendRawFuncLog(&logutil.RawFuncLog{}))
+	a.NoError(l.AppendRawFuncLog(&logutil.RawFuncLog{}))
 
 	// data dir should only contains those files:
 	//   xxxx.0.func.log.gz
@@ -115,28 +119,29 @@ func TestLog_AppendRawFuncLog(t *testing.T) {
 	}
 
 	var i int
-	must(t, l.WalkRawFuncLog(func(evt logutil.RawFuncLog) error {
+	a.NoError(l.WalkRawFuncLog(func(evt logutil.RawFuncLog) error {
 		i++
 		return nil
 	}), "Log.WalkRawFuncLog():")
 	if i != 2 {
-		must(t, fmt.Errorf("log records: (got) %d != %d (expected)", i, 2), "Log.WalkRawFuncLog():")
+		a.NoError(fmt.Errorf("log records: (got) %d != %d (expected)", i, 2))
 	}
 
-	must(t, l.Close(), "Log.Close():")
+	a.NoError(l.Close())
 }
 
 // Logで書き込みながら、Logで正しく読み込めるかテスト。
 func TestLog_ReadDuringWriting(t *testing.T) {
+	a := assert.New(t)
 	tempdir, err := ioutil.TempDir("", ".goapptrace_storage")
-	must(t, err, "can not create a temporary directory:")
+	a.NoError(err)
 	defer func() {
 		if err := os.RemoveAll(tempdir); err != nil {
 			panic(err)
 		}
 	}()
 	dirlayout := DirLayout{Root: tempdir}
-	must(t, dirlayout.Init(), "DirLayout.Init():")
+	a.NoError(dirlayout.Init())
 
 	l := Log{
 		ID:          LogID{},
@@ -146,7 +151,7 @@ func TestLog_ReadDuringWriting(t *testing.T) {
 		// 自動ローテーションを発生させるため
 		rotateInterval: 10,
 	}
-	must(t, l.Open(), "Log.Open():")
+	a.NoError(l.Open())
 
 	checkRecordCount := func(expect int64) error {
 		var actual int64
@@ -163,7 +168,7 @@ func TestLog_ReadDuringWriting(t *testing.T) {
 	// ファイルのローテーションが2回発生するまでレコードを追加する。
 	// ローテーションをしてもRawFuncLogCacheが正しくクリアできるかテストする。
 	for i := int64(0); l.index.Len() < 3; i++ {
-		must(t, checkRecordCount(i), "checkRecordCount(0):")
+		a.NoError(checkRecordCount(i))
 		// 書き込み先のファイルはgzip圧縮されている。
 		// 同じデータが連続していると大幅に圧縮されてしまい、いつまで経ってもファイルのローテーションが発生しない。
 		// このような自体を回避するために、乱数を使用して圧縮率を低くする。
@@ -177,7 +182,7 @@ func TestLog_ReadDuringWriting(t *testing.T) {
 			rune(rand.Int()),
 			rune(rand.Int()),
 		})
-		must(t, l.AppendRawFuncLog(&logutil.RawFuncLog{
+		a.NoError(l.AppendRawFuncLog(&logutil.RawFuncLog{
 			ID:   logutil.RawFuncLogID(i),
 			Tag:  logutil.TagName(randomName),
 			GID:  logutil.GID(rand.Int()),
@@ -190,5 +195,5 @@ func TestLog_ReadDuringWriting(t *testing.T) {
 			t.Fatal("loop count limit reached")
 		}
 	}
-	must(t, l.Close(), "Log.Close():")
+	a.NoError(l.Close())
 }

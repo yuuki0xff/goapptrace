@@ -1,7 +1,7 @@
 package storage
 
 import "testing"
-import "github.com/go-playground/assert"
+import "github.com/stretchr/testify/assert"
 
 var (
 	dr = DirLayout{
@@ -14,18 +14,22 @@ var (
 )
 
 func TestDirLayout_InfoFile(t *testing.T) {
-	assert.Equal(t, File("/tmp/.goapptrace/logs/info.json.gz"), dr.InfoFile())
+	a := assert.New(t)
+	a.Equal(File("/tmp/.goapptrace/logs/info.json.gz"), dr.InfoFile())
 }
 
 func TestDirLayout_MetaDir(t *testing.T) {
-	assert.Equal(t, "/tmp/.goapptrace/logs/meta", dr.MetaDir())
+	a := assert.New(t)
+	a.Equal("/tmp/.goapptrace/logs/meta", dr.MetaDir())
 }
 
 func TestDirLayout_DataDir(t *testing.T) {
-	assert.Equal(t, "/tmp/.goapptrace/logs/data", dr.DataDir())
+	a := assert.New(t)
+	a.Equal("/tmp/.goapptrace/logs/data", dr.DataDir())
 }
 
 func TestDirLayout_MetaID(t *testing.T) {
+	a := assert.New(t)
 	badFnames := []string{
 		"000102030405060708090a0b0c0d0e0f10.meta.json.gz",      // Too long ID
 		"000102030405060708090a0b0c0d0e.meta.json.gz",          // Too short ID
@@ -36,8 +40,8 @@ func TestDirLayout_MetaID(t *testing.T) {
 	}
 
 	id, ok := dr.Fname2LogID(goodFname)
-	assert.Equal(t, ok, true)
-	assert.Equal(t, id, goodLogID)
+	a.Equal(ok, true)
+	a.Equal(id, goodLogID)
 
 	for _, badID := range badFnames {
 		_, ok = dr.Fname2LogID(badID)
@@ -48,28 +52,34 @@ func TestDirLayout_MetaID(t *testing.T) {
 }
 
 func TestDirLayout_MetaFile(t *testing.T) {
-	assert.Equal(t, File("/tmp/.goapptrace/logs/meta/"+goodFname), dr.MetaFile(goodLogID))
+	a := assert.New(t)
+	a.Equal(File("/tmp/.goapptrace/logs/meta/"+goodFname), dr.MetaFile(goodLogID))
 }
 
 func TestDirLayout_RawFuncLogFile(t *testing.T) {
-	assert.Equal(t, File("/tmp/.goapptrace/logs/data/"+goodStrID+".0.rawfunc.log.gz"), dr.RawFuncLogFile(goodLogID, 0))
-	assert.Equal(t, File("/tmp/.goapptrace/logs/data/"+goodStrID+".10.rawfunc.log.gz"), dr.RawFuncLogFile(goodLogID, 10))
+	a := assert.New(t)
+	a.Equal(File("/tmp/.goapptrace/logs/data/"+goodStrID+".0.rawfunc.log.gz"), dr.RawFuncLogFile(goodLogID, 0))
+	a.Equal(File("/tmp/.goapptrace/logs/data/"+goodStrID+".10.rawfunc.log.gz"), dr.RawFuncLogFile(goodLogID, 10))
 }
 
 func TestDirLayout_FuncLogFile(t *testing.T) {
-	assert.Equal(t, File("/tmp/.goapptrace/logs/data/"+goodStrID+".0.func.log.gz"), dr.FuncLogFile(goodLogID, 0))
-	assert.Equal(t, File("/tmp/.goapptrace/logs/data/"+goodStrID+".10.func.log.gz"), dr.FuncLogFile(goodLogID, 10))
+	a := assert.New(t)
+	a.Equal(File("/tmp/.goapptrace/logs/data/"+goodStrID+".0.func.log.gz"), dr.FuncLogFile(goodLogID, 0))
+	a.Equal(File("/tmp/.goapptrace/logs/data/"+goodStrID+".10.func.log.gz"), dr.FuncLogFile(goodLogID, 10))
 }
 
 func TestDirLayout_GoroutineLogFile(t *testing.T) {
-	assert.Equal(t, File("/tmp/.goapptrace/logs/data/"+goodStrID+".0.goroutine.log.gz"), dr.GoroutineLogFile(goodLogID, 0))
-	assert.Equal(t, File("/tmp/.goapptrace/logs/data/"+goodStrID+".10.goroutine.log.gz"), dr.GoroutineLogFile(goodLogID, 10))
+	a := assert.New(t)
+	a.Equal(File("/tmp/.goapptrace/logs/data/"+goodStrID+".0.goroutine.log.gz"), dr.GoroutineLogFile(goodLogID, 0))
+	a.Equal(File("/tmp/.goapptrace/logs/data/"+goodStrID+".10.goroutine.log.gz"), dr.GoroutineLogFile(goodLogID, 10))
 }
 
 func TestDirLayout_SymbolFile(t *testing.T) {
-	assert.Equal(t, File("/tmp/.goapptrace/logs/data/"+goodStrID+".symbol.gz"), dr.SymbolFile(goodLogID))
+	a := assert.New(t)
+	a.Equal(File("/tmp/.goapptrace/logs/data/"+goodStrID+".symbol.gz"), dr.SymbolFile(goodLogID))
 }
 
 func TestDirLayout_IndexFile(t *testing.T) {
-	assert.Equal(t, File("/tmp/.goapptrace/logs/data/"+goodStrID+".index.gz"), dr.IndexFile(goodLogID))
+	a := assert.New(t)
+	a.Equal(File("/tmp/.goapptrace/logs/data/"+goodStrID+".index.gz"), dr.IndexFile(goodLogID))
 }

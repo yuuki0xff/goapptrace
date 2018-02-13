@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
@@ -14,18 +15,19 @@ func doTestSymbolsReaderWriter(
 	writerFunc func(sw *SymbolsWriter),
 	checkFunc func(symbols *logutil.Symbols),
 ) {
+	a := assert.New(t)
 	file := createTempFile()
-	defer must(t, os.Remove(string(file)), "Delete tmpfile:")
+	defer a.NoError(os.Remove(string(file)))
 
 	// writing phase
 	{
 		sw := SymbolsWriter{
 			File: file,
 		}
-		must(t, sw.Open(), "SymbolsWriter.Open():")
+		a.NoError(sw.Open())
 		writerFunc(&sw)
-		//must(t, sw.Append(), "SymbolsWriter.Append():")
-		must(t, sw.Close(), "SymbolsWriter.Close():")
+		//a.NoError(sw.Append())
+		a.NoError(sw.Close())
 	}
 
 	// reading phase
@@ -40,9 +42,9 @@ func doTestSymbolsReaderWriter(
 			File:    file,
 			Symbols: symbols,
 		}
-		must(t, sr.Open(), "SymbolsReader.Open():")
-		must(t, sr.Load(), "SymbolsReader.Load():")
-		must(t, sr.Close(), "SymbolsReader.Close():")
+		a.NoError(sr.Open())
+		a.NoError(sr.Load())
+		a.NoError(sr.Close())
 
 		checkFunc(symbols)
 	}
@@ -67,13 +69,14 @@ func TestSymbolsReaderWriter_loadEmptyFile(t *testing.T) {
 }
 
 func TestSymbolsReaderWriter_emptySymbols(t *testing.T) {
+	a := assert.New(t)
 	doTestSymbolsReaderWriter(
 		t,
 		// write
 		func(sw *SymbolsWriter) {
-			must(t, sw.Append(&logutil.SymbolsDiff{}), "SymbolsWriter.Append():")
-			must(t, sw.Append(&logutil.SymbolsDiff{}), "SymbolsWriter.Append():")
-			must(t, sw.Append(&logutil.SymbolsDiff{}), "SymbolsWriter.Append():")
+			a.NoError(sw.Append(&logutil.SymbolsDiff{}))
+			a.NoError(sw.Append(&logutil.SymbolsDiff{}))
+			a.NoError(sw.Append(&logutil.SymbolsDiff{}))
 		},
 		// check data
 		func(symbols *logutil.Symbols) {
@@ -131,7 +134,7 @@ func TestSymbolsReaderWrieter_data(t *testing.T) {
 			funcStatuses[1].Func = fIDs[1]
 			fsIDs[1], _ = s.AddFuncStatus(funcStatuses[1])
 
-			must(t, s.Save(func(diff logutil.SymbolsDiff) error {
+			a.NoError(s.Save(func(diff logutil.SymbolsDiff) error {
 				return sw.Append(&diff)
 			}), "failed to write symbols diff")
 		},

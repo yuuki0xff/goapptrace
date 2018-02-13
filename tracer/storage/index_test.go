@@ -5,10 +5,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
 func TestIndex(t *testing.T) {
+	a := assert.New(t)
 	file := createTempFile()
 	defer os.Remove(string(file))
 
@@ -40,14 +42,14 @@ func TestIndex(t *testing.T) {
 	index3 := Index{
 		File: file,
 	}
-	must(t, index.Open(), "Index.Open():")
+	a.NoError(index.Open())
 	for i := range records {
-		must(t, index.Append(records[i]), "Index.Append():")
+		a.NoError(index.Append(records[i]))
 	}
-	must(t, index.Close(), "Index.Close():")
+	a.NoError(index.Close())
 
-	must(t, index2.Open(), "Index.Open():")
-	must(t, index2.Load(), "index.Load():")
+	a.NoError(index2.Open())
+	a.NoError(index2.Load())
 	var recordCount int
 	if err := index2.Walk(func(i int64, ir IndexRecord) error {
 		recordCount++
@@ -71,10 +73,10 @@ func TestIndex(t *testing.T) {
 			t.Errorf("Records is not matched: expect %d, but %d", records[i].Records, index.records[i].Records)
 		}
 	}
-	must(t, index2.Close(), "Index.Close():")
+	a.NoError(index2.Close())
 
-	must(t, index3.Open(), "Index.Open():")
-	must(t, index3.Load(), "Index.Load():")
+	a.NoError(index3.Open())
+	a.NoError(index3.Load())
 	err := index3.Walk(func(i int64, ir IndexRecord) error {
 		t.Logf("Index.Walk(): i=%d, record=%+v", i, ir)
 		if i == 2 {
@@ -88,5 +90,5 @@ func TestIndex(t *testing.T) {
 	if err != StopIteration {
 		t.Errorf("Index.Walk() should return StopIteration, but %+v", err)
 	}
-	must(t, index3.Close(), "Index.Close():")
+	a.NoError(index3.Close())
 }
