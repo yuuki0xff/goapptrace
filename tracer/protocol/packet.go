@@ -76,7 +76,8 @@ func createPacket(packetType PacketType) xtcp.Packet {
 	case RawFuncLogPacketType:
 		return &RawFuncLogPacket{}
 	default:
-		return nil
+		log.Panicf("unknown packet type: PacketType=%+v", packetType)
+		panic(nil)
 	}
 }
 
