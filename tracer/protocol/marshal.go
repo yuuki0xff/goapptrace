@@ -21,18 +21,21 @@ func marshalBool(w io.Writer, val bool) {
 	}
 }
 func unmarshalBool(r io.Reader) bool {
-	var data [1]byte
+	// TODO: reduce memory allocation
+	var data [1]byte // ← memory allocation occurs here!
 	MustRead(r, data[:])
 	return data[0] != 0
 }
 
 func marshalUint64(w io.Writer, val uint64) {
-	var data [8]byte
+	// TODO: reduce memory allocation
+	var data [8]byte // ← memory allocation occurs here!
 	binary.BigEndian.PutUint64(data[:], val)
 	MustWrite(w, data[:])
 }
 func unmarshalUint64(r io.Reader) uint64 {
-	var data [8]byte
+	// TODO: reduce memory allocation
+	var data [8]byte // ← memory allocation occurs here!
 	MustRead(r, data[:])
 	return binary.BigEndian.Uint64(data[:])
 }
