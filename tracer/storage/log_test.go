@@ -1,9 +1,7 @@
 package storage
 
 import (
-	"bytes"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -14,45 +12,33 @@ import (
 )
 
 func TestLogID_Hex(t *testing.T) {
+	a := assert.New(t)
 	logID := LogID{15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0}
-	if len(logID[:]) != 16 {
-		t.Fatal("LogID length is not 16byte")
-	}
-	if logID.Hex() != "0f0e0d0c0b0a09080706050403020100" {
-		t.Fatal("LogID.Hex() returns wrong hex id")
-	}
+
+	a.Len(logID[:], 16)
+	a.Equal("0f0e0d0c0b0a09080706050403020100", logID.Hex())
 }
 
 func TestLogID_Unhex(t *testing.T) {
 	a := assert.New(t)
 	logID := LogID{}
 
-	if _, err := logID.Unhex(""); err == nil {
-		t.Fatal("LogID.Unhex() should raise error for non-16byte id")
-	}
-	if _, err := logID.Unhex("0"); err == nil {
-		t.Fatal("LogID.Unhex() should raise error for invalid hex string")
-	}
-	{
-		id, err := logID.Unhex("000102030405060708090a0b0c0d0e0f")
-		if err != nil {
-			t.Fatal("LogID.Unhex() should not raise error for valid id")
-		}
-		if !bytes.Equal(id[:], []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}) {
-			t.Fatal("LogID.Unhex() returns wrong id")
-		}
-	}
+	var err error
+	_, err = logID.Unhex("")
+	a.Error(err, "LogID.Unhex() should raise error for non-16byte id")
+	_, err = logID.Unhex("0")
+	a.Error(err, "LogID.Unhex() should raise error for invalid hex string")
+
+	id, err := logID.Unhex("000102030405060708090a0b0c0d0e0f")
+	a.NoError(err, "LogID.Unhex() should not raise error for valid id")
+	a.Equal(id[:], []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15})
 }
 
 func TestLog_withEmptyFile(t *testing.T) {
 	a := assert.New(t)
 	tempdir, err := ioutil.TempDir("", ".goapptrace_storage")
 	a.NoError(err)
-	defer func() {
-		if err = os.RemoveAll(tempdir); err != nil {
-			panic(err)
-		}
-	}()
+	defer a.NoError(os.RemoveAll(tempdir))
 	dirlayout := DirLayout{Root: tempdir}
 	a.NoError(dirlayout.Init())
 
@@ -65,9 +51,7 @@ func TestLog_withEmptyFile(t *testing.T) {
 	a.NoError(err)
 	a.NoError(l.Close())
 
-	if l.Symbols() == nil {
-		a.NoError(errors.New("should returns not nil, but got nil"))
-	}
+	a.NotNil(l.Symbols())
 	a.NoError(l.WalkRawFuncLog(func(evt logutil.RawFuncLog) error {
 		return errors.New("should not contains any log record, but found a log record")
 	}), "Log.WalkRawFuncLog():")
@@ -78,11 +62,7 @@ func TestLog_AppendRawFuncLog(t *testing.T) {
 	a := assert.New(t)
 	tempdir, err := ioutil.TempDir("", ".goapptrace_storage")
 	a.NoError(err)
-	defer func() {
-		if err = os.RemoveAll(tempdir); err != nil {
-			panic(err)
-		}
-	}()
+	defer a.NoError(os.RemoveAll(tempdir))
 	dirlayout := DirLayout{Root: tempdir}
 	a.NoError(dirlayout.Init())
 
@@ -108,24 +88,18 @@ func TestLog_AppendRawFuncLog(t *testing.T) {
 	//   xxxx.index.gz
 	//   xxxx.symbol.gz
 	files, err := ioutil.ReadDir(dirlayout.DataDir())
-	if err != nil {
-		panic(err)
-	}
+	a.NoError(err)
 	for i := range files {
 		t.Logf("files[%d] = %s", i, files[i].Name())
 	}
-	if len(files) != 8 {
-		t.Fatalf("data file count: (god) %d != %d (expected)", len(files), 6)
-	}
+	a.Len(files, 8)
 
 	var i int
 	a.NoError(l.WalkRawFuncLog(func(evt logutil.RawFuncLog) error {
 		i++
 		return nil
 	}), "Log.WalkRawFuncLog():")
-	if i != 2 {
-		a.NoError(fmt.Errorf("log records: (got) %d != %d (expected)", i, 2))
-	}
+	a.Equal(2, i)
 
 	a.NoError(l.Close())
 }
@@ -135,11 +109,7 @@ func TestLog_ReadDuringWriting(t *testing.T) {
 	a := assert.New(t)
 	tempdir, err := ioutil.TempDir("", ".goapptrace_storage")
 	a.NoError(err)
-	defer func() {
-		if err := os.RemoveAll(tempdir); err != nil {
-			panic(err)
-		}
-	}()
+	defer a.NoError(os.RemoveAll(tempdir))
 	dirlayout := DirLayout{Root: tempdir}
 	a.NoError(dirlayout.Init())
 
@@ -159,9 +129,7 @@ func TestLog_ReadDuringWriting(t *testing.T) {
 			actual++
 			return nil
 		})
-		if actual != expect {
-			return fmt.Errorf("mismatch log record count: expect=%d actual=%d", expect, actual)
-		}
+		a.Equal(expect, actual)
 		return nil
 	}
 

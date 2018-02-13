@@ -1,7 +1,10 @@
 package storage
 
-import "testing"
-import "github.com/stretchr/testify/assert"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 var (
 	dr = DirLayout{
@@ -45,9 +48,7 @@ func TestDirLayout_MetaID(t *testing.T) {
 
 	for _, badID := range badFnames {
 		_, ok = dr.Fname2LogID(badID)
-		if ok {
-			t.Errorf("ID=%s: must be fail. but succeeded.", badID)
-		}
+		a.Falsef(ok, "ID=%s: must be fail. but succeeded.", badID)
 	}
 }
 

@@ -51,27 +51,18 @@ func TestIndex(t *testing.T) {
 	a.NoError(index2.Open())
 	a.NoError(index2.Load())
 	var recordCount int
-	if err := index2.Walk(func(i int64, ir IndexRecord) error {
+	a.NoError(index2.Walk(func(i int64, ir IndexRecord) error {
 		recordCount++
 		return nil
-	}); err != nil {
-		t.Fatalf("Index.Walk() should not return any error, but %+v", err)
-	}
-	if recordCount != len(records) {
-		t.Fatalf("mismatch record count: expect=%d actual=%d", len(records), recordCount)
-	}
-	if len(records) != len(index2.records) {
-		t.Errorf("records count is mismatched: expect %d, but %d", len(records), len(index.records))
-	}
+	}))
+	a.Len(records, recordCount)
+	a.Len(index2.records, recordCount)
+
 	for i := range records {
 		t.Logf("Index.records[%d] = %+v", i, index2.records[i])
 
-		if records[i].Timestamp != index2.records[i].Timestamp {
-			t.Errorf("Timestamp is not matched: expect %d, but %d", records[i].Timestamp, index.records[i].Timestamp)
-		}
-		if records[i].Records != index2.records[i].Records {
-			t.Errorf("Records is not matched: expect %d, but %d", records[i].Records, index.records[i].Records)
-		}
+		a.Equal(records[i].Timestamp, index.records[i].Timestamp)
+		a.Equal(records[i].Records, index.records[i].Records)
 	}
 	a.NoError(index2.Close())
 
@@ -82,13 +73,9 @@ func TestIndex(t *testing.T) {
 		if i == 2 {
 			return StopIteration
 		}
-		if i > 2 {
-			t.Fatalf("Index.Walk() should break the loop when i==2, but it seems to be continuing")
-		}
+		a.False(i > 2, "Index.Walk() should break the loop when i==2, but it seems to be continuing")
 		return nil
 	})
-	if err != StopIteration {
-		t.Errorf("Index.Walk() should return StopIteration, but %+v", err)
-	}
+	a.Equal(StopIteration, err, "Index.Walk() should return StopIteration")
 	a.NoError(index3.Close())
 }

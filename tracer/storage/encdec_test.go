@@ -64,17 +64,13 @@ func TestEncoderDecoder(t *testing.T) {
 	}
 	a.NoError(dec.Open())
 	a.NoError(dec.Read(&data1))
-	if data1 != testData1 {
-		t.Fatalf("Miss match data: expect %+v, but got %+v", testData1, data1)
-	}
+	a.Equal(testData1, data1)
+
 	a.NoError(dec.Read(&data2))
-	if data2 != testData2 {
-		t.Fatalf("Miss match data: expect %+v, but got %+v", testData2, data2)
-	}
+	a.Equal(testData2, data2)
+
 	a.NoError(dec.Read(&data3))
-	if data3 != testData3Result {
-		t.Fatalf("Miss match data: expect %+v, but got %+v", testData3Result, data3)
-	}
+	a.Equal(testData3Result, data3)
 	a.NoError(dec.Close())
 }
 
@@ -110,20 +106,11 @@ func TestDecoder_Walk(t *testing.T) {
 		func(data interface{}) error {
 			t.Log("received", data)
 			expectData := &testStruct2{fmt.Sprintf("data%d", i)}
-			decodedData, ok := data.(*testStruct2)
-			if !ok {
-				t.Fatalf("Miss match data type: expect %+v, but got %+v", expectData, decodedData)
-			}
-			if *expectData != *decodedData {
-				t.Fatalf("Miss match data: expect %+v, but got %+v", expectData, decodedData)
-			}
-
+			a.Equal(expectData, data)
 			i++
 			return nil
 		},
-	), "dec.Walk:")
-	if 3 != i-1 {
-		t.Fatalf("expect receive 3 data, but %d data", i-1)
-	}
+	))
+	a.Equal(3, i-1)
 	a.NoError(dec.Close())
 }

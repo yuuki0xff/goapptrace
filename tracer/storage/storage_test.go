@@ -40,9 +40,7 @@ func setupStorageDir(t *testing.T) (dir DirLayout, logIDSet set.Set, cleanup fun
 	for i := 0; i < 2; i++ {
 		logobj, err := strg.New()
 		a.NoError(err)
-		if logobj == nil {
-			t.Fatalf("Storage.New() should not return nil")
-		}
+		a.NotNil(logobj)
 		logIDSet.Add(logobj.ID)
 	}
 
@@ -67,30 +65,19 @@ func TestStorage(t *testing.T) {
 
 	logs, err := strg.Logs()
 	a.NoError(err)
-	if len(logs) != 0 {
-		t.Fatalf("Storage.Logs() should return empty array, but %+v", logs)
-	}
+	a.Len(logs, 0)
 
 	logobj, err := strg.New()
 	a.NoError(err)
-	if logobj == nil {
-		t.Fatalf("Storage.New() should not return nil")
-	}
+	a.NotNil(logobj)
 
 	logs, err = strg.Logs()
 	a.NoError(err)
-	if len(logs) != 1 {
-		t.Fatalf("Storage.Logs() returns wrong result: I expected a log object, but %+v", logs)
-	}
+	a.Len(logs, 1)
 
 	logobj2, ok := strg.Log(logobj.ID)
-	if !ok {
-		t.Fatalf("Storage.Log(): not found %s", logobj.ID.Hex())
-	}
-	if logobj != logobj2 {
-		t.Fatalf("Storage.Log(): returns different object: obj1=%+v obj2=%+v", logobj, logobj2)
-	}
-
+	a.Truef(ok, "Storage.Log(): not found %s", logobj.ID.Hex())
+	a.Equal(logobj, logobj2)
 	a.NoError(strg.Close())
 }
 
@@ -110,9 +97,6 @@ func TestStorage_Load(t *testing.T) {
 	a.NoError(err)
 	newLogIDSet := logIDSetFromLogs(newLogs)
 
-	if !logIDSet.Equal(newLogIDSet) {
-		t.Fatalf("Missmatch logs: expect %+v, but %+v", logIDSet, newLogIDSet)
-	}
-
+	a.Truef(logIDSet.Equal(newLogIDSet), "Missmatch logs: expect %+v, but %+v", logIDSet, newLogIDSet)
 	a.NoError(strg.Close())
 }

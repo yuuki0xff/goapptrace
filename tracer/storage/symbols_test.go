@@ -51,6 +51,7 @@ func doTestSymbolsReaderWriter(
 }
 
 func TestSymbolsReaderWriter_loadEmptyFile(t *testing.T) {
+	a := assert.New(t)
 	doTestSymbolsReaderWriter(
 		t,
 		// write
@@ -58,12 +59,8 @@ func TestSymbolsReaderWriter_loadEmptyFile(t *testing.T) {
 		// check data
 		func(symbols *logutil.Symbols) {
 			t.Log(symbols2string(symbols))
-			if symbols.FuncsSize() != 0 {
-				t.Errorf("Expected Funcs slice is empty, but it has %d elements", symbols.FuncsSize())
-			}
-			if symbols.FuncStatusSize() != 0 {
-				t.Errorf("Expected FuncStatus slice is empty, but it has %d elements", symbols.FuncStatusSize())
-			}
+			a.Equal(symbols.FuncsSize(), 0)
+			a.Equal(symbols.FuncStatusSize(), 0)
 		},
 	)
 }
@@ -81,16 +78,13 @@ func TestSymbolsReaderWriter_emptySymbols(t *testing.T) {
 		// check data
 		func(symbols *logutil.Symbols) {
 			t.Log(symbols2string(symbols))
-			if symbols.FuncsSize() != 0 {
-				t.Errorf("Expected Funcs slice is empty, but it has %d elements", symbols.FuncsSize())
-			}
-			if symbols.FuncStatusSize() != 0 {
-				t.Errorf("Expected FuncStatus slice is empty, but it has %d elements", symbols.FuncStatusSize())
-			}
+			a.Equal(symbols.FuncsSize(), 0)
+			a.Equal(symbols.FuncStatusSize(), 0)
 		},
 	)
 }
 func TestSymbolsReaderWrieter_data(t *testing.T) {
+	a := assert.New(t)
 	var fIDs [2]logutil.FuncID
 	var fsIDs [2]logutil.FuncStatusID
 	funcSymbols := []*logutil.FuncSymbol{
@@ -142,23 +136,17 @@ func TestSymbolsReaderWrieter_data(t *testing.T) {
 		func(symbols *logutil.Symbols) {
 			t.Log(symbols2string(symbols))
 
-			if symbols.FuncsSize() != 2 {
-				t.Errorf("Mismatched length of Funcs array: len(Funcs)=%d != 2", symbols.FuncsSize())
-			}
+			a.Equal(symbols.FuncsSize(), 2, "Mismatched length of Funcs array")
 			f1, _ := symbols.Func(0)
 			f2, _ := symbols.Func(1)
-			if !(f1 == *funcSymbols[0] && f2 == *funcSymbols[1]) {
-				t.Errorf("Mismatched FuncSymbol object")
-			}
+			a.Equal(f1, *funcSymbols[0], "Mismatched FuncSymbol object")
+			a.Equal(f2, *funcSymbols[1], "Mismatched FuncSymbol object")
 
-			if symbols.FuncStatusSize() != 2 {
-				t.Errorf("Mismatched length of FuncStatus array: len(FuncStatus)=%d != 2", symbols.FuncStatusSize())
-			}
+			a.Equal(symbols.FuncStatusSize(), 2, "Mismatched length of FuncStatus array")
 			fs1, _ := symbols.FuncStatus(0)
 			fs2, _ := symbols.FuncStatus(1)
-			if !(fs1 == *funcStatuses[0] && fs2 == *funcStatuses[1]) {
-				t.Errorf("Mismatched FuncStatus object")
-			}
+			a.Equal(fs1, *funcStatuses[0], "Mismatched FuncStatus object")
+			a.Equal(fs2, *funcStatuses[1], "Mismatched FuncStatus object")
 		},
 	)
 }
