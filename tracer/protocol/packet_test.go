@@ -2,8 +2,8 @@ package protocol
 
 import (
 	"bytes"
-	"testing"
 	"io"
+	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/yuuki0xff/xtcp"
@@ -107,7 +107,7 @@ func BenchmarkRawFuncLogPacket_Unmarshal(b *testing.B) {
 	for i := b.N; i > 0; i-- {
 		rp.Unmarshal(&r)
 		// reset fakeReader
-		r.N=0
+		r.N = 0
 	}
 	b.StopTimer()
 }
