@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"strings"
 	"sync"
@@ -29,6 +30,36 @@ type ServerHandler struct {
 
 	Symbols    func(id ConnID, diff *logutil.SymbolsDiff)
 	RawFuncLog func(id ConnID, funclog *logutil.RawFuncLog)
+}
+
+// SetDefault sets "fn" to all nil fields.
+func (sh ServerHandler) SetDefault(fn func(field string)) ServerHandler {
+	if sh.Connected == nil {
+		sh.Connected = func(id ConnID) {
+			fn("Connected")
+		}
+	}
+	if sh.Disconnected == nil {
+		sh.Disconnected = func(id ConnID) {
+			fn("Disconnected")
+		}
+	}
+	if sh.Error == nil {
+		sh.Error = func(id ConnID, err error) {
+			fn("Error")
+		}
+	}
+	if sh.Symbols == nil {
+		sh.Symbols = func(id ConnID, diff *logutil.SymbolsDiff) {
+			fn("Symbols")
+		}
+	}
+	if sh.RawFuncLog == nil {
+		sh.RawFuncLog = func(id ConnID, funclog *logutil.RawFuncLog) {
+			fn("RawFuncLog")
+		}
+	}
+	return sh
 }
 
 // トレース対象との通信を行うサーバ。
@@ -74,6 +105,8 @@ type ServerConn struct {
 	ID           ConnID
 	Handler      *ServerHandler
 	isNegotiated bool
+	sendHandler  func(conn *xtcp.Conn, packet xtcp.Packet)
+	stopHandler  func(conn *xtcp.Conn, mode xtcp.StopMode)
 }
 
 func (s *Server) init() error {
@@ -170,22 +203,19 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 			// check client header.
 			pkt, ok := p.(*ClientHelloPacket)
 			if !ok {
-				conn.Stop(xtcp.StopImmediately)
+				s.stop(conn, xtcp.StopImmediately)
 				return
 			}
 			if !isCompatibleVersion(pkt.ProtocolVersion) {
 				// 対応していないバージョンなら、切断する。
-				conn.Stop(xtcp.StopImmediately)
+				s.stop(conn, xtcp.StopImmediately)
 				return
 			}
 
 			packet := &ServerHelloPacket{
 				ProtocolVersion: ProtocolVersion,
 			}
-			if err := conn.Send(packet); err != nil {
-				// TODO: try to reconnect
-				panic(err)
-			}
+			s.mustSend(conn, packet)
 			s.isNegotiated = true
 
 			if s.Handler.Connected != nil {
@@ -196,13 +226,13 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 			case *PingPacket:
 				// do nothing
 			case *ShutdownPacket:
-				conn.Stop(xtcp.StopImmediately)
+				s.stop(conn, xtcp.StopImmediately)
 				return
 			case *StartTraceCmdPacket:
-				conn.Stop(xtcp.StopImmediately)
+				s.stop(conn, xtcp.StopImmediately)
 				return
 			case *StopTraceCmdPacket:
-				conn.Stop(xtcp.StopImmediately)
+				s.stop(conn, xtcp.StopImmediately)
 				return
 			case *SymbolPacket:
 				if s.Handler.Symbols != nil {
@@ -220,6 +250,24 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 		if s.Handler.Disconnected != nil {
 			s.Handler.Disconnected(s.ID)
 		}
+	}
+}
+func (s *ServerConn) mustSend(conn *xtcp.Conn, p xtcp.Packet) {
+	if s.sendHandler == nil {
+		if err := conn.Send(p); err != nil {
+			// TODO: reconnect and retry the conn.Send().
+			log.Panic(err)
+		}
+	} else {
+		s.sendHandler(conn, p)
+	}
+}
+
+func (s *ServerConn) stop(conn *xtcp.Conn, mode xtcp.StopMode) {
+	if s.stopHandler == nil {
+		conn.Stop(mode)
+	} else {
+		s.stopHandler(conn, mode)
 	}
 }
 
