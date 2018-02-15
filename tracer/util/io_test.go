@@ -14,6 +14,58 @@ var (
 	testData   = []byte{1, 2, 3, 4, 5, 6, 7, 8, 9}
 )
 
+// mock of io.Writer for benchmark.
+type fakeWriter struct{}
+
+func (fakeWriter) Write(p []byte) (n int, err error) {
+	return len(p), nil
+}
+
+func BenchmarkMustWrite(b *testing.B) {
+	w := &fakeWriter{}
+	val := []byte{1}
+
+	b.ResetTimer()
+	for i := b.N; i > 0; i-- {
+		MustWrite(w, val)
+	}
+	b.StopTimer()
+}
+func BenchmarkMustRead(b *testing.B) {
+	r := &FakeReader{
+		B: make([]byte, b.N),
+	}
+	buf := make([]byte, 1)
+
+	b.ResetTimer()
+	for i := b.N; i > 0; i-- {
+		MustRead(r, buf)
+	}
+	b.StopTimer()
+}
+func BenchmarkFakeWriter_Write(b *testing.B) {
+	w := &FakeWriter{}
+	val := []byte{1}
+
+	b.ResetTimer()
+	for i := b.N; i > 0; i-- {
+		w.Write(val)
+	}
+	b.StopTimer()
+}
+func BenchmarkFakeReader_Read(b *testing.B) {
+	r := &FakeReader{
+		B: make([]byte, b.N),
+	}
+	buf := make([]byte, 1)
+
+	b.ResetTimer()
+	for i := b.N; i > 0; i-- {
+		r.Read(buf)
+	}
+	b.StopTimer()
+}
+
 func TestPanicHandler_noPanic(t *testing.T) {
 	a := assert.New(t)
 	a.NoError(PanicHandler(func() {}))
