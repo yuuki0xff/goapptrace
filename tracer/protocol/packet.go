@@ -13,7 +13,7 @@ import (
 type PacketType uint64
 
 const (
-	UnknownPacketType = PacketType(iota)
+	fakePacketType = PacketType(iota)
 	ClientHelloPacketType
 	ServerHelloPacketType
 	LogPacketType
@@ -30,6 +30,8 @@ const (
 // If packet is not PacketType, will be occurs panic.
 func detectPacketType(packet xtcp.Packet) PacketType {
 	switch packet.(type) {
+	case *fakePacket:
+		return fakePacketType
 	case *ClientHelloPacket:
 		return ClientHelloPacketType
 	case *ServerHelloPacket:
@@ -57,6 +59,8 @@ func detectPacketType(packet xtcp.Packet) PacketType {
 // createPacket returns empty packet.
 func createPacket(packetType PacketType) xtcp.Packet {
 	switch packetType {
+	case fakePacketType:
+		return &fakePacket{}
 	case ClientHelloPacketType:
 		return &ClientHelloPacket{}
 	case ServerHelloPacketType:
@@ -119,6 +123,29 @@ func (p *MergePacket) Len() int {
 }
 func (p *MergePacket) WriteTo(w io.Writer) (int64, error) {
 	return p.buff.WriteTo(w)
+}
+
+// fakePacket is a mock of xtcp.Packet.
+type fakePacket struct {
+	s string
+}
+
+func (p fakePacket) String() string {
+	return p.s
+}
+func (p *fakePacket) Marshal(w io.Writer) {
+	_, err := io.WriteString(w, p.s)
+	if err != nil {
+		log.Panic(err)
+	}
+}
+func (p *fakePacket) Unmarshal(r io.Reader) {
+	var buf bytes.Buffer
+	_, err := io.Copy(&buf, r)
+	if err != nil {
+		log.Panic(err)
+	}
+	p.s = buf.String()
 }
 
 ////////////////////////////////////////////////////////////////

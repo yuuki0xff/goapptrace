@@ -22,14 +22,7 @@ func (fakeProto) Pack(p xtcp.Packet) ([]byte, error) {
 	return []byte(p.String()), nil
 }
 func (fakeProto) Unpack(b []byte) (xtcp.Packet, int, error) {
-	return fakePacket(b), len(b), nil
-}
-
-// mock of xtcp.Packet
-type fakePacket string
-
-func (fp fakePacket) String() string {
-	return string(fp)
+	return fakePacket{string(b)}, len(b), nil
 }
 
 // mock of bytes.Reader for benchmark.
@@ -133,8 +126,8 @@ func TestMergePacket_Merge(t *testing.T) {
 	mp := MergePacket{
 		Proto: &fakeProto{},
 	}
-	mp.Merge(fakePacket("<packet 1>"))
-	mp.Merge(fakePacket("<packet 2>"))
+	mp.Merge(fakePacket{"<packet 1>"})
+	mp.Merge(fakePacket{"<packet 2>"})
 
 	_, err := mp.WriteTo(&buf)
 	a.NoError(err)
@@ -146,7 +139,7 @@ func TestMergePacket_Reset(t *testing.T) {
 	mp := MergePacket{
 		Proto: &fakeProto{},
 	}
-	mp.Merge(fakePacket("abc"))
+	mp.Merge(fakePacket{"abc"})
 	a.NotEqual(0, mp.Len())
 
 	mp.Reset()
@@ -160,7 +153,7 @@ func TestMergePacket_Len(t *testing.T) {
 	}
 	a.Equal(0, mp.Len())
 
-	mp.Merge(fakePacket("abcd"))
+	mp.Merge(fakePacket{"abcd"})
 	a.Equal(4, mp.Len())
 }
 func TestMergePacket_WriteTo(t *testing.T) {
@@ -169,7 +162,7 @@ func TestMergePacket_WriteTo(t *testing.T) {
 	mp := MergePacket{
 		Proto: &fakeProto{},
 	}
-	mp.Merge(fakePacket("abcd"))
+	mp.Merge(fakePacket{"abcd"})
 	a.Equal(4, mp.Len())
 
 	var buf bytes.Buffer
