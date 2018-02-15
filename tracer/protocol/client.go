@@ -182,8 +182,8 @@ func (c *Client) pingWorker() {
 				// TODO: try to reconnect
 				panic(err)
 			}
-
 		case <-c.workerCtx.Done():
+			ticker.Stop()
 			return
 		}
 	}
