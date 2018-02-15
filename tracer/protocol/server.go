@@ -259,6 +259,7 @@ func (s *ServerConn) mustSend(conn *xtcp.Conn, p xtcp.Packet) {
 			log.Panic(err)
 		}
 	} else {
+		// call the mock method.
 		s.sendHandler(conn, p)
 	}
 }
@@ -267,7 +268,11 @@ func (s *ServerConn) stop(conn *xtcp.Conn, mode xtcp.StopMode) {
 	if s.stopHandler == nil {
 		conn.Stop(mode)
 	} else {
+		// call the mock method.
 		s.stopHandler(conn, mode)
+		// "xtcp.EventClosed" event occurs after calling the conn.Stop().
+		// But the event is not occur when calling s.stopHandler().
+		// So we occurs the event here.
 		s.OnEvent(xtcp.EventClosed, conn, nil)
 	}
 }
