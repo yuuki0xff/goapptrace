@@ -49,3 +49,23 @@ func MustRead(r io.Reader, data []byte) {
 		log.Panic(ErrPartialRead)
 	}
 }
+
+// mock of io.Writer for benchmark.
+type FakeWriter struct{}
+
+func (FakeWriter) Write(p []byte) (n int, err error) {
+	return len(p), nil
+}
+
+// mock of io.Reader for benchmark.
+type FakeReader struct {
+	B []byte
+	// readed bytes
+	N int
+}
+
+func (r *FakeReader) Read(b []byte) (int, error) {
+	n := copy(b, r.B[r.N:])
+	r.N += n
+	return n, nil
+}

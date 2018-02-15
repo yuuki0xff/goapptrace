@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	"github.com/yuuki0xff/goapptrace/tracer/util"
 )
 
 var (
@@ -87,7 +88,7 @@ var (
 )
 
 func BenchmarkMarshalBool(b *testing.B) {
-	w := &fakeWriter{}
+	w := &util.FakeWriter{}
 	val := true
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
@@ -96,7 +97,7 @@ func BenchmarkMarshalBool(b *testing.B) {
 	b.StopTimer()
 }
 func BenchmarkUnmarshalBool(b *testing.B) {
-	r := &fakeReader{
+	r := &util.FakeReader{
 		B: []byte{1},
 	}
 	b.ResetTimer()
@@ -107,7 +108,7 @@ func BenchmarkUnmarshalBool(b *testing.B) {
 	b.StopTimer()
 }
 func BenchmarkMarshalUint64(b *testing.B) {
-	w := &fakeWriter{}
+	w := &util.FakeWriter{}
 	val := uint64(10)
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
@@ -116,7 +117,7 @@ func BenchmarkMarshalUint64(b *testing.B) {
 	b.StopTimer()
 }
 func BenchmarkUnmarshalUint64(b *testing.B) {
-	r := &fakeReader{
+	r := &util.FakeReader{
 		B: []byte{0, 0, 0, 0, 0, 0, 0, 0xa},
 	}
 	b.ResetTimer()
@@ -127,7 +128,7 @@ func BenchmarkUnmarshalUint64(b *testing.B) {
 	b.StopTimer()
 }
 func BenchmarkMarshalString(b *testing.B) {
-	w := &fakeWriter{}
+	w := &util.FakeWriter{}
 	val := "test string"
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
@@ -136,7 +137,7 @@ func BenchmarkMarshalString(b *testing.B) {
 	b.StopTimer()
 }
 func BenchmarkUnmarshalString(b *testing.B) {
-	r := &fakeReader{
+	r := &util.FakeReader{
 		B: []byte{
 			// length
 			0, 0, 0, 0, 0, 0, 0, 0xb,
@@ -152,7 +153,7 @@ func BenchmarkUnmarshalString(b *testing.B) {
 	b.StopTimer()
 }
 func BenchmarkMarshalFuncSymbol(b *testing.B) {
-	w := &fakeWriter{}
+	w := &util.FakeWriter{}
 	val := funcSymbol
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
@@ -161,7 +162,7 @@ func BenchmarkMarshalFuncSymbol(b *testing.B) {
 	b.StopTimer()
 }
 func BenchmarkUnmarshalFuncSymbol(b *testing.B) {
-	r := &fakeReader{
+	r := &util.FakeReader{
 		B: funcSymbolBytes,
 	}
 	b.ResetTimer()
@@ -172,7 +173,7 @@ func BenchmarkUnmarshalFuncSymbol(b *testing.B) {
 	b.StopTimer()
 }
 func BenchmarkMarshalFuncStatus(b *testing.B) {
-	w := &fakeWriter{}
+	w := &util.FakeWriter{}
 	val := funcStatus
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
@@ -181,7 +182,7 @@ func BenchmarkMarshalFuncStatus(b *testing.B) {
 	b.StopTimer()
 }
 func BenchmarkUnmarshalFuncStatus(b *testing.B) {
-	r := &fakeReader{
+	r := &util.FakeReader{
 		B: funcStatusBytes,
 	}
 	b.ResetTimer()
@@ -192,7 +193,7 @@ func BenchmarkUnmarshalFuncStatus(b *testing.B) {
 	b.StopTimer()
 }
 func BenchmarkMarshalFuncStatusIDSlice(b *testing.B) {
-	w := &fakeWriter{}
+	w := &util.FakeWriter{}
 	val := []logutil.FuncStatusID{1, 2, 3, 4, 5, 6, 8, 9, 10}
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
@@ -203,7 +204,7 @@ func BenchmarkMarshalFuncStatusIDSlice(b *testing.B) {
 func BenchmarkUnmarshalFuncStatusIDSlice(b *testing.B) {
 	var w bytes.Buffer
 	marshalFuncStatusIDSlice(&w, []logutil.FuncStatusID{1, 2, 3, 4, 5, 6, 8, 9, 10})
-	r := &fakeReader{
+	r := &util.FakeReader{
 		B: w.Bytes(),
 	}
 	b.ResetTimer()
@@ -214,7 +215,7 @@ func BenchmarkUnmarshalFuncStatusIDSlice(b *testing.B) {
 	b.StopTimer()
 }
 func BenchmarkMarshalRawFuncLog(b *testing.B) {
-	w := &fakeWriter{}
+	w := &util.FakeWriter{}
 	val := rawFuncLog
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
@@ -223,7 +224,7 @@ func BenchmarkMarshalRawFuncLog(b *testing.B) {
 	b.StopTimer()
 }
 func BenchmarkUnmarshalRawFuncLog(b *testing.B) {
-	r := &fakeReader{
+	r := &util.FakeReader{
 		B: rawFuncLogBytes,
 	}
 	b.ResetTimer()

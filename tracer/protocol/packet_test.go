@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/yuuki0xff/goapptrace/tracer/util"
 	"github.com/yuuki0xff/xtcp"
 )
 
@@ -23,26 +24,6 @@ func (fakeProto) Pack(p xtcp.Packet) ([]byte, error) {
 }
 func (fakeProto) Unpack(b []byte) (xtcp.Packet, int, error) {
 	return fakePacket{string(b)}, len(b), nil
-}
-
-// mock of io.Reader for benchmark.
-type fakeReader struct {
-	B []byte
-	// readed bytes
-	N int
-}
-
-func (r *fakeReader) Read(b []byte) (int, error) {
-	n := copy(b, r.B[r.N:])
-	r.N += n
-	return n, nil
-}
-
-// mock of io.Writer for benchmark.
-type fakeWriter struct{}
-
-func (fakeWriter) Write(p []byte) (n int, err error) {
-	return len(p), nil
 }
 
 func BenchmarkDetectPacketType(b *testing.B) {
@@ -116,7 +97,7 @@ func BenchmarkRawFuncLogPacket_Marshal(b *testing.B) {
 }
 func BenchmarkRawFuncLogPacket_Unmarshal(b *testing.B) {
 	var rp RawFuncLogPacket
-	r := fakeReader{
+	r := util.FakeReader{
 		B: rawFuncLogBytes,
 	}
 
