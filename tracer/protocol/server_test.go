@@ -230,6 +230,7 @@ func TestServerConn_OnEvent_receivePingPacket(t *testing.T) {
 func TestServerConn_OnEvent_receiveShutdownPacket(t *testing.T) {
 	a := assert.New(t)
 	var disconnected bool
+	var stopped bool
 	handler := ServerHandler{
 		Disconnected: func(id ConnID) {
 			disconnected = true
@@ -245,10 +246,13 @@ func TestServerConn_OnEvent_receiveShutdownPacket(t *testing.T) {
 		ClientFunc: func(ch serverConnTestCh) {
 			mode := <-ch.stopCh
 			a.Equal(xtcp.StopImmediately, mode)
+			stopped = true
 		},
 		SendHandler: func(conn *xtcp.Conn, packet xtcp.Packet) {
 			mustNotCall("SendHandler")
 		},
 	}
 	sct.Run()
+	a.True(disconnected)
+	a.True(stopped)
 }

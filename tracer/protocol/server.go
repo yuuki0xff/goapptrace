@@ -268,6 +268,7 @@ func (s *ServerConn) stop(conn *xtcp.Conn, mode xtcp.StopMode) {
 		conn.Stop(mode)
 	} else {
 		s.stopHandler(conn, mode)
+		s.OnEvent(xtcp.EventClosed, conn, nil)
 	}
 }
 
