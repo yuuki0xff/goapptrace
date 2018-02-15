@@ -25,7 +25,7 @@ func (fakeProto) Unpack(b []byte) (xtcp.Packet, int, error) {
 	return fakePacket{string(b)}, len(b), nil
 }
 
-// mock of bytes.Reader for benchmark.
+// mock of io.Reader for benchmark.
 type fakeReader struct {
 	B []byte
 	// readed bytes
@@ -38,7 +38,7 @@ func (r *fakeReader) Read(b []byte) (int, error) {
 	return n, nil
 }
 
-// mock of bytes.Reader for benchmark.
+// mock of io.Writer for benchmark.
 type fakeWriter struct{}
 
 func (fakeWriter) Write(p []byte) (n int, err error) {
