@@ -38,6 +38,13 @@ func (r *fakeReader) Read(b []byte) (int, error) {
 	return n, nil
 }
 
+// mock of bytes.Reader for benchmark.
+type fakeWriter struct{}
+
+func (fakeWriter) Write(p []byte) (n int, err error) {
+	return len(p), nil
+}
+
 func BenchmarkDetectPacketType(b *testing.B) {
 	p1 := &ClientHelloPacket{}
 	p2 := &ServerHelloPacket{}
@@ -73,6 +80,23 @@ func BenchmarkCreatePacket(b *testing.B) {
 		createPacket(StopTraceCmdPacketType)
 		createPacket(SymbolPacketType)
 		createPacket(RawFuncLogPacketType)
+	}
+	b.StopTimer()
+}
+func BenchmarkMergePacket_Merge(b *testing.B) {
+	mp := MergePacket{
+		Proto: &Proto{},
+	}
+	p := &RawFuncLogPacket{
+		FuncLog: rawFuncLog,
+	}
+
+	b.ResetTimer()
+	for i := b.N; i > 0; i-- {
+		mp.Merge(p)
+		if mp.Len() >= DefaultSendBufferSize {
+			mp.Reset()
+		}
 	}
 	b.StopTimer()
 }

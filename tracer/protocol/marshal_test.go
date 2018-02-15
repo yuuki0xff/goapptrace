@@ -86,6 +86,154 @@ var (
 	}
 )
 
+func BenchmarkMarshalBool(b *testing.B) {
+	w := &fakeWriter{}
+	val := true
+	b.ResetTimer()
+	for i := b.N; i > 0; i-- {
+		marshalBool(w, val)
+	}
+	b.StopTimer()
+}
+func BenchmarkUnmarshalBool(b *testing.B) {
+	r := &fakeReader{
+		B: []byte{1},
+	}
+	b.ResetTimer()
+	for i := b.N; i > 0; i-- {
+		unmarshalBool(r)
+		r.N = 0
+	}
+	b.StopTimer()
+}
+func BenchmarkMarshalUint64(b *testing.B) {
+	w := &fakeWriter{}
+	val := uint64(10)
+	b.ResetTimer()
+	for i := b.N; i > 0; i-- {
+		marshalUint64(w, val)
+	}
+	b.StopTimer()
+}
+func BenchmarkUnmarshalUint64(b *testing.B) {
+	r := &fakeReader{
+		B: []byte{0, 0, 0, 0, 0, 0, 0, 0xa},
+	}
+	b.ResetTimer()
+	for i := b.N; i > 0; i-- {
+		unmarshalUint64(r)
+		r.N = 0
+	}
+	b.StopTimer()
+}
+func BenchmarkMarshalString(b *testing.B) {
+	w := &fakeWriter{}
+	val := "test string"
+	b.ResetTimer()
+	for i := b.N; i > 0; i-- {
+		marshalString(w, val)
+	}
+	b.StopTimer()
+}
+func BenchmarkUnmarshalString(b *testing.B) {
+	r := &fakeReader{
+		B: []byte{
+			// length
+			0, 0, 0, 0, 0, 0, 0, 0xb,
+			// string data
+			0x66, 0x61, 0x6b, 0x65, 0x20, 0x73, 0x74, 0x72, 0x69, 0x6e, 0x67,
+		},
+	}
+	b.ResetTimer()
+	for i := b.N; i > 0; i-- {
+		unmarshalString(r)
+		r.N = 0
+	}
+	b.StopTimer()
+}
+func BenchmarkMarshalFuncSymbol(b *testing.B) {
+	w := &fakeWriter{}
+	val := funcSymbol
+	b.ResetTimer()
+	for i := b.N; i > 0; i-- {
+		marshalFuncSymbol(w, val)
+	}
+	b.StopTimer()
+}
+func BenchmarkUnmarshalFuncSymbol(b *testing.B) {
+	r := &fakeReader{
+		B: funcSymbolBytes,
+	}
+	b.ResetTimer()
+	for i := b.N; i > 0; i-- {
+		unmarshalFuncSymbol(r)
+		r.N = 0
+	}
+	b.StopTimer()
+}
+func BenchmarkMarshalFuncStatus(b *testing.B) {
+	w := &fakeWriter{}
+	val := funcStatus
+	b.ResetTimer()
+	for i := b.N; i > 0; i-- {
+		marshalFuncStatus(w, val)
+	}
+	b.StopTimer()
+}
+func BenchmarkUnmarshalFuncStatus(b *testing.B) {
+	r := &fakeReader{
+		B: funcStatusBytes,
+	}
+	b.ResetTimer()
+	for i := b.N; i > 0; i-- {
+		unmarshalFuncStatus(r)
+		r.N = 0
+	}
+	b.StopTimer()
+}
+func BenchmarkMarshalFuncStatusIDSlice(b *testing.B) {
+	w := &fakeWriter{}
+	val := []logutil.FuncStatusID{1, 2, 3, 4, 5, 6, 8, 9, 10}
+	b.ResetTimer()
+	for i := b.N; i > 0; i-- {
+		marshalFuncStatusIDSlice(w, val)
+	}
+	b.StopTimer()
+}
+func BenchmarkUnmarshalFuncStatusIDSlice(b *testing.B) {
+	var w bytes.Buffer
+	marshalFuncStatusIDSlice(&w, []logutil.FuncStatusID{1, 2, 3, 4, 5, 6, 8, 9, 10})
+	r := &fakeReader{
+		B: w.Bytes(),
+	}
+	b.ResetTimer()
+	for i := b.N; i > 0; i-- {
+		unmarshalFuncStatus(r)
+		r.N = 0
+	}
+	b.StopTimer()
+}
+func BenchmarkMarshalRawFuncLog(b *testing.B) {
+	w := &fakeWriter{}
+	val := rawFuncLog
+	b.ResetTimer()
+	for i := b.N; i > 0; i-- {
+		marshalRawFuncLog(w, val)
+	}
+	b.StopTimer()
+}
+func BenchmarkUnmarshalRawFuncLog(b *testing.B) {
+	r := &fakeReader{
+		B: rawFuncLogBytes,
+	}
+	b.ResetTimer()
+	for i := b.N; i > 0; i-- {
+		unmarshalRawFuncLog(r)
+		r.N = 0
+	}
+	b.StopTimer()
+}
+
 func TestMarshalBool(t *testing.T) {
 	var buf bytes.Buffer
 	a := assert.New(t)
