@@ -228,7 +228,7 @@ func TestServerConn_OnEvent_receivePingPacket(t *testing.T) {
 }
 
 func TestServerConn_OnEvent_receiveShutdownPacket(t *testing.T) {
-	//a := assert.New(t)
+	a := assert.New(t)
 	var disconnected bool
 	handler := ServerHandler{
 		Disconnected: func(id ConnID) {
@@ -241,6 +241,10 @@ func TestServerConn_OnEvent_receiveShutdownPacket(t *testing.T) {
 		IsNegotiated: true,
 		ServerFunc: func(sc ServerConn, xc *xtcp.Conn) {
 			sc.OnEvent(xtcp.EventRecv, xc, &ShutdownPacket{})
+		},
+		ClientFunc: func(ch serverConnTestCh) {
+			mode := <-ch.stopCh
+			a.Equal(xtcp.StopImmediately, mode)
 		},
 		SendHandler: func(conn *xtcp.Conn, packet xtcp.Packet) {
 			mustNotCall("SendHandler")
