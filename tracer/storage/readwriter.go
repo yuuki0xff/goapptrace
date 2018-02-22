@@ -286,6 +286,7 @@ func (rw *ParallelReadWriter) SetReadOnly() error {
 // 読み込み専用にする。
 // lockの獲得は呼び出し元が行うこと。
 func (rw *ParallelReadWriter) setReadOnlyNoLock() error {
+	rw.ReadOnly = true
 	rw.writable = false
 	if !rw.UseCache {
 		// キャッシュを破棄する。
