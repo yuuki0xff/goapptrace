@@ -233,7 +233,7 @@ func (rw *ParallelReadWriter) Append(data interface{}) error {
 		rw.cache = append(rw.cache, data)
 		return rw.enc.Append(data)
 	}
-	return os.ErrClosed
+	return ErrFileisReadOnly
 }
 
 // ファイルの先頭からデータを読み込む。
