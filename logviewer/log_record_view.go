@@ -45,7 +45,6 @@ func (vm *LogRecordVM) UpdateInterval() time.Duration {
 	return 0
 }
 func (vm *LogRecordVM) Update(ctx context.Context) {
-	// TODO: fetch records
 	records, fsMap, fMap, err := vm.fetch()
 
 	vm.m.Lock()
