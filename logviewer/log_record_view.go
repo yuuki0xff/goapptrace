@@ -165,6 +165,14 @@ func (vm *LogRecordVM) onActivatedRecord(record restapi.FuncCall) {
 		Record:   record,
 	})
 }
+func (vm *LogRecordVM) onSelectionChanged(id logutil.FuncLogID) {
+	vm.m.Lock()
+	vm.view = nil
+	vm.state.SelectedID = id
+	vm.m.Unlock()
+
+	vm.Root.NotifyVMUpdated()
+}
 func (vm *LogRecordVM) onUseGraph() {
 	vm.Root.SetState(UIState{
 		LogID:        vm.LogID,
@@ -258,6 +266,14 @@ func (v *LogRecordView) onActivatedRecord(table *tui.Table) {
 	rec := v.Records[v.table.Selected()-1]
 	v.VM.onActivatedRecord(rec)
 }
+func (v *LogRecordView) onSelectionChanged(table *tui.Table) {
+	if v.table.Selected() <= 0 {
+		return
+	}
+	idx := v.table.Selected() - 1
+	id := v.Records[idx].ID
+	v.VM.onSelectionChanged(id)
+}
 func (v *LogRecordView) newStatusBar(text string) *tui.StatusBar {
 	s := tui.NewStatusBar(LoadingText)
 	s.SetPermanentText("Function Call Logs")
@@ -271,7 +287,6 @@ func (v *LogRecordView) newRecordTable() *headerTable {
 		tui.NewLabel("GID"),
 		tui.NewLabel("Module.Func:Line"),
 	)
-	t.OnItemActivated(v.onActivatedRecord)
 	t.SetColumnStretch(0, 5)
 	t.SetColumnStretch(1, 3)
 	t.SetColumnStretch(2, 1)
@@ -282,7 +297,8 @@ func (v *LogRecordView) newRecordTable() *headerTable {
 	if maxTableRecords < n {
 		n = maxTableRecords
 	}
-	for _, fc := range v.Records[:n] {
+	records := v.Records[:n]
+	for _, fc := range records {
 		currentFrame := fc.Frames[0]
 
 		fs := v.FsMap[currentFrame]
@@ -296,5 +312,16 @@ func (v *LogRecordView) newRecordTable() *headerTable {
 			tui.NewLabel(fi.Name+":"+strconv.Itoa(int(fs.Line))),
 		)
 	}
+
+	for i, fc := range records {
+		if fc.ID == v.SelectedID {
+			idx := i + 1
+			t.Select(idx)
+			break
+		}
+	}
+
+	t.OnItemActivated(v.onActivatedRecord)
+	t.OnSelectionChanged(v.onSelectionChanged)
 	return t
 }
