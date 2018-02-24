@@ -204,7 +204,7 @@ func (v *LogRecordView) init() {
 			v.fc = newFocusChain(errmsg)
 			return
 		} else {
-			v.table = v.newTable()
+			v.table = v.newRecordTable()
 			v.widget = tui.NewVBox(
 				v.table,
 				tui.NewSpacer(),
@@ -264,7 +264,7 @@ func (v *LogRecordView) newStatusBar(text string) *tui.StatusBar {
 	s.SetText(text)
 	return s
 }
-func (v *LogRecordView) newTable() *headerTable {
+func (v *LogRecordView) newRecordTable() *headerTable {
 	t := newHeaderTable(
 		tui.NewLabel("StartTime"),
 		tui.NewLabel("ExecTime (ns)"),
