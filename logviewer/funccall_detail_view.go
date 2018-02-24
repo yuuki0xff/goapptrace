@@ -12,18 +12,23 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+type FuncCallDetailState struct {
+	State  FCDState
+	Error  error
+	FsList []restapi.FuncStatusInfo
+	FList  []restapi.FuncInfo
+	Record restapi.FuncCall
+}
+type FuncCallDetailStateMutable FuncCallDetailState
 type FuncCallDetailVM struct {
 	Root   Coordinator
 	Client restapi.ClientWithCtx
 	LogID  string
 	Record restapi.FuncCall
 
-	m      sync.Mutex
-	view   *FuncCallDetailView
-	state  FCDState
-	err    error
-	fsList []restapi.FuncStatusInfo
-	fList  []restapi.FuncInfo
+	m     sync.Mutex
+	view  *FuncCallDetailView
+	state FuncCallDetailStateMutable
 }
 
 func (vm *FuncCallDetailVM) UpdateInterval() time.Duration {
@@ -56,15 +61,16 @@ func (vm *FuncCallDetailVM) Update(ctx context.Context) {
 	err := eg.Wait()
 
 	vm.m.Lock()
-	vm.state = FCDWait
-	vm.err = err
-	if vm.err != nil {
-		vm.fsList = fsList
-		vm.fList = fList
+	vm.state.State = FCDWait
+	vm.state.Error = err
+	if err != nil {
+		vm.state.FsList = fsList
+		vm.state.FList = fList
 	} else {
-		vm.fsList = nil
-		vm.fList = nil
+		vm.state.FsList = nil
+		vm.state.FList = nil
 	}
+	vm.state.Record = vm.Record
 	vm.m.Unlock()
 
 	vm.Root.NotifyVMUpdated()
@@ -75,12 +81,8 @@ func (vm *FuncCallDetailVM) View() View {
 
 	if vm.view == nil {
 		vm.view = &FuncCallDetailView{
-			VM:     vm,
-			State:  vm.state,
-			Error:  vm.err,
-			Record: vm.Record,
-			FsList: vm.fsList,
-			FList:  vm.fList,
+			VM:                  vm,
+			FuncCallDetailState: FuncCallDetailState(vm.state),
 		}
 	}
 	return vm.view
@@ -92,13 +94,8 @@ func (vm *FuncCallDetailVM) onUnselectedRecord(logID string) {
 }
 
 type FuncCallDetailView struct {
-	VM     *FuncCallDetailVM
-	State  FCDState
-	Error  error
-	LogID  string
-	Record restapi.FuncCall
-	FsList []restapi.FuncStatusInfo
-	FList  []restapi.FuncInfo
+	VM *FuncCallDetailVM
+	FuncCallDetailState
 
 	initOnce sync.Once
 	widget   tui.Widget
@@ -156,7 +153,7 @@ func (v *FuncCallDetailView) Widget() tui.Widget {
 func (v *FuncCallDetailView) Keybindings() map[string]func() {
 	v.initOnce.Do(v.init)
 	unselect := func() {
-		v.VM.onUnselectedRecord(v.LogID)
+		v.VM.onUnselectedRecord(v.VM.LogID)
 	}
 	return map[string]func(){
 		"Left": unselect,
