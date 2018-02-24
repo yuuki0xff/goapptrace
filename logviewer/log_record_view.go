@@ -20,18 +20,25 @@ const (
 	maxTableRecords = 1000
 )
 
+type LogRecordState struct {
+	// todo
+	State      LRState
+	Error      error
+	Records    []restapi.FuncCall
+	FsMap      map[logutil.FuncStatusID]restapi.FuncStatusInfo
+	FMap       map[logutil.FuncID]restapi.FuncInfo
+	SelectedID logutil.FuncLogID
+}
+type LogRecordStateMutable LogRecordState
+
 type LogRecordVM struct {
 	Root   Coordinator
 	Client restapi.ClientWithCtx
 	LogID  string
 
-	m       sync.Mutex
-	view    *LogRecordView
-	state   LRState
-	err     error
-	records []restapi.FuncCall
-	fsMap   map[logutil.FuncStatusID]restapi.FuncStatusInfo
-	fMap    map[logutil.FuncID]restapi.FuncInfo
+	m     sync.Mutex
+	state LogRecordStateMutable
+	view  *LogRecordView
 }
 
 func (vm *LogRecordVM) UpdateInterval() time.Duration {
@@ -43,11 +50,11 @@ func (vm *LogRecordVM) Update(ctx context.Context) {
 
 	vm.m.Lock()
 	vm.view = nil
-	vm.records = records
-	vm.fsMap = fsMap
-	vm.fMap = fMap
-	vm.err = err
-	vm.state = LRWait
+	vm.state.State = LRWait
+	vm.state.Error = err
+	vm.state.Records = records
+	vm.state.FsMap = fsMap
+	vm.state.FMap = fMap
 	vm.m.Unlock()
 
 	vm.Root.NotifyVMUpdated()
@@ -58,13 +65,8 @@ func (vm *LogRecordVM) View() View {
 
 	if vm.view == nil {
 		vm.view = &LogRecordView{
-			VM:      vm,
-			State:   vm.state,
-			Error:   vm.err,
-			LogID:   vm.LogID,
-			Records: vm.records,
-			FsMap:   vm.fsMap,
-			FMap:    vm.fMap,
+			VM:             vm,
+			LogRecordState: LogRecordState(vm.state),
 		}
 	}
 	return vm.view
@@ -172,13 +174,8 @@ func (vm *LogRecordVM) onUseGraph() {
 }
 
 type LogRecordView struct {
-	VM      *LogRecordVM
-	State   LRState
-	Error   error
-	LogID   string
-	Records []restapi.FuncCall
-	FsMap   map[logutil.FuncStatusID]restapi.FuncStatusInfo
-	FMap    map[logutil.FuncID]restapi.FuncInfo
+	VM *LogRecordVM
+	LogRecordState
 
 	initOnce sync.Once
 	widget   tui.Widget
