@@ -233,7 +233,7 @@ func (v *LogRecordView) Keybindings() map[string]func() {
 		v.VM.onUnselectedLog()
 	}
 	selectRecord := func() {
-		v.onSelectedFuncCallRecord(nil)
+		v.onActivatedRecord(nil)
 	}
 	graph := func() {
 		v.VM.onUseGraph()
@@ -251,7 +251,7 @@ func (v *LogRecordView) FocusChain() tui.FocusChain {
 	v.initOnce.Do(v.init)
 	return v.fc
 }
-func (v *LogRecordView) onSelectedFuncCallRecord(table *tui.Table) {
+func (v *LogRecordView) onActivatedRecord(table *tui.Table) {
 	if v.table.Selected() <= 0 {
 		return
 	}
@@ -271,7 +271,7 @@ func (v *LogRecordView) newRecordTable() *headerTable {
 		tui.NewLabel("GID"),
 		tui.NewLabel("Module.Func:Line"),
 	)
-	t.OnItemActivated(v.onSelectedFuncCallRecord)
+	t.OnItemActivated(v.onActivatedRecord)
 	t.SetColumnStretch(0, 5)
 	t.SetColumnStretch(1, 3)
 	t.SetColumnStretch(2, 1)
