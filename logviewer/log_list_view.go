@@ -82,6 +82,8 @@ func (vm *LogListVM) onSelectionChanged(logID string) {
 	vm.Root.NotifyVMUpdated()
 }
 func (vm *LogListVM) SelectedLog() string {
+	vm.m.Lock()
+	defer vm.m.Unlock()
 	return vm.state.SelectedID
 }
 
