@@ -61,6 +61,7 @@ func (vm *FuncCallDetailVM) Update(ctx context.Context) {
 	err := eg.Wait()
 
 	vm.m.Lock()
+	vm.view = nil
 	vm.state.State = FCDWait
 	vm.state.Error = err
 	if err != nil {
