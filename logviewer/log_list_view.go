@@ -12,6 +12,14 @@ import (
 	"github.com/yuuki0xff/tui-go"
 )
 
+type LogListState struct {
+	State      LLState
+	Error      error
+	Logs       []restapi.LogStatus
+	SelectedID string
+}
+type LogListStateMutable LogListState
+
 // LogListVM implements ViewModel.
 type LogListVM struct {
 	Root   Coordinator
@@ -19,11 +27,7 @@ type LogListVM struct {
 
 	m     sync.Mutex
 	view  *LogListView
-	state LLState
-	err   error
-	logs  []restapi.LogStatus
-
-	selectedLogID string
+	state LogListStateMutable
 }
 
 func (vm *LogListVM) UpdateInterval() time.Duration {
@@ -45,8 +49,9 @@ func (vm *LogListVM) Update(ctx context.Context) {
 
 	vm.m.Lock()
 	vm.view = nil
-	vm.state = LLWait
-	vm.logs, vm.err = logs, err
+	vm.state.State = LLWait
+	vm.state.Error = err
+	vm.state.Logs = logs
 	vm.m.Unlock()
 
 	vm.Root.NotifyVMUpdated()
@@ -57,30 +62,33 @@ func (vm *LogListVM) View() View {
 
 	if vm.view == nil {
 		vm.view = &LogListView{
-			VM:    vm,
-			State: vm.state,
-			Error: vm.err,
-			Logs:  vm.logs,
+			VM:           vm,
+			LogListState: LogListState(vm.state),
 		}
 	}
 	return vm.view
 }
-func (vm *LogListVM) onSelectedLog(logID string) {
-	vm.selectedLogID = logID
+func (vm *LogListVM) onActivatedLog(logID string) {
 	vm.Root.SetState(UIState{
 		LogID: logID,
 	})
 }
+func (vm *LogListVM) onSelectionChanged(logID string) {
+	vm.m.Lock()
+	vm.view = nil
+	vm.state.SelectedID = logID
+	vm.m.Unlock()
+
+	vm.Root.NotifyVMUpdated()
+}
 func (vm *LogListVM) SelectedLog() string {
-	return vm.selectedLogID
+	return vm.state.SelectedID
 }
 
 // LogListView implements View
 type LogListView struct {
-	VM    *LogListVM
-	State LLState
-	Error error
-	Logs  []restapi.LogStatus
+	VM *LogListVM
+	LogListState
 
 	initOnce sync.Once
 	widget   tui.Widget
@@ -110,7 +118,7 @@ func (v *LogListView) init() {
 			v.fc = newFocusChain(errmsg)
 			return
 		} else {
-			v.table = v.newTable(v.Logs)
+			v.table = v.newLogTable(v.Logs)
 			v.widget = tui.NewVBox(
 				v.table,
 				tui.NewSpacer(),
@@ -138,7 +146,7 @@ func (v *LogListView) Widget() tui.Widget {
 func (v *LogListView) Keybindings() map[string]func() {
 	v.initOnce.Do(v.init)
 	selected := func() {
-		v.onSelectedLog(nil)
+		v.onActivatedLog(nil)
 	}
 	return map[string]func(){
 		"Right": selected,
@@ -151,14 +159,22 @@ func (v *LogListView) FocusChain() tui.FocusChain {
 }
 
 // ログを選択したときにコールバックされる関数。
-func (v *LogListView) onSelectedLog(table *tui.Table) {
+func (v *LogListView) onActivatedLog(table *tui.Table) {
 	if v.table.Selected() <= 0 {
 		return
 	}
 
 	idx := v.table.Selected() - 1
 	id := v.Logs[idx].ID
-	v.VM.onSelectedLog(id)
+	v.VM.onActivatedLog(id)
+}
+func (v *LogListView) onSelectionChanged(table *tui.Table) {
+	var id string
+	if v.table.Selected() > 0 {
+		idx := v.table.Selected() - 1
+		id = v.Logs[idx].ID
+	}
+	v.VM.onSelectionChanged(id)
 }
 
 func (v *LogListView) newStatusBar(text string) *tui.StatusBar {
@@ -168,13 +184,12 @@ func (v *LogListView) newStatusBar(text string) *tui.StatusBar {
 	return s
 }
 
-func (v *LogListView) newTable(logs []restapi.LogStatus) *headerTable {
+func (v *LogListView) newLogTable(logs []restapi.LogStatus) *headerTable {
 	t := newHeaderTable(
 		tui.NewLabel("Status"),
 		tui.NewLabel("LogID"),
 		tui.NewLabel("Timestamp"),
 	)
-	t.OnItemActivated(v.onSelectedLog)
 
 	for _, l := range logs {
 		var status *tui.Label
@@ -192,5 +207,19 @@ func (v *LogListView) newTable(logs []restapi.LogStatus) *headerTable {
 			tui.NewLabel(l.Metadata.Timestamp.String()),
 		)
 	}
+
+	if v.SelectedID != "" {
+		for i, logobj := range v.Logs {
+			if logobj.ID == v.SelectedID {
+				// tableのidxは1から始まる
+				idx := i + 1
+				t.Select(idx)
+				break
+			}
+		}
+	}
+
+	t.OnItemActivated(v.onActivatedLog)
+	t.OnSelectionChanged(v.onSelectionChanged)
 	return t
 }
