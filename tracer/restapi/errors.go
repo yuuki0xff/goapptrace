@@ -18,6 +18,15 @@ func wrapResp(r *grequests.Response, err error) (*grequests.Response, error) {
 
 // errFailedResp wraps error object in the user friendly error message.
 func errFailedResp(res *grequests.Response, err error) error {
+	if res == nil {
+		return err
+	}
+	if res.RawResponse == nil {
+		return err
+	}
+	if res.RawResponse.Request == nil {
+		return err
+	}
 	method := res.RawResponse.Request.Method
 	url := res.RawResponse.Request.URL
 	return errors.Wrapf(err, "failed to %s %s", method, url)
