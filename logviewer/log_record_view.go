@@ -158,7 +158,7 @@ func (vm *LogRecordVM) onUnselectedLog() {
 	// LogIDを指定しない状態に戻す。
 	vm.Root.SetState(UIState{})
 }
-func (vm *LogRecordVM) onSelectedRecord(record restapi.FuncCall) {
+func (vm *LogRecordVM) onActivatedRecord(record restapi.FuncCall) {
 	vm.Root.SetState(UIState{
 		LogID:    vm.LogID,
 		RecordID: record.ID,
@@ -256,7 +256,7 @@ func (v *LogRecordView) onActivatedRecord(table *tui.Table) {
 		return
 	}
 	rec := v.Records[v.table.Selected()-1]
-	v.VM.onSelectedRecord(rec)
+	v.VM.onActivatedRecord(rec)
 }
 func (v *LogRecordView) newStatusBar(text string) *tui.StatusBar {
 	s := tui.NewStatusBar(LoadingText)
