@@ -398,12 +398,6 @@ paths:
       responses:
         '204':
           description: OK
-  '/log/{log-id}/status':
-    parameters:
-      - name: log-id
-        in: path
-        required: true
-        type: integer
     get:
       description: Returns current status of a specified log.
       responses:

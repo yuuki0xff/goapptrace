@@ -119,8 +119,8 @@ func (api APIv0) SetHandlers(router *mux.Router) {
 
 	v01.HandleFunc("/logs", api.logs).Methods(http.MethodGet)
 	v01.HandleFunc("/log/{log-id}", api.log).Methods(http.MethodDelete)
-	v01.HandleFunc("/log/{log-id}/status", api.log).Methods(http.MethodGet)
-	v01.HandleFunc("/log/{log-id}/status", api.log).Methods(http.MethodPut).
+	v01.HandleFunc("/log/{log-id}", api.log).Methods(http.MethodGet)
+	v01.HandleFunc("/log/{log-id}", api.log).Methods(http.MethodPut).
 		Queries("version", "{version:[0-9]+}")
 	v01.HandleFunc("/log/{log-id}/watch", api.notImpl).Methods(http.MethodGet).
 		Queries(
