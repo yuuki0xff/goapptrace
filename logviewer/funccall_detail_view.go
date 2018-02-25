@@ -29,55 +29,59 @@ type FuncCallDetailVM struct {
 	m     sync.Mutex
 	view  *FuncCallDetailView
 	state FuncCallDetailStateMutable
+
+	updateOnce sync.Once
 }
 
 func (vm *FuncCallDetailVM) UpdateInterval() time.Duration {
 	return 0
 }
 func (vm *FuncCallDetailVM) Update(ctx context.Context) {
-	length := len(vm.Record.Frames)
-	fsList := make([]restapi.FuncStatusInfo, length)
-	fList := make([]restapi.FuncInfo, length)
+	vm.updateOnce.Do(func() {
+		length := len(vm.Record.Frames)
+		fsList := make([]restapi.FuncStatusInfo, length)
+		fList := make([]restapi.FuncInfo, length)
 
-	var eg errgroup.Group
-	fetch := func(i int) {
-		eg.Go(func() error {
-			fsid := vm.Record.Frames[i]
-			fs, err := vm.Client.FuncStatus(vm.LogID, strconv.Itoa(int(fsid)))
-			if err != nil {
-				return err
-			}
-			fi, err := vm.Client.Func(vm.LogID, strconv.Itoa(int(fs.Func)))
-			if err != nil {
-				return err
-			}
+		var eg errgroup.Group
+		fetch := func(i int) {
+			eg.Go(func() error {
+				fsid := vm.Record.Frames[i]
+				fs, err := vm.Client.FuncStatus(vm.LogID, strconv.Itoa(int(fsid)))
+				if err != nil {
+					return err
+				}
+				fi, err := vm.Client.Func(vm.LogID, strconv.Itoa(int(fs.Func)))
+				if err != nil {
+					return err
+				}
 
-			fsList[i] = fs
-			fList[i] = fi
-			return nil
-		})
-	}
-	for i := range vm.Record.Frames {
-		fetch(i)
-	}
-	err := eg.Wait()
+				fsList[i] = fs
+				fList[i] = fi
+				return nil
+			})
+		}
+		for i := range vm.Record.Frames {
+			fetch(i)
+		}
+		err := eg.Wait()
 
-	vm.m.Lock()
-	vm.view = nil
-	vm.state.State = FCDWait
-	vm.state.Error = err
-	if err == nil {
-		// no error
-		vm.state.FSList = fsList
-		vm.state.FList = fList
-	} else {
-		vm.state.FSList = nil
-		vm.state.FList = nil
-	}
-	vm.state.Record = vm.Record
-	vm.m.Unlock()
+		vm.m.Lock()
+		vm.view = nil
+		vm.state.State = FCDWait
+		vm.state.Error = err
+		if err == nil {
+			// no error
+			vm.state.FSList = fsList
+			vm.state.FList = fList
+		} else {
+			vm.state.FSList = nil
+			vm.state.FList = nil
+		}
+		vm.state.Record = vm.Record
+		vm.m.Unlock()
 
-	vm.Root.NotifyVMUpdated()
+		vm.Root.NotifyVMUpdated()
+	})
 }
 func (vm *FuncCallDetailVM) View() View {
 	vm.m.Lock()
