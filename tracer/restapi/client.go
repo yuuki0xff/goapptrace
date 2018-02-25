@@ -157,7 +157,7 @@ func (c ClientWithCtx) FuncStatus(logID, funcStatusID string) (f FuncStatusInfo,
 
 func (c ClientWithCtx) Goroutines(logID string) (gl chan Goroutine, err error) {
 	var r *grequests.Response
-	url := c.url("/log", logID, "symbol", "goroutines", "search")
+	url := c.url("/log", logID, "goroutines", "search")
 	ro := c.ro()
 	r, err = c.get(url, &ro)
 	if err != nil {
