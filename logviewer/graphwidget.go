@@ -94,18 +94,6 @@ func (v *GraphWidget) AddLine(line Line) {
 }
 
 func (v *GraphWidget) Draw(p *tui.Painter) {
-	// draw lines
-	for _, line := range v.lines {
-		if line.StyleName == "" {
-			v.drawLine(line, p)
-		} else {
-			p.WithStyle(line.StyleName, func(painter *tui.Painter) {
-				v.drawLine(line, painter)
-			})
-		}
-	}
-}
-func (v *GraphWidget) drawLine(line Line, p *tui.Painter) {
 	// 原点の座標を設定
 	size := v.Size()
 	switch v.origin {
@@ -126,6 +114,18 @@ func (v *GraphWidget) drawLine(line Line, p *tui.Painter) {
 	p.Translate(v.offset.X, v.offset.Y)
 	defer p.Restore()
 
+	// draw lines
+	for _, line := range v.lines {
+		if line.StyleName == "" {
+			v.drawLine(line, p)
+		} else {
+			p.WithStyle(line.StyleName, func(painter *tui.Painter) {
+				v.drawLine(line, painter)
+			})
+		}
+	}
+}
+func (v *GraphWidget) drawLine(line Line, p *tui.Painter) {
 	x, y := line.Start.X, line.Start.Y
 	length := 0
 	dx, dy := 0, 0
