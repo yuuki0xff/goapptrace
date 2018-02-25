@@ -64,7 +64,8 @@ func (vm *FuncCallDetailVM) Update(ctx context.Context) {
 	vm.view = nil
 	vm.state.State = FCDWait
 	vm.state.Error = err
-	if err != nil {
+	if err == nil {
+		// no error
 		vm.state.FSList = fsList
 		vm.state.FList = fList
 	} else {
