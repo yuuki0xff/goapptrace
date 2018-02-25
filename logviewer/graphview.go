@@ -288,7 +288,7 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 			// firstXSetには、fcXのgoroutineごとの最小値を設定する。
 			// lastXSetには、fcXのgoroutineごとの最大値を設定する。
 			first := intsets.MaxInt
-			last := intsets.MaxInt
+			last := intsets.MinInt
 			exists := false
 
 			for i, f := range fcList {
