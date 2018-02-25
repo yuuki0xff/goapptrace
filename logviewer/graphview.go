@@ -47,7 +47,7 @@ func (s *GraphStateMutable) UpdateOffset(dx, dy int) {
 	if s.OffsetX < 0 {
 		s.OffsetX = 0
 	}
-	if s.OffsetY < 0 {
+	if s.OffsetY > 0 {
 		s.OffsetY = 0
 	}
 }
