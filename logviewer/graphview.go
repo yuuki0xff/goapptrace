@@ -269,7 +269,6 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 			return total + 2
 		}
 		for i := range fcList {
-			//log.Printf("fcList[%d]: %+v", i, fcList[i])
 			if fcLen[i] == 0 {
 				fcLen[i] = length(fcList[i])
 			}
