@@ -233,7 +233,7 @@ func (api APIv0) log(w http.ResponseWriter, r *http.Request) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	case http.MethodGet:
-		js, err := json.Marshal(logobj)
+		js, err := json.Marshal(logobj.Metadata)
 		if err != nil {
 			api.serverError(w, err, "failed to json.Marshal()")
 			return
@@ -246,8 +246,8 @@ func (api APIv0) log(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		l := storage.Log{}
-		if err = json.Unmarshal(js, &l); err != nil {
+		meta := &storage.LogMetadata{}
+		if err = json.Unmarshal(js, meta); err != nil {
 			http.Error(w, "invalid json", http.StatusBadRequest)
 			return
 		}
@@ -258,11 +258,11 @@ func (api APIv0) log(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if err = logobj.UpdateMetadata(currentVer, l.Metadata); err != nil {
+		if err = logobj.UpdateMetadata(currentVer, meta); err != nil {
 			if err == storage.ErrConflict {
 				// バージョン番号が異なるため、Metadataを更新できない。
 				// 現在の状態を返す。
-				js, err = json.Marshal(logobj)
+				js, err = json.Marshal(logobj.Metadata)
 				if err != nil {
 					api.serverError(w, err, "failed to json.Marshal()")
 					return
@@ -279,7 +279,7 @@ func (api APIv0) log(w http.ResponseWriter, r *http.Request) {
 
 		// 更新に成功。
 		// 新しい状態を返す。
-		js, err = json.Marshal(logobj)
+		js, err = json.Marshal(logobj.Metadata)
 		if err != nil {
 			api.serverError(w, err, "failed to json.Marshal()")
 			return
