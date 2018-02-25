@@ -136,6 +136,7 @@ func (v *FuncCallDetailView) init() {
 
 			v.widget = tui.NewVBox(
 				fcInfo,
+				tui.NewLabel(""),
 				framesInfo,
 				tui.NewSpacer(),
 				v.newStatusBar(""),
