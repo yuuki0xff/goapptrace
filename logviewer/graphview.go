@@ -349,7 +349,7 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 	for gid := range gidY {
 		length := lastXSet[gid] - firstXSet[gid]
 		if length < 0 {
-			log.Panic("negative length", lastXSet[gid], firstXSet[gid])
+			log.Panicf("negative length: length = %d - %d = %d", lastXSet[gid], firstXSet[gid], length)
 		}
 		line := Line{
 			Start: image.Point{
