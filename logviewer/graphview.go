@@ -189,6 +189,8 @@ func (vm *GraphVM) Update(ctx context.Context) {
 	}
 
 	vm.m.Lock()
+	vm.view = nil
+	vm.state.State = GWait
 	vm.state.Error = err
 	vm.state.Lines = lines
 	vm.cache = cache
