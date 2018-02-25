@@ -125,7 +125,7 @@ func (v *FuncCallDetailView) init() {
 			return
 		} else {
 			fcInfo := tui.NewVBox(
-				tui.NewLabel("Func:"),
+				tui.NewLabel("Func Info:"),
 				v.newFuncInfoTable(),
 			)
 
