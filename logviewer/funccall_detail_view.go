@@ -40,15 +40,14 @@ func (vm *FuncCallDetailVM) Update(ctx context.Context) {
 	fList := make([]restapi.FuncInfo, length)
 
 	var eg errgroup.Group
-	for i, fsid := range vm.Record.Frames {
+	fetch := func(i int) {
 		eg.Go(func() error {
-			var fs restapi.FuncStatusInfo
+			fsid := vm.Record.Frames[i]
 			fs, err := vm.Client.FuncStatus(vm.LogID, strconv.Itoa(int(fsid)))
 			if err != nil {
 				return err
 			}
-			var fi restapi.FuncInfo
-			fi, err = vm.Client.Func(vm.LogID, strconv.Itoa(int(fs.Func)))
+			fi, err := vm.Client.Func(vm.LogID, strconv.Itoa(int(fs.Func)))
 			if err != nil {
 				return err
 			}
@@ -57,6 +56,9 @@ func (vm *FuncCallDetailVM) Update(ctx context.Context) {
 			fList[i] = fi
 			return nil
 		})
+	}
+	for i := range vm.Record.Frames {
+		fetch(i)
 	}
 	err := eg.Wait()
 
