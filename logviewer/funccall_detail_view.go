@@ -15,7 +15,7 @@ import (
 type FuncCallDetailState struct {
 	State  FCDState
 	Error  error
-	FsList []restapi.FuncStatusInfo
+	FSList []restapi.FuncStatusInfo
 	FList  []restapi.FuncInfo
 	Record restapi.FuncCall
 }
@@ -65,10 +65,10 @@ func (vm *FuncCallDetailVM) Update(ctx context.Context) {
 	vm.state.State = FCDWait
 	vm.state.Error = err
 	if err != nil {
-		vm.state.FsList = fsList
+		vm.state.FSList = fsList
 		vm.state.FList = fList
 	} else {
-		vm.state.FsList = nil
+		vm.state.FSList = nil
 		vm.state.FList = nil
 	}
 	vm.state.Record = vm.Record
@@ -201,8 +201,8 @@ func (v *FuncCallDetailView) newFramesTable() *headerTable {
 	t.SetColumnStretch(1, 1)
 	t.SetColumnStretch(2, 3)
 
-	for i := range v.FsList {
-		fs := v.FsList[i]
+	for i := range v.FSList {
+		fs := v.FSList[i]
 		fi := v.FList[i]
 		t.AppendRow(
 			tui.NewLabel(fi.Name),
