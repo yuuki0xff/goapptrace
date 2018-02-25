@@ -37,12 +37,18 @@ func (p LineTermination) Rune(defaultRune rune) rune {
 	}
 }
 
+type Origin int
+
 const (
 	HorizontalLine LineType = iota
 	VerticalLine
 	LineTerminationNormal LineTermination = iota
 	LineTerminationHighlight
 	LineTerminationNone
+	OriginTopLeft Origin = iota
+	OriginTopRight
+	OriginBottomLeft
+	OriginBottomRight
 )
 
 type Line struct {
@@ -58,7 +64,9 @@ type Line struct {
 type GraphWidget struct {
 	tui.WidgetBase
 
-	lines []Line
+	lines  []Line
+	offset image.Point
+	origin Origin
 }
 
 func newGraphWidget() *GraphWidget {
@@ -71,6 +79,12 @@ func (v *GraphWidget) RemoveLines() {
 }
 func (v *GraphWidget) SetLines(lines []Line) {
 	v.lines = lines
+}
+func (v *GraphWidget) SetOffset(offset image.Point) {
+	v.offset = offset
+}
+func (v *GraphWidget) SetOrigin(origin Origin) {
+	v.origin = origin
 }
 func (v *GraphWidget) AddLine(line Line) {
 	if line.Length <= 0 {
@@ -92,6 +106,26 @@ func (v *GraphWidget) Draw(p *tui.Painter) {
 	}
 }
 func (v *GraphWidget) drawLine(line Line, p *tui.Painter) {
+	// 原点の座標を設定
+	size := v.Size()
+	switch v.origin {
+	case OriginTopLeft:
+		// do nothing
+	case OriginBottomLeft:
+		p.Translate(0, size.Y)
+		defer p.Restore()
+	case OriginTopRight:
+		p.Translate(size.X, 0)
+		defer p.Restore()
+	case OriginBottomRight:
+		p.Translate(size.X, size.Y)
+		defer p.Restore()
+	}
+
+	// offsetを調整
+	p.Translate(v.offset.X, v.offset.Y)
+	defer p.Restore()
+
 	x, y := line.Start.X, line.Start.Y
 	length := 0
 	dx, dy := 0, 0

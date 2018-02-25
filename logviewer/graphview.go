@@ -440,9 +440,13 @@ func (v *GraphView) init() {
 			v.fc = newFocusChain(errmsg)
 			return
 		} else {
-			// todo: offsetを設定する
 			v.graph = newGraphWidget()
 			v.graph.SetLines(v.Lines)
+			v.graph.SetOffset(image.Point{
+				X: v.OffsetX,
+				Y: v.OffsetY,
+			})
+			v.graph.SetOrigin(OriginTopRight)
 
 			v.widget = tui.NewVBox(
 				v.graph,
