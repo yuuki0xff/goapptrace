@@ -278,8 +278,8 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 		// 最新のログは右側になるようにする。
 		left := 0
 		for i := range fcList {
-			fcX[i] = left - fcLen[i]
-			left--
+			fcX[i] = left - fcLen[i] + 1
+			left -= fcLen[i]
 		}
 
 		// 関数呼び出しのギャップを埋める線のX座標を計算する。
