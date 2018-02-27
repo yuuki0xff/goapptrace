@@ -280,6 +280,9 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 		for i := range fcList {
 			fcX[i] = left - fcLen[i] + 1
 			left -= fcLen[i]
+			log.Printf("fcX[%d] = %d", i, fcX[i])
+			log.Printf("fcLen[%d] = %d", i, fcLen[i])
+			log.Printf("fcList[%d] = %+v", i, fcList[i])
 		}
 
 		// 関数呼び出しのギャップを埋める線のX座標を計算する。
@@ -300,15 +303,18 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 					if g.StartTime < f.StartTime {
 						// goroutineは、関数fより少し早く開始された。
 						// 開始位置を1つ前にする。
+						log.Println("first--", g.StartTime, f.StartTime, first)
 						first--
 					}
 				}
+				log.Printf("first = %d", first)
 				x := fcX[i] + fcLen[i]
 				if last < x {
 					last = x
 					if f.EndTime < g.EndTime {
 						// goroutineは、関数fより少し遅く終了した。
 						// 開始位置を1つ後ろにする。
+						log.Println("last++", f.EndTime, g.EndTime)
 						last++
 					}
 				}
@@ -318,6 +324,7 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 			}
 			firstXSet[gid] = first
 			lastXSet[gid] = last
+			log.Printf("fx[%d] = %d lx[%d] = %d", gid, first, gid, last)
 		}
 	}()
 
