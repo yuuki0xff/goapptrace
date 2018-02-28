@@ -381,7 +381,11 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 		lines = append(lines, line)
 	}
 
-	for i, fc := range fcList {
+	for i := len(fcList) - 1; i >= 0; i-- {
+		// fcListを逆順にループする。
+		// 呼び出し元が呼び出し先のlineを上書きして見えなくしてしまうから。
+		fc := fcList[i]
+
 		// スタイル名の決定をする。
 		styleName := "line."
 		if fc.IsEnded() {
