@@ -320,14 +320,14 @@ func TestGraphVM_buildLines(t *testing.T) {
 					X: -3,
 					Y: 0,
 				},
-				Length:    2,
+				Length:    4,
 				Type:      HorizontalLine,
 				StartDeco: LineTerminationNormal,
 				EndDeco:   LineTerminationNormal,
 				StyleName: "line.stopped",
 			}, {
 				Start: image.Point{
-					X: -1,
+					X: -2,
 					Y: 0,
 				},
 				Length:    2,
