@@ -166,6 +166,30 @@ func (c *GraphCache) withFuncIDs(in chan restapi.FuncCall, out chan funcCallWith
 	}
 }
 
+// EndedFuncCallsは、時刻tの時点で実行が終了したFuncCallの数を返す。
+func (c *GraphCache) EndedFuncCalls(t logutil.Time) int {
+	n := 0
+	for _, fc := range c.FcList {
+		if fc.EndTime < t {
+			n++
+		}
+	}
+	return n
+}
+
+// RunningFuncCallsは、時刻tの時点で実行中のFuncCallの数を返す。
+func (c *GraphCache) RunningFuncCalls(t logutil.Time) int {
+	n := 0
+	for _, fc := range c.FcList {
+		if fc.StartTime < t {
+			if !fc.IsEnded() || fc.EndTime >= t {
+				n++
+			}
+		}
+	}
+	return n
+}
+
 type GraphVM struct {
 	Root   Coordinator
 	Client restapi.ClientWithCtx
@@ -242,51 +266,28 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 			return fcList[i].StartTime > fcList[j].StartTime
 		})
 
+		maxTime := logutil.Time(0)
+		for _, fc := range fcList {
+			if maxTime < fc.StartTime {
+				maxTime = fc.StartTime
+			}
+			if maxTime < fc.EndTime {
+				maxTime = fc.EndTime
+			}
+		}
+
 		// 長さとX座標を決める
-		lastX := 0
-		var running []int
-		var tmp []int
-		removeFinishedFunc := func(i int) {
-			st := fcList[i].StartTime
-			tmp = tmp[:0]
-			for h, j := range running {
-				if !fcList[j].IsEnded() || fcList[j].EndTime >= st {
-					// 実行が終了していない関数は、グラフの最後まで実行するとして扱う。
-					tmp = append(tmp, j)
-				} else {
-					// 実行が終了したときに点を打つので、そのための幅を確保する。
-					lastX++
-					// 実行が終了した関数の点を打つために、長さを増やす。
-					// 他の関数の実行時間も、幅を確保するために長さを伸ばす。
-					for _, x := range running[h:] {
-						fcLen[x]++
-					}
-				}
-			}
-			running, tmp = tmp, running
+		calcXPos := func(t logutil.Time) int {
+			return c.EndedFuncCalls(t)*2 + c.RunningFuncCalls(t)
 		}
-		for i := range fcList {
-			// 実行が終了した関数をrunningから削除する
-			removeFinishedFunc(i)
-			// fcList[i]を実行中として登録する。
-			running = append(running, i)
-			sort.Slice(running, func(i, j int) bool {
-				return fcList[running[i]].EndTime < fcList[running[j]].EndTime
-			})
-			// 関数の実行時間(線の長さ)を増やす
-			for _, j := range running {
-				fcLen[j]++
+		for i, fc := range fcList {
+			left := calcXPos(fc.StartTime)
+			right := calcXPos(fc.EndTime)
+			if !fc.IsEnded() {
+				right = calcXPos(maxTime)
 			}
-			// fcList[i]のx座標を決定する
-			fcX[i] = lastX
-			lastX++
-		}
-		// 全ての関数を終了させる
-		for _, j := range running {
-			lastX++
-			for _, x := range running[j:] {
-				fcLen[x]++
-			}
+			fcX[i] = left
+			fcLen[i] = right - left + 1
 		}
 
 		// 関数呼び出しのギャップを埋める線のX座標を計算する。
