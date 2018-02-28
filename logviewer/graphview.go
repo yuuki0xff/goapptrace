@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/kr/pretty"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
@@ -233,56 +234,59 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 	// 長さとX座標を決める
 	fcLen := make([]int, len(fcList))
 	fcX := make([]int, len(fcList))
+	graphWidth := 0
 	go func() {
 		defer wg.Done()
-		// 関数の実行終了時刻が遅い順(EndTimeの値が大きい順)にソートする。
+		// 関数の実行開始時刻が早い順(StartTimeの値が小さい順)にソートする。
 		sort.Slice(fcList, func(i, j int) bool {
-			return fcList[i].EndTime > fcList[j].EndTime
+			return fcList[i].StartTime > fcList[j].StartTime
 		})
 
-		// FuncLogの子要素の一覧
-		childMap := make(map[logutil.FuncLogID][]int, len(fcList))
-		for i, item := range fcList {
-			if item.ParentID == logutil.NotFoundParent {
-				continue
-			}
-			childMap[item.ParentID] = append(childMap[item.ParentID], i)
-		}
-
-		// 長さを決める。
-		// 長さは、実行中に生じたログの数+2。
-		var length func(fc funcCallWithFuncIDs) int
-		length = func(fc funcCallWithFuncIDs) int {
-			childs, ok := childMap[fc.ID]
-			if !ok {
-				// 両端に終端記号を表示するため、長さは2にする。
-				return 2
-			}
-			total := 0
-			for _, idx := range childs {
-				if fcLen[idx] == 0 {
-					fcLen[idx] = length(fcList[idx])
+		// 長さとX座標を決める
+		lastX := 0
+		var running []int
+		var tmp []int
+		removeFinishedFunc := func(i int) {
+			st := fcList[i].StartTime
+			tmp = tmp[:0]
+			for h, j := range running {
+				if !fcList[j].IsEnded() || fcList[j].EndTime >= st {
+					// 実行が終了していない関数は、グラフの最後まで実行するとして扱う。
+					tmp = append(tmp, j)
+				} else {
+					// 実行が終了したときに点を打つので、そのための幅を確保する。
+					lastX++
+					// 実行が終了した関数の点を打つために、長さを増やす。
+					// 他の関数の実行時間も、幅を確保するために長さを伸ばす。
+					for _, x := range running[h:] {
+						fcLen[x]++
+					}
 				}
-				total += fcLen[idx]
 			}
-			// 子要素の長さに、この要素の両端に終端記号を表示するための長さ(2)を足す。
-			return total + 2
+			running, tmp = tmp, running
 		}
 		for i := range fcList {
-			if fcLen[i] == 0 {
-				fcLen[i] = length(fcList[i])
+			// 実行が終了した関数をrunningから削除する
+			removeFinishedFunc(i)
+			// fcList[i]を実行中として登録する。
+			running = append(running, i)
+			sort.Slice(running, func(i, j int) bool {
+				return fcList[running[i]].EndTime < fcList[running[j]].EndTime
+			})
+			// 関数の実行時間(線の長さ)を増やす
+			for _, j := range running {
+				fcLen[j]++
 			}
+			// fcList[i]のx座標を決定する
+			fcX[i] = lastX
+			lastX++
 		}
-
-		// X座標を決める。
-		// 最新のログは右側になるようにする。
-		left := 0
-		for i := range fcList {
-			fcX[i] = left - fcLen[i] + 1
-			left -= fcLen[i]
-			log.Printf("fcX[%d] = %d", i, fcX[i])
-			log.Printf("fcLen[%d] = %d", i, fcLen[i])
-			log.Printf("fcList[%d] = %+v", i, fcList[i])
+		// 全ての関数を終了させる
+		for _, j := range running {
+			lastX++
+			for _, x := range running[j:] {
+				fcLen[x]++
+			}
 		}
 
 		// 関数呼び出しのギャップを埋める線のX座標を計算する。
@@ -324,6 +328,9 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 			}
 			firstXSet[gid] = first
 			lastXSet[gid] = last
+			if graphWidth < last {
+				graphWidth = last
+			}
 			log.Printf("fx[%d] = %d lx[%d] = %d", gid, first, gid, last)
 		}
 	}()
@@ -357,9 +364,10 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 		if length < 0 {
 			log.Panicf("negative length: length = %d - %d = %d", lastXSet[gid], firstXSet[gid], length)
 		}
+		log.Println("gid=", gid, " graphWidth=", graphWidth, " firstX=", firstXSet[gid])
 		line := Line{
 			Start: image.Point{
-				X: firstXSet[gid],
+				X: -graphWidth + firstXSet[gid] + 1,
 				Y: gidY[gid],
 			},
 			Length:    length,
@@ -368,6 +376,7 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 			EndDeco:   LineTerminationNone,
 			StyleName: "line.gap",
 		}
+		log.Println(line)
 		lines = append(lines, line)
 	}
 
@@ -388,7 +397,7 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 		// 水平線を追加
 		line := Line{
 			Start: image.Point{
-				X: fcX[i],
+				X: -graphWidth + fcX[i] + 1,
 				Y: gidY[fc.GID],
 			},
 			Length:    fcLen[i],
@@ -400,6 +409,10 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 		//log.Printf("lines[%d]: %+v", len(lines), line)
 		lines = append(lines, line)
 	}
+	log.Println("gidSet ", pretty.Sprint(gidSet))
+	log.Println("gitY ", pretty.Sprint(gidY))
+	log.Println("fcList ", pretty.Sprint(fcList))
+	log.Println("lines ", pretty.Sprint(lines))
 	return lines
 }
 func (vm *GraphVM) onGoback() {
