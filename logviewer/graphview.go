@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kr/pretty"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
@@ -308,18 +307,15 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 					if g.StartTime < f.StartTime {
 						// goroutineは、関数fより少し早く開始された。
 						// 開始位置を1つ前にする。
-						log.Println("first--", g.StartTime, f.StartTime, first)
 						first--
 					}
 				}
-				log.Printf("first = %d", first)
 				x := fcX[i] + fcLen[i]
 				if last < x {
 					last = x
 					if f.EndTime < g.EndTime {
 						// goroutineは、関数fより少し遅く終了した。
 						// 開始位置を1つ後ろにする。
-						log.Println("last++", f.EndTime, g.EndTime)
 						last++
 					}
 				}
@@ -332,7 +328,6 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 			if graphWidth < last {
 				graphWidth = last
 			}
-			log.Printf("fx[%d] = %d lx[%d] = %d", gid, first, gid, last)
 		}
 	}()
 
@@ -365,7 +360,6 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 		if length < 0 {
 			log.Panicf("negative length: length = %d - %d = %d", lastXSet[gid], firstXSet[gid], length)
 		}
-		log.Println("gid=", gid, " graphWidth=", graphWidth, " firstX=", firstXSet[gid])
 		line := Line{
 			Start: image.Point{
 				X: -graphWidth + firstXSet[gid] + 1,
@@ -377,7 +371,6 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 			EndDeco:   LineTerminationNone,
 			StyleName: "line.gap",
 		}
-		log.Println(line)
 		lines = append(lines, line)
 	}
 
@@ -411,13 +404,8 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 			EndDeco:   LineTerminationNormal,
 			StyleName: styleName,
 		}
-		//log.Printf("lines[%d]: %+v", len(lines), line)
 		lines = append(lines, line)
 	}
-	log.Println("gidSet ", pretty.Sprint(gidSet))
-	log.Println("gitY ", pretty.Sprint(gidY))
-	log.Println("fcList ", pretty.Sprint(fcList))
-	log.Println("lines ", pretty.Sprint(lines))
 	return lines
 }
 func (vm *GraphVM) onGoback() {
