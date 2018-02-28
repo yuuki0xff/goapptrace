@@ -94,9 +94,6 @@ func TestGraphVM_buildLines(t *testing.T) {
 				},
 			},
 			LogInfo: restapi.LogStatus{},
-			GidSet: map[logutil.GID]bool{
-				0: true,
-			},
 			GMap: map[logutil.GID]restapi.Goroutine{
 				0: {
 					GID:       0,
@@ -177,10 +174,6 @@ func TestGraphVM_buildLines(t *testing.T) {
 					File:  "main.go",
 					Entry: 2000,
 				},
-			},
-			GidSet: map[logutil.GID]bool{
-				1: true,
-				2: true,
 			},
 			GMap: map[logutil.GID]restapi.Goroutine{
 				1: {
@@ -292,9 +285,6 @@ func TestGraphVM_buildLines(t *testing.T) {
 					File:  "main.go",
 					Entry: 2000,
 				},
-			},
-			GidSet: map[logutil.GID]bool{
-				1: true,
 			},
 			GMap: map[logutil.GID]restapi.Goroutine{
 				1: {

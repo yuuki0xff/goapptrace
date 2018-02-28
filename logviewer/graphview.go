@@ -57,7 +57,6 @@ type GraphCache struct {
 	FsList  []restapi.FuncStatusInfo
 	FList   []restapi.FuncInfo
 	LogInfo restapi.LogStatus
-	GidSet  map[logutil.GID]bool
 	GMap    map[logutil.GID]restapi.Goroutine
 
 	logID  string
@@ -71,7 +70,7 @@ func (c *GraphCache) Update(logID string, client restapi.ClientWithCtx) error {
 	var eg errgroup.Group
 	eg.Go(func() error {
 		var err error
-		c.FcList, c.GidSet, c.LogInfo, err = c.getFCLogs()
+		c.FcList, c.LogInfo, err = c.getFCLogs()
 		return err
 	})
 	eg.Go(func() error {
@@ -83,7 +82,7 @@ func (c *GraphCache) Update(logID string, client restapi.ClientWithCtx) error {
 }
 
 // getFCLogs returns latest function call logs.
-func (c *GraphCache) getFCLogs() ([]funcCallWithFuncIDs, map[logutil.GID]bool, restapi.LogStatus, error) {
+func (c *GraphCache) getFCLogs() ([]funcCallWithFuncIDs, restapi.LogStatus, error) {
 	ch2 := make(chan funcCallWithFuncIDs, 10000)
 	var conf restapi.LogStatus
 
@@ -112,13 +111,11 @@ func (c *GraphCache) getFCLogs() ([]funcCallWithFuncIDs, map[logutil.GID]bool, r
 	})
 
 	if err := eg.Wait(); err != nil {
-		return nil, nil, restapi.LogStatus{}, err
+		return nil, restapi.LogStatus{}, err
 	}
 
 	// 関数呼び出しのログの一覧
 	fcList := make([]funcCallWithFuncIDs, 0, 10000)
-	// 存在するGIDの集合
-	gidSet := make(map[logutil.GID]bool, 1000)
 	for item := range ch2 {
 		// マスクされているイベントを削除する
 		if item.isMasked(&conf.Metadata.UI) {
@@ -126,9 +123,8 @@ func (c *GraphCache) getFCLogs() ([]funcCallWithFuncIDs, map[logutil.GID]bool, r
 		}
 
 		fcList = append(fcList, item)
-		gidSet[item.GID] = true
 	}
-	return fcList, gidSet, conf, nil
+	return fcList, conf, nil
 }
 func (c *GraphCache) getGoroutines() (map[logutil.GID]restapi.Goroutine, error) {
 	ch, err := c.client.Goroutines(c.logID)
@@ -242,14 +238,14 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 	vm.m.Unlock()
 
 	fcList := c.FcList
-	gidSet := c.GidSet
+	gMap := c.GMap
 
 	// TODO: 活動していないgoroutineも表示する。goroutineが生きているのか、死んでいるのかを把握できない。
 
 	// goroutineごとの、最も最初に活動のあった時刻に相当するX座標。
 	// 関数呼び出し間のギャップ、つまりgoroutineが何も活動していない？と思われる区間を埋めるための線を描画するために使用する。
-	firstXSet := make(map[logutil.GID]int, len(gidSet))
-	lastXSet := make(map[logutil.GID]int, len(gidSet))
+	firstXSet := make(map[logutil.GID]int, len(gMap))
+	lastXSet := make(map[logutil.GID]int, len(gMap))
 
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -332,12 +328,12 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 	}()
 
 	// Y座標を決める
-	gidY := make(map[logutil.GID]int, len(gidSet))
+	gidY := make(map[logutil.GID]int, len(gMap))
 	go func() {
 		defer wg.Done()
 		// 描画対象のGoroutine IDの小さい順にソートする。
-		gidList := make([]logutil.GID, 0, len(gidSet))
-		for gid := range gidSet {
+		gidList := make([]logutil.GID, 0, len(gMap))
+		for gid := range gMap {
 			gidList = append(gidList, gid)
 		}
 		sort.Slice(gidList, func(i, j int) bool {
@@ -351,7 +347,7 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 		}
 	}()
 
-	lines = make([]Line, 0, len(fcList)+len(gidSet))
+	lines = make([]Line, 0, len(fcList)+len(gMap))
 	wg.Wait()
 
 	// 関数呼び出し間のギャップを埋めるための線を追加。
