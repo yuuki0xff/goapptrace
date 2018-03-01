@@ -28,6 +28,7 @@ func TestGraphWidget_Draw(t *testing.T) {
 			g.SetLines(tc.Lines)
 			g.SetOffset(tc.Offset)
 			g.SetOrigin(tc.Origin)
+			g.Resize(tc.Size)
 			g.Draw(tui.NewPainter(s, tui.NewTheme()))
 
 			actual := s.String()

@@ -139,22 +139,6 @@ func (v *GraphWidget) AddLine(line Line) {
 }
 
 func (v *GraphWidget) Draw(p *tui.Painter) {
-	// 原点の座標を設定
-	size := v.Size()
-	switch v.origin {
-	case OriginTopLeft:
-		// do nothing
-	case OriginBottomLeft:
-		p.Translate(0, size.Y)
-		defer p.Restore()
-	case OriginTopRight:
-		p.Translate(size.X, 0)
-		defer p.Restore()
-	case OriginBottomRight:
-		p.Translate(size.X, size.Y)
-		defer p.Restore()
-	}
-
 	// offsetを調整
 	p.Translate(v.offset.X, v.offset.Y)
 	defer p.Restore()
@@ -171,6 +155,28 @@ func (v *GraphWidget) Draw(p *tui.Painter) {
 	}
 }
 func (v *GraphWidget) drawLine(line Line, p *tui.Painter) {
+	log.Println()
+	size := v.Size()
+	drawRune := func(x, y int, r rune) {
+		// originの設定に従って座標を変換する。
+		log.Println("orig", x, y)
+		switch v.origin {
+		case OriginTopLeft:
+			// do nothing
+		case OriginTopRight:
+			x = size.X - 1 - x
+		case OriginBottomLeft:
+			y = size.Y - 1 - y
+		case OriginBottomRight:
+			x = size.X - 1 - x
+			y = size.Y - 1 - y
+		default:
+			log.Panicf("bug: v.origin=%+v", v.origin)
+		}
+		log.Println("tran", x, y)
+		p.DrawRune(x, y, r)
+	}
+
 	x, y := line.Start.X, line.Start.Y
 	length := 0
 	dx, dy := 0, 0
@@ -186,7 +192,7 @@ func (v *GraphWidget) drawLine(line Line, p *tui.Painter) {
 
 	startRune := line.StartDeco.Rune(line.Type.Rune())
 	endRune := line.EndDeco.Rune(line.Type.Rune())
-	p.DrawRune(x, y, startRune)
+	drawRune(x, y, startRune)
 	for {
 		length++
 		if length >= line.Length {
@@ -195,7 +201,7 @@ func (v *GraphWidget) drawLine(line Line, p *tui.Painter) {
 		x += dx
 		y += dy
 
-		p.DrawRune(x, y, line.Type.Rune())
+		drawRune(x, y, line.Type.Rune())
 	}
-	p.DrawRune(x, y, endRune)
+	drawRune(x, y, endRune)
 }
