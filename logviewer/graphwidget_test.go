@@ -138,7 +138,7 @@ func TestGraphWidget_Draw(t *testing.T) {
 		Size: image.Point{10, 5},
 		Lines: []Line{
 			{
-				Start:  image.Point{6, 1},
+				Start:  image.Point{2, 1},
 				Length: 5,
 			},
 		},
@@ -156,7 +156,7 @@ func TestGraphWidget_Draw(t *testing.T) {
 		Size: image.Point{10, 5},
 		Lines: []Line{
 			{
-				Start:  image.Point{6, 1},
+				Start:  image.Point{2, 1},
 				Length: 5,
 			},
 		},
@@ -174,7 +174,7 @@ func TestGraphWidget_Draw(t *testing.T) {
 		Size: image.Point{10, 5},
 		Lines: []Line{
 			{
-				Start:  image.Point{3, 1},
+				Start:  image.Point{2, 1},
 				Length: 5,
 			},
 		},
