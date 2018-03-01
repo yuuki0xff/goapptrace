@@ -127,24 +127,6 @@ func TestGraphWidget_Draw(t *testing.T) {
 		Offset: image.Point{-9, -9},
 	})
 	helper(GraphWidgetTestCase{
-		Name: "origin-bottom-left",
-		Expected: `
-..........
-..........
-..........
-..●───●...
-..........
-`,
-		Size: image.Point{10, 5},
-		Lines: []Line{
-			{
-				Start:  image.Point{3, 1},
-				Length: 5,
-			},
-		},
-		Origin: OriginBottomLeft,
-	})
-	helper(GraphWidgetTestCase{
 		Name: "origin-top-right",
 		Expected: `
 ..........
@@ -179,5 +161,23 @@ func TestGraphWidget_Draw(t *testing.T) {
 			},
 		},
 		Origin: OriginBottomRight,
+	})
+	helper(GraphWidgetTestCase{
+		Name: "origin-bottom-left",
+		Expected: `
+..........
+..........
+..........
+..●───●...
+..........
+`,
+		Size: image.Point{10, 5},
+		Lines: []Line{
+			{
+				Start:  image.Point{3, 1},
+				Length: 5,
+			},
+		},
+		Origin: OriginBottomLeft,
 	})
 }
