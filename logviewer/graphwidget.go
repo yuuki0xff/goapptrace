@@ -42,9 +42,13 @@ type Origin int
 const (
 	HorizontalLine LineType = iota
 	VerticalLine
+)
+const (
 	LineTerminationNormal LineTermination = iota
 	LineTerminationHighlight
 	LineTerminationNone
+)
+const (
 	OriginTopLeft Origin = iota
 	OriginTopRight
 	OriginBottomLeft
