@@ -145,7 +145,7 @@ func TestGraphWidget_Draw(t *testing.T) {
 		Origin: OriginTopRight,
 	})
 	helper(GraphWidgetTestCase{
-		Name: "origin-bottom-left",
+		Name: "origin-bottom-right",
 		Expected: `
 ..........
 ..........
