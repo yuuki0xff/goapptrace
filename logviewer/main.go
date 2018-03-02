@@ -7,10 +7,10 @@ import (
 	_ "net/http/pprof"
 	"sync"
 
+	"github.com/marcusolsson/tui-go"
 	"github.com/pkg/errors"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
-	"github.com/marcusolsson/tui-go"
 )
 
 // UICoordinator implements of Coordinator.

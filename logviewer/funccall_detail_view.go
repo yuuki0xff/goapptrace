@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 	"github.com/marcusolsson/tui-go"
+	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 	"golang.org/x/sync/errgroup"
 )
 

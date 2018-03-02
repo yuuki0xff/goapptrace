@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/marcusolsson/tui-go"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
-	"github.com/marcusolsson/tui-go"
 	"golang.org/x/sync/errgroup"
 )
 
