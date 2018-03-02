@@ -15,11 +15,12 @@ const (
 
 type ScrollableWidget interface {
 	tui.Widget
-	PartialDraw(p *tui.Painter, p1, p2 image.Point)
+	ScrollArea() image.Point
+	PartialDraw(p *tui.Painter, area1, area2 image.Point)
 }
 
 type ScrollWidget struct {
-	tui.Widget
+	ScrollableWidget
 
 	p1                       image.Point
 	autoscrollX, autoscrollY bool
@@ -34,19 +35,21 @@ func (w *ScrollWidget) AutoScroll(x, y bool) {
 }
 
 func (w *ScrollWidget) Draw(p *tui.Painter) {
+	// widgetの実際のサイズ
 	size := w.Size()
-	hint := w.SizeHint()
+	// scrollできるエリアのサイズ
+	area := w.ScrollableWidget.ScrollArea()
 
 	p1 := w.p1
-	p2 := hint
+	p2 := area
 	if w.autoscrollX {
-		p1.X = size.X - hint.X
+		p1.X = size.X - area.X
 		if p1.X > 0 {
 			p1.X = 0
 		}
 	}
 	if w.autoscrollY {
-		p1.Y = size.Y - hint.Y
+		p1.Y = size.Y - area.Y
 		if p1.Y > 0 {
 			p1.Y = 0
 		}
@@ -54,9 +57,5 @@ func (w *ScrollWidget) Draw(p *tui.Painter) {
 
 	p.Translate(p1.X, p1.Y)
 	defer p.Restore()
-	if sw, ok := w.Widget.(ScrollableWidget); ok {
-		sw.PartialDraw(p, p1, p2)
-	} else {
-		w.Widget.Draw(p)
-	}
+	w.ScrollableWidget.PartialDraw(p, p1, p2)
 }

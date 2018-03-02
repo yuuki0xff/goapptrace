@@ -456,7 +456,7 @@ func (v *GraphView) init() {
 			v.graph = newGraphWidget()
 			v.graph.SetLines(v.Lines)
 			v.graphScroll = &ScrollWidget{
-				Widget: v.graph,
+				ScrollableWidget: v.graph,
 			}
 
 			switch v.ScrollMode {

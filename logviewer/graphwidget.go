@@ -159,7 +159,10 @@ func (v *GraphWidget) Draw(p *tui.Painter) {
 		}
 	}
 }
-func (v *GraphWidget) PartialDraw(p *tui.Painter, p1, p2 image.Point) {
+func (v *GraphWidget) ScrollArea() image.Point {
+	return v.SizeHint()
+}
+func (v *GraphWidget) PartialDraw(p *tui.Painter, area1, area2 image.Point) {
 	// TODO: これを実装する
 	v.Draw(p)
 }
