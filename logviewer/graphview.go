@@ -496,7 +496,8 @@ func (v *GraphView) Keybindings() map[string]func() {
 		v.VM.onGoback()
 	}
 	up := func() {
-		v.VM.onChangedScrollMode(ManualScrollMode)
+		// AutoScrollModeのときでも、上下スクロールは可能にする。
+		// そのため、このイベント発生時にはManualScrollModeに切り替えない。
 		v.VM.onChangedOffset(0, v.scrollSpeed().Y)
 	}
 	right := func() {
@@ -504,7 +505,8 @@ func (v *GraphView) Keybindings() map[string]func() {
 		v.VM.onChangedOffset(-v.scrollSpeed().X, 0)
 	}
 	down := func() {
-		v.VM.onChangedScrollMode(ManualScrollMode)
+		// AutoScrollModeのときでも、上下スクロールは可能にする。
+		// そのため、このイベント発生時にはManualScrollModeに切り替えない。
 		v.VM.onChangedOffset(0, -v.scrollSpeed().Y)
 	}
 	left := func() {
