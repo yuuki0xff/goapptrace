@@ -159,7 +159,6 @@ func (v *GraphWidget) drawLine(line Line, p *tui.Painter) {
 	size := v.Size()
 	drawRune := func(x, y int, r rune) {
 		// originの設定に従って座標を変換する。
-		log.Println("orig", x, y)
 		switch v.origin {
 		case OriginTopLeft:
 			// do nothing
@@ -173,7 +172,6 @@ func (v *GraphWidget) drawLine(line Line, p *tui.Painter) {
 		default:
 			log.Panicf("bug: v.origin=%+v", v.origin)
 		}
-		log.Println("tran", x, y)
 		p.DrawRune(x, y, r)
 	}
 
