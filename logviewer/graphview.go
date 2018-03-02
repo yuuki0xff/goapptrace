@@ -506,11 +506,6 @@ func (v *GraphView) FocusChain() tui.FocusChain {
 	return v.fc
 }
 
-//func (v *GraphView)
-//func (v *GraphView)
-//func (v *GraphView)
-//func (v *GraphView)
-
 func (v *GraphView) scrollSpeed() image.Point {
 	if v.widget == nil {
 		return defaultScrollSpeed
