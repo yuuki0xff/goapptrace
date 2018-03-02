@@ -525,7 +525,9 @@ func (v *GraphView) Keybindings() map[string]func() {
 		"Down":  down,
 		"h":     left,
 		"Left":  left,
-		"Shift+f":     autoScroll,
+		// WORKAROUND: tui-goが、shift+fをハンドリングできないみたい
+		//"Shift+f":     autoScroll,
+		"f": autoScroll,
 	}
 }
 func (v *GraphView) FocusChain() tui.FocusChain {
