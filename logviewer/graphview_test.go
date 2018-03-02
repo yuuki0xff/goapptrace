@@ -104,7 +104,7 @@ func TestGraphVM_buildLines(t *testing.T) {
 		}, []Line{
 			{
 				Start: image.Point{
-					X: -1,
+					X: 0,
 					Y: 0,
 				},
 				Length:    2,
@@ -114,7 +114,7 @@ func TestGraphVM_buildLines(t *testing.T) {
 				StyleName: "line.gap",
 			}, {
 				Start: image.Point{
-					X: -1,
+					X: 0,
 					Y: 0,
 				},
 				Length:    2,
@@ -190,7 +190,7 @@ func TestGraphVM_buildLines(t *testing.T) {
 		}, []Line{
 			{
 				Start: image.Point{
-					X: -3,
+					X: 0,
 					Y: 0,
 				},
 				Length:    2,
@@ -200,7 +200,7 @@ func TestGraphVM_buildLines(t *testing.T) {
 				StyleName: "line.gap",
 			}, {
 				Start: image.Point{
-					X: -3,
+					X: 0,
 					Y: 0,
 				},
 				Length:    2,
@@ -210,7 +210,7 @@ func TestGraphVM_buildLines(t *testing.T) {
 				StyleName: "line.stopped",
 			}, {
 				Start: image.Point{
-					X: -1,
+					X: 2,
 					Y: 1,
 				},
 				Length:    2,
@@ -220,7 +220,7 @@ func TestGraphVM_buildLines(t *testing.T) {
 				StyleName: "line.gap",
 			}, {
 				Start: image.Point{
-					X: -1,
+					X: 2,
 					Y: 1,
 				},
 				Length:    2,
@@ -297,7 +297,7 @@ func TestGraphVM_buildLines(t *testing.T) {
 		[]Line{
 			{
 				Start: image.Point{
-					X: -3,
+					X: 0,
 					Y: 0,
 				},
 				Length:    4,
@@ -307,7 +307,7 @@ func TestGraphVM_buildLines(t *testing.T) {
 				StyleName: "line.gap",
 			}, {
 				Start: image.Point{
-					X: -3,
+					X: 0,
 					Y: 0,
 				},
 				Length:    4,
@@ -317,7 +317,7 @@ func TestGraphVM_buildLines(t *testing.T) {
 				StyleName: "line.stopped",
 			}, {
 				Start: image.Point{
-					X: -2,
+					X: 1,
 					Y: 0,
 				},
 				Length:    2,
