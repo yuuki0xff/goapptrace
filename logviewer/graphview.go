@@ -44,7 +44,7 @@ func (s *GraphStateMutable) UpdateOffset(dx, dy int) {
 	s.OffsetX += dx
 	s.OffsetY += dy
 
-	if s.OffsetX < 0 {
+	if s.OffsetX > 0 {
 		s.OffsetX = 0
 	}
 	if s.OffsetY > 0 {
@@ -454,7 +454,6 @@ func (v *GraphView) init() {
 				X: v.OffsetX,
 				Y: v.OffsetY,
 			})
-			v.graph.SetOrigin(OriginTopRight)
 
 			v.widget = tui.NewVBox(
 				v.graph,
