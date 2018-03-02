@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
-	"github.com/yuuki0xff/tui-go"
+	"github.com/marcusolsson/tui-go"
 )
 
 // UICoordinator implements of Coordinator.

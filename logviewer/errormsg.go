@@ -1,7 +1,7 @@
 package logviewer
 
 import (
-	"github.com/yuuki0xff/tui-go"
+	"github.com/marcusolsson/tui-go"
 )
 
 type ErrorMsg struct {

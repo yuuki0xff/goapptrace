@@ -4,7 +4,7 @@ import (
 	"image"
 	"log"
 
-	"github.com/yuuki0xff/tui-go"
+	"github.com/marcusolsson/tui-go"
 )
 
 // 表示対象のWidgetを切り替えることが可能なWidget。

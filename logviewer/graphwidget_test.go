@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/yuuki0xff/tui-go"
+	"github.com/marcusolsson/tui-go"
 )
 
 type GraphWidgetTestCase struct {

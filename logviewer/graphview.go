@@ -13,7 +13,7 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
-	"github.com/yuuki0xff/tui-go"
+	"github.com/marcusolsson/tui-go"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/tools/container/intsets"
 )

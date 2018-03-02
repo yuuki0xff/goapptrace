@@ -4,7 +4,7 @@ import (
 	"image"
 	"log"
 
-	"github.com/yuuki0xff/tui-go"
+	"github.com/marcusolsson/tui-go"
 )
 
 // LineTypeは線を伸ばす方向(縦 or 横)を示す型である。
