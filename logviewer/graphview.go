@@ -31,6 +31,7 @@ type GraphState struct {
 	Lines    []Line
 	Selected logutil.FuncLogID
 
+	ScrollMode ScrollMode
 	// X軸方向のスクロール量
 	OffsetX int
 	// Y軸方向のスクロール量
@@ -213,6 +214,7 @@ func (vm *GraphVM) Update(ctx context.Context) {
 	vm.state.State = GWait
 	vm.state.Error = err
 	vm.state.Lines = lines
+	vm.state.ScrollMode = AutoScrollMode
 	vm.cache = cache
 	vm.m.Unlock()
 
@@ -450,10 +452,15 @@ func (v *GraphView) init() {
 		} else {
 			v.graph = newGraphWidget()
 			v.graph.SetLines(v.Lines)
-			v.graph.SetOffset(image.Point{
-				X: v.OffsetX,
-				Y: v.OffsetY,
-			})
+			switch v.ScrollMode {
+			case ManualScrollMode:
+				v.graph.SetOffset(image.Point{
+					X: v.OffsetX,
+					Y: v.OffsetY,
+				})
+			case AutoScrollMode:
+				// todo: autoscroll methodを追加する
+			}
 
 			v.widget = tui.NewVBox(
 				v.graph,
