@@ -155,7 +155,6 @@ func (v *GraphWidget) Draw(p *tui.Painter) {
 	}
 }
 func (v *GraphWidget) drawLine(line Line, p *tui.Painter) {
-	log.Println()
 	size := v.Size()
 	drawRune := func(x, y int, r rune) {
 		// originの設定に従って座標を変換する。
