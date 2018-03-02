@@ -426,7 +426,8 @@ type GraphView struct {
 	widget   tui.Widget
 	fc       tui.FocusChain
 
-	graph *GraphWidget
+	graph       *GraphWidget
+	graphScroll *ScrollWidget
 }
 
 func (v *GraphView) init() {
@@ -450,21 +451,25 @@ func (v *GraphView) init() {
 			v.fc = newFocusChain(errmsg)
 			return
 		} else {
+			var offsetMsg string
+
 			v.graph = newGraphWidget()
 			v.graph.SetLines(v.Lines)
+			v.graphScroll = &ScrollWidget{
+				Widget: v.graph,
+			}
+
 			switch v.ScrollMode {
 			case ManualScrollMode:
-				v.graph.SetOffset(image.Point{
-					X: v.OffsetX,
-					Y: v.OffsetY,
-				})
+				v.graphScroll.Scroll(v.OffsetX, v.OffsetY)
+				offsetMsg = fmt.Sprintf("%dx%d", v.OffsetX, v.OffsetY)
 			case AutoScrollMode:
-				// todo: autoscroll methodを追加する
+				v.graphScroll.AutoScroll(true, true)
 			}
 
 			v.widget = tui.NewVBox(
-				v.graph,
-				v.newStatusBar(fmt.Sprintf("%dx%d", v.OffsetX, v.OffsetY)),
+				v.graphScroll,
+				v.newStatusBar(offsetMsg),
 			)
 			v.fc = newFocusChain(v.graph)
 			return

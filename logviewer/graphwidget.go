@@ -110,7 +110,6 @@ type GraphWidget struct {
 	tui.WidgetBase
 
 	lines  []Line
-	offset image.Point
 	origin Origin
 }
 
@@ -125,11 +124,21 @@ func (v *GraphWidget) RemoveLines() {
 func (v *GraphWidget) SetLines(lines []Line) {
 	v.lines = lines
 }
-func (v *GraphWidget) SetOffset(offset image.Point) {
-	v.offset = offset
-}
 func (v *GraphWidget) SetOrigin(origin Origin) {
 	v.origin = origin
+}
+func (v *GraphWidget) SizeHint() image.Point {
+	var size image.Point
+	for _, line := range v.lines {
+		rightX := line.Start.X + line.Length
+		if size.X < rightX {
+			size.X = rightX
+		}
+		if size.Y < line.Start.Y {
+			size.Y = line.Start.Y
+		}
+	}
+	return size
 }
 func (v *GraphWidget) AddLine(line Line) {
 	if line.Length <= 0 {
@@ -139,10 +148,6 @@ func (v *GraphWidget) AddLine(line Line) {
 }
 
 func (v *GraphWidget) Draw(p *tui.Painter) {
-	// offsetを調整
-	p.Translate(v.offset.X, v.offset.Y)
-	defer p.Restore()
-
 	// draw lines
 	for _, line := range v.lines {
 		if line.StyleName == "" {
@@ -153,6 +158,10 @@ func (v *GraphWidget) Draw(p *tui.Painter) {
 			})
 		}
 	}
+}
+func (v *GraphWidget) PartialDraw(p *tui.Painter, p1, p2 image.Point) {
+	// TODO: これを実装する
+	v.Draw(p)
 }
 func (v *GraphWidget) drawLine(line Line, p *tui.Painter) {
 	size := v.Size()
