@@ -467,12 +467,12 @@ func (v *GraphView) init() {
 				ScrollableWidget: v.graph,
 			}
 
+			v.graphScroll.Scroll(v.OffsetX, v.OffsetY)
 			switch v.ScrollMode {
 			case ManualScrollMode:
-				v.graphScroll.Scroll(v.OffsetX, v.OffsetY)
 				offsetMsg = fmt.Sprintf("%dx%d", v.OffsetX, v.OffsetY)
 			case AutoScrollMode:
-				v.graphScroll.AutoScroll(true, true)
+				v.graphScroll.AutoScroll(true, false)
 			}
 
 			v.widget = tui.NewVBox(
