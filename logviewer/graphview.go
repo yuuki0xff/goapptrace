@@ -280,6 +280,9 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 			if !fc.IsEnded() {
 				right = calcXPos(maxTime)
 			}
+			if left >= right {
+				log.Panicf("bug: fc=%+v", fc)
+			}
 			fcX[i] = left
 			fcLen[i] = right - left + 1
 		}
