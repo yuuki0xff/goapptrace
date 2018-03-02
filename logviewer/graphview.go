@@ -214,7 +214,6 @@ func (vm *GraphVM) Update(ctx context.Context) {
 	vm.state.State = GWait
 	vm.state.Error = err
 	vm.state.Lines = lines
-	vm.state.ScrollMode = AutoScrollMode
 	vm.cache = cache
 	vm.m.Unlock()
 
@@ -412,7 +411,16 @@ func (vm *GraphVM) onGoback() {
 }
 func (vm *GraphVM) onChangedOffset(dx, dy int) {
 	vm.m.Lock()
+	vm.view = nil
 	vm.state.UpdateOffset(dx, dy)
+	vm.m.Unlock()
+
+	vm.Root.NotifyVMUpdated()
+}
+func (vm *GraphVM) onChangedScrollMode(mode ScrollMode) {
+	vm.m.Lock()
+	vm.view = nil
+	vm.state.ScrollMode = mode
 	vm.m.Unlock()
 
 	vm.Root.NotifyVMUpdated()
@@ -488,16 +496,23 @@ func (v *GraphView) Keybindings() map[string]func() {
 		v.VM.onGoback()
 	}
 	up := func() {
+		v.VM.onChangedScrollMode(ManualScrollMode)
 		v.VM.onChangedOffset(0, v.scrollSpeed().Y)
 	}
 	right := func() {
+		v.VM.onChangedScrollMode(ManualScrollMode)
 		v.VM.onChangedOffset(-v.scrollSpeed().X, 0)
 	}
 	down := func() {
+		v.VM.onChangedScrollMode(ManualScrollMode)
 		v.VM.onChangedOffset(0, -v.scrollSpeed().Y)
 	}
 	left := func() {
+		v.VM.onChangedScrollMode(ManualScrollMode)
 		v.VM.onChangedOffset(v.scrollSpeed().X, 0)
+	}
+	autoScroll := func() {
+		v.VM.onChangedScrollMode(AutoScrollMode)
 	}
 
 	return map[string]func(){
@@ -510,6 +525,7 @@ func (v *GraphView) Keybindings() map[string]func() {
 		"Down":  down,
 		"h":     left,
 		"Left":  left,
+		"Shift+f":     autoScroll,
 	}
 }
 func (v *GraphView) FocusChain() tui.FocusChain {
