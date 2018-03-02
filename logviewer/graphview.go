@@ -165,7 +165,7 @@ func (c *GraphCache) withFuncIDs(in chan restapi.FuncCall, out chan funcCallWith
 func (c *GraphCache) EndedFuncCalls(t logutil.Time) int {
 	n := 0
 	for _, fc := range c.FcList {
-		if fc.EndTime < t {
+		if fc.IsEnded() && fc.EndTime < t {
 			n++
 		}
 	}
@@ -253,7 +253,6 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 	// 長さとX座標を決める
 	fcLen := make([]int, len(fcList))
 	fcX := make([]int, len(fcList))
-	graphWidth := 0
 	go func() {
 		defer wg.Done()
 		// 関数の実行開始時刻が早い順(StartTimeの値が小さい順)にソートする。
@@ -321,9 +320,6 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 			}
 			firstXSet[gid] = first
 			lastXSet[gid] = last
-			if graphWidth < last {
-				graphWidth = last
-			}
 		}
 	}()
 
@@ -358,7 +354,7 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 		}
 		line := Line{
 			Start: image.Point{
-				X: -graphWidth + firstXSet[gid] + 1,
+				X: firstXSet[gid],
 				Y: gidY[gid],
 			},
 			Length:    length,
@@ -391,7 +387,7 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 		// 水平線を追加
 		line := Line{
 			Start: image.Point{
-				X: -graphWidth + fcX[i] + 1,
+				X: fcX[i],
 				Y: gidY[fc.GID],
 			},
 			Length:    fcLen[i],
