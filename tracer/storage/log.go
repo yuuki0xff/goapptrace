@@ -172,7 +172,7 @@ func (l *Log) Open() error {
 		return fmt.Errorf("failed to open Index: File=%s err=%s", l.index.File, err)
 	}
 	l.symbols = &logutil.Symbols{
-		Writable: true, // symbolsをファイルから読み込むためには、書き込み権限が必要。
+		Writable: !l.ReadOnly,
 		KeepID:   true,
 	}
 	l.symbols.Init()
@@ -187,8 +187,6 @@ func (l *Log) Open() error {
 			return errors.Wrap(err, "failed to load symbols")
 		}
 	}
-	// symbolsをファイルから読み込んだので、writableに本来設定するべき値を指定する。
-	l.symbols.Writable = !l.ReadOnly
 
 	// open log files
 	l.funcLog = SplitReadWriter{
