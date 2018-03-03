@@ -201,7 +201,7 @@ func (s *Symbols) AddSymbolsDiff(diff *SymbolsDiff) {
 
 // todo: write description
 func (s *Symbols) DoRead(fn SymbolsReadFn) error {
-	if s.Writable {
+	if !s.Writable {
 		return errors.Wrap(ErrReadOnly, "Symbols.DoRead")
 	}
 
