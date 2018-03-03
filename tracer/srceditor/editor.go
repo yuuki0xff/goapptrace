@@ -184,10 +184,15 @@ func (ce *CodeEditor) edit(fname string, src []byte) ([]byte, error) {
 			}
 			b := selNode.Sel
 			if a.Name == "os" && b.Name == "Exit" {
-				// node means of call os.Exit()
-				nl.Add(&InsertNode{
+				// node means of call os.Exit().
+				// We replace the "os.Exit(code)" statement to "logger.CloseAndExit(code)".
+				nl.Add(&DeleteNode{
 					Pos: a.Pos(),
-					Src: ce.tmpl.render("close", node),
+					End: b.End(),
+				})
+				nl.Add(&InsertNode{
+					Pos: b.End(),
+					Src: ce.tmpl.render("closeAndExit", node),
 				})
 			}
 		}

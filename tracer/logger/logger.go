@@ -214,6 +214,11 @@ func Close() {
 	sender = nil
 }
 
+func CloseAndExit(code int) {
+	Close()
+	os.Exit(code)
+}
+
 func setOutput() {
 	if sender != nil {
 		// sender is already opened.
