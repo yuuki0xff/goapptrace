@@ -171,7 +171,7 @@ func TestParallelReadWriter_Append(t *testing.T) {
 				ReadOnly: true,
 			}
 			a.NoError(rw.Open())
-			a.EqualError(rw.Append(DummyData), ErrFileisReadOnly.Error())
+			a.EqualError(rw.Append(DummyData), ErrFileIsReadOnly.Error())
 			a.NoError(rw.Close())
 		})
 		t.Run("read-write", func(t *testing.T) {

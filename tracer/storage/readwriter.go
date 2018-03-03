@@ -8,7 +8,7 @@ import (
 
 var (
 	ErrFileNamePatternIsNull = errors.New("FileNamePattern should not null, but null")
-	ErrFileisReadOnly        = errors.New("cannot write to read-only file")
+	ErrFileIsReadOnly        = errors.New("cannot write to read-only file")
 )
 
 // 分割されたファイルに対して、読み書きを平行して行える。
@@ -79,7 +79,7 @@ func (srw *SplitReadWriter) Open() error {
 // 最後のファイルに対して追記する。
 func (srw *SplitReadWriter) Append(data interface{}) error {
 	if srw.ReadOnly {
-		return ErrFileisReadOnly
+		return ErrFileIsReadOnly
 	}
 	f, err := srw.LastFile()
 	if err != nil {
@@ -115,7 +115,7 @@ func (srw *SplitReadWriter) Rotate() error {
 // lockは呼び出し元が書けること。
 func (srw *SplitReadWriter) rotateNoLock() error {
 	if srw.ReadOnly {
-		return ErrFileisReadOnly
+		return ErrFileIsReadOnly
 	}
 	if srw.closed {
 		return os.ErrClosed
@@ -233,7 +233,7 @@ func (rw *ParallelReadWriter) Append(data interface{}) error {
 		rw.cache = append(rw.cache, data)
 		return rw.enc.Append(data)
 	}
-	return ErrFileisReadOnly
+	return ErrFileIsReadOnly
 }
 
 // ファイルの先頭からデータを読み込む。
