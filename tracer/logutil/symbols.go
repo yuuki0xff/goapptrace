@@ -268,9 +268,3 @@ func (s *Symbols) addFuncStatusNolock(status *FuncStatus) (id FuncStatusID, adde
 	s.pc2FSID[status.PC] = status.ID
 	return status.ID, true
 }
-
-// todo: remove
-func (d *SymbolsDiff) Merge(diff *SymbolsDiff) {
-	d.Funcs = append(d.Funcs, diff.Funcs...)
-	d.FuncStatus = append(d.FuncStatus, diff.FuncStatus...)
-}
