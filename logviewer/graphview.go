@@ -529,6 +529,7 @@ func (v *GraphView) Keybindings() map[string]func() {
 		"Down":  down,
 		"h":     left,
 		"Left":  left,
+		// TODO: 原因を探る
 		// WORKAROUND: tui-goが、shift+fをハンドリングできないみたい
 		//"Shift+f":     autoScroll,
 		"f": autoScroll,
