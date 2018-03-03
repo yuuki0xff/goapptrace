@@ -178,7 +178,7 @@ func (c ClientWithCtx) Func(logID, funcID string) (f FuncInfo, err error) {
 	if err == nil {
 		// validation
 		if funcID != strconv.FormatUint(uint64(f.ID), 10) {
-			err = fmt.Errorf("unexpected FuncID: (expected) %s != %d (received)", funcID, f.ID)
+			err = fmt.Errorf("unexpected FuncID: (expected) %s != %d (received)\nreceived FuncInfo: %+v", funcID, f.ID, f)
 			log.Panic(errors.WithStack(err))
 		}
 	}
@@ -205,7 +205,7 @@ func (c ClientWithCtx) FuncStatus(logID, funcStatusID string) (fs FuncStatusInfo
 	if err == nil {
 		// validation
 		if funcStatusID != strconv.FormatUint(uint64(fs.ID), 10) {
-			err = fmt.Errorf("unexpected FuncStatusID: (expected) %s != %d (received)", funcStatusID, fs.ID)
+			err = fmt.Errorf("unexpected FuncStatusID: (expected) %s != %d (received)\nreceived FuncStatusInfo: %+v", funcStatusID, fs.ID, fs)
 			log.Panic(errors.WithStack(err))
 		}
 	}
