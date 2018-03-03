@@ -3,6 +3,7 @@ package restapi
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -174,6 +175,13 @@ func (c ClientWithCtx) Func(logID, funcID string) (f FuncInfo, err error) {
 	ro := c.ro()
 	err = c.getJSON(url, &ro, &f)
 
+	if err == nil {
+		// validation
+		if funcID != strconv.FormatUint(uint64(f.ID), 10) {
+			err = fmt.Errorf("unexpected FuncID: (expected) %s != %d (received)", funcID, f.ID)
+			log.Panic(errors.WithStack(err))
+		}
+	}
 	if err == nil && c.UseCache {
 		c.cache.AddLog(logID).AddFunc(f)
 	}
@@ -194,6 +202,13 @@ func (c ClientWithCtx) FuncStatus(logID, funcStatusID string) (fs FuncStatusInfo
 	ro := c.ro()
 	err = c.getJSON(url, &ro, &fs)
 
+	if err == nil {
+		// validation
+		if funcStatusID != strconv.FormatUint(uint64(fs.ID), 10) {
+			err = fmt.Errorf("unexpected FuncStatusID: (expected) %s != %d (received)", funcStatusID, fs.ID)
+			log.Panic(errors.WithStack(err))
+		}
+	}
 	if err == nil && c.UseCache {
 		c.cache.AddLog(logID).AddFuncStatus(fs)
 	}
