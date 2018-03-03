@@ -184,7 +184,6 @@ func (s *Symbols) ModuleName(id FuncStatusID) string {
 	return moduleName
 }
 
-// todo: remove
 // diffからシンボルを一括追加する。
 // 注意: KeepIDがfalseのときは、FuncIDやFuncStatusIDのIDは引き継がれない。
 func (s *Symbols) AddSymbolsDiff(diff *SymbolsDiff) {
