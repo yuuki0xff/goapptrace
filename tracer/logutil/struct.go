@@ -90,6 +90,9 @@ func (fl FuncLog) IsEnded() bool {
 type FuncID uint64
 type FuncStatusID uint64
 
+type SymbolsReadFn func() (SymbolsData, error)
+type SymbolsWriteFn func(data SymbolsData) error
+
 type Symbols struct {
 	Writable bool
 	// KeepIDがtrueのとき、FuncIDおよびFuncStatusIDは、追加時に指定されたIDを使用する。
@@ -110,6 +113,14 @@ type Symbols struct {
 	// inline化やループ展開などの最適化をされると破綻してしまうので、コンパイル時に最適化をoffにしているのが前提。
 	pc2FSID map[uintptr]FuncStatusID
 }
+
+// todo: add description
+type SymbolsData struct {
+	Funcs      []*FuncSymbol
+	FuncStatus []*FuncStatus
+}
+
+// todo: remove
 type SymbolsDiff struct {
 	Funcs      []*FuncSymbol
 	FuncStatus []*FuncStatus

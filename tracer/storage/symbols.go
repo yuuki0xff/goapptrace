@@ -1,59 +1,76 @@
 package storage
 
 import (
+	"github.com/pkg/errors"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
-// Symbolファイルへの追記をする
-type SymbolsWriter struct {
-	File File
-	enc  Encoder
+var ErrReadOnly = errors.New("read only")
+
+// Symbolsの永続化をする
+type SymbolsStore struct {
+	File     File
+	ReadOnly bool
 }
 
-// Symbolファイルからメモリ(logutil.Symbols)へ読み込む。
-// logutil.Symbolsへの更新は、logutil.SymbolsEditor経由で行う。
-type SymbolsReader struct {
-	File    File
-	Symbols *logutil.Symbols
-	dec     Decoder
-}
-
-func (s *SymbolsWriter) Open() error {
-	s.enc = Encoder{File: s.File}
-	return s.enc.Open()
-}
-
-func (s *SymbolsWriter) Append(diff *logutil.SymbolsDiff) error {
-	return s.enc.Append(diff)
-}
-
-func (s *SymbolsWriter) Close() error {
-	return s.enc.Close()
-}
-
-func (s *SymbolsReader) Open() error {
-	s.dec = Decoder{File: s.File}
-	return s.dec.Open()
-}
-
-func (s *SymbolsReader) Load() error {
-	mergedDiff := logutil.SymbolsDiff{}
-	if err := s.dec.Walk(
-		func() interface{} {
-			return &logutil.SymbolsDiff{}
-		},
-		func(val interface{}) error {
-			diff := val.(*logutil.SymbolsDiff)
-			mergedDiff.Merge(diff)
-			return nil
-		},
-	); err != nil {
-		return err
-	}
-	s.Symbols.Load(mergedDiff)
+func (s SymbolsStore) Open() error {
 	return nil
 }
 
-func (s *SymbolsReader) Close() error {
-	return s.dec.Close()
+func (s SymbolsStore) Read(symbols *logutil.Symbols) (err error) {
+	defer func() {
+		err = errors.Wrap(err, "SymbolsStore")
+	}()
+
+	dec := Decoder{File: s.File}
+	if err = dec.Open(); err != nil {
+		return err
+	}
+	defer dec.Close() // nolint
+
+	var data *logutil.SymbolsData
+	if err = dec.Walk(
+		func() interface{} {
+			return &logutil.SymbolsData{}
+		},
+		func(val interface{}) error {
+			data = val.(*logutil.SymbolsData)
+			return nil
+		},
+	); err != nil {
+		return
+	}
+
+	if err = symbols.DoRead(func() (logutil.SymbolsData, error) {
+		return *data, nil
+	}); err != nil {
+		return
+	}
+
+	err = dec.Close()
+	return
+}
+func (s SymbolsStore) Write(symbols *logutil.Symbols) (err error) {
+	defer func() {
+		err = errors.Wrap(err, "SymbolsStore")
+	}()
+	if s.ReadOnly {
+		err = ErrReadOnly
+		return
+	}
+
+	enc := Encoder{File: s.File}
+	if err = enc.Open(); err != nil {
+		return
+	}
+	defer enc.Close() // nolint
+
+	if err = symbols.DoWrite(func(data logutil.SymbolsData) error {
+		return enc.Append(&data)
+	}); err != nil {
+		return
+	}
+
+	err = enc.Close()
+	return
 }

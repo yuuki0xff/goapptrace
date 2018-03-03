@@ -10,52 +10,43 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
-func doTestSymbolsReaderWriter(
+func doTestSymbolsStore(
 	t *testing.T,
-	writerFunc func(sw *SymbolsWriter),
+	writerFunc func(symbols *logutil.Symbols),
 	checkFunc func(symbols *logutil.Symbols),
 ) {
 	a := assert.New(t)
 	file := createTempFile()
 	defer a.NoError(os.Remove(string(file)))
 
+	store := SymbolsStore{
+		File: file,
+	}
+	symbols := logutil.Symbols{
+		Writable: true,
+	}
+	symbols.Init()
+
 	// writing phase
 	{
-		sw := SymbolsWriter{
-			File: file,
-		}
-		a.NoError(sw.Open())
-		writerFunc(&sw)
-		//a.NoError(sw.Append())
-		a.NoError(sw.Close())
+		writerFunc(&symbols)
+		a.NoError(store.Write(&symbols))
 	}
 
 	// reading phase
 	{
-		symbols := &logutil.Symbols{
-			Writable: true,
-			KeepID:   true,
-		}
-		symbols.Init()
-
-		sr := SymbolsReader{
-			File:    file,
-			Symbols: symbols,
-		}
-		a.NoError(sr.Open())
-		a.NoError(sr.Load())
-		a.NoError(sr.Close())
-
-		checkFunc(symbols)
+		store.ReadOnly = true
+		a.NoError(store.Read(&symbols))
+		checkFunc(&symbols)
 	}
 }
 
-func TestSymbolsReaderWriter_loadEmptyFile(t *testing.T) {
+func TestSymbolsStore_loadEmptyFile(t *testing.T) {
 	a := assert.New(t)
-	doTestSymbolsReaderWriter(
+	doTestSymbolsStore(
 		t,
 		// write
-		func(sw *SymbolsWriter) {},
+		func(symbols *logutil.Symbols) {},
 		// check data
 		func(symbols *logutil.Symbols) {
 			t.Log(symbols2string(symbols))
@@ -65,25 +56,24 @@ func TestSymbolsReaderWriter_loadEmptyFile(t *testing.T) {
 	)
 }
 
-func TestSymbolsReaderWriter_emptySymbols(t *testing.T) {
+func TestSymbolsStore_addASymbol(t *testing.T) {
 	a := assert.New(t)
-	doTestSymbolsReaderWriter(
+	doTestSymbolsStore(
 		t,
 		// write
-		func(sw *SymbolsWriter) {
-			a.NoError(sw.Append(&logutil.SymbolsDiff{}))
-			a.NoError(sw.Append(&logutil.SymbolsDiff{}))
-			a.NoError(sw.Append(&logutil.SymbolsDiff{}))
+		func(s *logutil.Symbols) {
+			s.AddFunc(&logutil.FuncSymbol{})
+			s.AddFuncStatus(&logutil.FuncStatus{})
 		},
 		// check data
 		func(symbols *logutil.Symbols) {
 			t.Log(symbols2string(symbols))
-			a.Equal(0, symbols.FuncsSize())
-			a.Equal(0, symbols.FuncStatusSize())
+			a.Equal(1, symbols.FuncsSize())
+			a.Equal(1, symbols.FuncStatusSize())
 		},
 	)
 }
-func TestSymbolsReaderWrieter_data(t *testing.T) {
+func TestSymbolsStore_addSymbolsWithData(t *testing.T) {
 	a := assert.New(t)
 	var fIDs [2]logutil.FuncID
 	var fsIDs [2]logutil.FuncStatusID
@@ -110,16 +100,10 @@ func TestSymbolsReaderWrieter_data(t *testing.T) {
 		},
 	}
 
-	doTestSymbolsReaderWriter(
+	doTestSymbolsStore(
 		t,
 		// write
-		func(sw *SymbolsWriter) {
-			s := &logutil.Symbols{
-				Writable: true,
-				KeepID:   false,
-			}
-			s.Init()
-
+		func(s *logutil.Symbols) {
 			fIDs[0], _ = s.AddFunc(funcSymbols[0])
 			funcStatuses[0].Func = fIDs[0]
 			fsIDs[0], _ = s.AddFuncStatus(funcStatuses[0])
@@ -127,10 +111,6 @@ func TestSymbolsReaderWrieter_data(t *testing.T) {
 			fIDs[1], _ = s.AddFunc(funcSymbols[1])
 			funcStatuses[1].Func = fIDs[1]
 			fsIDs[1], _ = s.AddFuncStatus(funcStatuses[1])
-
-			a.NoError(s.Save(func(diff logutil.SymbolsDiff) error {
-				return sw.Append(&diff)
-			}), "failed to write symbols diff")
 		},
 		// check data
 		func(symbols *logutil.Symbols) {

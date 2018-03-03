@@ -4,7 +4,11 @@ import (
 	"log"
 	"strconv"
 	"strings"
+
+	"github.com/pkg/errors"
 )
+
+var ErrReadOnly = errors.New("read only")
 
 func (f *FuncID) UnmarshalText(text []byte) error {
 	id, err := strconv.ParseUint(string(text), 10, 64)
@@ -180,6 +184,7 @@ func (s *Symbols) ModuleName(id FuncStatusID) string {
 	return moduleName
 }
 
+// todo: remove
 // diffからシンボルを一括追加する。
 // 注意: KeepIDがfalseのときは、FuncIDやFuncStatusIDのIDは引き継がれない。
 func (s *Symbols) AddSymbolsDiff(diff *SymbolsDiff) {
@@ -192,6 +197,36 @@ func (s *Symbols) AddSymbolsDiff(diff *SymbolsDiff) {
 	for _, fsatus := range diff.FuncStatus {
 		s.addFuncStatusNolock(fsatus)
 	}
+}
+
+// todo: write description
+func (s *Symbols) DoRead(fn SymbolsReadFn) error {
+	if s.Writable {
+		return errors.Wrap(ErrReadOnly, "Symbols.DoRead")
+	}
+
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	data, err := fn()
+	if err != nil {
+		return err
+	}
+	s.funcs = data.Funcs
+	s.funcStatus = data.FuncStatus
+	return nil
+}
+
+// todo: write description
+func (s *Symbols) DoWrite(fn SymbolsWriteFn) error {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	data := SymbolsData{
+		Funcs:      s.funcs,
+		FuncStatus: s.funcStatus,
+	}
+	return fn(data)
 }
 
 // Funcを追加する。
@@ -264,6 +299,7 @@ func (s *Symbols) addFuncStatusNolock(status *FuncStatus) (id FuncStatusID, adde
 	return status.ID, true
 }
 
+// todo: remove
 func (d *SymbolsDiff) Merge(diff *SymbolsDiff) {
 	d.Funcs = append(d.Funcs, diff.Funcs...)
 	d.FuncStatus = append(d.FuncStatus, diff.FuncStatus...)

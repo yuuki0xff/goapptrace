@@ -62,9 +62,8 @@ type Log struct {
 	// autoRotate()を呼び出す間隔。詳細はautorotateSkipsのドキュメントを参照すること。
 	rotateInterval int
 
-	index         *Index
-	symbols       *logutil.Symbols
-	symbolsWriter *SymbolsWriter // readonlyならnil
+	index   *Index
+	symbols *logutil.Symbols
 
 	funcLog      SplitReadWriter
 	rawFuncLog   SplitReadWriter
@@ -177,14 +176,6 @@ func (l *Log) Open() error {
 		KeepID:   true,
 	}
 	l.symbols.Init()
-	if !l.ReadOnly {
-		l.symbolsWriter = &SymbolsWriter{
-			File: l.Root.SymbolFile(l.ID),
-		}
-		if err := l.symbolsWriter.Open(); err != nil {
-			return fmt.Errorf("failed to open SymbolsWriter: File=%s err=%s", l.symbolsWriter.File, err)
-		}
-	}
 	if status == LogCreated {
 		// load Index
 		if err := l.index.Load(); err != nil {
@@ -192,18 +183,8 @@ func (l *Log) Open() error {
 		}
 
 		// load Symbols
-		symbolsReader := &SymbolsReader{
-			File:    l.Root.SymbolFile(l.ID),
-			Symbols: l.symbols,
-		}
-		if err := symbolsReader.Open(); err != nil {
-			return fmt.Errorf("failed to load Symbols: File=%s err=%s", symbolsReader.File, err)
-		}
-		if err := symbolsReader.Load(); err != nil {
-			return fmt.Errorf("failed to load Symbols: File=%s err=%s", symbolsReader.File, err)
-		}
-		if err := symbolsReader.Close(); err != nil {
-			return fmt.Errorf("failed to close Symbols: File=%s err=%s", symbolsReader.File, err)
+		if err := l.symbolsStore().Read(l.symbols); err != nil {
+			return errors.Wrap(err, "failed to load symbols")
 		}
 	}
 
@@ -262,7 +243,7 @@ func (l *Log) Close() error {
 	// 書き込み可能ならClose()する。
 	// 読み込み専用のときは、l.symbolsWriter==nilなのでClose()しない。
 	if !l.ReadOnly {
-		if err := l.symbolsWriter.Close(); err != nil {
+		if err := l.symbolsStore().Write(l.symbols); err != nil {
 			return err
 		}
 	}
@@ -512,6 +493,7 @@ func (l *Log) AppendRawFuncLog(raw *logutil.RawFuncLog) error {
 	return nil
 }
 
+// todo: remove
 // Symbolsを書き込む。
 func (l *Log) AppendSymbolsDiff(diff *logutil.SymbolsDiff) error {
 	l.lock.Lock()
@@ -520,9 +502,6 @@ func (l *Log) AppendSymbolsDiff(diff *logutil.SymbolsDiff) error {
 		return os.ErrClosed
 	}
 
-	if err := l.symbolsWriter.Append(diff); err != nil {
-		return err
-	}
 	l.symbols.AddSymbolsDiff(diff)
 	return nil
 }
@@ -694,5 +673,12 @@ func (l *Log) timestampUpdateWorker() {
 		case <-ticker.C:
 			update()
 		}
+	}
+}
+
+func (l *Log) symbolsStore() SymbolsStore {
+	return SymbolsStore{
+		File:     l.Root.SymbolFile(l.ID),
+		ReadOnly: l.ReadOnly,
 	}
 }
