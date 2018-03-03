@@ -71,8 +71,10 @@ func (e *Encoder) Close() (err error) {
 }
 
 func (d *Decoder) Close() (err error) {
-	err = d.r.Close()
-	d.r = nil
-	d.dec = nil
+	if d.r != nil {
+		err = d.r.Close()
+		d.r = nil
+		d.dec = nil
+	}
 	return
 }
