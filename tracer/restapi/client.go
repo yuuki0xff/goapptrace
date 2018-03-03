@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/levigross/grequests"
 	"github.com/pkg/errors"
@@ -29,7 +30,21 @@ type Client struct {
 
 type ClientWithCtx struct {
 	Client
-	ctx context.Context
+	UseCache bool
+
+	ctx   context.Context
+	cache apiCache
+}
+
+type apiCache struct {
+	m    sync.RWMutex
+	logs map[string]*logCache
+}
+
+type logCache struct {
+	m  sync.RWMutex
+	fs map[string]*FuncStatusInfo
+	f  map[string]*FuncInfo
 }
 
 // Init initialize the Goapptrace REST API client.
@@ -57,7 +72,9 @@ func (c ClientWithCtx) ro() grequests.RequestOptions {
 func (c Client) WithCtx(ctx context.Context) ClientWithCtx {
 	var cc ClientWithCtx
 	cc.Client = c
+	cc.UseCache = true
 	cc.ctx = ctx
+	cc.cache.init()
 	return cc
 }
 
@@ -143,15 +160,43 @@ func (c ClientWithCtx) SearchFuncCalls(id string, so SearchFuncCallParams) (chan
 	return ch, nil
 }
 func (c ClientWithCtx) Func(logID, funcID string) (f FuncInfo, err error) {
+	if c.UseCache {
+		fcache := c.cache.Log(logID).Func(funcID)
+		if fcache != nil {
+			// fast path
+			f = *fcache
+			return
+		}
+	}
+
+	// slow path
 	url := c.url("/log", logID, "symbol", "func", funcID)
 	ro := c.ro()
 	err = c.getJSON(url, &ro, &f)
+
+	if err == nil && c.UseCache {
+		c.cache.AddLog(logID).AddFunc(f)
+	}
 	return
 }
-func (c ClientWithCtx) FuncStatus(logID, funcStatusID string) (f FuncStatusInfo, err error) {
+func (c ClientWithCtx) FuncStatus(logID, funcStatusID string) (fs FuncStatusInfo, err error) {
+	if c.UseCache {
+		fscache := c.cache.Log(logID).FuncStatus(funcStatusID)
+		if fscache != nil {
+			// fast path
+			fs = *fscache
+			return
+		}
+	}
+
+	// slow path
 	url := c.url("/log", logID, "symbol", "func-status", funcStatusID)
 	ro := c.ro()
-	err = c.getJSON(url, &ro, &f)
+	err = c.getJSON(url, &ro, &fs)
+
+	if err == nil && c.UseCache {
+		c.cache.AddLog(logID).AddFuncStatus(fs)
+	}
 	return
 }
 
@@ -247,4 +292,76 @@ func (c Client) putJSON(url string, ro *grequests.RequestOptions, data interface
 	}
 	defer r.Close() // nolint: errcheck
 	return errors.Wrapf(r.JSON(&data), "PUT %s returned invalid JSON", url)
+}
+
+func (c *apiCache) init() {
+	c.logs = map[string]*logCache{}
+}
+
+func (c *apiCache) Log(logID string) *logCache {
+	c.m.RLock()
+	l := c.logs[logID]
+	c.m.RUnlock()
+	return l
+}
+
+func (c *apiCache) AddLog(logID string) *logCache {
+	c.m.Lock()
+	l := c.logs[logID]
+	if l == nil {
+		l = &logCache{}
+		l.init()
+		c.logs[logID] = l
+	}
+	c.m.Unlock()
+	return l
+}
+
+func (c *logCache) init() {
+	c.fs = map[string]*FuncStatusInfo{}
+	c.f = map[string]*FuncInfo{}
+}
+
+func (c *logCache) Func(funcID string) *FuncInfo {
+	if c == nil {
+		return nil
+	}
+	c.m.RLock()
+	f := c.f[funcID]
+	c.m.RUnlock()
+	return f
+}
+
+func (c *logCache) AddFunc(f FuncInfo) {
+	id := strconv.FormatUint(uint64(f.ID), 10)
+
+	c.m.Lock()
+	if _, ok := c.f[id]; ok {
+		fp := &FuncInfo{}
+		*fp = f
+		c.f[id] = fp
+	}
+	c.m.Unlock()
+}
+
+func (c *logCache) FuncStatus(id string) *FuncStatusInfo {
+	if c == nil {
+		return nil
+	}
+	c.m.RLock()
+	fs := c.fs[id]
+	c.m.RUnlock()
+	return fs
+}
+
+func (c *logCache) AddFuncStatus(fs FuncStatusInfo) {
+	id := strconv.FormatUint(uint64(fs.ID), 10)
+
+	c.m.Lock()
+	if _, ok := c.fs[id]; ok {
+		fsp := &FuncStatusInfo{}
+		*fsp = fs
+		c.fs[id] = fsp
+	}
+	c.m.Unlock()
 }
