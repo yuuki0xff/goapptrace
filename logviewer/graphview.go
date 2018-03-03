@@ -36,6 +36,8 @@ type GraphState struct {
 	OffsetX int
 	// Y軸方向のスクロール量
 	OffsetY int
+
+	ScrollSpeed image.Point
 }
 type GraphStateMutable struct {
 	GraphState
@@ -538,14 +540,10 @@ func (v *GraphView) FocusChain() tui.FocusChain {
 }
 
 func (v *GraphView) scrollSpeed() image.Point {
-	if v.widget == nil {
+	if v.ScrollSpeed.Eq(image.ZP) {
 		return defaultScrollSpeed
 	}
-	speed := v.widget.Size()
-	// 一回のスクロールで、画面の5分の1くらいスクロールされる。
-	speed.X /= 5
-	speed.Y /= 5
-	return speed
+	return v.ScrollSpeed
 }
 func (v *GraphView) newStatusBar(text string) *tui.StatusBar {
 	s := tui.NewStatusBar(LoadingText)
