@@ -109,24 +109,6 @@ func TestGraphWidget_Draw(t *testing.T) {
 		},
 	})
 	helper(GraphWidgetTestCase{
-		Name: "offset",
-		Expected: `
-..........
-.●────●...
-..........
-..........
-..........
-`,
-		Size: image.Point{10, 5},
-		Lines: []Line{
-			{
-				Start:  image.Point{10, 10},
-				Length: 6,
-			},
-		},
-		Offset: image.Point{-9, -9},
-	})
-	helper(GraphWidgetTestCase{
 		Name: "origin-top-right",
 		Expected: `
 ..........
@@ -180,4 +162,5 @@ func TestGraphWidget_Draw(t *testing.T) {
 		},
 		Origin: OriginBottomLeft,
 	})
+	// todo: PartialDraw()のテストを追加する
 }
