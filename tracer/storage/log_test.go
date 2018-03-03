@@ -78,6 +78,15 @@ func TestLog_AppendRawFuncLog(t *testing.T) {
 	a.NoError(l.AppendRawFuncLog(&logutil.RawFuncLog{}))
 	a.NoError(l.AppendRawFuncLog(&logutil.RawFuncLog{}))
 
+	var i int
+	a.NoError(l.WalkRawFuncLog(func(evt logutil.RawFuncLog) error {
+		i++
+		return nil
+	}), "Log.WalkRawFuncLog():")
+	a.Equal(2, i)
+
+	a.NoError(l.Close())
+
 	// data dir should only contains those files:
 	//   xxxx.0.func.log.gz
 	//   xxxx.0.rawfunc.log.gz
@@ -93,15 +102,6 @@ func TestLog_AppendRawFuncLog(t *testing.T) {
 		t.Logf("files[%d] = %s", i, files[i].Name())
 	}
 	a.Len(files, 8)
-
-	var i int
-	a.NoError(l.WalkRawFuncLog(func(evt logutil.RawFuncLog) error {
-		i++
-		return nil
-	}), "Log.WalkRawFuncLog():")
-	a.Equal(2, i)
-
-	a.NoError(l.Close())
 }
 
 // Logで書き込みながら、Logで正しく読み込めるかテスト。
