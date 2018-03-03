@@ -41,11 +41,7 @@ func (s SymbolsStore) Read(symbols *logutil.Symbols) (err error) {
 		return
 	}
 
-	if err = symbols.DoRead(func() (logutil.SymbolsData, error) {
-		return *data, nil
-	}); err != nil {
-		return
-	}
+	symbols.Load(*data)
 
 	err = dec.Close()
 	return
@@ -65,7 +61,7 @@ func (s SymbolsStore) Write(symbols *logutil.Symbols) (err error) {
 	}
 	defer enc.Close() // nolint
 
-	if err = symbols.DoWrite(func(data logutil.SymbolsData) error {
+	if err = symbols.Save(func(data logutil.SymbolsData) error {
 		return enc.Append(&data)
 	}); err != nil {
 		return

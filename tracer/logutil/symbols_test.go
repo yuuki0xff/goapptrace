@@ -253,7 +253,7 @@ func TestSymbols_FuncStatus(t *testing.T) {
 func TestSymbols_FuncIDFromName(t *testing.T) {
 	a := assert.New(t)
 	s := Symbols{}
-	s.Load(SymbolsDiff{
+	s.Load(SymbolsData{
 		Funcs: []*FuncSymbol{
 			{
 				ID:    0,
@@ -276,7 +276,7 @@ func TestSymbols_FuncIDFromName(t *testing.T) {
 func TestSymbols_FuncStatusIDFromPC(t *testing.T) {
 	a := assert.New(t)
 	s := Symbols{}
-	s.Load(SymbolsDiff{
+	s.Load(SymbolsData{
 		Funcs: []*FuncSymbol{
 			{
 				ID:    0,

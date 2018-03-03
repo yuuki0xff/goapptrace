@@ -38,9 +38,9 @@ func (s *Symbols) Init() {
 
 // 指定した状態で初期化する。
 // Init()を呼び出す必要はない。
-func (s *Symbols) Load(diff SymbolsDiff) {
-	s.funcs = diff.Funcs
-	s.funcStatus = diff.FuncStatus
+func (s *Symbols) Load(data SymbolsData) {
+	s.funcs = data.Funcs
+	s.funcStatus = data.FuncStatus
 	s.name2FuncID = make(map[string]FuncID)
 	s.pc2FSID = make(map[uintptr]FuncStatusID)
 
@@ -56,10 +56,10 @@ func (s *Symbols) Load(diff SymbolsDiff) {
 // fnの内部でファイルへの書き出しなどの処理を行うこと。
 // fnに渡された引数の参照先は、fn実行終了後は非同期的に変更される可能性がある。
 // fnの外部で使用する場合は、全てのオブジェクトをコピーすること。
-func (s *Symbols) Save(fn func(diff SymbolsDiff) error) error {
+func (s *Symbols) Save(fn SymbolsWriteFn) error {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	return fn(SymbolsDiff{
+	return fn(SymbolsData{
 		Funcs:      s.funcs,
 		FuncStatus: s.funcStatus,
 	})
@@ -197,36 +197,6 @@ func (s *Symbols) AddSymbolsDiff(diff *SymbolsDiff) {
 	for _, fsatus := range diff.FuncStatus {
 		s.addFuncStatusNolock(fsatus)
 	}
-}
-
-// todo: write description
-func (s *Symbols) DoRead(fn SymbolsReadFn) error {
-	if !s.Writable {
-		return errors.Wrap(ErrReadOnly, "Symbols.DoRead")
-	}
-
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	data, err := fn()
-	if err != nil {
-		return err
-	}
-	s.funcs = data.Funcs
-	s.funcStatus = data.FuncStatus
-	return nil
-}
-
-// todo: write description
-func (s *Symbols) DoWrite(fn SymbolsWriteFn) error {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-
-	data := SymbolsData{
-		Funcs:      s.funcs,
-		FuncStatus: s.funcStatus,
-	}
-	return fn(data)
 }
 
 // Funcを追加する。
