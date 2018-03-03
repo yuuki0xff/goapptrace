@@ -114,14 +114,7 @@ type Symbols struct {
 	pc2FSID map[uintptr]FuncStatusID
 }
 
-// todo: add description
 type SymbolsData struct {
-	Funcs      []*FuncSymbol
-	FuncStatus []*FuncStatus
-}
-
-// todo: remove
-type SymbolsDiff struct {
 	Funcs      []*FuncSymbol
 	FuncStatus []*FuncStatus
 }

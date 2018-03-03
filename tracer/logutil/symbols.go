@@ -186,7 +186,7 @@ func (s *Symbols) ModuleName(id FuncStatusID) string {
 
 // diffからシンボルを一括追加する。
 // 注意: KeepIDがfalseのときは、FuncIDやFuncStatusIDのIDは引き継がれない。
-func (s *Symbols) AddSymbolsDiff(diff *SymbolsDiff) {
+func (s *Symbols) AddSymbolsDiff(diff *SymbolsData) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 

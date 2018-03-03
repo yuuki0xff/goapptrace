@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	nilDiff       = &logutil.SymbolsDiff{}
+	nilDiff       = &logutil.SymbolsData{}
 	nilRawFuncLog = &logutil.RawFuncLog{}
 )
 
@@ -47,7 +47,7 @@ func (c *CompactLogWriter) Open() error {
 }
 
 // ログを書き込む
-func (c *CompactLogWriter) Write(diff *logutil.SymbolsDiff, funclog *logutil.RawFuncLog) error {
+func (c *CompactLogWriter) Write(diff *logutil.SymbolsData, funclog *logutil.RawFuncLog) error {
 	if diff == nil {
 		diff = nilDiff
 	}
@@ -79,8 +79,8 @@ func (c *CompactLogReader) Open() error {
 	c.dec = gob.NewDecoder(c.r)
 	return err
 }
-func (c *CompactLogReader) Read() (*logutil.SymbolsDiff, *logutil.RawFuncLog, error) {
-	diff := &logutil.SymbolsDiff{}
+func (c *CompactLogReader) Read() (*logutil.SymbolsData, *logutil.RawFuncLog, error) {
+	diff := &logutil.SymbolsData{}
 	funclog := &logutil.RawFuncLog{}
 	if err := c.dec.Decode(diff); err != nil {
 		return nil, nil, err

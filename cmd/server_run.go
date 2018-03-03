@@ -221,7 +221,7 @@ func getServerHandler(strg *storage.Storage, store *logutil.StateSimulatorStore)
 					log.Panicln("failed to append RawFuncLog:", err.Error())
 				}
 				ss.Next(*obj)
-			case *logutil.SymbolsDiff:
+			case *logutil.SymbolsData:
 				if err := logobj.AppendSymbolsDiff(obj); err != nil {
 					log.Panicln("failed to append Symbols:", err.Error())
 				}
@@ -253,7 +253,7 @@ func getServerHandler(strg *storage.Storage, store *logutil.StateSimulatorStore)
 		Error: func(id protocol.ConnID, err error) {
 			log.Printf("ERROR: Server: connID=%d err=%s", id, err.Error())
 		},
-		Symbols: func(id protocol.ConnID, s *logutil.SymbolsDiff) {
+		Symbols: func(id protocol.ConnID, s *logutil.SymbolsData) {
 			chMapLock.RLock()
 			chMap[id] <- s
 			chMapLock.RUnlock()

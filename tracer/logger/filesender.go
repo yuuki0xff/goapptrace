@@ -37,7 +37,7 @@ func (f *FileSender) Close() error {
 }
 
 // write Symbols and RawFuncLog to the log file.
-func (f *FileSender) Send(diff *logutil.SymbolsDiff, funclog *logutil.RawFuncLog) error {
+func (f *FileSender) Send(diff *logutil.SymbolsData, funclog *logutil.RawFuncLog) error {
 	if f.w == nil {
 		return ClosedError
 	}

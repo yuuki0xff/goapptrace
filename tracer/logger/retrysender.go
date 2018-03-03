@@ -23,7 +23,7 @@ func (s *RetrySender) Close() error {
 
 // Send's sends Symbols and RawFuncLog.
 // if occur the any error, retry to send after re-open.
-func (s *RetrySender) Send(diff *logutil.SymbolsDiff, funclog *logutil.RawFuncLog) error {
+func (s *RetrySender) Send(diff *logutil.SymbolsData, funclog *logutil.RawFuncLog) error {
 	return s.autoretry(func() error {
 		// try to send
 		err := s.Sender.Send(diff, funclog)

@@ -57,7 +57,7 @@ func init() {
 
 func sendLog(tag logutil.TagName, id logutil.TxID) {
 	shouldSendDiff := false
-	diff := &logutil.SymbolsDiff{}
+	diff := &logutil.SymbolsData{}
 
 	logmsg := &logutil.RawFuncLog{}
 	logmsg.Timestamp = logutil.NewTime(time.Now())

@@ -216,7 +216,7 @@ type StopTraceCmdPacket struct {
 }
 
 type SymbolPacket struct {
-	logutil.SymbolsDiff
+	logutil.SymbolsData
 }
 type RawFuncLogPacket struct {
 	FuncLog *logutil.RawFuncLog

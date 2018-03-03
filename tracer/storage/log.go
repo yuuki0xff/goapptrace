@@ -495,7 +495,7 @@ func (l *Log) AppendRawFuncLog(raw *logutil.RawFuncLog) error {
 
 // todo: remove
 // Symbolsを書き込む。
-func (l *Log) AppendSymbolsDiff(diff *logutil.SymbolsDiff) error {
+func (l *Log) AppendSymbolsDiff(diff *logutil.SymbolsData) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 	if l.closed {

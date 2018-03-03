@@ -68,14 +68,14 @@ func (s *LogServerSender) Close() error {
 }
 
 // send Symbols and RawFuncLog to the log server.
-func (s *LogServerSender) Send(diff *logutil.SymbolsDiff, funclog *logutil.RawFuncLog) error {
+func (s *LogServerSender) Send(diff *logutil.SymbolsData, funclog *logutil.RawFuncLog) error {
 	if s.client == nil {
 		return ClosedError
 	}
 
 	if diff != nil {
 		if err := s.client.Send(&protocol.SymbolPacket{
-			SymbolsDiff: *diff,
+			SymbolsData: *diff,
 		}); err != nil {
 			return err
 		}

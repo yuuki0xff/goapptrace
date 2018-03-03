@@ -28,7 +28,7 @@ type ServerHandler struct {
 
 	Error func(id ConnID, err error)
 
-	Symbols    func(id ConnID, diff *logutil.SymbolsDiff)
+	Symbols    func(id ConnID, diff *logutil.SymbolsData)
 	RawFuncLog func(id ConnID, funclog *logutil.RawFuncLog)
 }
 
@@ -50,7 +50,7 @@ func (sh ServerHandler) SetDefault(fn func(field string)) ServerHandler {
 		}
 	}
 	if sh.Symbols == nil {
-		sh.Symbols = func(id ConnID, diff *logutil.SymbolsDiff) {
+		sh.Symbols = func(id ConnID, diff *logutil.SymbolsData) {
 			fn("Symbols")
 		}
 	}
@@ -236,7 +236,7 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 				return
 			case *SymbolPacket:
 				if s.Handler.Symbols != nil {
-					s.Handler.Symbols(s.ID, &pkt.SymbolsDiff)
+					s.Handler.Symbols(s.ID, &pkt.SymbolsData)
 				}
 			case *RawFuncLogPacket:
 				if s.Handler.RawFuncLog != nil {
