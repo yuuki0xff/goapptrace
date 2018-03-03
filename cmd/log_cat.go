@@ -65,7 +65,8 @@ func runLogCat(conf *config.Config, stderr io.Writer, logID string, logw LogWrit
 	if err != nil {
 		return err
 	}
-	api := apiNoctx.WithCtx(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	api := apiNoctx.WithCtx(ctx)
 
 	ch, err := api.SearchFuncCalls(logID, restapi.SearchFuncCallParams{
 		SortKey:   restapi.SortByStartTime,
@@ -76,6 +77,7 @@ func runLogCat(conf *config.Config, stderr io.Writer, logID string, logw LogWrit
 		return err
 	}
 	defer func() {
+		cancel()
 		// consume all items.
 		for range ch {
 		}
