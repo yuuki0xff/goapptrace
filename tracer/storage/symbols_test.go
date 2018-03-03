@@ -22,20 +22,25 @@ func doTestSymbolsStore(
 	store := SymbolsStore{
 		File: file,
 	}
-	symbols := logutil.Symbols{
-		Writable: true,
-	}
-	symbols.Init()
 
 	// writing phase
 	{
+		symbols := logutil.Symbols{
+			Writable: true,
+		}
+		symbols.Init()
+
 		writerFunc(&symbols)
 		a.NoError(store.Write(&symbols))
 	}
 
 	// reading phase
 	{
-		store.ReadOnly = true
+		symbols := logutil.Symbols{
+			Writable: true,
+		}
+		symbols.Init()
+
 		a.NoError(store.Read(&symbols))
 		checkFunc(&symbols)
 	}
