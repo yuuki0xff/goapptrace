@@ -178,6 +178,10 @@ func (w *TextLogWriter) Write(evt restapi.FuncCall) error {
 	// 実行が終了していない場合、実行時間は"*"と表示する
 	execTime := "*"
 	if evt.IsEnded() {
+		if evt.EndTime-evt.StartTime < 0 {
+			// validation error
+			log.Panicf("negative execTime: evt=%+v", evt)
+		}
 		execTime = strconv.FormatInt(int64(evt.EndTime-evt.StartTime), 10)
 	}
 
