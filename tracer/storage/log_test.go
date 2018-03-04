@@ -88,14 +88,14 @@ func TestLog_AppendRawFuncLog(t *testing.T) {
 	a.NoError(l.Close())
 
 	// data dir should only contains those files:
-	//   xxxx.0.func.log.gz
-	//   xxxx.0.rawfunc.log.gz
-	//   xxxx.0.goroutine.log.gz
-	//   xxxx.1.func.log.gz
-	//   xxxx.1.rawfunc.log.gz
-	//   xxxx.1.goroutine.log.gz
-	//   xxxx.index.gz
-	//   xxxx.symbol.gz
+	//   xxxx.0.func.log
+	//   xxxx.0.rawfunc.log
+	//   xxxx.0.goroutine.log
+	//   xxxx.1.func.log
+	//   xxxx.1.rawfunc.log
+	//   xxxx.1.goroutine.log
+	//   xxxx.index
+	//   xxxx.symbol
 	files, err := ioutil.ReadDir(dirlayout.DataDir())
 	a.NoError(err)
 	for i := range files {
@@ -137,9 +137,9 @@ func TestLog_ReadDuringWriting(t *testing.T) {
 	// ローテーションをしてもRawFuncLogCacheが正しくクリアできるかテストする。
 	for i := int64(0); l.index.Len() < 3; i++ {
 		a.NoError(checkRecordCount(i))
-		// 書き込み先のファイルはgzip圧縮されている。
-		// 同じデータが連続していると大幅に圧縮されてしまい、いつまで経ってもファイルのローテーションが発生しない。
-		// このような自体を回避するために、乱数を使用して圧縮率を低くする。
+		// 書き込み先のファイルは圧縮されていた場合、同じデータが連続していると大幅に圧縮されてしまう。
+		// そのため、いつまで経ってもファイルのローテーションが発生しない可能性がある。
+		// このような問題を回避するために、乱数を使用して圧縮率を低くする。
 		randomName := string([]rune{
 			rune(rand.Int()),
 			rune(rand.Int()),

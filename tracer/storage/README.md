@@ -1,12 +1,12 @@
 # Directory Layout
 ```
 info.json
-./meta/<name>.meta.json.gz
-./data/<name>.<number>.rawfunc.log.gz
-./data/<name>.<number>.func.log.gz
-./data/<name>.<number>.goroutine.log.gz
-./data/<name>.symbol.gz
-./data/<name>.index.gz
+./meta/<name>.meta.json
+./data/<name>.<number>.rawfunc.log
+./data/<name>.<number>.func.log
+./data/<name>.<number>.goroutine.log
+./data/<name>.symbol
+./data/<name>.index
 ```
 
 * `<name>`: 16バイトの乱数 (hex表記)

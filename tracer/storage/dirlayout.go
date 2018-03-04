@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"compress/gzip"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -15,9 +14,17 @@ import (
 	"github.com/yuuki0xff/goapptrace/config"
 )
 
-const (
-	DefaultCompressionLevel = gzip.BestSpeed
-)
+type FileReader interface {
+	io.Reader
+	io.ReaderAt
+	io.Seeker
+	io.Closer
+}
+type FileWriter interface {
+	io.Writer
+	io.Seeker
+	io.Closer
+}
 
 // ディレクトリ構造を抽象化する。
 type DirLayout struct {
@@ -80,7 +87,7 @@ func (d DirLayout) Init() error {
 
 // infoファイルを返す
 func (d DirLayout) InfoFile() File {
-	return File(path.Join(d.Root, "info.json.gz"))
+	return File(path.Join(d.Root, "info.json"))
 }
 
 // メタデータファイルが格納されるディレクトリのパスを返す。
@@ -95,10 +102,10 @@ func (d DirLayout) DataDir() string {
 
 // ファイル名(basename)からLogIDに変換する。
 func (d DirLayout) Fname2LogID(fname string) (id LogID, ok bool) {
-	if !strings.HasSuffix(fname, ".meta.json.gz") {
+	if !strings.HasSuffix(fname, ".meta.json") {
 		return
 	}
-	strid := strings.TrimSuffix(fname, ".meta.json.gz")
+	strid := strings.TrimSuffix(fname, ".meta.json")
 	binid, err := hex.DecodeString(strid)
 	if err != nil {
 		return
@@ -114,32 +121,32 @@ func (d DirLayout) Fname2LogID(fname string) (id LogID, ok bool) {
 
 // 指定したLogIDのメタデータファイルを返す。
 func (d DirLayout) MetaFile(id LogID) File {
-	return File(path.Join(d.MetaDir(), id.Hex()+".meta.json.gz"))
+	return File(path.Join(d.MetaDir(), id.Hex()+".meta.json"))
 }
 
 // 指定したLogIDのRawFuncLogファイルを返す。
 func (d DirLayout) RawFuncLogFile(id LogID, n int64) File {
-	return File(path.Join(d.DataDir(), fmt.Sprintf("%s.%d.rawfunc.log.gz", id.Hex(), n)))
+	return File(path.Join(d.DataDir(), fmt.Sprintf("%s.%d.rawfunc.log", id.Hex(), n)))
 }
 
 // 指定したLogIDのFuncLogファイルを返す。
 func (d DirLayout) FuncLogFile(id LogID, n int64) File {
-	return File(path.Join(d.DataDir(), fmt.Sprintf("%s.%d.func.log.gz", id.Hex(), n)))
+	return File(path.Join(d.DataDir(), fmt.Sprintf("%s.%d.func.log", id.Hex(), n)))
 }
 
 // 指定したLogIDのGoroutineLogファイルを返す。
 func (d DirLayout) GoroutineLogFile(id LogID, n int64) File {
-	return File(path.Join(d.DataDir(), fmt.Sprintf("%s.%d.goroutine.log.gz", id.Hex(), n)))
+	return File(path.Join(d.DataDir(), fmt.Sprintf("%s.%d.goroutine.log", id.Hex(), n)))
 }
 
 // 指定したLogIDのSymbolファイルを返す。
 func (d DirLayout) SymbolFile(id LogID) File {
-	return File(path.Join(d.DataDir(), fmt.Sprintf("%s.symbol.gz", id.Hex())))
+	return File(path.Join(d.DataDir(), fmt.Sprintf("%s.symbol", id.Hex())))
 }
 
 // 指定したLogIDのIndexファイルを返す。
 func (d DirLayout) IndexFile(id LogID) File {
-	return File(path.Join(d.DataDir(), fmt.Sprintf("%s.index.gz", id.Hex())))
+	return File(path.Join(d.DataDir(), fmt.Sprintf("%s.index", id.Hex())))
 }
 
 func (d DirLayout) mkdir(dir string) error {
@@ -170,31 +177,22 @@ func (f File) Size() (int64, error) {
 }
 
 // ReadOnlyモードで開く。
-func (f File) OpenReadOnly() (io.ReadCloser, error) {
+func (f File) OpenReadOnly() (FileReader, error) {
 	file, err := os.Open(string(f))
-	if err != nil {
-		return nil, errors.Wrapf(err, "cannot open %s for reading: %s", string(f))
-	}
-	return gzip.NewReader(file)
+	return file, errors.Wrapf(err, "cannot open %s for reading: %s", string(f))
 }
 
 // WriteOnlyモードで開く。
 // 既存のデータがあった場合、開いた直後にtruncateされる。
-func (f File) OpenWriteOnly() (io.WriteCloser, error) {
+func (f File) OpenWriteOnly() (FileWriter, error) {
 	file, err := f.openFile(string(f), os.O_CREATE|os.O_WRONLY)
-	if err != nil {
-		return nil, errors.Wrapf(err, "cannot open %s for writing: %s", string(f))
-	}
-	return gzip.NewWriterLevel(file, DefaultCompressionLevel)
+	return file, errors.Wrapf(err, "cannot open %s for writing: %s", string(f))
 }
 
 // AppendOnlyモードで開く。
-func (f File) OpenAppendOnly() (io.WriteCloser, error) {
+func (f File) OpenAppendOnly() (FileWriter, error) {
 	file, err := f.openFile(string(f), os.O_CREATE|os.O_WRONLY|os.O_APPEND)
-	if err != nil {
-		return nil, errors.Wrapf(err, "cannot open %s for appending: %s", string(f))
-	}
-	return gzip.NewWriterLevel(file, DefaultCompressionLevel)
+	return file, errors.Wrapf(err, "cannot open %s for appending: %s", string(f))
 }
 
 // ファイルから全て読み込み、[]byteを返す。
