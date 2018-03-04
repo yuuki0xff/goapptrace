@@ -186,8 +186,6 @@ type ParallelReadWriter struct {
 	closed bool
 	// 書き込み可能ならtrue
 	writable bool
-	// ファイルの内容をキャッシュする。
-	cache []interface{}
 
 	// エンコーダ。
 	// writable==trueならキャッシュを保持している。
@@ -203,11 +201,9 @@ func (rw *ParallelReadWriter) Open() error {
 	rw.closed = false
 	if rw.ReadOnly {
 		rw.writable = false
-		rw.cache = nil
 		return nil
 	} else {
 		rw.writable = true
-		rw.cache = make([]interface{}, 0, DefaultBufferSize)
 		// TODO: 追記モードで開いている。これ大丈夫か？
 		rw.enc.File = rw.File
 		return rw.enc.Open()
@@ -221,12 +217,11 @@ func (rw *ParallelReadWriter) Append(data interface{}) error {
 	if rw.closed {
 		return os.ErrClosed
 	}
-
-	if rw.writable {
-		rw.cache = append(rw.cache, data)
-		return rw.enc.Append(data)
+	if !rw.writable {
+		return ErrFileIsReadOnly
 	}
-	return ErrFileIsReadOnly
+
+	return rw.enc.Append(data)
 }
 
 // ファイルの先頭からデータを読み込む。
@@ -238,31 +233,20 @@ func (rw *ParallelReadWriter) Walk(newPtr func() interface{}, callback func(inte
 		return os.ErrClosed
 	}
 
-	if rw.cache != nil {
-		// キャッシュが利用できるので、キャッシュを返す
-		for _, data := range rw.cache {
-			if err := callback(data); err != nil {
-				return err
-			}
-		}
-		return nil
-	} else {
-		// キャッシュが利用できないので、ファイルから読み込む
-		dec := Decoder{
-			File: rw.File,
-		}
-		if err := dec.Open(); err != nil {
-			return err
-		}
-		err1 := dec.Walk(newPtr, callback)
-		err2 := dec.Close()
-
-		if err1 != nil {
-			return err1
-		}
-		return err2
-
+	// キャッシュが利用できないので、ファイルから読み込む
+	dec := Decoder{
+		File: rw.File,
 	}
+	if err := dec.Open(); err != nil {
+		return err
+	}
+	err1 := dec.Walk(newPtr, callback)
+	err2 := dec.Close()
+
+	if err1 != nil {
+		return err1
+	}
+	return err2
 }
 
 // 読み込み専用にする。
@@ -281,8 +265,6 @@ func (rw *ParallelReadWriter) SetReadOnly() error {
 func (rw *ParallelReadWriter) setReadOnlyNoLock() error {
 	rw.ReadOnly = true
 	rw.writable = false
-	// キャッシュを破棄する。
-	rw.cache = nil
 	return rw.enc.Close()
 }
 
@@ -297,7 +279,5 @@ func (rw *ParallelReadWriter) Close() error {
 
 	err := rw.setReadOnlyNoLock()
 	rw.closed = true
-	// 無条件にキャッシュを破棄する
-	rw.cache = nil
 	return err
 }

@@ -145,7 +145,6 @@ func TestParallelReadWriter_Open(t *testing.T) {
 				ReadOnly: true,
 			}
 			a.NoError(rw.Open())
-			a.Nil(rw.cache)
 			a.NoError(rw.Close())
 		})
 		t.Run("[read-write] cache-and-enc-is-not-nil", func(t *testing.T) {
@@ -154,7 +153,6 @@ func TestParallelReadWriter_Open(t *testing.T) {
 				File: File("dummy"),
 			}
 			a.NoError(rw.Open())
-			a.NotNil(rw.cache)
 			a.NotNil(rw.enc)
 			a.NoError(rw.Close())
 		})
