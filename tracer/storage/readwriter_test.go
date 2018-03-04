@@ -27,7 +27,6 @@ func dummyDataPtr() interface{} {
 func stripPRW(v ParallelReadWriter) ParallelReadWriter {
 	return ParallelReadWriter{
 		File:     v.File,
-		UseCache: v.UseCache,
 		ReadOnly: v.ReadOnly,
 	}
 }

@@ -45,7 +45,6 @@ func (srw *SplitReadWriter) Open() error {
 		}
 		rw := &ParallelReadWriter{
 			File:     f,
-			UseCache: false,
 			ReadOnly: true,
 		}
 		srw.files = append(srw.files, rw)
@@ -67,7 +66,6 @@ func (srw *SplitReadWriter) Open() error {
 		// 書き込み先となる、空のファイルを作っておく
 		rw := &ParallelReadWriter{
 			File:     srw.FileNamePattern(len(srw.files)),
-			UseCache: false,
 			ReadOnly: srw.ReadOnly,
 		}
 		srw.files = append(srw.files, rw)
@@ -128,7 +126,6 @@ func (srw *SplitReadWriter) rotateNoLock() error {
 	}
 	rw := &ParallelReadWriter{
 		File:     srw.FileNamePattern(len(srw.files)),
-		UseCache: false,
 		ReadOnly: srw.ReadOnly,
 	}
 	srw.files = append(srw.files, rw)
@@ -181,11 +178,7 @@ func (srw *SplitReadWriter) LastFile() (*ParallelReadWriter, error) {
 // Encoder/Decoder likeなメソッドを備える。
 type ParallelReadWriter struct {
 	// 読み書きする対象のファイル
-	File File
-	// TODO: UseCacheを実装する。
-	// オンメモリキャッシュを使用する場合は、true
-	// なお、書き込み可能な場合、この値に関わらず常にキャッシュされる。
-	UseCache bool
+	File     File
 	ReadOnly bool
 
 	lock sync.RWMutex
@@ -288,10 +281,8 @@ func (rw *ParallelReadWriter) SetReadOnly() error {
 func (rw *ParallelReadWriter) setReadOnlyNoLock() error {
 	rw.ReadOnly = true
 	rw.writable = false
-	if !rw.UseCache {
-		// キャッシュを破棄する。
-		rw.cache = nil
-	}
+	// キャッシュを破棄する。
+	rw.cache = nil
 	return rw.enc.Close()
 }
 
