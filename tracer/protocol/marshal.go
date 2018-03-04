@@ -2,214 +2,252 @@ package protocol
 
 import (
 	"encoding/binary"
-	"io"
 
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
-	. "github.com/yuuki0xff/goapptrace/tracer/util"
 )
 
-var (
-	trueBytes  = []byte{1}
-	falseBytes = []byte{0}
-)
-
-func marshalBool(w io.Writer, val bool) {
+func marshalBool(buf []byte, val bool) int64 {
 	if val {
-		MustWrite(w, trueBytes)
+		buf[0] = 1
 	} else {
-		MustWrite(w, falseBytes)
+		buf[0] = 0
 	}
+	return 1
 }
-func unmarshalBool(r io.Reader) bool {
-	// TODO: reduce memory allocation
-	var data [1]byte // ← memory allocation occurs here!
-	MustRead(r, data[:])
-	return data[0] != 0
+func unmarshalBool(buf []byte) (bool, int64) {
+	return buf[0] != 0, 1
 }
 
-func marshalUint64(w io.Writer, val uint64) {
-	// TODO: reduce memory allocation
-	var data [8]byte // ← memory allocation occurs here!
-	binary.BigEndian.PutUint64(data[:], val)
-	MustWrite(w, data[:])
+func marshalUint64(buf []byte, val uint64) int64 {
+	binary.BigEndian.PutUint64(buf[:8], val)
+	return 8
 }
-func unmarshalUint64(r io.Reader) uint64 {
-	// TODO: reduce memory allocation
-	var data [8]byte // ← memory allocation occurs here!
-	MustRead(r, data[:])
-	return binary.BigEndian.Uint64(data[:])
+func unmarshalUint64(buf []byte) (uint64, int64) {
+	return binary.BigEndian.Uint64(buf[:8]), 8
 }
 
-func marshalString(w io.Writer, str string) {
-	marshalUint64(w, uint64(len(str)))
-	MustWrite(w, []byte(str))
+func marshalString(buf []byte, str string) int64 {
+	total := marshalUint64(buf, uint64(len(str)))
+	total += int64(copy(buf[total:], []byte(str)))
+	return total
 }
-func unmarshalString(r io.Reader) string {
-	length := unmarshalUint64(r)
-	binstr := make([]byte, length)
-	MustRead(r, binstr)
-	return string(binstr)
-}
-
-func marshalFuncID(w io.Writer, fid logutil.FuncID) {
-	marshalUint64(w, uint64(fid))
-}
-func unmarshalFuncID(r io.Reader) logutil.FuncID {
-	val := unmarshalUint64(r)
-	return logutil.FuncID(val)
+func unmarshalString(buf []byte) (string, int64) {
+	length, n := unmarshalUint64(buf)
+	buf = buf[n:]
+	return string(buf[:length]), n + int64(length)
 }
 
-func marshalRawFuncLogID(w io.Writer, id logutil.RawFuncLogID) {
-	marshalUint64(w, uint64(id))
+func marshalFuncID(buf []byte, fid logutil.FuncID) int64 {
+	return marshalUint64(buf, uint64(fid))
 }
-func unmarshalRawFuncLogID(r io.Reader) logutil.RawFuncLogID {
-	val := unmarshalUint64(r)
-	return logutil.RawFuncLogID(val)
-}
-
-func marshalFuncStatusID(w io.Writer, fsid logutil.FuncStatusID) {
-	marshalUint64(w, uint64(fsid))
-}
-func unmarshalFuncStatusID(r io.Reader) logutil.FuncStatusID {
-	val := unmarshalUint64(r)
-	return logutil.FuncStatusID(val)
+func unmarshalFuncID(buf []byte) (logutil.FuncID, int64) {
+	val, n := unmarshalUint64(buf)
+	return logutil.FuncID(val), n
 }
 
-func marshalFuncSymbolSlice(w io.Writer, funcs []*logutil.FuncSymbol) {
-	marshalUint64(w, uint64(len(funcs)))
+func marshalRawFuncLogID(buf []byte, id logutil.RawFuncLogID) int64 {
+	return marshalUint64(buf, uint64(id))
+}
+func unmarshalRawFuncLogID(buf []byte) (logutil.RawFuncLogID, int64) {
+	val, n := unmarshalUint64(buf)
+	return logutil.RawFuncLogID(val), n
+}
+
+func marshalFuncStatusID(buf []byte, fsid logutil.FuncStatusID) int64 {
+	return marshalUint64(buf, uint64(fsid))
+}
+func unmarshalFuncStatusID(buf []byte) (logutil.FuncStatusID, int64) {
+	val, n := unmarshalUint64(buf)
+	return logutil.FuncStatusID(val), n
+}
+
+func marshalFuncSymbolSlice(buf []byte, funcs []*logutil.FuncSymbol) int64 {
+	var total int64
+
+	n := marshalUint64(buf[total:], uint64(len(funcs)))
+	total += n
 	for i := range funcs {
-		marshalBool(w, funcs[i] != nil)
+		n = marshalBool(buf[total:], funcs[i] != nil)
+		total += n
 		if funcs[i] != nil {
-			marshalFuncSymbol(w, funcs[i])
+			n = marshalFuncSymbol(buf[total:], funcs[i])
+			total += n
 		}
 	}
+	return total
 }
-func unmarshalFuncSymbolSlice(r io.Reader) []*logutil.FuncSymbol {
-	length := unmarshalUint64(r)
+func unmarshalFuncSymbolSlice(buf []byte) ([]*logutil.FuncSymbol, int64) {
+	var total int64
+
+	length, n := unmarshalUint64(buf)
+	total += n
+
 	funcs := make([]*logutil.FuncSymbol, length)
 	for i := range funcs {
-		isNonNil := unmarshalBool(r)
+		isNonNil, n := unmarshalBool(buf[total:])
+		total += n
 		if isNonNil {
-			funcs[i] = unmarshalFuncSymbol(r)
+			funcs[i], n = unmarshalFuncSymbol(buf[total:])
+			total += n
 		}
 	}
-	return funcs
+	return funcs, total
 }
 
-func marshalFuncSymbol(w io.Writer, s *logutil.FuncSymbol) {
-	marshalFuncID(w, s.ID)
-	marshalString(w, s.Name)
-	marshalString(w, s.File)
-	marshalUint64(w, uint64(s.Entry))
+func marshalFuncSymbol(buf []byte, s *logutil.FuncSymbol) int64 {
+	var total int64
+	total += marshalFuncID(buf, s.ID)
+	total += marshalString(buf[total:], s.Name)
+	total += marshalString(buf[total:], s.File)
+	total += marshalUint64(buf[total:], uint64(s.Entry))
+	return total
 }
-func unmarshalFuncSymbol(r io.Reader) *logutil.FuncSymbol {
+func unmarshalFuncSymbol(buf []byte) (*logutil.FuncSymbol, int64) {
+	var total int64
+	var n int64
+
 	s := &logutil.FuncSymbol{}
-	s.ID = unmarshalFuncID(r)
-	s.Name = unmarshalString(r)
-	s.File = unmarshalString(r)
-	ptr := unmarshalUint64(r)
+	s.ID, n = unmarshalFuncID(buf)
+	total += n
+	s.Name, n = unmarshalString(buf[total:])
+	total += n
+	s.File, n = unmarshalString(buf[total:])
+	total += n
+	ptr, n := unmarshalUint64(buf[total:])
+	total += n
 	s.Entry = uintptr(ptr)
-	return s
+	return s, total
 }
 
-func marshalFuncStatusSlice(w io.Writer, status []*logutil.FuncStatus) {
-	marshalUint64(w, uint64(len(status)))
+func marshalFuncStatusSlice(buf []byte, status []*logutil.FuncStatus) int64 {
+	total := marshalUint64(buf, uint64(len(status)))
 	for i := range status {
-		marshalBool(w, status[i] != nil)
+		total += marshalBool(buf[total:], status[i] != nil)
 		if status[i] != nil {
-			marshalFuncStatus(w, status[i])
+			total += marshalFuncStatus(buf[total:], status[i])
 		}
 	}
+	return total
 }
-func unmarshalFuncStatusSlice(r io.Reader) []*logutil.FuncStatus {
-	length := unmarshalUint64(r)
+func unmarshalFuncStatusSlice(buf []byte) ([]*logutil.FuncStatus, int64) {
+	var total int64
+	length, n := unmarshalUint64(buf)
+	total += n
+
 	funcs := make([]*logutil.FuncStatus, length)
 	for i := range funcs {
-		isNonNil := unmarshalBool(r)
+		isNonNil, n := unmarshalBool(buf[total:])
+		total += n
 		if isNonNil {
-			funcs[i] = unmarshalFuncStatus(r)
+			funcs[i], n = unmarshalFuncStatus(buf[total:])
+			total += n
 		}
 	}
-	return funcs
+	return funcs, total
 }
 
-func marshalFuncStatus(w io.Writer, s *logutil.FuncStatus) {
-	marshalFuncStatusID(w, s.ID)
-	marshalFuncID(w, s.Func)
-	marshalUint64(w, s.Line)
-	marshalUint64(w, uint64(s.PC))
+func marshalFuncStatus(buf []byte, s *logutil.FuncStatus) int64 {
+	var total int64
+	total += marshalFuncStatusID(buf, s.ID)
+	total += marshalFuncID(buf[total:], s.Func)
+	total += marshalUint64(buf[total:], s.Line)
+	total += marshalUint64(buf[total:], uint64(s.PC))
+	return total
 }
-func unmarshalFuncStatus(r io.Reader) *logutil.FuncStatus {
+func unmarshalFuncStatus(buf []byte) (*logutil.FuncStatus, int64) {
+	var total int64
+	var n int64
+
 	s := &logutil.FuncStatus{}
-	s.ID = unmarshalFuncStatusID(r)
-	s.Func = unmarshalFuncID(r)
-	s.Line = unmarshalUint64(r)
-	ptr := unmarshalUint64(r)
+	s.ID, n = unmarshalFuncStatusID(buf)
+	total += n
+	s.Func, n = unmarshalFuncID(buf[total:])
+	total += n
+	s.Line, n = unmarshalUint64(buf[total:])
+	total += n
+	ptr, n := unmarshalUint64(buf[total:])
+	total += n
 	s.PC = uintptr(ptr)
-	return s
+	return s, total
 }
 
-func marshalFuncStatusIDSlice(w io.Writer, slice []logutil.FuncStatusID) {
-	marshalUint64(w, uint64(len(slice)))
+func marshalFuncStatusIDSlice(buf []byte, slice []logutil.FuncStatusID) int64 {
+	total := marshalUint64(buf, uint64(len(slice)))
 	for i := range slice {
-		marshalFuncStatusID(w, slice[i])
+		total += marshalFuncStatusID(buf[total:], slice[i])
 	}
+	return total
 }
-func unmarshalFuncStatusIDSlice(r io.Reader) []logutil.FuncStatusID {
-	length := unmarshalUint64(r)
+func unmarshalFuncStatusIDSlice(buf []byte) ([]logutil.FuncStatusID, int64) {
+	var total int64
+	length, n := unmarshalUint64(buf)
+	total += n
+
 	slice := make([]logutil.FuncStatusID, length)
 	for i := range slice {
-		slice[i] = unmarshalFuncStatusID(r)
+		var n int64
+		slice[i], n = unmarshalFuncStatusID(buf[total:])
+		total += n
 	}
-	return slice
+	return slice, total
 }
 
-func marshalGID(w io.Writer, gid logutil.GID) {
-	marshalUint64(w, uint64(gid))
+func marshalGID(buf []byte, gid logutil.GID) int64 {
+	return marshalUint64(buf, uint64(gid))
 }
-func unmarshalGID(r io.Reader) logutil.GID {
-	val := unmarshalUint64(r)
-	return logutil.GID(val)
-}
-
-func marshalTxID(w io.Writer, id logutil.TxID) {
-	marshalUint64(w, uint64(id))
-}
-func unmarshalTxID(r io.Reader) logutil.TxID {
-	val := unmarshalUint64(r)
-	return logutil.TxID(val)
+func unmarshalGID(buf []byte) (logutil.GID, int64) {
+	val, n := unmarshalUint64(buf)
+	return logutil.GID(val), n
 }
 
-func marshalTime(w io.Writer, time logutil.Time) {
-	marshalUint64(w, uint64(time))
+func marshalTxID(buf []byte, id logutil.TxID) int64 {
+	return marshalUint64(buf, uint64(id))
 }
-func unmarshalTime(r io.Reader) logutil.Time {
-	val := unmarshalUint64(r)
-	return logutil.Time(val)
+func unmarshalTxID(buf []byte) (logutil.TxID, int64) {
+	val, n := unmarshalUint64(buf)
+	return logutil.TxID(val), n
 }
 
-func marshalTagName(w io.Writer, tag logutil.TagName) {
-	marshalString(w, string(tag))
+func marshalTime(buf []byte, time logutil.Time) int64 {
+	return marshalUint64(buf, uint64(time))
 }
-func unmarshalTagName(r io.Reader) logutil.TagName {
-	str := unmarshalString(r)
-	return logutil.TagName(str)
+func unmarshalTime(buf []byte) (logutil.Time, int64) {
+	val, n := unmarshalUint64(buf)
+	return logutil.Time(val), n
 }
-func marshalRawFuncLog(w io.Writer, r *logutil.RawFuncLog) {
-	marshalRawFuncLogID(w, r.ID)
-	marshalTagName(w, r.Tag)
-	marshalTime(w, r.Timestamp)
-	marshalFuncStatusIDSlice(w, r.Frames)
-	marshalGID(w, r.GID)
-	marshalTxID(w, r.TxID)
+
+func marshalTagName(buf []byte, tag logutil.TagName) int64 {
+	return marshalString(buf, string(tag))
 }
-func unmarshalRawFuncLog(r io.Reader) *logutil.RawFuncLog {
+func unmarshalTagName(buf []byte) (logutil.TagName, int64) {
+	str, n := unmarshalString(buf)
+	return logutil.TagName(str), n
+}
+func marshalRawFuncLog(buf []byte, r *logutil.RawFuncLog) int64 {
+	total := marshalRawFuncLogID(buf, r.ID)
+	total += marshalTagName(buf[total:], r.Tag)
+	total += marshalTime(buf[total:], r.Timestamp)
+	total += marshalFuncStatusIDSlice(buf[total:], r.Frames)
+	total += marshalGID(buf[total:], r.GID)
+	total += marshalTxID(buf[total:], r.TxID)
+	return total
+}
+func unmarshalRawFuncLog(buf []byte) (*logutil.RawFuncLog, int64) {
+	var total int64
+	var n int64
+
 	fl := &logutil.RawFuncLog{}
-	fl.ID = unmarshalRawFuncLogID(r)
-	fl.Tag = unmarshalTagName(r)
-	fl.Timestamp = unmarshalTime(r)
-	fl.Frames = unmarshalFuncStatusIDSlice(r)
-	fl.GID = unmarshalGID(r)
-	fl.TxID = unmarshalTxID(r)
-	return fl
+	fl.ID, n = unmarshalRawFuncLogID(buf)
+	total += n
+	fl.Tag, n = unmarshalTagName(buf[total:])
+	total += n
+	fl.Timestamp, n = unmarshalTime(buf[total:])
+	total += n
+	fl.Frames, n = unmarshalFuncStatusIDSlice(buf[total:])
+	total += n
+	fl.GID, n = unmarshalGID(buf[total:])
+	total += n
+	fl.TxID, n = unmarshalTxID(buf[total:])
+	total += n
+	return fl, total
 }

@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/yuuki0xff/goapptrace/tracer/util"
 	"github.com/yuuki0xff/xtcp"
 )
 
@@ -19,11 +18,22 @@ func (fakeProto) PackSize(s xtcp.Packet) int {
 func (fakeProto) PackTo(p xtcp.Packet, w io.Writer) (int, error) {
 	return w.Write([]byte(p.String()))
 }
+func (fakeProto) PackToByteSlice(p xtcp.Packet, buf []byte) int64 {
+	n := copy(buf, []byte(p.String()))
+	return int64(n)
+}
 func (fakeProto) Pack(p xtcp.Packet) ([]byte, error) {
 	return []byte(p.String()), nil
 }
 func (fakeProto) Unpack(b []byte) (xtcp.Packet, int, error) {
 	return fakePacket{string(b)}, len(b), nil
+}
+
+func fakeMergePacket() *MergePacket {
+	return &MergePacket{
+		Proto:      &fakeProto{},
+		BufferSize: packetBufferSize,
+	}
 }
 
 func BenchmarkDetectPacketType(b *testing.B) {
@@ -66,7 +76,8 @@ func BenchmarkCreatePacket(b *testing.B) {
 }
 func BenchmarkMergePacket_Merge(b *testing.B) {
 	mp := MergePacket{
-		Proto: &Proto{},
+		Proto:      &Proto{},
+		BufferSize: DefaultSendBufferSize + 2048,
 	}
 	p := &RawFuncLogPacket{
 		FuncLog: rawFuncLog,
@@ -85,52 +96,43 @@ func BenchmarkRawFuncLogPacket_Marshal(b *testing.B) {
 	rp := RawFuncLogPacket{
 		FuncLog: rawFuncLog,
 	}
-	var buf bytes.Buffer
-	buf.Grow(1024)
+	buf := make([]byte, packetBufferSize)
 
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		rp.Marshal(&buf)
-		buf.Reset()
+		rp.Marshal(buf)
 	}
 	b.StopTimer()
 }
 func BenchmarkRawFuncLogPacket_Unmarshal(b *testing.B) {
 	var rp RawFuncLogPacket
-	r := util.FakeReader{
-		B: rawFuncLogBytes,
-	}
+	buf := rawFuncLogBytes
 
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		rp.Unmarshal(&r)
-		// reset fakeReader
-		r.N = 0
+		rp.Unmarshal(buf)
 	}
 	b.StopTimer()
 }
 
 func TestPacketType_Marshal(t *testing.T) {
-	var buf bytes.Buffer
+	buf := make([]byte, packetBufferSize)
 	a := assert.New(t)
-	PacketType(10).Marshal(&buf)
-	a.Equal([]byte{0, 0, 0, 0, 0, 0, 0, 10}, buf.Bytes())
+	n := PacketType(10).Marshal(buf)
+	a.Equal([]byte{0, 0, 0, 0, 0, 0, 0, 10}, buf[:n])
 }
 func TestPacketType_Unmarshal(t *testing.T) {
-	var buf bytes.Buffer
+	buf := []byte{0, 0, 0, 0, 0, 0, 0, 5}
 	a := assert.New(t)
-	buf.Write([]byte{0, 0, 0, 0, 0, 0, 0, 5})
 	var pt PacketType
-	pt.Unmarshal(&buf)
+	pt.Unmarshal(buf)
 	a.Equal(PacketType(5), pt)
 }
 func TestMergePacket_Merge(t *testing.T) {
 	var buf bytes.Buffer
 	a := assert.New(t)
 
-	mp := MergePacket{
-		Proto: &fakeProto{},
-	}
+	mp := fakeMergePacket()
 	mp.Merge(fakePacket{"<packet 1>"})
 	mp.Merge(fakePacket{"<packet 2>"})
 
@@ -141,9 +143,7 @@ func TestMergePacket_Merge(t *testing.T) {
 func TestMergePacket_Reset(t *testing.T) {
 	a := assert.New(t)
 
-	mp := MergePacket{
-		Proto: &fakeProto{},
-	}
+	mp := fakeMergePacket()
 	mp.Merge(fakePacket{"abc"})
 	a.NotEqual(0, mp.Len())
 
@@ -153,9 +153,7 @@ func TestMergePacket_Reset(t *testing.T) {
 func TestMergePacket_Len(t *testing.T) {
 	a := assert.New(t)
 
-	mp := MergePacket{
-		Proto: &fakeProto{},
-	}
+	mp := fakeMergePacket()
 	a.Equal(0, mp.Len())
 
 	mp.Merge(fakePacket{"abcd"})
@@ -164,9 +162,7 @@ func TestMergePacket_Len(t *testing.T) {
 func TestMergePacket_WriteTo(t *testing.T) {
 	a := assert.New(t)
 
-	mp := MergePacket{
-		Proto: &fakeProto{},
-	}
+	mp := fakeMergePacket()
 	mp.Merge(fakePacket{"abcd"})
 	a.Equal(4, mp.Len())
 

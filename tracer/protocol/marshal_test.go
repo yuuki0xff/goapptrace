@@ -6,7 +6,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
-	"github.com/yuuki0xff/goapptrace/tracer/util"
+)
+
+const (
+	packetBufferSize = 1024
 )
 
 var (
@@ -88,178 +91,159 @@ var (
 )
 
 func BenchmarkMarshalBool(b *testing.B) {
-	w := &util.FakeWriter{}
+	buf := make([]byte, packetBufferSize)
 	val := true
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		marshalBool(w, val)
+		marshalBool(buf, val)
 	}
 	b.StopTimer()
 }
 func BenchmarkUnmarshalBool(b *testing.B) {
-	r := &util.FakeReader{
-		B: []byte{1},
-	}
+	buf := []byte{1}
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		unmarshalBool(r)
-		r.N = 0
+		unmarshalBool(buf)
 	}
 	b.StopTimer()
 }
 func BenchmarkMarshalUint64(b *testing.B) {
-	w := &util.FakeWriter{}
+	buf := make([]byte, packetBufferSize)
 	val := uint64(10)
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		marshalUint64(w, val)
+		marshalUint64(buf, val)
 	}
 	b.StopTimer()
 }
 func BenchmarkUnmarshalUint64(b *testing.B) {
-	r := &util.FakeReader{
-		B: []byte{0, 0, 0, 0, 0, 0, 0, 0xa},
-	}
+	buf := []byte{0, 0, 0, 0, 0, 0, 0, 0xa}
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		unmarshalUint64(r)
-		r.N = 0
+		unmarshalUint64(buf)
 	}
 	b.StopTimer()
 }
 func BenchmarkMarshalString(b *testing.B) {
-	w := &util.FakeWriter{}
+	buf := make([]byte, packetBufferSize)
 	val := "test string"
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		marshalString(w, val)
+		marshalString(buf, val)
 	}
 	b.StopTimer()
 }
 func BenchmarkUnmarshalString(b *testing.B) {
-	r := &util.FakeReader{
-		B: []byte{
-			// length
-			0, 0, 0, 0, 0, 0, 0, 0xb,
-			// string data
-			0x66, 0x61, 0x6b, 0x65, 0x20, 0x73, 0x74, 0x72, 0x69, 0x6e, 0x67,
-		},
+	buf := []byte{
+		// length
+		0, 0, 0, 0, 0, 0, 0, 0xb,
+		// string data
+		0x66, 0x61, 0x6b, 0x65, 0x20, 0x73, 0x74, 0x72, 0x69, 0x6e, 0x67,
 	}
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		unmarshalString(r)
-		r.N = 0
+		unmarshalString(buf)
 	}
 	b.StopTimer()
 }
 func BenchmarkMarshalFuncSymbol(b *testing.B) {
-	w := &util.FakeWriter{}
+	buf := make([]byte, packetBufferSize)
 	val := funcSymbol
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		marshalFuncSymbol(w, val)
+		marshalFuncSymbol(buf, val)
 	}
 	b.StopTimer()
 }
 func BenchmarkUnmarshalFuncSymbol(b *testing.B) {
-	r := &util.FakeReader{
-		B: funcSymbolBytes,
-	}
+	buf := funcSymbolBytes
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		unmarshalFuncSymbol(r)
-		r.N = 0
+		unmarshalFuncSymbol(buf)
 	}
 	b.StopTimer()
 }
 func BenchmarkMarshalFuncStatus(b *testing.B) {
-	w := &util.FakeWriter{}
+	buf := make([]byte, packetBufferSize)
 	val := funcStatus
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		marshalFuncStatus(w, val)
+		marshalFuncStatus(buf, val)
 	}
 	b.StopTimer()
 }
 func BenchmarkUnmarshalFuncStatus(b *testing.B) {
-	r := &util.FakeReader{
-		B: funcStatusBytes,
-	}
+	buf := funcStatusBytes
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		unmarshalFuncStatus(r)
-		r.N = 0
+		unmarshalFuncStatus(buf)
 	}
 	b.StopTimer()
 }
 func BenchmarkMarshalFuncStatusIDSlice(b *testing.B) {
-	w := &util.FakeWriter{}
+	buf := make([]byte, packetBufferSize)
 	val := []logutil.FuncStatusID{1, 2, 3, 4, 5, 6, 8, 9, 10}
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		marshalFuncStatusIDSlice(w, val)
+		marshalFuncStatusIDSlice(buf, val)
 	}
 	b.StopTimer()
 }
 func BenchmarkUnmarshalFuncStatusIDSlice(b *testing.B) {
-	var w bytes.Buffer
-	marshalFuncStatusIDSlice(&w, []logutil.FuncStatusID{1, 2, 3, 4, 5, 6, 8, 9, 10})
-	r := &util.FakeReader{
-		B: w.Bytes(),
-	}
+	buf := make([]byte, packetBufferSize)
+	n := marshalFuncStatusIDSlice(buf, []logutil.FuncStatusID{1, 2, 3, 4, 5, 6, 8, 9, 10})
+	buf = buf[:n]
+
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		unmarshalFuncStatus(r)
-		r.N = 0
+		unmarshalFuncStatus(buf)
 	}
 	b.StopTimer()
 }
 func BenchmarkMarshalRawFuncLog(b *testing.B) {
-	w := &util.FakeWriter{}
+	buf := make([]byte, packetBufferSize)
 	val := rawFuncLog
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		marshalRawFuncLog(w, val)
+		marshalRawFuncLog(buf, val)
 	}
 	b.StopTimer()
 }
 func BenchmarkUnmarshalRawFuncLog(b *testing.B) {
-	r := &util.FakeReader{
-		B: rawFuncLogBytes,
-	}
+	buf := rawFuncLogBytes
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		unmarshalRawFuncLog(r)
-		r.N = 0
+		unmarshalRawFuncLog(buf)
 	}
 	b.StopTimer()
 }
 
 func TestMarshalBool(t *testing.T) {
-	var buf bytes.Buffer
+	buf := make([]byte, 2)
 	a := assert.New(t)
 
-	marshalBool(&buf, false)
-	marshalBool(&buf, true)
-	a.Equal([]byte{0, 1}, buf.Bytes())
+	total := marshalBool(buf, false)
+	total += marshalBool(buf[total:], true)
+	a.Equal([]byte{0, 1}, buf[:total])
 }
 func TestUnmarshalBool(t *testing.T) {
-	var buf bytes.Buffer
+	buf := []byte{0, 1}
 	a := assert.New(t)
 
-	buf.WriteByte(0)
-	buf.WriteByte(1)
-
-	a.False(unmarshalBool(&buf))
-	a.True(unmarshalBool(&buf))
+	val1, _ := unmarshalBool(buf[:1])
+	val2, _ := unmarshalBool(buf[1:])
+	a.False(val1)
+	a.True(val2)
 }
 func TestMarshalUint64(t *testing.T) {
 	a := assert.New(t)
 	test := func(val uint64, b []byte) {
-		var buf bytes.Buffer
-		marshalUint64(&buf, val)
-		a.Len(buf.Bytes(), 8)
-		a.Equal(b, buf.Bytes())
+		buf := make([]byte, packetBufferSize)
+		n := marshalUint64(buf, val)
+		buf = buf[:n]
+
+		a.Len(buf, 8)
+		a.Equal(b, buf)
 	}
 
 	test(uint64Value1, uint64Bytes1)
@@ -268,10 +252,9 @@ func TestMarshalUint64(t *testing.T) {
 }
 func TestUnmarshalUint64(t *testing.T) {
 	a := assert.New(t)
-	test := func(val uint64, b []byte) {
-		var buf bytes.Buffer
-		buf.Write(b)
-		a.Equal(val, unmarshalUint64(&buf))
+	test := func(expected uint64, b []byte) {
+		actual, _ := unmarshalUint64(b)
+		a.Equal(expected, actual)
 	}
 
 	test(uint64Value1, uint64Bytes1)
@@ -281,10 +264,11 @@ func TestUnmarshalUint64(t *testing.T) {
 func TestMarshalString(t *testing.T) {
 	a := assert.New(t)
 	test := func(msg, s string, blen, bstr []byte) {
-		var buf bytes.Buffer
-		marshalString(&buf, s)
-		a.Equal(blen, buf.Bytes()[:8], msg+": length field")
-		a.Equal(bstr, buf.Bytes()[8:], msg+": string field")
+		buf := make([]byte, packetBufferSize)
+		n := marshalString(buf, s)
+		buf = buf[:n]
+		a.Equal(blen, buf[:8], msg+": length field")
+		a.Equal(bstr, buf[8:], msg+": string field")
 	}
 
 	test("empty string", "",
@@ -296,11 +280,12 @@ func TestMarshalString(t *testing.T) {
 }
 func TestUnmarshalString(t *testing.T) {
 	a := assert.New(t)
-	test := func(msg, s string, blen, bstr []byte) {
+	test := func(msg, expected string, blen, bstr []byte) {
 		var buf bytes.Buffer
 		buf.Write(blen)
 		buf.Write(bstr)
-		a.Equal(s, unmarshalString(&buf), msg)
+		actual, _ := unmarshalString(buf.Bytes())
+		a.Equal(expected, actual, msg)
 	}
 
 	test("empty string", "",
@@ -313,17 +298,19 @@ func TestUnmarshalString(t *testing.T) {
 func TestMarshalFuncSymbolSlice(t *testing.T) {
 	a := assert.New(t)
 	test := func(msg string, slice []*logutil.FuncSymbol, sliceLen, nonNilFlag, fsBytes []byte) {
-		var buf bytes.Buffer
-		marshalFuncSymbolSlice(&buf, slice)
-		a.Equal(sliceLen, buf.Bytes()[:8], msg+": length field")
+		buf := make([]byte, packetBufferSize)
+		n := marshalFuncSymbolSlice(buf, slice)
+		buf = buf[:n]
+
+		a.Equal(sliceLen, buf[:8], msg+": length field")
 		if nonNilFlag == nil {
 			return
 		}
-		a.Equal(nonNilFlag, buf.Bytes()[8:9], msg+": non-nil flag field")
+		a.Equal(nonNilFlag, buf[8:9], msg+": non-nil flag field")
 		if fsBytes == nil {
 			return
 		}
-		a.Equal(fsBytes, buf.Bytes()[9:], msg+": FuncSymbol field")
+		a.Equal(fsBytes, buf[9:], msg+": FuncSymbol field")
 	}
 
 	test("empty slice",
@@ -342,12 +329,13 @@ func TestMarshalFuncSymbolSlice(t *testing.T) {
 }
 func TestUnmarshalFuncSymbolSlice(t *testing.T) {
 	a := assert.New(t)
-	test := func(msg string, slice []*logutil.FuncSymbol, sliceLen, nonNilFlag, fsBytes []byte) {
+	test := func(msg string, expected []*logutil.FuncSymbol, sliceLen, nonNilFlag, fsBytes []byte) {
 		var buf bytes.Buffer
 		buf.Write(sliceLen)
 		buf.Write(nonNilFlag)
 		buf.Write(fsBytes)
-		a.Equal(slice, unmarshalFuncSymbolSlice(&buf), msg)
+		actual, _ := unmarshalFuncSymbolSlice(buf.Bytes())
+		a.Equal(expected, actual, msg)
 	}
 
 	test("empty",
@@ -365,33 +353,35 @@ func TestUnmarshalFuncSymbolSlice(t *testing.T) {
 		funcSymbolBytes)
 }
 func TestMarshalFuncSymbol(t *testing.T) {
-	var buf bytes.Buffer
+	buf := make([]byte, packetBufferSize)
 	a := assert.New(t)
 
-	marshalFuncSymbol(&buf, funcSymbol)
-	a.Equal(funcSymbolBytes, buf.Bytes())
+	n := marshalFuncSymbol(buf, funcSymbol)
+	buf = buf[:n]
+	a.Equal(funcSymbolBytes, buf)
 }
 func TestUnmarshalFuncSymbol(t *testing.T) {
-	var buf bytes.Buffer
 	a := assert.New(t)
 
-	buf.Write(funcSymbolBytes)
-	a.Equal(funcSymbol, unmarshalFuncSymbol(&buf))
+	s, _ := unmarshalFuncSymbol(funcSymbolBytes)
+	a.Equal(funcSymbol, s)
 }
 func TestMarshalFuncStatusSlice(t *testing.T) {
 	a := assert.New(t)
 	test := func(msg string, slice []*logutil.FuncStatus, sliceLen, nonNilFlag, fsBytes []byte) {
-		var buf bytes.Buffer
-		marshalFuncStatusSlice(&buf, slice)
-		a.Equal(sliceLen, buf.Bytes()[:8], msg+": length field")
+		buf := make([]byte, packetBufferSize)
+		n := marshalFuncStatusSlice(buf, slice)
+		buf = buf[:n]
+
+		a.Equal(sliceLen, buf[:8], msg+": length field")
 		if nonNilFlag == nil {
 			return
 		}
-		a.Equal(nonNilFlag, buf.Bytes()[8:9], msg+": non-nil flag field")
+		a.Equal(nonNilFlag, buf[8:9], msg+": non-nil flag field")
 		if fsBytes == nil {
 			return
 		}
-		a.Equal(fsBytes, buf.Bytes()[9:], msg+": FuncStatus field")
+		a.Equal(fsBytes, buf[9:], msg+": FuncStatus field")
 	}
 
 	test("empty slice",
@@ -410,12 +400,14 @@ func TestMarshalFuncStatusSlice(t *testing.T) {
 }
 func TestUnmarshalFuncStatusSlice(t *testing.T) {
 	a := assert.New(t)
-	test := func(msg string, slice []*logutil.FuncStatus, sliceLen, nonNilFlag, fsBytes []byte) {
+	test := func(msg string, expected []*logutil.FuncStatus, sliceLen, nonNilFlag, fsBytes []byte) {
 		var buf bytes.Buffer
 		buf.Write(sliceLen)
 		buf.Write(nonNilFlag)
 		buf.Write(fsBytes)
-		a.Equal(slice, unmarshalFuncStatusSlice(&buf), msg)
+
+		actual, _ := unmarshalFuncStatusSlice(buf.Bytes())
+		a.Equal(expected, actual, msg)
 	}
 
 	test("empty",
@@ -433,30 +425,30 @@ func TestUnmarshalFuncStatusSlice(t *testing.T) {
 		funcStatusBytes)
 }
 func TestMarshalFuncStatus(t *testing.T) {
-	var buf bytes.Buffer
+	buf := make([]byte, packetBufferSize)
 	a := assert.New(t)
 
-	marshalFuncStatus(&buf, funcStatus)
-	a.Equal(funcStatusBytes, buf.Bytes())
+	n := marshalFuncStatus(buf, funcStatus)
+	buf = buf[:n]
+	a.Equal(funcStatusBytes, buf)
 }
 func TestUnmarshalFuncStatus(t *testing.T) {
-	var buf bytes.Buffer
 	a := assert.New(t)
 
-	buf.Write(funcStatusBytes)
-	a.Equal(funcStatus, unmarshalFuncStatus(&buf))
+	fs, _ := unmarshalFuncStatus(funcStatusBytes)
+	a.Equal(funcStatus, fs)
 }
 func TestMarshalRawFuncLog(t *testing.T) {
-	var buf bytes.Buffer
+	buf := make([]byte, packetBufferSize)
 	a := assert.New(t)
 
-	marshalRawFuncLog(&buf, rawFuncLog)
-	a.Equal(rawFuncLogBytes, buf.Bytes())
+	n := marshalRawFuncLog(buf, rawFuncLog)
+	buf = buf[:n]
+	a.Equal(rawFuncLogBytes, buf)
 }
 func TestUnmarshalRawFuncLog(t *testing.T) {
-	var buf bytes.Buffer
 	a := assert.New(t)
 
-	buf.Write(rawFuncLogBytes)
-	a.Equal(rawFuncLog, unmarshalRawFuncLog(&buf))
+	fl, _ := unmarshalRawFuncLog(rawFuncLogBytes)
+	a.Equal(rawFuncLog, fl)
 }

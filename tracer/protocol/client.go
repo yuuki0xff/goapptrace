@@ -205,6 +205,9 @@ func (c *Client) mergeWorker() {
 		New: func() interface{} {
 			return &MergePacket{
 				Proto: &c.proto,
+				// MergePacketのサイズは、BufferSizeよりも大きくなる。
+				// そのため、少し大きめのバッファを確保しておく。
+				BufferSize: c.BufferSize + 2048,
 			}
 		},
 	}

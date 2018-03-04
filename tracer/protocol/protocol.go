@@ -1,11 +1,9 @@
 package protocol
 
 import (
-	"bytes"
 	"encoding/binary"
 	"io"
 	"log"
-	"sync"
 
 	. "github.com/yuuki0xff/goapptrace/tracer/util"
 	"github.com/yuuki0xff/xtcp"
@@ -13,21 +11,16 @@ import (
 
 const (
 	ProtocolVersion = "1"
-
-	DefaultPacketBufferSize = 1024
-)
-
-var (
-	bufferPool = sync.Pool{
-		New: func() interface{} {
-			return bytes.NewBuffer(make([]byte, DefaultPacketBufferSize))
-		},
-	}
 )
 
 // isCompatibleVersion returns true if "version" has compatibility of current version
 func isCompatibleVersion(version string) bool {
 	return ProtocolVersion == version
+}
+
+type ProtoInterface interface {
+	xtcp.Protocol
+	PackToByteSlice(p xtcp.Packet, buf []byte) int64
 }
 
 // Message: [size int32] [hp HeaderPacket] [p xtcp.Packet]
@@ -46,42 +39,29 @@ func (pr Proto) PackTo(p xtcp.Packet, w io.Writer) (int, error) {
 		n, err := mergePkt.WriteTo(w)
 		return int(n), err
 	}
-
-	buf := bufferPool.Get().(*bytes.Buffer)
-	// deferのオーバーヘッドを削減するため、bufferPool.Put(buf)は関数の末尾で行う。
-	// この関数の実行中にpanicすると、このbufはpoolに戻されない可能性がある。
-	buf.Reset()
-
+	buf := make([]byte, 1024)
+	n := pr.PackToByteSlice(p, buf)
+	return w.Write(buf[:n])
+}
+func (pr Proto) PackToByteSlice(p xtcp.Packet, buf []byte) int64 {
 	// prepare header packet
 	hp := HeaderPacket{
 		PacketType: detectPacketType(p),
 	}
 
-	// ensure uint32 space
-	buf.WriteByte(0)
-	buf.WriteByte(0)
-	buf.WriteByte(0)
-	buf.WriteByte(0)
-
 	// build buf
-	if err := PanicHandler(func() {
-		marshalPacket(&hp, buf)
-		marshalPacket(p, buf)
-	}); err != nil {
-		return 0, err
-	}
+	payloadBuf := buf[4:]
+	headerSize := marshalPacket(&hp, payloadBuf)
+	body := payloadBuf[headerSize:]
+	bodySize := marshalPacket(p, body)
 
-	// write data size
-	b := buf.Bytes()
-	packetSize := uint32(len(b) - 4)
-	binary.BigEndian.PutUint32(b[:4], packetSize)
+	// write payload size
+	payloadSize := uint32(headerSize + bodySize)
+	binary.BigEndian.PutUint32(buf[:4], payloadSize)
 
 	// write to connection
-	n, err := w.Write(b)
-
-	// return the bytes.Buffer object to bufferPool.
-	bufferPool.Put(buf)
-	return n, err
+	packetSize := payloadSize + 4
+	return int64(packetSize)
 }
 
 // このメソッドはどこからも使用されていないため、実装していない。
@@ -108,22 +88,21 @@ func (pr Proto) Unpack(b []byte) (xtcp.Packet, int, error) {
 	}
 
 	if err := PanicHandler(func() {
-		buf := bytes.NewBuffer(packetData)
-		hp.Unmarshal(buf)
+		n := hp.Unmarshal(packetData)
 		p = createPacket(hp.PacketType)
-		unmarshalPacket(p, buf)
+		unmarshalPacket(p, packetData[n:])
 	}); err != nil {
 		return nil, packetSize, err
 	}
 	return p, packetSize, nil
 }
 
-func marshalPacket(p xtcp.Packet, buf io.Writer) {
+func marshalPacket(p xtcp.Packet, buf []byte) int64 {
 	m := p.(Marshalable)
-	m.Marshal(buf)
+	return m.Marshal(buf)
 }
 
-func unmarshalPacket(p xtcp.Packet, r io.Reader) {
+func unmarshalPacket(p xtcp.Packet, buf []byte) int64 {
 	m := p.(Marshalable)
-	m.Unmarshal(r)
+	return m.Unmarshal(buf)
 }
