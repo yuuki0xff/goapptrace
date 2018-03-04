@@ -174,11 +174,16 @@ func (w *TextLogWriter) Write(evt restapi.FuncCall) error {
 	fs := w.funcStatus(currentFrame)
 	funcName := w.funcInfo(fs.Func).Name // module.func
 	line := fs.Line
-	execTime := evt.EndTime - evt.StartTime
+
+	// 実行が終了していない場合、実行時間は"*"と表示する
+	execTime := "*"
+	if evt.IsEnded() {
+		execTime = strconv.FormatInt(int64(evt.EndTime-evt.StartTime), 10)
+	}
 
 	_, err := fmt.Fprintf(
 		w.output,
-		"%s %d [%d] %s:%d\n",
+		"%s %s [%d] %s:%d\n",
 		evt.StartTime.UnixTime().Format(config.TimestampFormat),
 		execTime,
 		evt.GID,
