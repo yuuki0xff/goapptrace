@@ -48,7 +48,6 @@ var runCmd = &cobra.Command{
 This command compiles specified files with logging codes, and execute them.
 Arguments are compatible with "go run". See "go run --help" to get more information about arguments.`,
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
-		fmt.Println("run called")
 		return runRun(conf, cmd.Flags(), os.Stdin, cmd.OutOrStdout(), cmd.OutOrStderr(), args)
 	}),
 }
