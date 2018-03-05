@@ -93,3 +93,51 @@ func TestDecoder_Walk(t *testing.T) {
 		a.NoError(dec.Close())
 	})
 }
+
+func BenchmarkEncoder_Append(b *testing.B) {
+	util.WithTempFile(func(tmpfile string) {
+		enc := Encoder{
+			File: File(tmpfile),
+		}
+		enc.Open()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			enc.Append(&testData3)
+		}
+		b.StopTimer()
+		enc.Close()
+	})
+}
+
+func BenchmarkDecoder_Read(b *testing.B) {
+	const records = 10000
+
+	util.WithTempFile(func(tmpfile string) {
+		enc := Encoder{
+			File: File(tmpfile),
+		}
+		enc.Open()
+		for i := 0; i < records; i++ {
+			enc.Append(testData1)
+		}
+		enc.Close()
+
+		dec := Decoder{
+			File: File(tmpfile),
+		}
+		var val testStruct3
+		b.ResetTimer()
+		for i := 0; i < b.N; {
+			dec.Open()
+			end := i + records
+			if end > b.N {
+				end = b.N
+			}
+			for ; i < end; i++ {
+				dec.Read(&val)
+			}
+			dec.Close()
+		}
+		b.StopTimer()
+	})
+}
