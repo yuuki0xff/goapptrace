@@ -65,12 +65,15 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 	logmsg.Frames = make([]logutil.FuncStatusID, 0, maxStackSize)
 	logmsg.TxID = id
 
+	// TODO: goroutine localな変数に、pcsBuffをキャッシュする
 	// メモリ確保のオーバーヘッドを削減するために、stack allocateされる固定長配列を使用する。
 	// MaxStackSizeを超えている場合、正しいログが取得できない。
 	var pcsBuff [maxStackSize]uintptr
 	pclen := runtime.Callers(skips, pcsBuff[:])
 	pcs := pcsBuff[:pclen]
 
+	// TODO: PCsだけをサーバに送信。シンボル解決は事後処理する方式にする。
+	// TODO: 全シンボルはプロセス初期化時にサーバに送信する。
 	// symbolsに必要なシンボルを追加とlogmsg.Framesの作成を行う。
 	if useCallersFrames {
 		// runtime.CallersFrames()を使用する。
@@ -189,6 +192,8 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 		diff = nil
 	}
 
+	// TODO: 排他ロックを取って、sendBufferに直接書き込む。
+	// CPUのキャッシュに乗っているうちにシリアライズしたほうがよい。
 	lock.Lock()
 	defer lock.Unlock()
 	if sender == nil {
