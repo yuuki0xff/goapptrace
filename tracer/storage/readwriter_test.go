@@ -1,12 +1,12 @@
 package storage
 
 import (
-	"io/ioutil"
 	"os"
 	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/yuuki0xff/goapptrace/tracer/util"
 )
 
 type DummyStruct struct {
@@ -52,17 +52,6 @@ func simpleFileNamePattern(index int) File {
 	return File(index2fpath(index))
 }
 
-func withTemp(t *testing.T, fn func()) {
-	a := assert.New(t)
-	tmp, err := ioutil.TempDir("", ".goapptrace.storage.test")
-	if err != nil {
-		panic(err)
-	}
-	defer os.RemoveAll(tmp)
-	a.NoError(os.Chdir(tmp))
-	fn()
-}
-
 func TestSplitReadWriter_Open(t *testing.T) {
 	// Check error object returned by srw.Open().
 	testOpenErr := func(name string, rw SplitReadWriter, err error) {
@@ -76,7 +65,7 @@ func TestSplitReadWriter_Open(t *testing.T) {
 	// are not checked.
 	testFiles := func(name string, files []string, prwList []*ParallelReadWriter) {
 		t.Run(name, func(t *testing.T) {
-			withTemp(t, func() {
+			util.WithTempDir(func() {
 				a := assert.New(t)
 				// create files
 				for _, f := range files {
@@ -115,7 +104,7 @@ func TestSplitReadWriter_Open(t *testing.T) {
 }
 
 func TestSplitReadWriter_Rotate(t *testing.T) {
-	withTemp(t, func() {
+	util.WithTempDir(func() {
 		a := assert.New(t)
 		rw := SplitReadWriter{
 			FileNamePattern: simpleFileNamePattern,
@@ -136,21 +125,23 @@ func TestSplitReadWriter_Rotate(t *testing.T) {
 }
 
 func TestParallelReadWriter_Open(t *testing.T) {
-	withTemp(t, func() {
-		t.Run("[read-only] cache-is-nil", func(t *testing.T) {
+	t.Run("[read-only] cache-is-nil", func(t *testing.T) {
+		util.WithTempFile(func(tmpfile string) {
 			// read-only modeのときは、cache==nil
 			a := assert.New(t)
 			rw := ParallelReadWriter{
-				File:     File("dummy"),
+				File:     File(tmpfile),
 				ReadOnly: true,
 			}
 			a.NoError(rw.Open())
 			a.NoError(rw.Close())
 		})
-		t.Run("[read-write] cache-and-enc-is-not-nil", func(t *testing.T) {
+	})
+	t.Run("[read-write] cache-and-enc-is-not-nil", func(t *testing.T) {
+		util.WithTempFile(func(tmpfile string) {
 			a := assert.New(t)
 			rw := ParallelReadWriter{
-				File: File("dummy"),
+				File: File(tmpfile),
 			}
 			a.NoError(rw.Open())
 			a.NotNil(rw.enc)
@@ -160,30 +151,34 @@ func TestParallelReadWriter_Open(t *testing.T) {
 }
 
 func TestParallelReadWriter_Append(t *testing.T) {
-	withTemp(t, func() {
-		t.Run("read-only", func(t *testing.T) {
+	t.Run("read-only", func(t *testing.T) {
+		util.WithTempFile(func(tmpfile string) {
 			a := assert.New(t)
 			rw := ParallelReadWriter{
-				File:     File("dummy"),
+				File:     File(tmpfile),
 				ReadOnly: true,
 			}
 			a.NoError(rw.Open())
 			a.EqualError(rw.Append(DummyData), ErrFileIsReadOnly.Error())
 			a.NoError(rw.Close())
 		})
-		t.Run("read-write", func(t *testing.T) {
+	})
+	t.Run("read-write", func(t *testing.T) {
+		util.WithTempFile(func(tmpfile string) {
 			a := assert.New(t)
 			rw := ParallelReadWriter{
-				File: File("dummy"),
+				File: File(tmpfile),
 			}
 			a.NoError(rw.Open())
 			a.NoError(rw.Append(DummyData))
 			a.NoError(rw.Close())
 		})
-		t.Run("closed", func(t *testing.T) {
+	})
+	t.Run("closed", func(t *testing.T) {
+		util.WithTempFile(func(tmpfile string) {
 			a := assert.New(t)
 			rw := ParallelReadWriter{
-				File: File("dummy"),
+				File: File(tmpfile),
 			}
 			a.NoError(rw.Open())
 			a.NoError(rw.Close())
@@ -195,7 +190,7 @@ func TestParallelReadWriter_Append(t *testing.T) {
 func TestParallelReadWriter_Walk(t *testing.T) {
 	testHelper := func(t *testing.T, name string, rw *ParallelReadWriter, prepare func(rw *ParallelReadWriter) error, write func(rw *ParallelReadWriter) error) {
 		t.Run(name, func(t *testing.T) {
-			withTemp(t, func() {
+			util.WithTempDir(func() {
 				a := assert.New(t)
 				if prepare != nil {
 					a.NoError(prepare(rw))

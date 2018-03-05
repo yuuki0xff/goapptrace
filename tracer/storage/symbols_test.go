@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	"github.com/yuuki0xff/goapptrace/tracer/util"
 )
 
 func doTestSymbolsStore(
@@ -16,34 +17,36 @@ func doTestSymbolsStore(
 	checkFunc func(symbols *logutil.Symbols),
 ) {
 	a := assert.New(t)
-	file := createTempFile()
-	defer a.NoError(os.Remove(string(file)))
+	util.WithTempFile(func(tmpfile string) {
+		file := File(tmpfile)
+		defer a.NoError(os.Remove(string(file)))
 
-	store := SymbolsStore{
-		File: file,
-	}
-
-	// writing phase
-	{
-		symbols := logutil.Symbols{
-			Writable: true,
+		store := SymbolsStore{
+			File: file,
 		}
-		symbols.Init()
 
-		writerFunc(&symbols)
-		a.NoError(store.Write(&symbols))
-	}
+		// writing phase
+		{
+			symbols := logutil.Symbols{
+				Writable: true,
+			}
+			symbols.Init()
 
-	// reading phase
-	{
-		symbols := logutil.Symbols{
-			Writable: true,
+			writerFunc(&symbols)
+			a.NoError(store.Write(&symbols))
 		}
-		symbols.Init()
 
-		a.NoError(store.Read(&symbols))
-		checkFunc(&symbols)
-	}
+		// reading phase
+		{
+			symbols := logutil.Symbols{
+				Writable: true,
+			}
+			symbols.Init()
+
+			a.NoError(store.Read(&symbols))
+			checkFunc(&symbols)
+		}
+	})
 }
 
 func TestSymbolsStore_loadEmptyFile(t *testing.T) {
