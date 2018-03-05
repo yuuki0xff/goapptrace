@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bouk/monkey"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
@@ -33,8 +32,7 @@ var (
 		Writable: true,
 		KeepID:   false,
 	}
-	patchGuard *monkey.PatchGuard
-	sender     Sender
+	sender Sender
 
 	// stack traceからGID(Goroutine ID)を取得するための正規表現
 	gidRegExp = regexp.MustCompile(`^goroutine (\d+)`)
@@ -42,17 +40,6 @@ var (
 
 func init() {
 	symbols.Init()
-
-	// os.Exitにフックを仕掛ける
-	// TODO: don't work!
-	patchGuard = monkey.Patch(os.Exit, func(code int) {
-		patchGuard.Unpatch()
-		defer patchGuard.Restore()
-
-		// close a file or client before exit.
-		Close()
-		os.Exit(code)
-	})
 }
 
 func sendLog(tag logutil.TagName, id logutil.TxID) {
