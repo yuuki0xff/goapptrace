@@ -42,14 +42,36 @@ func init() {
 	symbols.Init()
 }
 
+func gid() logutil.GID {
+	// get GoroutineID (GID)
+	var id logutil.GID
+	if useNonStandardRuntime {
+		// runtime.GoID()は、標準のruntimeパッケージ内に存在しない関数である。
+		// tracer/builderパッケージによってパッチが当てられた環境でのみ使用可能。
+
+		//@@GAT@useNonStandardRuntime@ id = logutil.GID(runtime.GoID())
+	} else {
+		var buf [backtraceSize]byte
+		runtime.Stack(buf[:], false) // First line is "goroutine xxx [running]"
+		matches := gidRegExp.FindSubmatch(buf[:])
+		gid, err := strconv.ParseInt(string(matches[1]), 10, 64)
+		if err != nil {
+			log.Panic(err)
+		}
+		id = logutil.GID(gid)
+	}
+	return id
+}
+
 func sendLog(tag logutil.TagName, id logutil.TxID) {
 	shouldSendDiff := false
 	diff := &logutil.SymbolsData{}
 
 	logmsg := &logutil.RawFuncLog{}
-	logmsg.Timestamp = logutil.NewTime(time.Now())
 	logmsg.Tag = tag
+	logmsg.Timestamp = logutil.NewTime(time.Now())
 	logmsg.Frames = make([]logutil.FuncStatusID, 0, maxStackSize)
+	logmsg.GID = gid()
 	logmsg.TxID = id
 
 	// TODO: goroutine localな変数に、pcsBuffをキャッシュする
@@ -156,23 +178,6 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 			}
 			logmsg.Frames = append(logmsg.Frames, fsid)
 		}
-	}
-
-	// get GoroutineID (GID)
-	if useNonStandardRuntime {
-		// runtime.GoID()は、標準のruntimeパッケージ内に存在しない関数である。
-		// tracer/builderパッケージによってパッチが当てられた環境でのみ使用可能。
-
-		//@@GAT@useNonStandardRuntime@ logmsg.GID = logutil.GID(runtime.GoID())
-	} else {
-		var buf [backtraceSize]byte
-		runtime.Stack(buf[:], false) // First line is "goroutine xxx [running]"
-		matches := gidRegExp.FindSubmatch(buf[:])
-		gid, err := strconv.ParseInt(string(matches[1]), 10, 64)
-		if err != nil {
-			log.Panic(err)
-		}
-		logmsg.GID = logutil.GID(gid)
 	}
 
 	if !shouldSendDiff {
