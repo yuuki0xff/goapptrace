@@ -141,13 +141,13 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 
 				// GoFuncを追加する。
 				var funcStatusWasAdded bool
-				fsid, funcStatusWasAdded = symbols.AddFuncStatus(&logutil.FuncStatus{
+				fsid, funcStatusWasAdded = symbols.AddFuncStatus(&logutil.GoLine{
 					Func: fid,
 					Line: uint64(frame.Line),
 					PC:   frame.PC,
 				})
 				if funcStatusWasAdded {
-					f := &logutil.FuncStatus{}
+					f := &logutil.GoLine{}
 					*f, _ = symbols.FuncStatus(fsid)
 					diff.FuncStatus = append(diff.FuncStatus, f)
 				}
@@ -187,13 +187,13 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 				// GoFuncを追加する。
 				var funcStatusWasAdded bool
 				_, line := f.FileLine(pc)
-				fsid, funcStatusWasAdded = symbols.AddFuncStatus(&logutil.FuncStatus{
+				fsid, funcStatusWasAdded = symbols.AddFuncStatus(&logutil.GoLine{
 					Func: fid,
 					Line: uint64(line),
 					PC:   pc,
 				})
 				if funcStatusWasAdded {
-					f := &logutil.FuncStatus{}
+					f := &logutil.GoLine{}
 					*f, _ = symbols.FuncStatus(fsid)
 					diff.FuncStatus = append(diff.FuncStatus, f)
 				}

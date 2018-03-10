@@ -31,7 +31,7 @@ func (f *FuncStatusID) UnmarshalText(text []byte) error {
 // 初期化する。使用前に必ず呼び出すこと。
 func (s *Symbols) Init() {
 	s.funcs = make([]*GoFunc, 0)
-	s.funcStatus = make([]*FuncStatus, 0)
+	s.funcStatus = make([]*GoLine, 0)
 	s.name2FuncID = make(map[string]FuncID)
 	s.pc2FSID = make(map[uintptr]FuncStatusID)
 }
@@ -80,15 +80,15 @@ func (s *Symbols) Func(id FuncID) (GoFunc, bool) {
 }
 
 // FuncStatusIDに対応するFuncStatusを返す。
-func (s *Symbols) FuncStatus(id FuncStatusID) (FuncStatus, bool) {
+func (s *Symbols) FuncStatus(id FuncStatusID) (GoLine, bool) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	if FuncStatusID(len(s.funcStatus)) <= id {
-		return FuncStatus{}, false
+		return GoLine{}, false
 	}
 	fs := s.funcStatus[id]
 	if fs == nil {
-		return FuncStatus{}, false
+		return GoLine{}, false
 	}
 	return *fs, true
 }
@@ -124,7 +124,7 @@ func (s *Symbols) WalkFuncs(fn func(fs GoFunc) error) error {
 
 // 登録済みの全てのFuncStatusをコールバックする。
 // fnがエラーを返すと、中断する。
-func (s *Symbols) WalkFuncStatus(fn func(fs FuncStatus) error) error {
+func (s *Symbols) WalkFuncStatus(fn func(fs GoLine) error) error {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	for _, fs := range s.funcStatus {
@@ -236,13 +236,13 @@ func (s *Symbols) addFuncNolock(symbol *GoFunc) (id FuncID, added bool) {
 // FuncStatusを追加する。
 // 同一のFuncStatusが既に存在する場合、一致したFuncStatus.IDとadded=falseを返す。
 // IDが衝突した場合の動作は不定。
-func (s *Symbols) AddFuncStatus(status *FuncStatus) (id FuncStatusID, added bool) {
+func (s *Symbols) AddFuncStatus(status *GoLine) (id FuncStatusID, added bool) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	return s.addFuncStatusNolock(status)
 }
 
-func (s *Symbols) addFuncStatusNolock(status *FuncStatus) (id FuncStatusID, added bool) {
+func (s *Symbols) addFuncStatusNolock(status *GoLine) (id FuncStatusID, added bool) {
 	if !s.Writable {
 		log.Panic("Symbols is not writable")
 	}
@@ -260,7 +260,7 @@ func (s *Symbols) addFuncStatusNolock(status *FuncStatus) (id FuncStatusID, adde
 		}
 	} else {
 		status.ID = FuncStatusID(len(s.funcStatus))
-		// increase length of the FuncStatus array
+		// increase length of the GoLine array
 		s.funcStatus = append(s.funcStatus, status)
 	}
 	s.funcStatus[status.ID] = status

@@ -20,7 +20,7 @@ type LogStatus storage.LogInfo
 
 type FuncCall = logutil.FuncLog
 type FuncInfo = logutil.GoFunc
-type FuncStatusInfo = logutil.FuncStatus
+type FuncStatusInfo = logutil.GoLine
 type Goroutine = logutil.Goroutine
 
 type SortOrder string

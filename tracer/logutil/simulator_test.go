@@ -22,7 +22,7 @@ func TestStateSimulator_Next_startStopFuncs(t *testing.T) {
 		funcs: []*GoFunc{
 			{ID: 0, Name: "dummy.main"},
 		},
-		funcStatus: []*FuncStatus{
+		funcStatus: []*GoLine{
 			{ID: 0, Func: 0},
 		},
 	}
@@ -67,7 +67,7 @@ func TestStateSimulator_Next_withNestedCall(t *testing.T) {
 			{ID: 2, Name: "dummy.func2"},
 			{ID: 3, Name: "dummy.newGoroutine"},
 		},
-		funcStatus: []*FuncStatus{
+		funcStatus: []*GoLine{
 			{ID: 0, Func: 0},
 			{ID: 1, Func: 1},
 			{ID: 2, Func: 2},
@@ -162,7 +162,7 @@ func TestStateSimulator_Next_startStopNewGoroutines(t *testing.T) {
 			{ID: 0, Name: "dummy.main"},
 			{ID: 0, Name: "dummy.newGoroutine"},
 		},
-		funcStatus: []*FuncStatus{
+		funcStatus: []*GoLine{
 			{ID: 0, Func: 0},
 			{ID: 1, Func: 1},
 		},
@@ -227,7 +227,7 @@ func TestStateSimulator_Next_handlerIsNil(t *testing.T) {
 		funcs: []*GoFunc{
 			{ID: 0, Name: "dummy.main"},
 		},
-		funcStatus: []*FuncStatus{
+		funcStatus: []*GoLine{
 			{ID: 0, Func: 0},
 		},
 	}
@@ -267,7 +267,7 @@ func TestStateSimulator_Next_endlessFuncs(t *testing.T) {
 		funcs: []*GoFunc{
 			{ID: 0, Name: "dummy.main"},
 		},
-		funcStatus: []*FuncStatus{
+		funcStatus: []*GoLine{
 			{ID: 0, Func: 0},
 		},
 	}

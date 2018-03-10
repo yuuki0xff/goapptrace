@@ -41,7 +41,7 @@ var (
 		0xb0, 0, 0, 0, 0, 0, 0, 0x0b,
 	}
 
-	funcStatus = &logutil.FuncStatus{
+	funcStatus = &logutil.GoLine{
 		ID:   0xa00000000000000a,
 		Func: 0xb00000000000000b,
 		Line: 0xc00000000000000c,
@@ -368,7 +368,7 @@ func TestUnmarshalGoFunc(t *testing.T) {
 }
 func TestMarshalFuncStatusSlice(t *testing.T) {
 	a := assert.New(t)
-	test := func(msg string, slice []*logutil.FuncStatus, sliceLen, nonNilFlag, fsBytes []byte) {
+	test := func(msg string, slice []*logutil.GoLine, sliceLen, nonNilFlag, fsBytes []byte) {
 		buf := make([]byte, packetBufferSize)
 		n := marshalFuncStatusSlice(buf, slice)
 		buf = buf[:n]
@@ -381,26 +381,26 @@ func TestMarshalFuncStatusSlice(t *testing.T) {
 		if fsBytes == nil {
 			return
 		}
-		a.Equal(fsBytes, buf[9:], msg+": FuncStatus field")
+		a.Equal(fsBytes, buf[9:], msg+": GoLine field")
 	}
 
 	test("empty slice",
-		[]*logutil.FuncStatus{},
+		[]*logutil.GoLine{},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 0},
 		nil, nil)
 	test("contains a nil item",
-		[]*logutil.FuncStatus{nil},
+		[]*logutil.GoLine{nil},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
 		[]byte{0}, nil)
 	test("contains a non-nil item",
-		[]*logutil.FuncStatus{funcStatus},
+		[]*logutil.GoLine{funcStatus},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
 		[]byte{1},
 		funcStatusBytes)
 }
 func TestUnmarshalFuncStatusSlice(t *testing.T) {
 	a := assert.New(t)
-	test := func(msg string, expected []*logutil.FuncStatus, sliceLen, nonNilFlag, fsBytes []byte) {
+	test := func(msg string, expected []*logutil.GoLine, sliceLen, nonNilFlag, fsBytes []byte) {
 		var buf bytes.Buffer
 		buf.Write(sliceLen)
 		buf.Write(nonNilFlag)
@@ -411,15 +411,15 @@ func TestUnmarshalFuncStatusSlice(t *testing.T) {
 	}
 
 	test("empty",
-		[]*logutil.FuncStatus{},
+		[]*logutil.GoLine{},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 0},
 		nil, nil)
 	test("contains a nil item",
-		[]*logutil.FuncStatus{nil},
+		[]*logutil.GoLine{nil},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
 		[]byte{0}, nil)
 	test("contains a non-nil item",
-		[]*logutil.FuncStatus{funcStatus},
+		[]*logutil.GoLine{funcStatus},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
 		[]byte{1},
 		funcStatusBytes)

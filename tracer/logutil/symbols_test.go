@@ -19,7 +19,7 @@ func TestSymbols_ModuleName(t *testing.T) {
 				ID:   funcID,
 			},
 		},
-		funcStatus: []*FuncStatus{
+		funcStatus: []*GoLine{
 			{
 				ID:   funcSID,
 				Func: funcID,
@@ -124,7 +124,7 @@ func TestSymbols_AddFuncStatus_simple(t *testing.T) {
 		Writable: true,
 	}
 	s.Init()
-	id, added := s.AddFuncStatus(&FuncStatus{
+	id, added := s.AddFuncStatus(&GoLine{
 		Func: 10, // dummy
 		Line: 100,
 		PC:   101,
@@ -133,7 +133,7 @@ func TestSymbols_AddFuncStatus_simple(t *testing.T) {
 	a.Equal(FuncStatusID(0), id)
 	a.Len(s.funcStatus, 1)
 
-	id, added = s.AddFuncStatus(&FuncStatus{
+	id, added = s.AddFuncStatus(&GoLine{
 		Func: 22, // dummy
 		Line: 200,
 		PC:   201,
@@ -150,7 +150,7 @@ func TestSymbols_AddFuncStatus_keepID(t *testing.T) {
 		KeepID:   true,
 	}
 	s.Init()
-	id, added := s.AddFuncStatus(&FuncStatus{
+	id, added := s.AddFuncStatus(&GoLine{
 		ID:   1000,
 		Func: 10, // dummy
 		Line: 100,
@@ -159,7 +159,7 @@ func TestSymbols_AddFuncStatus_keepID(t *testing.T) {
 	a.True(added)
 	a.Equal(FuncStatusID(1000), id)
 
-	id, added = s.AddFuncStatus(&FuncStatus{
+	id, added = s.AddFuncStatus(&GoLine{
 		ID:   2200,
 		Func: 22, // dummy
 		Line: 200,
@@ -176,7 +176,7 @@ func TestSymbols_AddFuncStatus_dedup(t *testing.T) {
 		KeepID:   true,
 	}
 	s.Init()
-	rec := &FuncStatus{
+	rec := &GoLine{
 		ID:   2,
 		Func: 10, // dummy
 		Line: 100,
@@ -191,7 +191,7 @@ func TestSymbols_AddFuncStatus_dedup(t *testing.T) {
 	a.Equal(FuncStatusID(2), id)
 
 	// PCが一致していれば、他のフィールドの値が異なっていても一致として判定する。
-	id, added = s.AddFuncStatus(&FuncStatus{
+	id, added = s.AddFuncStatus(&GoLine{
 		PC: 101,
 	})
 	a.Equal(false, added)
@@ -236,7 +236,7 @@ func TestSymbols_FuncStatus(t *testing.T) {
 	_, ok := s.FuncStatus(FuncStatusID(1000))
 	a.Equal(false, ok)
 
-	id1, ok := s.AddFuncStatus(&FuncStatus{
+	id1, ok := s.AddFuncStatus(&GoLine{
 		ID:   1000,
 		Func: 10, // dummy
 		Line: 100,
@@ -262,7 +262,7 @@ func TestSymbols_FuncIDFromName(t *testing.T) {
 				Entry: 1000,
 			},
 		},
-		FuncStatus: []*FuncStatus{},
+		FuncStatus: []*GoLine{},
 	})
 
 	id, ok := s.FuncIDFromName("main.test")
@@ -285,7 +285,7 @@ func TestSymbols_FuncStatusIDFromPC(t *testing.T) {
 				Entry: 1000,
 			},
 		},
-		FuncStatus: []*FuncStatus{
+		FuncStatus: []*GoLine{
 			{
 				ID:   0,
 				Func: FuncID(0),

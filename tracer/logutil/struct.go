@@ -102,7 +102,7 @@ type Symbols struct {
 	// index: FuncID
 	funcs []*GoFunc
 	// index: FuncStatusID
-	funcStatus []*FuncStatus
+	funcStatus []*GoLine
 
 	lock sync.RWMutex
 
@@ -116,7 +116,7 @@ type Symbols struct {
 
 type SymbolsData struct {
 	Funcs      []*GoFunc
-	FuncStatus []*FuncStatus
+	FuncStatus []*GoLine
 }
 
 // FileID is index of Symbols.Files array.
@@ -155,7 +155,7 @@ type GoFunc struct {
 	Entry uintptr // entry point of function
 }
 
-type FuncStatus struct {
+type GoLine struct {
 	ID   FuncStatusID
 	Func FuncID
 	Line uint64
