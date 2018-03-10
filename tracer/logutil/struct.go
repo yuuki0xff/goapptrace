@@ -123,30 +123,19 @@ type File string
 //}
 
 // GoFunc means a function in golang.
-//type GoFunc struct {
-//	Entry uintptr
-//	// example: "github.com/yuuki0xff/goapptrace.main"
-//	Name string
-//	FileID FileID
-//}
-
-// GoLine haves a correspondence to position on source code from PC (Program Counter).
-//type GoLine struct {
-//	PC     uintptr
-//	FileID FileID
-//	Line   uint64
-//}
-
 type GoFunc struct {
-	ID    FuncID
-	Name  string  // example: "github.com/yuuki0xff/goapptrace.main"
-	File  string  // example: "/go/src/github.com/yuuki0xff/goapptrace/goapptrace.go"
-	Entry uintptr // entry point of function
+	// entry point of this function
+	Entry uintptr
+	// example: "github.com/yuuki0xff/goapptrace.main"
+	Name string
+	// file location that defines this function.
+	FileID FileID
 }
 
+// GoLine haves a correspondence to position on source code from PC (Program Counter).
 type GoLine struct {
-	ID   GoLineID
-	Func FuncID
-	Line uint64
-	PC   uintptr
+	PC     uintptr
+	// file location that defines this function.
+	FileID FileID
+	Line   uint64
 }
