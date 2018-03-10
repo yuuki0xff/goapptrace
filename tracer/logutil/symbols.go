@@ -1,7 +1,6 @@
 package logutil
 
 import (
-	"log"
 	"strconv"
 	"strings"
 
@@ -184,86 +183,6 @@ func (s *Symbols) ModuleName(id GoLineID) string {
 	return moduleName
 }
 
-// diffからシンボルを一括追加する。
-// 注意: KeepIDがfalseのときは、FuncIDやGoLineIDのIDは引き継がれない。
-func (s *Symbols) AddSymbolsDiff(diff *SymbolsData) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	for _, fsymbol := range diff.Funcs {
-		s.addFuncNolock(fsymbol)
-	}
-	for _, fsatus := range diff.GoLine {
-		s.addGoLineNolock(fsatus)
-	}
-}
-
-// Funcを追加する。
-// 同一のFuncが既に存在する場合、一致したFunc.IDとadded=falseを返す。
-// IDが衝突した場合の動作は不定。
-func (s *Symbols) AddFunc(symbol *GoFunc) (id FuncID, added bool) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	return s.addFuncNolock(symbol)
-}
-
-func (s *Symbols) addFuncNolock(symbol *GoFunc) (id FuncID, added bool) {
-	if !s.Writable {
-		log.Panic("Symbols is not writable")
-	}
-
-	id, ok := s.name2FuncID[symbol.Name]
-	if ok {
-		// if exists, nothing to do
-		return id, false
-	}
-
-	if s.KeepID {
-		// symbol.IDの値が、配列の長さを超えている場合、配列の長さを伸ばす。
-		for symbol.ID >= FuncID(len(s.funcs)) {
-			s.funcs = append(s.funcs, nil)
-		}
-	} else {
-		symbol.ID = FuncID(len(s.funcs))
-		// increase length of the funcs array
-		s.funcs = append(s.funcs, nil)
-	}
-	s.funcs[symbol.ID] = symbol
-	s.name2FuncID[symbol.Name] = symbol.ID
-	return symbol.ID, true
-}
-
-// GoLineを追加する。
-// 同一のGoLineが既に存在する場合、一致したGoLine.IDとadded=falseを返す。
-// IDが衝突した場合の動作は不定。
-func (s *Symbols) AddGoLine(status *GoLine) (id GoLineID, added bool) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	return s.addGoLineNolock(status)
-}
-
-func (s *Symbols) addGoLineNolock(status *GoLine) (id GoLineID, added bool) {
-	if !s.Writable {
-		log.Panic("Symbols is not writable")
-	}
-
-	id, ok := s.pc2FSID[status.PC]
-	if ok {
-		// if exists, nothing to do
-		return id, false
-	}
-
-	if s.KeepID {
-		// status.IDの値が配列の長さを超えている場合、配列の長さを伸ばす。
-		for status.ID >= GoLineID(len(s.goLine)) {
-			s.goLine = append(s.goLine, nil)
-		}
-	} else {
-		status.ID = GoLineID(len(s.goLine))
-		// increase length of the GoLine array
-		s.goLine = append(s.goLine, status)
-	}
-	s.goLine[status.ID] = status
-	s.pc2FSID[status.PC] = status.ID
-	return status.ID, true
+func (s *Symbols) SetSymbolsData(data *SymbolsData) {
+	// TODO
 }
