@@ -45,6 +45,7 @@ func (s *RetrySender) retry(funcName string, fn func() error) error {
 			return nil
 		}
 		log.Printf("failed to Sender.%s() on RetrySender.%s(): %s", funcName, funcName, err)
+		s.sleep(i)
 	}
 	return err
 }
@@ -73,6 +74,15 @@ func (s *RetrySender) retrySend(funcName string, send func() error) error {
 			log.Panicf("failed to Sender.Open() on RetrySender.%s(): %s", funcName, openerr)
 			return openerr
 		}
+
+		s.sleep(i)
 	}
 	return senderr
+}
+
+func (s *RetrySender) sleep(retryCount int) time.Duration {
+	if s.RetryInterval == 0 {
+		return defaultRetryInterval
+	}
+	return s.RetryInterval
 }
