@@ -76,12 +76,21 @@ func init() {
 		//*/
 
 		lock.Lock()
+		// setup sender.
 		setOutput()
 		if sender == nil {
 			log.Panicln("sender is nil")
 		}
-		// TODO: send symbols.
-		// TODO: send buffered logs on initBuffer.
+
+		// send SymbolsData
+		if err := sender.SendSymbols(&sd); err != nil {
+			log.Panic(err)
+		}
+
+		// send buffered logs on initBuffer.
+		for _, raw := range initBuffer {
+			sender.SendLog(raw)
+		}
 		initBuffer = nil
 		lock.Unlock()
 	}
