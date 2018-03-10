@@ -226,11 +226,11 @@ func unmarshalTime(buf []byte) (logutil.Time, int64) {
 }
 
 func marshalTagName(buf []byte, tag logutil.TagName) int64 {
-	return marshalString(buf, string(tag))
+	buf[0] = byte(tag)
+	return 1
 }
 func unmarshalTagName(buf []byte) (logutil.TagName, int64) {
-	str, n := unmarshalString(buf)
-	return logutil.TagName(str), n
+	return logutil.TagName(buf[0]), 1
 }
 func marshalRawFuncLog(buf []byte, r *logutil.RawFuncLog) int64 {
 	total := marshalRawFuncLogID(buf, r.ID)

@@ -7,9 +7,10 @@ import (
 const (
 	NotEnded       = Time(-1)
 	NotFoundParent = FuncLogID(-1)
-
-	FuncStart = TagName("funcStart")
-	FuncEnd   = TagName("funcEnd")
+)
+const (
+	FuncStart = iota
+	FuncEnd
 )
 
 type GID int64 // GID - Goroutine ID
@@ -17,7 +18,7 @@ type TxID uint64
 type FuncLogID int
 type RawFuncLogID int
 type Time int64
-type TagName string
+type TagName uint8
 type LogID [16]byte
 
 // RawFuncLogから実行時の状態を推測し、FuncLogとGoroutineオブジェクトを構築する。
