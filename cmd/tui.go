@@ -26,7 +26,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
-	"github.com/yuuki0xff/goapptrace/logviewer"
 )
 
 // tuiCmd represents the tui command
@@ -51,12 +50,14 @@ func runTuiCmd(conf *config.Config, stdout, stderr io.Writer, targets []string) 
 		return err
 	}
 
-	t := logviewer.UICoordinator{
-		Config: conf,
-		Api:    api,
-		LogID:  logID,
-	}
-	return t.Run()
+	// TODO: リファクタリングのために一時的に無効化する
+	panic("todo")
+	//t := logviewer.UICoordinator{
+	//	Config: conf,
+	//	Api:    api,
+	//	LogID:  logID,
+	//}
+	//return t.Run()
 }
 
 func init() {
