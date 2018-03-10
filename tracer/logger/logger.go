@@ -42,12 +42,38 @@ var (
 func init() {
 	if useNonStandardRuntime {
 		// get all symbols in this process.
+		var sd logutil.SymbolsData
+
 		// TODO: call to some method in Symbols. Need to implement it before write this function.
-		//@@GAT@useNonStandardRuntime@ runtime.IterateSymbols(
-		//@@GAT@useNonStandardRuntime@ 	nil,
-		//@@GAT@useNonStandardRuntime@ 	nil,
-		//@@GAT@useNonStandardRuntime@ 	nil,
-		//@@GAT@useNonStandardRuntime@ )
+		//@@GAT@useNonStandardRuntime@ /*
+		/*/
+		runtime.IterateSymbols(
+			func(minpc, maxpc uintptr, name string) {
+				sd.Mods = append(sd.Mods, logutil.GoModule{
+					Name:  name,
+					MinPC: minpc,
+					MaxPC: maxpc,
+				})
+			},
+			func(pc uintptr, name string) {
+				sd.Funcs = append(sd.Funcs, &logutil.GoFunc{
+					Entry: pc,
+					Name:  name,
+					// TODO: FileIDをセットする
+				})
+			},
+			func(pc uintptr, file string, line int32) {
+				if line < 0 {
+					log.Panicf("invalid line: pc=%d, file=%s, line=%d", pc, file, line)
+				}
+				sd.Lines = append(sd.Lines, &logutil.GoLine{
+					PC:     pc,
+					FileID: 0,
+					Line:   uint32(line),
+				})
+			},
+		)
+		//*/
 
 		lock.Lock()
 		setOutput()
