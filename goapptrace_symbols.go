@@ -59,6 +59,9 @@ func (l *_GAT_SilentLog) Show() {
 
 //go:nosplit
 func (l *_GAT_SilentLog) Fatal(s string) {
+	if l == nil {
+		return
+	}
 	l.Show()
 	throw(s)
 }
