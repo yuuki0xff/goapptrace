@@ -7,7 +7,6 @@ type _GAT_SilentLog struct {
 	logs []interface{}
 }
 
-//go:nosplit
 func (l *_GAT_SilentLog) Print(args ...interface{}) {
 	if l == nil {
 		return
@@ -17,7 +16,6 @@ func (l *_GAT_SilentLog) Print(args ...interface{}) {
 	unlock(&l.m)
 }
 
-//go:nosplit
 func (l *_GAT_SilentLog) Println(args ...interface{}) {
 	if l == nil {
 		return
@@ -28,7 +26,6 @@ func (l *_GAT_SilentLog) Println(args ...interface{}) {
 	unlock(&l.m)
 }
 
-//go:nosplit
 func (l *_GAT_SilentLog) Clear() {
 	if l == nil {
 		return
@@ -38,7 +35,6 @@ func (l *_GAT_SilentLog) Clear() {
 	unlock(&l.m)
 }
 
-//go:nosplit
 func (l *_GAT_SilentLog) Show() {
 	if l == nil {
 		return
@@ -57,7 +53,6 @@ func (l *_GAT_SilentLog) Show() {
 	unlock(&l.m)
 }
 
-//go:nosplit
 func (l *_GAT_SilentLog) Fatal(s string) {
 	if l == nil {
 		return
@@ -212,7 +207,6 @@ func iterateSymbols(
 	}
 }
 
-//go:nosplit
 func pcvalueIterate(log *_GAT_SilentLog, f funcInfo, off int32, targetpc uintptr, strict bool) (pcs []uintptr, vals []int32) {
 	if off == 0 {
 		return
