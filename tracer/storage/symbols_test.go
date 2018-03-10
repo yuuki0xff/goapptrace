@@ -96,7 +96,7 @@ func TestSymbolsStore_addSymbolsWithData(t *testing.T) {
 			Entry: 100,
 		},
 	}
-	funcStatuses := []*logutil.GoLine{
+	goLines := []*logutil.GoLine{
 		{
 			//Func: fIDs[0],
 			Line: 10,
@@ -113,12 +113,12 @@ func TestSymbolsStore_addSymbolsWithData(t *testing.T) {
 		// write
 		func(s *logutil.Symbols) {
 			fIDs[0], _ = s.AddFunc(goFuncs[0])
-			funcStatuses[0].Func = fIDs[0]
-			fsIDs[0], _ = s.AddGoLine(funcStatuses[0])
+			goLines[0].Func = fIDs[0]
+			fsIDs[0], _ = s.AddGoLine(goLines[0])
 
 			fIDs[1], _ = s.AddFunc(goFuncs[1])
-			funcStatuses[1].Func = fIDs[1]
-			fsIDs[1], _ = s.AddGoLine(funcStatuses[1])
+			goLines[1].Func = fIDs[1]
+			fsIDs[1], _ = s.AddGoLine(goLines[1])
 		},
 		// check data
 		func(symbols *logutil.Symbols) {
@@ -133,8 +133,8 @@ func TestSymbolsStore_addSymbolsWithData(t *testing.T) {
 			a.Equal(2, symbols.GoLineSize(), "Mismatched length of GoLine array")
 			fs1, _ := symbols.GoLine(0)
 			fs2, _ := symbols.GoLine(1)
-			a.Equal(*funcStatuses[0], fs1, "Mismatched GoLine object")
-			a.Equal(*funcStatuses[1], fs2, "Mismatched GoLine object")
+			a.Equal(*goLines[0], fs1, "Mismatched GoLine object")
+			a.Equal(*goLines[1], fs2, "Mismatched GoLine object")
 		},
 	)
 }
