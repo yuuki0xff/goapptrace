@@ -86,7 +86,6 @@ func gid() logutil.GID {
 func sendLog(tag logutil.TagName, id logutil.TxID) {
 	// TODO: 初期化前だったときの処理を追加する
 
-	shouldSendDiff := false
 	diff := &logutil.SymbolsData{}
 
 	logmsg := &logutil.RawFuncLog{}
@@ -103,107 +102,20 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 	pclen := runtime.Callers(skips, pcsBuff[:])
 	pcs := pcsBuff[:pclen]
 
-	// TODO: PCsだけをサーバに送信。シンボル解決は事後処理する方式にする。
-	// TODO: 全シンボルはプロセス初期化時にサーバに送信する。
+	// TODO: インライン化やループ展開により、正しくないデータが帰ってくる可能性がある問題を修正する。
+	// これらは過去のコードであるが、今後の実装の参考になる可能性があるため、残しておく。
+	//
 	// symbolsに必要なシンボルを追加とlogmsg.Framesの作成を行う。
 	if useCallersFrames {
 		// runtime.CallersFrames()を使用する。
 		// インライン化やループ展開がされた場合に、行番号や呼び出し元関数の調整を行うことができる。
 		// しかし、オーバーヘッドが大きくなる。
 		// コンパイラの最適化を簡単に無効化できない場合に使用することを推薦する。
-
-		frames := runtime.CallersFrames(pcs)
-		for {
-			frame, more := frames.Next()
-			if !more {
-				break
-			}
-			fsid, ok := symbols.GoLineIDFromPC(frame.PC)
-			if !ok {
-				// SLOW PATH
-				shouldSendDiff = true
-
-				fid, ok := symbols.FuncIDFromName(frame.Function)
-				if !ok {
-					// GoFuncが未登録なので、追加する。
-					var funcWasAdded bool
-					fid, funcWasAdded = symbols.AddFunc(&logutil.GoFunc{
-						Name:  frame.Function,
-						File:  frame.File,
-						Entry: frame.Entry,
-					})
-					if funcWasAdded {
-						f := &logutil.GoFunc{}
-						*f, _ = symbols.Func(fid)
-						diff.Funcs = append(diff.Funcs, f)
-					}
-				}
-
-				// GoFuncを追加する。
-				var goLineWasAdded bool
-				fsid, goLineWasAdded = symbols.AddGoLine(&logutil.GoLine{
-					Func: fid,
-					Line: uint64(frame.Line),
-					PC:   frame.PC,
-				})
-				if goLineWasAdded {
-					f := &logutil.GoLine{}
-					*f, _ = symbols.GoLine(fsid)
-					diff.GoLine = append(diff.GoLine, f)
-				}
-			}
-			logmsg.Frames = append(logmsg.Frames, fsid)
-		}
 	} else {
 		// runtime.FuncForPC()を使用する。
 		// runtime.CallersFrames()を使用するよりもオーバーヘッドが少ない。
 		// ただし、最適化が行われると呼び出し元の判定が狂ってしまう。
 		// これを使用するときは、*最適化を無効*にしてコンパイルすること。
-
-		for _, pc := range pcs {
-			fsid, ok := symbols.GoLineIDFromPC(pc)
-			if !ok {
-				// SLOW PATH
-				shouldSendDiff = true
-
-				f := runtime.FuncForPC(pc)
-				fid, ok := symbols.FuncIDFromName(f.Name())
-				if !ok {
-					// GoFuncが未登録なので、追加する。
-					var funcWasAdded bool
-					file, _ := f.FileLine(f.Entry())
-					fid, funcWasAdded = symbols.AddFunc(&logutil.GoFunc{
-						Name:  f.Name(),
-						File:  file,
-						Entry: f.Entry(),
-					})
-					if funcWasAdded {
-						f := &logutil.GoFunc{}
-						*f, _ = symbols.Func(fid)
-						diff.Funcs = append(diff.Funcs, f)
-					}
-				}
-
-				// GoFuncを追加する。
-				var goLineWasAdded bool
-				_, line := f.FileLine(pc)
-				fsid, goLineWasAdded = symbols.AddGoLine(&logutil.GoLine{
-					Func: fid,
-					Line: uint64(line),
-					PC:   pc,
-				})
-				if goLineWasAdded {
-					f := &logutil.GoLine{}
-					*f, _ = symbols.GoLine(fsid)
-					diff.GoLine = append(diff.GoLine, f)
-				}
-			}
-			logmsg.Frames = append(logmsg.Frames, fsid)
-		}
-	}
-
-	if !shouldSendDiff {
-		diff = nil
 	}
 
 	// TODO: 排他ロックを取って、sendBufferに直接書き込む。
