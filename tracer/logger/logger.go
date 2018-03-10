@@ -91,16 +91,15 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 	logmsg := &logutil.RawFuncLog{}
 	logmsg.Tag = tag
 	logmsg.Timestamp = logutil.NewTime(time.Now())
-	logmsg.Frames = make([]logutil.GoLineID, 0, maxStackSize)
+	// TODO: goroutine localな変数に、logmsg.Framesで確保するバッファをキャッシュする
+	logmsg.Frames = make([]uintptr, 0, maxStackSize)
 	logmsg.GID = gid()
 	logmsg.TxID = id
 
-	// TODO: goroutine localな変数に、pcsBuffをキャッシュする
 	// メモリ確保のオーバーヘッドを削減するために、stack allocateされる固定長配列を使用する。
 	// MaxStackSizeを超えている場合、正しいログが取得できない。
-	var pcsBuff [maxStackSize]uintptr
-	pclen := runtime.Callers(skips, pcsBuff[:])
-	pcs := pcsBuff[:pclen]
+	pclen := runtime.Callers(skips, logmsg.Frames[:])
+	logmsg.Frames = logmsg.Frames[:pclen]
 
 	// TODO: インライン化やループ展開により、正しくないデータが帰ってくる可能性がある問題を修正する。
 	// これらは過去のコードであるが、今後の実装の参考になる可能性があるため、残しておく。
