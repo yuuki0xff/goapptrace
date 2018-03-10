@@ -57,7 +57,7 @@ func TestRetrySender(t *testing.T) {
 				{logutil.FuncID(0), "module.f1", "/go/src/module/src.go", 1},
 				{logutil.FuncID(1), "module.f2", "/go/src/module/src.go", 2},
 			},
-			GoLine: []*logutil.GoLine{
+			Lines: []*logutil.GoLine{
 				{logutil.GoLineID(0), logutil.FuncID(0), 10, 100},
 				{logutil.GoLineID(1), logutil.FuncID(1), 20, 200},
 			},
@@ -76,7 +76,7 @@ func TestRetrySender(t *testing.T) {
 	a.NoError(sender.Send(
 		&logutil.SymbolsData{
 			Funcs: []*logutil.GoFunc{},
-			GoLine: []*logutil.GoLine{
+			Lines: []*logutil.GoLine{
 				{logutil.GoLineID(2), logutil.FuncID(1), 21, 210},
 			},
 		},

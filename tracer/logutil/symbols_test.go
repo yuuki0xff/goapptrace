@@ -262,7 +262,7 @@ func TestSymbols_FuncIDFromName(t *testing.T) {
 				Entry: 1000,
 			},
 		},
-		GoLine: []*GoLine{},
+		Lines: []*GoLine{},
 	})
 
 	id, ok := s.FuncIDFromName("main.test")
@@ -285,7 +285,7 @@ func TestSymbols_GoLineIDFromPC(t *testing.T) {
 				Entry: 1000,
 			},
 		},
-		GoLine: []*GoLine{
+		Lines: []*GoLine{
 			{
 				ID:   0,
 				Func: FuncID(0),

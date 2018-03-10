@@ -105,9 +105,9 @@ type Symbols struct {
 }
 
 type SymbolsData struct {
-	Mods   []GoModule
-	Funcs  []*GoFunc
-	GoLine []*GoLine
+	Mods  []GoModule
+	Funcs []*GoFunc
+	Lines []*GoLine
 }
 
 // FileID is index of Symbols.Files array.
