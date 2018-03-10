@@ -209,6 +209,7 @@ func iterateSymbols(
 	}
 }
 
+//go:nosplit
 func pcvalueIterate(log *_GAT_SilentLog, f funcInfo, off int32, targetpc uintptr, strict bool) (pcs []uintptr, vals []int32) {
 	if off == 0 {
 		return
