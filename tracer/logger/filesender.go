@@ -36,12 +36,20 @@ func (f *FileSender) Close() error {
 	return err
 }
 
-// write Symbols and RawFuncLog to the log file.
-func (f *FileSender) Send(diff *logutil.SymbolsData, funclog *logutil.RawFuncLog) error {
+// write Symbols to the log file.
+func (f *FileSender) SendSymbols(data *logutil.SymbolsData) error {
 	if f.w == nil {
 		return ClosedError
 	}
-	return f.w.Write(diff, funclog)
+	return f.w.Write(data, nil)
+}
+
+// write RawFuncLog to the log file.
+func (f *FileSender) SendLog(raw *logutil.RawFuncLog) error {
+	if f.w == nil {
+		return ClosedError
+	}
+	return f.w.Write(nil, raw)
 }
 
 // returns absolute path of log file.
