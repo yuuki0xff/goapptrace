@@ -26,21 +26,26 @@ func (s *RetrySender) Close() error {
 func (s *RetrySender) SendLog(raw *logutil.RawFuncLog) error {
 	return s.autoretry(func() error {
 		// try to send
-		err := s.Sender.SendLog(raw)
-		if err == nil {
+		senderr := s.Sender.SendLog(raw)
+		if senderr == nil {
 			return nil
 		}
-		log.Printf("failed to RetrySender.Send(): %s", err)
+		log.Printf("failed to RetrySender.Send(): %s", senderr)
 
 		// try to close.
 		// if occurs any error, we print of logging message.
-		err = s.Sender.Close()
-		if err != nil {
-			log.Printf("failed to Sender.Close() on RetrySender.Send(): %s", err)
+		closeerr := s.Sender.Close()
+		if closeerr != nil {
+			log.Printf("failed to Sender.Close() on RetrySender.Send(): %s", closeerr)
 		}
 
 		// try to re-open.
-		return s.Open()
+		openerr := s.Open()
+		if openerr != nil {
+			log.Panicf("failed to Sender.Open() on RetrySender.Send(): %s", openerr)
+			return openerr
+		}
+		return senderr
 	})
 }
 
