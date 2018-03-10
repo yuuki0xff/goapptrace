@@ -299,7 +299,7 @@ func TestSymbols_FuncStatusIDFromPC(t *testing.T) {
 	a.True(ok)
 	a.Equal(FuncStatusID(0), id)
 
-	// FuncSymbolのEntry pointの値は検索対象外
+	// GoFuncのEntry pointの値は検索対象外
 	_, ok = s.FuncStatusIDFromPC(1000)
 	a.Equal(false, ok)
 

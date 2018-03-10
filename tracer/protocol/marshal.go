@@ -61,7 +61,7 @@ func unmarshalFuncStatusID(buf []byte) (logutil.FuncStatusID, int64) {
 	return logutil.FuncStatusID(val), n
 }
 
-func marshalFuncSymbolSlice(buf []byte, funcs []*logutil.GoFunc) int64 {
+func marshalGoFuncSlice(buf []byte, funcs []*logutil.GoFunc) int64 {
 	var total int64
 
 	n := marshalUint64(buf[total:], uint64(len(funcs)))
@@ -70,13 +70,13 @@ func marshalFuncSymbolSlice(buf []byte, funcs []*logutil.GoFunc) int64 {
 		n = marshalBool(buf[total:], funcs[i] != nil)
 		total += n
 		if funcs[i] != nil {
-			n = marshalFuncSymbol(buf[total:], funcs[i])
+			n = marshalGoFunc(buf[total:], funcs[i])
 			total += n
 		}
 	}
 	return total
 }
-func unmarshalFuncSymbolSlice(buf []byte) ([]*logutil.GoFunc, int64) {
+func unmarshalGoFuncSlice(buf []byte) ([]*logutil.GoFunc, int64) {
 	var total int64
 
 	length, n := unmarshalUint64(buf)
@@ -87,14 +87,14 @@ func unmarshalFuncSymbolSlice(buf []byte) ([]*logutil.GoFunc, int64) {
 		isNonNil, n := unmarshalBool(buf[total:])
 		total += n
 		if isNonNil {
-			funcs[i], n = unmarshalFuncSymbol(buf[total:])
+			funcs[i], n = unmarshalGoFunc(buf[total:])
 			total += n
 		}
 	}
 	return funcs, total
 }
 
-func marshalFuncSymbol(buf []byte, s *logutil.GoFunc) int64 {
+func marshalGoFunc(buf []byte, s *logutil.GoFunc) int64 {
 	var total int64
 	total += marshalFuncID(buf, s.ID)
 	total += marshalString(buf[total:], s.Name)
@@ -102,7 +102,7 @@ func marshalFuncSymbol(buf []byte, s *logutil.GoFunc) int64 {
 	total += marshalUint64(buf[total:], uint64(s.Entry))
 	return total
 }
-func unmarshalFuncSymbol(buf []byte) (*logutil.GoFunc, int64) {
+func unmarshalGoFunc(buf []byte) (*logutil.GoFunc, int64) {
 	var total int64
 	var n int64
 

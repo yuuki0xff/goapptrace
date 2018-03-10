@@ -146,20 +146,20 @@ func BenchmarkUnmarshalString(b *testing.B) {
 	}
 	b.StopTimer()
 }
-func BenchmarkMarshalFuncSymbol(b *testing.B) {
+func BenchmarkMarshalGoFunc(b *testing.B) {
 	buf := make([]byte, packetBufferSize)
 	val := goFunc
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		marshalFuncSymbol(buf, val)
+		marshalGoFunc(buf, val)
 	}
 	b.StopTimer()
 }
-func BenchmarkUnmarshalFuncSymbol(b *testing.B) {
+func BenchmarkUnmarshalGoFunc(b *testing.B) {
 	buf := goFuncBytes
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		unmarshalFuncSymbol(buf)
+		unmarshalGoFunc(buf)
 	}
 	b.StopTimer()
 }
@@ -295,11 +295,11 @@ func TestUnmarshalString(t *testing.T) {
 		[]byte{0, 0, 0, 0, 0, 0, 0, 7},
 		[]byte{0x66, 0x6f, 0x6f, 0x20, 0x62, 0x61, 0x72})
 }
-func TestMarshalFuncSymbolSlice(t *testing.T) {
+func TestMarshalGoFuncSlice(t *testing.T) {
 	a := assert.New(t)
 	test := func(msg string, slice []*logutil.GoFunc, sliceLen, nonNilFlag, fsBytes []byte) {
 		buf := make([]byte, packetBufferSize)
-		n := marshalFuncSymbolSlice(buf, slice)
+		n := marshalGoFuncSlice(buf, slice)
 		buf = buf[:n]
 
 		a.Equal(sliceLen, buf[:8], msg+": length field")
@@ -327,14 +327,14 @@ func TestMarshalFuncSymbolSlice(t *testing.T) {
 		[]byte{1},
 		goFuncBytes)
 }
-func TestUnmarshalFuncSymbolSlice(t *testing.T) {
+func TestUnmarshalGoFuncSlice(t *testing.T) {
 	a := assert.New(t)
 	test := func(msg string, expected []*logutil.GoFunc, sliceLen, nonNilFlag, fsBytes []byte) {
 		var buf bytes.Buffer
 		buf.Write(sliceLen)
 		buf.Write(nonNilFlag)
 		buf.Write(fsBytes)
-		actual, _ := unmarshalFuncSymbolSlice(buf.Bytes())
+		actual, _ := unmarshalGoFuncSlice(buf.Bytes())
 		a.Equal(expected, actual, msg)
 	}
 
@@ -352,18 +352,18 @@ func TestUnmarshalFuncSymbolSlice(t *testing.T) {
 		[]byte{1},
 		goFuncBytes)
 }
-func TestMarshalFuncSymbol(t *testing.T) {
+func TestMarshalGoFunc(t *testing.T) {
 	buf := make([]byte, packetBufferSize)
 	a := assert.New(t)
 
-	n := marshalFuncSymbol(buf, goFunc)
+	n := marshalGoFunc(buf, goFunc)
 	buf = buf[:n]
 	a.Equal(goFuncBytes, buf)
 }
-func TestUnmarshalFuncSymbol(t *testing.T) {
+func TestUnmarshalGoFunc(t *testing.T) {
 	a := assert.New(t)
 
-	s, _ := unmarshalFuncSymbol(goFuncBytes)
+	s, _ := unmarshalGoFunc(goFuncBytes)
 	a.Equal(goFunc, s)
 }
 func TestMarshalFuncStatusSlice(t *testing.T) {

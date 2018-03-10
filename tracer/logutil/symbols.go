@@ -52,7 +52,7 @@ func (s *Symbols) Load(data SymbolsData) {
 	}
 }
 
-// 現在保持している全てのFuncSymbolとFuncStatusのsliceをコールバックする。
+// 現在保持している全てのGoFuncとFuncStatusのsliceをコールバックする。
 // fnの内部でファイルへの書き出しなどの処理を行うこと。
 // fnに渡された引数の参照先は、fn実行終了後は非同期的に変更される可能性がある。
 // fnの外部で使用する場合は、全てのオブジェクトをコピーすること。
@@ -65,7 +65,7 @@ func (s *Symbols) Save(fn SymbolsWriteFn) error {
 	})
 }
 
-// FuncIDに対応するFuncSymbolを返す。
+// FuncIDに対応するGoFuncを返す。
 func (s *Symbols) Func(id FuncID) (GoFunc, bool) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()

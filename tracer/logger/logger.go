@@ -125,7 +125,7 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 
 				fid, ok := symbols.FuncIDFromName(frame.Function)
 				if !ok {
-					// FuncSymbolが未登録なので、追加する。
+					// GoFuncが未登録なので、追加する。
 					var funcWasAdded bool
 					fid, funcWasAdded = symbols.AddFunc(&logutil.GoFunc{
 						Name:  frame.Function,
@@ -139,7 +139,7 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 					}
 				}
 
-				// FuncSymbolを追加する。
+				// GoFuncを追加する。
 				var funcStatusWasAdded bool
 				fsid, funcStatusWasAdded = symbols.AddFuncStatus(&logutil.FuncStatus{
 					Func: fid,
@@ -169,7 +169,7 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 				f := runtime.FuncForPC(pc)
 				fid, ok := symbols.FuncIDFromName(f.Name())
 				if !ok {
-					// FuncSymbolが未登録なので、追加する。
+					// GoFuncが未登録なので、追加する。
 					var funcWasAdded bool
 					file, _ := f.FileLine(f.Entry())
 					fid, funcWasAdded = symbols.AddFunc(&logutil.GoFunc{
@@ -184,7 +184,7 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 					}
 				}
 
-				// FuncSymbolを追加する。
+				// GoFuncを追加する。
 				var funcStatusWasAdded bool
 				_, line := f.FileLine(pc)
 				fsid, funcStatusWasAdded = symbols.AddFuncStatus(&logutil.FuncStatus{

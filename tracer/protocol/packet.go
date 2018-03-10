@@ -284,14 +284,14 @@ func (p *StopTraceCmdPacket) Unmarshal(buf []byte) int64 {
 }
 
 func (p *SymbolPacket) Marshal(buf []byte) int64 {
-	total := marshalFuncSymbolSlice(buf, p.Funcs)
+	total := marshalGoFuncSlice(buf, p.Funcs)
 	total += marshalFuncStatusSlice(buf[total:], p.FuncStatus)
 	return total
 }
 func (p *SymbolPacket) Unmarshal(buf []byte) int64 {
 	var total int64
 	var n int64
-	p.Funcs, n = unmarshalFuncSymbolSlice(buf)
+	p.Funcs, n = unmarshalGoFuncSlice(buf)
 	total += n
 	p.FuncStatus, n = unmarshalFuncStatusSlice(buf)
 	total += n
