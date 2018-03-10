@@ -39,7 +39,7 @@ func (s *RetrySender) SendLog(raw *logutil.RawFuncLog) error {
 // retry is automatically retry until reached to retry limit or fn() is succeed.
 func (s *RetrySender) retry(funcName string, fn func() error) error {
 	var err error
-	for i := 0; i < s.MaxRetry; i++ {
+	for i := 0; i < s.maxRetry(); i++ {
 		err = fn()
 		if err == nil {
 			return nil
@@ -54,7 +54,7 @@ func (s *RetrySender) retry(funcName string, fn func() error) error {
 // When send() is not succeed, it will reopen the sender.
 func (s *RetrySender) retrySend(funcName string, send func() error) error {
 	var senderr error
-	for i := 0; i < s.MaxRetry; i++ {
+	for i := 0; i < s.maxRetry(); i++ {
 		senderr = send()
 		if senderr == nil {
 			return nil
@@ -78,6 +78,13 @@ func (s *RetrySender) retrySend(funcName string, send func() error) error {
 		s.sleep(i)
 	}
 	return senderr
+}
+
+func (s *RetrySender) maxRetry() int {
+	if s.MaxRetry == 0 {
+		return defaultMaxRetry
+	}
+	return s.MaxRetry
 }
 
 func (s *RetrySender) sleep(retryCount int) time.Duration {
