@@ -155,9 +155,9 @@ func (w *JsonLogWriter) SetGoLineInfoGetter(func(id logutil.GoLineID) restapi.Go
 }
 
 type TextLogWriter struct {
-	output     io.Writer
-	funcInfo   func(id logutil.FuncID) restapi.FuncInfo
-	goLine func(id logutil.GoLineID) restapi.GoLineInfo
+	output   io.Writer
+	funcInfo func(id logutil.FuncID) restapi.FuncInfo
+	goLine   func(id logutil.GoLineID) restapi.GoLineInfo
 }
 
 func NewTextLogWriter(output io.Writer) *TextLogWriter {

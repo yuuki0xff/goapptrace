@@ -60,7 +60,7 @@ func (s *Symbols) Save(fn SymbolsWriteFn) error {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	return fn(SymbolsData{
-		Funcs:      s.funcs,
+		Funcs:  s.funcs,
 		GoLine: s.goLine,
 	})
 }

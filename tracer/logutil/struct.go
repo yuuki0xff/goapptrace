@@ -74,11 +74,11 @@ type RawFuncLog struct {
 	// TODO: ドキュメントを書く
 
 	ID        RawFuncLogID
-	Tag       TagName        `json:"tag"`
-	Timestamp Time           `json:"timestamp"`
+	Tag       TagName    `json:"tag"`
+	Timestamp Time       `json:"timestamp"`
 	Frames    []GoLineID `json:"frames"` // Frames[0] is current frame, Frames[1] is the caller of Frame[0].
-	GID       GID            `json:"gid"`
-	TxID      TxID           `json:"txid"`
+	GID       GID        `json:"gid"`
+	TxID      TxID       `json:"txid"`
 }
 
 func (fl FuncLog) IsEnded() bool {
@@ -115,7 +115,7 @@ type Symbols struct {
 }
 
 type SymbolsData struct {
-	Funcs      []*GoFunc
+	Funcs  []*GoFunc
 	GoLine []*GoLine
 }
 
