@@ -62,7 +62,7 @@ func (s *RetrySender) retrySend(funcName string, send func() error) error {
 
 		// try to close.
 		// if occurs any error, we print of logging message.
-		closeerr := s.Sender.Close()
+		closeerr := s.Close()
 		if closeerr != nil {
 			log.Printf("failed to Sender.Close() on RetrySender.%s(): %s", funcName, closeerr)
 		}
