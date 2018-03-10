@@ -117,11 +117,11 @@ type FileID uint64
 type File string
 
 // GoModules means a module in golang.
-//type GoModule struct {
-//	Name  string
-//	MinPC uintptr
-//	MaxPC uintptr
-//}
+type GoModule struct {
+	Name  string
+	MinPC uintptr
+	MaxPC uintptr
+}
 
 // GoFunc means a function in golang.
 type GoFunc struct {
