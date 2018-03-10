@@ -21,7 +21,6 @@
 package cmd
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/spf13/cobra"
@@ -38,17 +37,17 @@ var tuiCmd = &cobra.Command{
 }
 
 func runTuiCmd(conf *config.Config, stdout, stderr io.Writer, targets []string) error {
-	var logID string
-	if len(targets) >= 2 {
-		fmt.Fprintln(stderr, "too many arguments. length of args should be less than 2")
-	} else if len(targets) == 1 {
-		logID = targets[0]
-	}
-
-	api, err := getAPIClient(conf)
-	if err != nil {
-		return err
-	}
+	//var logID string
+	//if len(targets) >= 2 {
+	//	fmt.Fprintln(stderr, "too many arguments. length of args should be less than 2")
+	//} else if len(targets) == 1 {
+	//	logID = targets[0]
+	//}
+	//
+	//api, err := getAPIClient(conf)
+	//if err != nil {
+	//	return err
+	//}
 
 	// TODO: リファクタリングのために一時的に無効化する
 	panic("todo")
