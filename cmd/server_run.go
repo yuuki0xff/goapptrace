@@ -222,7 +222,7 @@ func getServerHandler(strg *storage.Storage, store *logutil.StateSimulatorStore)
 				}
 				ss.Next(*obj)
 			case *logutil.SymbolsData:
-				if err := logobj.AppendSymbolsDiff(obj); err != nil {
+				if err := logobj.SetSymbolsData(obj); err != nil {
 					log.Panicln("failed to append Symbols:", err.Error())
 				}
 			default:
