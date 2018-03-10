@@ -9,6 +9,9 @@ type _GAT_SilentLog struct {
 
 //go:nosplit
 func (l *_GAT_SilentLog) Print(args ...interface{}) {
+	if l == nil {
+		return
+	}
 	lock(&l.m)
 	l.logs = append(l.logs, args...)
 	unlock(&l.m)
@@ -16,6 +19,9 @@ func (l *_GAT_SilentLog) Print(args ...interface{}) {
 
 //go:nosplit
 func (l *_GAT_SilentLog) Println(args ...interface{}) {
+	if l == nil {
+		return
+	}
 	lock(&l.m)
 	l.logs = append(l.logs, args...)
 	l.logs = append(l.logs, "\n")
@@ -24,6 +30,9 @@ func (l *_GAT_SilentLog) Println(args ...interface{}) {
 
 //go:nosplit
 func (l *_GAT_SilentLog) Clear() {
+	if l == nil {
+		return
+	}
 	lock(&l.m)
 	l.logs = l.logs[:0]
 	unlock(&l.m)
@@ -31,6 +40,9 @@ func (l *_GAT_SilentLog) Clear() {
 
 //go:nosplit
 func (l *_GAT_SilentLog) Show() {
+	if l == nil {
+		return
+	}
 	lock(&l.m)
 	for _, ival := range l.logs {
 		switch val := ival.(type) {
@@ -61,16 +73,28 @@ func init() {
 		}
 		if env[:len(key)] == key {
 			// matched
-			iterateSymbols()
+			iterateSymbols(
+				func(pc uintptr, name string) {
+					println(pc, "func", name)
+				},
+				func(pc uintptr, file string, line int32) {
+					println(pc, file, ":", line)
+				},
+			)
 			break
 		}
 	}
 }
 
-func iterateSymbols() {
+func iterateSymbols(
+	addFunc func(pc uintptr, name string),
+	addLine func(pc uintptr, file string, line int32),
+) {
 	const strict = true
 	const superStrict = true
-	var log _GAT_SilentLog
+	var log *_GAT_SilentLog
+	// disable debug log output.
+	//log = &_GAT_SilentLog{}
 
 	defer func() {
 		log.Show()
@@ -113,7 +137,7 @@ func iterateSymbols() {
 			log.Println("\tnpcdata=", rawfn.npcdata)
 			log.Println("\tnfuncdata=", rawfn.nfuncdata)
 
-			pclns, lines := pcvalueIterate(&log, fi, rawfn.pcln, rawfn.entry, strict)
+			pclns, lines := pcvalueIterate(log, fi, rawfn.pcln, rawfn.entry, strict)
 			if len(pclns) == 0 || len(lines) == 0 {
 				// invalid
 				log.Println()
@@ -183,13 +207,6 @@ func iterateSymbols() {
 			}
 		}
 	}
-}
-
-func addFunc(pc uintptr, name string) {
-	// TODO
-}
-func addLine(pc uintptr, file string, line int32) {
-	// TODO
 }
 
 func pcvalueIterate(log *_GAT_SilentLog, f funcInfo, off int32, targetpc uintptr, strict bool) (pcs []uintptr, vals []int32) {
