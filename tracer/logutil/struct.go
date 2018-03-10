@@ -99,19 +99,8 @@ type Symbols struct {
 	// KeepIDがfalseのとき、追加時に指定されたIDは無視し、新たなIDを付与する。
 	KeepID bool
 
-	// index: FuncID
-	funcs []*GoFunc
-	// index: GoLineID
-	goLine []*GoLine
-
 	lock sync.RWMutex
-
-	// SymbolName(string)とFuncIDの対応関係を保持する
-	name2FuncID map[string]FuncID
-	// PC(Program Counter)とGoLineIDの対応関係を保持する。
-	// 同一の内容のGoLineを追加しないようにするために使用する。
-	// inline化やループ展開などの最適化をされると破綻してしまうので、コンパイル時に最適化をoffにしているのが前提。
-	pc2FSID map[uintptr]GoLineID
+	data SymbolsData
 }
 
 type SymbolsData struct {

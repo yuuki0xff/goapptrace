@@ -28,27 +28,12 @@ func (f *GoLineID) UnmarshalText(text []byte) error {
 }
 
 // 初期化する。使用前に必ず呼び出すこと。
-func (s *Symbols) Init() {
-	s.funcs = make([]*GoFunc, 0)
-	s.goLine = make([]*GoLine, 0)
-	s.name2FuncID = make(map[string]FuncID)
-	s.pc2FSID = make(map[uintptr]GoLineID)
-}
+func (s *Symbols) Init() {}
 
 // 指定した状態で初期化する。
 // Init()を呼び出す必要はない。
 func (s *Symbols) Load(data SymbolsData) {
-	s.funcs = data.Funcs
-	s.goLine = data.GoLine
-	s.name2FuncID = make(map[string]FuncID)
-	s.pc2FSID = make(map[uintptr]GoLineID)
-
-	for _, f := range s.funcs {
-		s.name2FuncID[f.Name] = f.ID
-	}
-	for _, fs := range s.goLine {
-		s.pc2FSID[fs.PC] = fs.ID
-	}
+	s.data = data
 }
 
 // 現在保持している全てのGoFuncとGoLineのsliceをコールバックする。
@@ -58,52 +43,39 @@ func (s *Symbols) Load(data SymbolsData) {
 func (s *Symbols) Save(fn SymbolsWriteFn) error {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	return fn(SymbolsData{
-		Funcs:  s.funcs,
-		GoLine: s.goLine,
-	})
+	return fn(s.data)
 }
 
 // FuncIDに対応するGoFuncを返す。
 func (s *Symbols) Func(id FuncID) (GoFunc, bool) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	if FuncID(len(s.funcs)) <= id {
-		return GoFunc{}, false
-	}
-	f := s.funcs[id]
-	if f == nil {
-		return GoFunc{}, false
-	}
-	return *f, true
+	// TODO: FuncIDではなく、PCに対応するGoFuncを返すように変更する
+	panic("todo")
 }
 
 // GoLineIDに対応するGoLineを返す。
 func (s *Symbols) GoLine(id GoLineID) (GoLine, bool) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	if GoLineID(len(s.goLine)) <= id {
-		return GoLine{}, false
-	}
-	fs := s.goLine[id]
-	if fs == nil {
-		return GoLine{}, false
-	}
-	return *fs, true
+	// TODO: GoLineIDではなく、PCに対応するGoFUncを返すように変更する
+	panic("todo")
 }
 
 // 登録済みのFuncの数を返す。
 func (s *Symbols) FuncsSize() int {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	return len(s.funcs)
+	// TODO: テストケース以外から使用されていないため、削除する
+	panic("todo")
 }
 
 // 登録済みのGoLineの数を返す。
 func (s *Symbols) GoLineSize() int {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	return len(s.goLine)
+	// TODO: テストケース以外から使用されていないため、削除する
+	panic("todo")
 }
 
 // 登録済みの全てのFuncをコールバックする。。
@@ -111,14 +83,16 @@ func (s *Symbols) GoLineSize() int {
 func (s *Symbols) WalkFuncs(fn func(fs GoFunc) error) error {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	for _, fs := range s.funcs {
-		if fs != nil {
-			if err := fn(*fs); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+	// TODO: テストケース以外から使用されていない。扱いを検討する
+	panic("todo")
+	//for _, fs := range s.funcs {
+	//	if fs != nil {
+	//		if err := fn(*fs); err != nil {
+	//			return err
+	//		}
+	//	}
+	//}
+	//return nil
 }
 
 // 登録済みの全てのGoLineをコールバックする。
@@ -126,14 +100,16 @@ func (s *Symbols) WalkFuncs(fn func(fs GoFunc) error) error {
 func (s *Symbols) WalkGoLine(fn func(fs GoLine) error) error {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	for _, fs := range s.goLine {
-		if fs != nil {
-			if err := fn(*fs); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+	panic("todo")
+	// TODO: テストケース以外から使用されていない。扱いを検討する
+	//for _, fs := range s.goLine {
+	//	if fs != nil {
+	//		if err := fn(*fs); err != nil {
+	//			return err
+	//		}
+	//	}
+	//}
+	//return nil
 }
 
 // 関数名からFuncIDを取得する.
@@ -141,7 +117,8 @@ func (s *Symbols) WalkGoLine(fn func(fs GoLine) error) error {
 //go:nosplit
 func (s *Symbols) FuncIDFromName(name string) (id FuncID, ok bool) {
 	s.lock.RLock()
-	id, ok = s.name2FuncID[name]
+	// TODO: logger.sendLog()の改修により不要になるため、削除する
+	panic("todo")
 	s.lock.RUnlock()
 	return
 }
@@ -151,7 +128,8 @@ func (s *Symbols) FuncIDFromName(name string) (id FuncID, ok bool) {
 //go:nosplit
 func (s *Symbols) GoLineIDFromPC(pc uintptr) (id GoLineID, ok bool) {
 	s.lock.RLock()
-	id, ok = s.pc2FSID[pc]
+	// TODO: logger.sendLog()の改修により不要になるため、削除する
+	panic("todo")
 	s.lock.RUnlock()
 	return
 }
@@ -160,14 +138,16 @@ func (s *Symbols) GoLineIDFromPC(pc uintptr) (id GoLineID, ok bool) {
 func (s *Symbols) FuncID(id GoLineID) FuncID {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	return s.goLine[id].Func
+	// TODO: GoLineIDではなく、PCから変換するようにする
+	panic("todo")
 }
 
 // GoLineIDから関数名を取得する。
 func (s *Symbols) FuncName(id GoLineID) string {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	return s.funcs[s.goLine[id].Func].Name
+	// TODO: GoLineIDではなく、PCから変換するようにする
+	panic("todo")
 }
 
 // GoLineIDからモジュール名を返す。
