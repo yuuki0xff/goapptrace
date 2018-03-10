@@ -81,6 +81,9 @@ func (s *RetrySender) retrySend(funcName string, send func() error) error {
 }
 
 func (s *RetrySender) maxRetry() int {
+	if s.MaxRetry < 0 {
+		log.Panicf("invalid MaxRetry: %d >= 0", s.MaxRetry)
+	}
 	if s.MaxRetry == 0 {
 		return defaultMaxRetry
 	}
@@ -88,6 +91,9 @@ func (s *RetrySender) maxRetry() int {
 }
 
 func (s *RetrySender) sleep(retryCount int) time.Duration {
+	if s.RetryInterval < 0 {
+		log.Panicf("invalid RetryInterval: %d >= 0", s.MaxRetry)
+	}
 	if s.RetryInterval == 0 {
 		return defaultRetryInterval
 	}
