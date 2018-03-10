@@ -150,7 +150,7 @@ func symbols2string(symbols *logutil.Symbols) string {
 
 	fmt.Println(buf, "Symbols.GoLine:")
 	symbols.WalkGoLine(func(fs logutil.GoLine) error {
-		fmt.Fprintf(buf, "  FuncStatu[%d] = %+v", fs.ID, fs)
+		fmt.Fprintf(buf, "  GoLine[%d] = %+v", fs.ID, fs)
 		return nil
 	})
 	return buf.String()
