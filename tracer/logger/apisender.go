@@ -74,6 +74,7 @@ func (s *LogServerSender) SendSymbols(data *logutil.SymbolsData) error {
 	}); err != nil {
 		return err
 	}
+	return nil
 }
 
 // send RawFuncLog to the log server.
