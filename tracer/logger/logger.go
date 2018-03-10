@@ -32,13 +32,33 @@ var (
 		Writable: true,
 		KeepID:   false,
 	}
-	sender Sender
+	initBuffer []*logutil.RawFuncLog
+	sender     Sender
 
 	// stack traceからGID(Goroutine ID)を取得するための正規表現
 	gidRegExp = regexp.MustCompile(`^goroutine (\d+)`)
 )
 
 func init() {
+	if useNonStandardRuntime {
+		// get all symbols in this process.
+		// TODO: call to some method in Symbols. Need to implement it before write this function.
+		//@@GAT@useNonStandardRuntime@ runtime.IterateSymbols(
+		//@@GAT@useNonStandardRuntime@ 	nil,
+		//@@GAT@useNonStandardRuntime@ 	nil,
+		//@@GAT@useNonStandardRuntime@ 	nil,
+		//@@GAT@useNonStandardRuntime@ )
+
+		lock.Lock()
+		setOutput()
+		if sender == nil {
+			log.Panicln("sender is nil")
+		}
+		// TODO: send symbols.
+		// TODO: send buffered logs on initBuffer.
+		initBuffer = nil
+		lock.Unlock()
+	}
 	symbols.Init()
 }
 
@@ -64,6 +84,8 @@ func gid() logutil.GID {
 }
 
 func sendLog(tag logutil.TagName, id logutil.TxID) {
+	// TODO: 初期化前だったときの処理を追加する
+
 	shouldSendDiff := false
 	diff := &logutil.SymbolsData{}
 
