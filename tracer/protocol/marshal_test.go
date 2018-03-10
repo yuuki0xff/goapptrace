@@ -20,13 +20,13 @@ var (
 	uint64Value3 = uint64(0x00000000000000ff)
 	uint64Bytes3 = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff}
 
-	funcSymbol = &logutil.GoFunc{
+	goFunc = &logutil.GoFunc{
 		ID:    0xa00000000000000a,
 		Name:  "name",
 		File:  "file path",
 		Entry: 0xb00000000000000b,
 	}
-	funcSymbolBytes = []byte{
+	goFuncBytes = []byte{
 		// ID
 		0xa0, 0, 0, 0, 0, 0, 0, 0x0a,
 		// Name: string len
@@ -148,7 +148,7 @@ func BenchmarkUnmarshalString(b *testing.B) {
 }
 func BenchmarkMarshalFuncSymbol(b *testing.B) {
 	buf := make([]byte, packetBufferSize)
-	val := funcSymbol
+	val := goFunc
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
 		marshalFuncSymbol(buf, val)
@@ -156,7 +156,7 @@ func BenchmarkMarshalFuncSymbol(b *testing.B) {
 	b.StopTimer()
 }
 func BenchmarkUnmarshalFuncSymbol(b *testing.B) {
-	buf := funcSymbolBytes
+	buf := goFuncBytes
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
 		unmarshalFuncSymbol(buf)
@@ -322,10 +322,10 @@ func TestMarshalFuncSymbolSlice(t *testing.T) {
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
 		[]byte{0}, nil)
 	test("contains a non-nil item",
-		[]*logutil.GoFunc{funcSymbol},
+		[]*logutil.GoFunc{goFunc},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
 		[]byte{1},
-		funcSymbolBytes)
+		goFuncBytes)
 }
 func TestUnmarshalFuncSymbolSlice(t *testing.T) {
 	a := assert.New(t)
@@ -347,24 +347,24 @@ func TestUnmarshalFuncSymbolSlice(t *testing.T) {
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
 		[]byte{0}, nil)
 	test("contains a non-nil item",
-		[]*logutil.GoFunc{funcSymbol},
+		[]*logutil.GoFunc{goFunc},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
 		[]byte{1},
-		funcSymbolBytes)
+		goFuncBytes)
 }
 func TestMarshalFuncSymbol(t *testing.T) {
 	buf := make([]byte, packetBufferSize)
 	a := assert.New(t)
 
-	n := marshalFuncSymbol(buf, funcSymbol)
+	n := marshalFuncSymbol(buf, goFunc)
 	buf = buf[:n]
-	a.Equal(funcSymbolBytes, buf)
+	a.Equal(goFuncBytes, buf)
 }
 func TestUnmarshalFuncSymbol(t *testing.T) {
 	a := assert.New(t)
 
-	s, _ := unmarshalFuncSymbol(funcSymbolBytes)
-	a.Equal(funcSymbol, s)
+	s, _ := unmarshalFuncSymbol(goFuncBytes)
+	a.Equal(goFunc, s)
 }
 func TestMarshalFuncStatusSlice(t *testing.T) {
 	a := assert.New(t)

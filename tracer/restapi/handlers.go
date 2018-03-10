@@ -131,7 +131,7 @@ func (api APIv0) SetHandlers(router *mux.Router) {
 	v01.HandleFunc("/log/{log-id}/func-call/search", api.funcCallSearch).Methods(http.MethodGet)
 	v01.HandleFunc("/log/{log-id}/func-call/stream", api.notImpl).Methods(http.MethodGet)
 	v01.HandleFunc("/log/{log-id}/goroutines/search", api.goroutineSearch).Methods(http.MethodGet)
-	v01.HandleFunc("/log/{log-id}/symbol/func/{func-id}", api.funcSymbol).Methods(http.MethodGet)
+	v01.HandleFunc("/log/{log-id}/symbol/func/{func-id}", api.goFunc).Methods(http.MethodGet)
 	v01.HandleFunc("/log/{log-id}/symbol/func-status/{func-status-id}", api.funcStatusSymbol).Methods(http.MethodGet)
 
 	v01.HandleFunc("/tracers", api.tracers).Methods(http.MethodGet)
@@ -510,7 +510,7 @@ func (api APIv0) goroutineSearch(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 }
-func (api APIv0) funcSymbol(w http.ResponseWriter, r *http.Request) {
+func (api APIv0) goFunc(w http.ResponseWriter, r *http.Request) {
 	logobj, ok := api.getLog(w, r)
 	if !ok {
 		return

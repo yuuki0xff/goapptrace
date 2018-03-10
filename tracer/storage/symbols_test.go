@@ -85,7 +85,7 @@ func TestSymbolsStore_addSymbolsWithData(t *testing.T) {
 	a := assert.New(t)
 	var fIDs [2]logutil.FuncID
 	var fsIDs [2]logutil.FuncStatusID
-	funcSymbols := []*logutil.GoFunc{
+	goFuncs := []*logutil.GoFunc{
 		{
 			Name:  "github.com/yuuki0xff/dummyModuleName.main",
 			File:  "/src/github.com/yuuki0xff/dummyModuleName/main.go",
@@ -112,11 +112,11 @@ func TestSymbolsStore_addSymbolsWithData(t *testing.T) {
 		t,
 		// write
 		func(s *logutil.Symbols) {
-			fIDs[0], _ = s.AddFunc(funcSymbols[0])
+			fIDs[0], _ = s.AddFunc(goFuncs[0])
 			funcStatuses[0].Func = fIDs[0]
 			fsIDs[0], _ = s.AddFuncStatus(funcStatuses[0])
 
-			fIDs[1], _ = s.AddFunc(funcSymbols[1])
+			fIDs[1], _ = s.AddFunc(goFuncs[1])
 			funcStatuses[1].Func = fIDs[1]
 			fsIDs[1], _ = s.AddFuncStatus(funcStatuses[1])
 		},
@@ -127,8 +127,8 @@ func TestSymbolsStore_addSymbolsWithData(t *testing.T) {
 			a.Equal(2, symbols.FuncsSize(), "Mismatched length of Funcs array")
 			f1, _ := symbols.Func(0)
 			f2, _ := symbols.Func(1)
-			a.Equal(*funcSymbols[0], f1, "Mismatched GoFunc object")
-			a.Equal(*funcSymbols[1], f2, "Mismatched GoFunc object")
+			a.Equal(*goFuncs[0], f1, "Mismatched GoFunc object")
+			a.Equal(*goFuncs[1], f2, "Mismatched GoFunc object")
 
 			a.Equal(2, symbols.FuncStatusSize(), "Mismatched length of FuncStatus array")
 			fs1, _ := symbols.FuncStatus(0)
