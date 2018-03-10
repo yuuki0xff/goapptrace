@@ -171,22 +171,22 @@ func unmarshalGoLine(buf []byte) (*logutil.GoLine, int64) {
 	return s, total
 }
 
-func marshalGoLineIDSlice(buf []byte, slice []logutil.GoLineID) int64 {
+func marshalUintptrSlice(buf []byte, slice []uintptr) int64 {
 	total := marshalUint64(buf, uint64(len(slice)))
 	for i := range slice {
-		total += marshalGoLineID(buf[total:], slice[i])
+		total += marshalUint64(buf[total:], uint64(slice[i]))
 	}
 	return total
 }
-func unmarshalGoLineIDSlice(buf []byte) ([]logutil.GoLineID, int64) {
+func unmarshalUintptrSlice(buf []byte) ([]uintptr, int64) {
 	var total int64
 	length, n := unmarshalUint64(buf)
 	total += n
 
-	slice := make([]logutil.GoLineID, length)
+	slice := make([]uintptr, length)
 	for i := range slice {
-		var n int64
-		slice[i], n = unmarshalGoLineID(buf[total:])
+		ptr, n := unmarshalUint64(buf[total:])
+		slice[i] = uintptr(ptr)
 		total += n
 	}
 	return slice, total
@@ -227,7 +227,7 @@ func marshalRawFuncLog(buf []byte, r *logutil.RawFuncLog) int64 {
 	total := marshalRawFuncLogID(buf, r.ID)
 	total += marshalTagName(buf[total:], r.Tag)
 	total += marshalTime(buf[total:], r.Timestamp)
-	total += marshalGoLineIDSlice(buf[total:], r.Frames)
+	total += marshalUintptrSlice(buf[total:], r.Frames)
 	total += marshalGID(buf[total:], r.GID)
 	total += marshalTxID(buf[total:], r.TxID)
 	return total
@@ -243,7 +243,7 @@ func unmarshalRawFuncLog(buf []byte) (*logutil.RawFuncLog, int64) {
 	total += n
 	fl.Timestamp, n = unmarshalTime(buf[total:])
 	total += n
-	fl.Frames, n = unmarshalGoLineIDSlice(buf[total:])
+	fl.Frames, n = unmarshalUintptrSlice(buf[total:])
 	total += n
 	fl.GID, n = unmarshalGID(buf[total:])
 	total += n

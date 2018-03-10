@@ -65,7 +65,7 @@ type FuncLog struct {
 	EndTime   Time
 	ParentID  FuncLogID
 
-	Frames []GoLineID
+	Frames []uintptr
 	GID    GID
 }
 

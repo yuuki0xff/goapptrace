@@ -185,13 +185,13 @@ func BenchmarkMarshalGoLineIDSlice(b *testing.B) {
 	val := []logutil.GoLineID{1, 2, 3, 4, 5, 6, 8, 9, 10}
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		marshalGoLineIDSlice(buf, val)
+		marshalUintptrSlice(buf, val)
 	}
 	b.StopTimer()
 }
 func BenchmarkUnmarshalGoLineIDSlice(b *testing.B) {
 	buf := make([]byte, packetBufferSize)
-	n := marshalGoLineIDSlice(buf, []logutil.GoLineID{1, 2, 3, 4, 5, 6, 8, 9, 10})
+	n := marshalUintptrSlice(buf, []logutil.GoLineID{1, 2, 3, 4, 5, 6, 8, 9, 10})
 	buf = buf[:n]
 
 	b.ResetTimer()
