@@ -110,7 +110,7 @@ type SymbolsData struct {
 }
 
 // FileID is index of Symbols.Files array.
-type FileID uint64
+type FileID uint32
 
 // File is file path to the source code.
 // example: "/go/src/github.com/yuuki0xff/goapptrace/goapptrace.go"
@@ -138,5 +138,5 @@ type GoLine struct {
 	PC uintptr
 	// file location that defines this function.
 	FileID FileID
-	Line   uint64
+	Line   uint32
 }
