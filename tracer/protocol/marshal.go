@@ -26,6 +26,14 @@ func unmarshalUint64(buf []byte) (uint64, int64) {
 	return binary.BigEndian.Uint64(buf[:8]), 8
 }
 
+func marshalUint32(buf []byte, val uint32) int64 {
+	binary.BigEndian.PutUint32(buf[:8], val)
+	return 8
+}
+func unmarshalUint32(buf []byte) (uint32, int64) {
+	return binary.BigEndian.Uint32(buf[:8]), 8
+}
+
 func marshalString(buf []byte, str string) int64 {
 	total := marshalUint64(buf, uint64(len(str)))
 	total += int64(copy(buf[total:], []byte(str)))
@@ -163,7 +171,7 @@ func marshalGoLine(buf []byte, s *logutil.GoLine) int64 {
 	var total int64
 	total += marshalUintptr(buf[total:], s.PC)
 	total += marshalFileID(buf[total:], s.FileID)
-	total += marshalUint64(buf[total:], s.Line)
+	total += marshalUint32(buf[total:], s.Line)
 	return total
 }
 func unmarshalGoLine(buf []byte) (*logutil.GoLine, int64) {
@@ -175,7 +183,7 @@ func unmarshalGoLine(buf []byte) (*logutil.GoLine, int64) {
 	total += n
 	s.FileID, n = unmarshalFileID(buf[total:])
 	total += n
-	s.Line, n = unmarshalUint64(buf[total:])
+	s.Line, n = unmarshalUint32(buf[total:])
 	total += n
 	return s, total
 }
