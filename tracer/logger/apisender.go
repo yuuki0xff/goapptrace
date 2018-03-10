@@ -67,25 +67,27 @@ func (s *LogServerSender) Close() error {
 	return nil
 }
 
-// send Symbols and RawFuncLog to the log server.
-func (s *LogServerSender) Send(diff *logutil.SymbolsData, funclog *logutil.RawFuncLog) error {
+// send Symbols to the log server.
+func (s *LogServerSender) SendSymbols(data *logutil.SymbolsData) error {
+	// todo: Send()が直ぐにmarshalするのを保証しているのか検証する
+	if err := s.client.Send(&protocol.SymbolPacket{
+		SymbolsData: *data,
+	}); err != nil {
+		return err
+	}
+}
+
+// send RawFuncLog to the log server.
+func (s *LogServerSender) SendLog(raw *logutil.RawFuncLog) error {
 	if s.client == nil {
 		return ClosedError
 	}
 
-	if diff != nil {
-		if err := s.client.Send(&protocol.SymbolPacket{
-			SymbolsData: *diff,
-		}); err != nil {
-			return err
-		}
-	}
-	if funclog != nil {
-		if err := s.client.Send(&protocol.RawFuncLogPacket{
-			FuncLog: funclog,
-		}); err != nil {
-			return err
-		}
+	// todo: Send()が直ぐにmarshalするのを保証しているのか検証する
+	if err := s.client.Send(&protocol.RawFuncLogPacket{
+		FuncLog: raw,
+	}); err != nil {
+		return err
 	}
 	return nil
 }
