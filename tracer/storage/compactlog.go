@@ -47,15 +47,15 @@ func (c *CompactLogWriter) Open() error {
 }
 
 // ログを書き込む
-func (c *CompactLogWriter) Write(diff *logutil.SymbolsData, funclog *logutil.RawFuncLog) error {
-	if diff == nil {
-		diff = nilDiff
+func (c *CompactLogWriter) Write(data *logutil.SymbolsData, funclog *logutil.RawFuncLog) error {
+	if data == nil {
+		data = nilDiff
 	}
 	if funclog == nil {
 		funclog = nilRawFuncLog
 	}
 
-	if err := c.enc.Encode(diff); err != nil {
+	if err := c.enc.Encode(data); err != nil {
 		return err
 	}
 	if err := c.enc.Encode(funclog); err != nil {
