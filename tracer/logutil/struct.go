@@ -102,7 +102,7 @@ type Symbols struct {
 	// index: FuncID
 	funcs []*GoFunc
 	// index: GoLineID
-	funcStatus []*GoLine
+	goLine []*GoLine
 
 	lock sync.RWMutex
 

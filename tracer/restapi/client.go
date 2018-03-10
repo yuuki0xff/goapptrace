@@ -187,9 +187,9 @@ func (c ClientWithCtx) Func(logID, funcID string) (f FuncInfo, err error) {
 	}
 	return
 }
-func (c ClientWithCtx) GoLine(logID, funcStatusID string) (fs GoLineInfo, err error) {
+func (c ClientWithCtx) GoLine(logID, goLineID string) (fs GoLineInfo, err error) {
 	if c.UseCache {
-		fscache := c.cache.Log(logID).GoLine(funcStatusID)
+		fscache := c.cache.Log(logID).GoLine(goLineID)
 		if fscache != nil {
 			// fast path
 			fs = *fscache
@@ -198,14 +198,14 @@ func (c ClientWithCtx) GoLine(logID, funcStatusID string) (fs GoLineInfo, err er
 	}
 
 	// slow path
-	url := c.url("/log", logID, "symbol", "func-status", funcStatusID)
+	url := c.url("/log", logID, "symbol", "func-status", goLineID)
 	ro := c.ro()
 	err = c.getJSON(url, &ro, &fs)
 
 	if err == nil {
 		// validation
-		if funcStatusID != strconv.FormatUint(uint64(fs.ID), 10) {
-			err = fmt.Errorf("unexpected GoLineID: (expected) %s != %d (received)\nreceived GoLineInfo: %+v", funcStatusID, fs.ID, fs)
+		if goLineID != strconv.FormatUint(uint64(fs.ID), 10) {
+			err = fmt.Errorf("unexpected GoLineID: (expected) %s != %d (received)\nreceived GoLineInfo: %+v", goLineID, fs.ID, fs)
 			log.Panic(errors.WithStack(err))
 		}
 	}

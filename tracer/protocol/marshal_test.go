@@ -41,13 +41,13 @@ var (
 		0xb0, 0, 0, 0, 0, 0, 0, 0x0b,
 	}
 
-	funcStatus = &logutil.GoLine{
+	goLine = &logutil.GoLine{
 		ID:   0xa00000000000000a,
 		Func: 0xb00000000000000b,
 		Line: 0xc00000000000000c,
 		PC:   0xd00000000000000d,
 	}
-	funcStatusBytes = []byte{
+	goLineBytes = []byte{
 		// ID
 		0xa0, 0, 0, 0, 0, 0, 0, 0x0a,
 		// Func ID
@@ -165,7 +165,7 @@ func BenchmarkUnmarshalGoFunc(b *testing.B) {
 }
 func BenchmarkMarshalGoLine(b *testing.B) {
 	buf := make([]byte, packetBufferSize)
-	val := funcStatus
+	val := goLine
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
 		marshalGoLine(buf, val)
@@ -173,7 +173,7 @@ func BenchmarkMarshalGoLine(b *testing.B) {
 	b.StopTimer()
 }
 func BenchmarkUnmarshalGoLine(b *testing.B) {
-	buf := funcStatusBytes
+	buf := goLineBytes
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
 		unmarshalGoLine(buf)
@@ -393,10 +393,10 @@ func TestMarshalGoLineSlice(t *testing.T) {
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
 		[]byte{0}, nil)
 	test("contains a non-nil item",
-		[]*logutil.GoLine{funcStatus},
+		[]*logutil.GoLine{goLine},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
 		[]byte{1},
-		funcStatusBytes)
+		goLineBytes)
 }
 func TestUnmarshalGoLineSlice(t *testing.T) {
 	a := assert.New(t)
@@ -419,24 +419,24 @@ func TestUnmarshalGoLineSlice(t *testing.T) {
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
 		[]byte{0}, nil)
 	test("contains a non-nil item",
-		[]*logutil.GoLine{funcStatus},
+		[]*logutil.GoLine{goLine},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
 		[]byte{1},
-		funcStatusBytes)
+		goLineBytes)
 }
 func TestMarshalGoLine(t *testing.T) {
 	buf := make([]byte, packetBufferSize)
 	a := assert.New(t)
 
-	n := marshalGoLine(buf, funcStatus)
+	n := marshalGoLine(buf, goLine)
 	buf = buf[:n]
-	a.Equal(funcStatusBytes, buf)
+	a.Equal(goLineBytes, buf)
 }
 func TestUnmarshalGoLine(t *testing.T) {
 	a := assert.New(t)
 
-	fs, _ := unmarshalGoLine(funcStatusBytes)
-	a.Equal(funcStatus, fs)
+	fs, _ := unmarshalGoLine(goLineBytes)
+	a.Equal(goLine, fs)
 }
 func TestMarshalRawFuncLog(t *testing.T) {
 	buf := make([]byte, packetBufferSize)

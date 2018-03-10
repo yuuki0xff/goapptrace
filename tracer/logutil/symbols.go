@@ -31,7 +31,7 @@ func (f *GoLineID) UnmarshalText(text []byte) error {
 // 初期化する。使用前に必ず呼び出すこと。
 func (s *Symbols) Init() {
 	s.funcs = make([]*GoFunc, 0)
-	s.funcStatus = make([]*GoLine, 0)
+	s.goLine = make([]*GoLine, 0)
 	s.name2FuncID = make(map[string]FuncID)
 	s.pc2FSID = make(map[uintptr]GoLineID)
 }
@@ -40,14 +40,14 @@ func (s *Symbols) Init() {
 // Init()を呼び出す必要はない。
 func (s *Symbols) Load(data SymbolsData) {
 	s.funcs = data.Funcs
-	s.funcStatus = data.GoLine
+	s.goLine = data.GoLine
 	s.name2FuncID = make(map[string]FuncID)
 	s.pc2FSID = make(map[uintptr]GoLineID)
 
 	for _, f := range s.funcs {
 		s.name2FuncID[f.Name] = f.ID
 	}
-	for _, fs := range s.funcStatus {
+	for _, fs := range s.goLine {
 		s.pc2FSID[fs.PC] = fs.ID
 	}
 }
@@ -61,7 +61,7 @@ func (s *Symbols) Save(fn SymbolsWriteFn) error {
 	defer s.lock.RUnlock()
 	return fn(SymbolsData{
 		Funcs:      s.funcs,
-		GoLine: s.funcStatus,
+		GoLine: s.goLine,
 	})
 }
 
@@ -83,10 +83,10 @@ func (s *Symbols) Func(id FuncID) (GoFunc, bool) {
 func (s *Symbols) GoLine(id GoLineID) (GoLine, bool) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	if GoLineID(len(s.funcStatus)) <= id {
+	if GoLineID(len(s.goLine)) <= id {
 		return GoLine{}, false
 	}
-	fs := s.funcStatus[id]
+	fs := s.goLine[id]
 	if fs == nil {
 		return GoLine{}, false
 	}
@@ -104,7 +104,7 @@ func (s *Symbols) FuncsSize() int {
 func (s *Symbols) GoLineSize() int {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	return len(s.funcStatus)
+	return len(s.goLine)
 }
 
 // 登録済みの全てのFuncをコールバックする。。
@@ -127,7 +127,7 @@ func (s *Symbols) WalkFuncs(fn func(fs GoFunc) error) error {
 func (s *Symbols) WalkGoLine(fn func(fs GoLine) error) error {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	for _, fs := range s.funcStatus {
+	for _, fs := range s.goLine {
 		if fs != nil {
 			if err := fn(*fs); err != nil {
 				return err
@@ -161,14 +161,14 @@ func (s *Symbols) GoLineIDFromPC(pc uintptr) (id GoLineID, ok bool) {
 func (s *Symbols) FuncID(id GoLineID) FuncID {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	return s.funcStatus[id].Func
+	return s.goLine[id].Func
 }
 
 // GoLineIDから関数名を取得する。
 func (s *Symbols) FuncName(id GoLineID) string {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	return s.funcs[s.funcStatus[id].Func].Name
+	return s.funcs[s.goLine[id].Func].Name
 }
 
 // GoLineIDからモジュール名を返す。
@@ -255,15 +255,15 @@ func (s *Symbols) addGoLineNolock(status *GoLine) (id GoLineID, added bool) {
 
 	if s.KeepID {
 		// status.IDの値が配列の長さを超えている場合、配列の長さを伸ばす。
-		for status.ID >= GoLineID(len(s.funcStatus)) {
-			s.funcStatus = append(s.funcStatus, nil)
+		for status.ID >= GoLineID(len(s.goLine)) {
+			s.goLine = append(s.goLine, nil)
 		}
 	} else {
-		status.ID = GoLineID(len(s.funcStatus))
+		status.ID = GoLineID(len(s.goLine))
 		// increase length of the GoLine array
-		s.funcStatus = append(s.funcStatus, status)
+		s.goLine = append(s.goLine, status)
 	}
-	s.funcStatus[status.ID] = status
+	s.goLine[status.ID] = status
 	s.pc2FSID[status.PC] = status.ID
 	return status.ID, true
 }

@@ -157,7 +157,7 @@ func (w *JsonLogWriter) SetGoLineInfoGetter(func(id logutil.GoLineID) restapi.Go
 type TextLogWriter struct {
 	output     io.Writer
 	funcInfo   func(id logutil.FuncID) restapi.FuncInfo
-	funcStatus func(id logutil.GoLineID) restapi.GoLineInfo
+	goLine func(id logutil.GoLineID) restapi.GoLineInfo
 }
 
 func NewTextLogWriter(output io.Writer) *TextLogWriter {
@@ -171,7 +171,7 @@ func (w *TextLogWriter) WriteHeader() error {
 }
 func (w *TextLogWriter) Write(evt restapi.FuncCall) error {
 	currentFrame := evt.Frames[0]
-	fs := w.funcStatus(currentFrame)
+	fs := w.goLine(currentFrame)
 	funcName := w.funcInfo(fs.Func).Name // module.func
 	line := fs.Line
 
@@ -200,7 +200,7 @@ func (w *TextLogWriter) SetFuncInfoGetter(f func(id logutil.FuncID) restapi.Func
 	w.funcInfo = f
 }
 func (w *TextLogWriter) SetGoLineInfoGetter(f func(id logutil.GoLineID) restapi.GoLineInfo) {
-	w.funcStatus = f
+	w.goLine = f
 }
 
 func init() {

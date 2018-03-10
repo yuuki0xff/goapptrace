@@ -19,7 +19,7 @@ func TestSymbols_ModuleName(t *testing.T) {
 				ID:   funcID,
 			},
 		},
-		funcStatus: []*GoLine{
+		goLine: []*GoLine{
 			{
 				ID:   funcSID,
 				Func: funcID,
@@ -131,7 +131,7 @@ func TestSymbols_AddGoLine_simple(t *testing.T) {
 	})
 	a.True(added)
 	a.Equal(GoLineID(0), id)
-	a.Len(s.funcStatus, 1)
+	a.Len(s.goLine, 1)
 
 	id, added = s.AddGoLine(&GoLine{
 		Func: 22, // dummy
@@ -140,7 +140,7 @@ func TestSymbols_AddGoLine_simple(t *testing.T) {
 	})
 	a.True(added)
 	a.Equal(GoLineID(1), id)
-	a.Len(s.funcStatus, 2)
+	a.Len(s.goLine, 2)
 }
 
 func TestSymbols_AddGoLine_keepID(t *testing.T) {
