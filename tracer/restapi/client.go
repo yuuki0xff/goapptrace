@@ -44,8 +44,8 @@ type apiCache struct {
 
 type logCache struct {
 	m  sync.RWMutex
-	fs map[string]*GoLineInfo
-	f  map[string]*FuncInfo
+	fs map[uintptr]*GoLineInfo
+	f  map[uintptr]*FuncInfo
 }
 
 // Init initialize the Goapptrace REST API client.
@@ -160,9 +160,9 @@ func (c ClientWithCtx) SearchFuncCalls(id string, so SearchFuncCallParams) (chan
 	}()
 	return ch, nil
 }
-func (c ClientWithCtx) Func(logID, funcID string) (f FuncInfo, err error) {
+func (c ClientWithCtx) Func(logID string, pc uintptr) (f FuncInfo, err error) {
 	if c.UseCache {
-		fcache := c.cache.Log(logID).Func(funcID)
+		fcache := c.cache.Log(logID).Func(pc)
 		if fcache != nil {
 			// fast path
 			f = *fcache
@@ -171,14 +171,14 @@ func (c ClientWithCtx) Func(logID, funcID string) (f FuncInfo, err error) {
 	}
 
 	// slow path
-	url := c.url("/log", logID, "symbol", "func", funcID)
+	url := c.url("/log", logID, "symbol", "func", FormatUintptr(pc))
 	ro := c.ro()
 	err = c.getJSON(url, &ro, &f)
 
 	if err == nil {
 		// validation
-		if funcID != strconv.FormatUint(uint64(f.ID), 10) {
-			err = fmt.Errorf("unexpected FuncID: (expected) %s != %d (received)\nreceived FuncInfo: %+v", funcID, f.ID, f)
+		if f.Entry == 0 || f.Entry > pc {
+			err = fmt.Errorf("validation error: FuncInfo=%+v", f)
 			log.Panic(errors.WithStack(err))
 		}
 	}
@@ -187,9 +187,9 @@ func (c ClientWithCtx) Func(logID, funcID string) (f FuncInfo, err error) {
 	}
 	return
 }
-func (c ClientWithCtx) GoLine(logID, goLineID string) (fs GoLineInfo, err error) {
+func (c ClientWithCtx) GoLine(logID string, pc uintptr) (fs GoLineInfo, err error) {
 	if c.UseCache {
-		fscache := c.cache.Log(logID).GoLine(goLineID)
+		fscache := c.cache.Log(logID).GoLine(pc)
 		if fscache != nil {
 			// fast path
 			fs = *fscache
@@ -198,14 +198,14 @@ func (c ClientWithCtx) GoLine(logID, goLineID string) (fs GoLineInfo, err error)
 	}
 
 	// slow path
-	url := c.url("/log", logID, "symbol", "func-status", goLineID)
+	url := c.url("/log", logID, "symbol", "func-status", FormatUintptr(pc))
 	ro := c.ro()
 	err = c.getJSON(url, &ro, &fs)
 
 	if err == nil {
 		// validation
-		if goLineID != strconv.FormatUint(uint64(fs.ID), 10) {
-			err = fmt.Errorf("unexpected GoLineID: (expected) %s != %d (received)\nreceived GoLineInfo: %+v", goLineID, fs.ID, fs)
+		if fs.PC == 0 || fs.PC > pc {
+			err = fmt.Errorf("validation error: GoLineInfo=%+v", fs)
 			log.Panic(errors.WithStack(err))
 		}
 	}
@@ -333,50 +333,55 @@ func (c *apiCache) AddLog(logID string) *logCache {
 }
 
 func (c *logCache) init() {
-	c.fs = map[string]*GoLineInfo{}
-	c.f = map[string]*FuncInfo{}
+	c.fs = map[uintptr]*GoLineInfo{}
+	c.f = map[uintptr]*FuncInfo{}
 }
 
-func (c *logCache) Func(funcID string) *FuncInfo {
+func (c *logCache) Func(pc uintptr) *FuncInfo {
 	if c == nil {
 		return nil
 	}
 	c.m.RLock()
-	f := c.f[funcID]
+	f := c.f[pc]
 	c.m.RUnlock()
 	return f
 }
 
 func (c *logCache) AddFunc(f FuncInfo) {
-	id := strconv.FormatUint(uint64(f.ID), 10)
-
 	c.m.Lock()
-	if _, ok := c.f[id]; ok {
+	if _, ok := c.f[f.Entry]; ok {
 		fp := &FuncInfo{}
 		*fp = f
-		c.f[id] = fp
+		c.f[f.Entry] = fp
 	}
 	c.m.Unlock()
 }
 
-func (c *logCache) GoLine(id string) *GoLineInfo {
+func (c *logCache) GoLine(pc uintptr) *GoLineInfo {
 	if c == nil {
 		return nil
 	}
 	c.m.RLock()
-	fs := c.fs[id]
+	fs := c.fs[pc]
 	c.m.RUnlock()
 	return fs
 }
 
 func (c *logCache) AddGoLine(fs GoLineInfo) {
-	id := strconv.FormatUint(uint64(fs.ID), 10)
-
 	c.m.Lock()
-	if _, ok := c.fs[id]; ok {
+	if _, ok := c.fs[fs.PC]; ok {
 		fsp := &GoLineInfo{}
 		*fsp = fs
-		c.fs[id] = fsp
+		c.fs[fs.PC] = fsp
 	}
 	c.m.Unlock()
+}
+
+func FormatUintptr(ptr uintptr) string {
+	return strconv.FormatUint(uint64(ptr), 10)
+}
+
+func ParseUintptr(s string) (uintptr, error) {
+	ptr, err := strconv.ParseUint(s, 10, 64)
+	return uintptr(ptr), err
 }
