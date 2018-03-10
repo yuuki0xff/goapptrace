@@ -61,7 +61,7 @@ func unmarshalFuncStatusID(buf []byte) (logutil.FuncStatusID, int64) {
 	return logutil.FuncStatusID(val), n
 }
 
-func marshalFuncSymbolSlice(buf []byte, funcs []*logutil.FuncSymbol) int64 {
+func marshalFuncSymbolSlice(buf []byte, funcs []*logutil.GoFunc) int64 {
 	var total int64
 
 	n := marshalUint64(buf[total:], uint64(len(funcs)))
@@ -76,13 +76,13 @@ func marshalFuncSymbolSlice(buf []byte, funcs []*logutil.FuncSymbol) int64 {
 	}
 	return total
 }
-func unmarshalFuncSymbolSlice(buf []byte) ([]*logutil.FuncSymbol, int64) {
+func unmarshalFuncSymbolSlice(buf []byte) ([]*logutil.GoFunc, int64) {
 	var total int64
 
 	length, n := unmarshalUint64(buf)
 	total += n
 
-	funcs := make([]*logutil.FuncSymbol, length)
+	funcs := make([]*logutil.GoFunc, length)
 	for i := range funcs {
 		isNonNil, n := unmarshalBool(buf[total:])
 		total += n
@@ -94,7 +94,7 @@ func unmarshalFuncSymbolSlice(buf []byte) ([]*logutil.FuncSymbol, int64) {
 	return funcs, total
 }
 
-func marshalFuncSymbol(buf []byte, s *logutil.FuncSymbol) int64 {
+func marshalFuncSymbol(buf []byte, s *logutil.GoFunc) int64 {
 	var total int64
 	total += marshalFuncID(buf, s.ID)
 	total += marshalString(buf[total:], s.Name)
@@ -102,11 +102,11 @@ func marshalFuncSymbol(buf []byte, s *logutil.FuncSymbol) int64 {
 	total += marshalUint64(buf[total:], uint64(s.Entry))
 	return total
 }
-func unmarshalFuncSymbol(buf []byte) (*logutil.FuncSymbol, int64) {
+func unmarshalFuncSymbol(buf []byte) (*logutil.GoFunc, int64) {
 	var total int64
 	var n int64
 
-	s := &logutil.FuncSymbol{}
+	s := &logutil.GoFunc{}
 	s.ID, n = unmarshalFuncID(buf)
 	total += n
 	s.Name, n = unmarshalString(buf[total:])

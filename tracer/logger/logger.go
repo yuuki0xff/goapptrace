@@ -127,13 +127,13 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 				if !ok {
 					// FuncSymbolが未登録なので、追加する。
 					var funcWasAdded bool
-					fid, funcWasAdded = symbols.AddFunc(&logutil.FuncSymbol{
+					fid, funcWasAdded = symbols.AddFunc(&logutil.GoFunc{
 						Name:  frame.Function,
 						File:  frame.File,
 						Entry: frame.Entry,
 					})
 					if funcWasAdded {
-						f := &logutil.FuncSymbol{}
+						f := &logutil.GoFunc{}
 						*f, _ = symbols.Func(fid)
 						diff.Funcs = append(diff.Funcs, f)
 					}
@@ -172,13 +172,13 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 					// FuncSymbolが未登録なので、追加する。
 					var funcWasAdded bool
 					file, _ := f.FileLine(f.Entry())
-					fid, funcWasAdded = symbols.AddFunc(&logutil.FuncSymbol{
+					fid, funcWasAdded = symbols.AddFunc(&logutil.GoFunc{
 						Name:  f.Name(),
 						File:  file,
 						Entry: f.Entry(),
 					})
 					if funcWasAdded {
-						f := &logutil.FuncSymbol{}
+						f := &logutil.GoFunc{}
 						*f, _ = symbols.Func(fid)
 						diff.Funcs = append(diff.Funcs, f)
 					}

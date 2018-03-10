@@ -13,7 +13,7 @@ func TestSymbols_ModuleName(t *testing.T) {
 	funcSID := FuncStatusID(0)
 
 	sym := Symbols{
-		funcs: []*FuncSymbol{
+		funcs: []*GoFunc{
 			{
 				Name: funcName,
 				ID:   funcID,
@@ -39,7 +39,7 @@ func TestSymbols_AddFunc_readOnly(t *testing.T) {
 	}
 	s.Init()
 	a.Panics(func() {
-		s.AddFunc(&FuncSymbol{
+		s.AddFunc(&GoFunc{
 			Name:  "test",
 			File:  "test.go",
 			Entry: 100,
@@ -53,7 +53,7 @@ func TestSymbols_AddFunc_simple(t *testing.T) {
 		Writable: true,
 	}
 	s.Init()
-	id, added := s.AddFunc(&FuncSymbol{
+	id, added := s.AddFunc(&GoFunc{
 		ID:    10,
 		Name:  "main.test",
 		File:  "test.go",
@@ -63,7 +63,7 @@ func TestSymbols_AddFunc_simple(t *testing.T) {
 	a.Equal(FuncID(0), id, "First function id is 0. Should not keep original function id.")
 	a.Len(s.funcs, 1)
 
-	id, added = s.AddFunc(&FuncSymbol{
+	id, added = s.AddFunc(&GoFunc{
 		Name:  "main.test2",
 		File:  "test2.go",
 		Entry: 200,
@@ -78,7 +78,7 @@ func TestSymbols_AddFunc_dedupRecords(t *testing.T) {
 		Writable: true,
 	}
 	s.Init()
-	fs := &FuncSymbol{
+	fs := &GoFunc{
 		Name:  "main.test2",
 		File:  "test2.go",
 		Entry: 200,
@@ -94,7 +94,7 @@ func TestSymbols_AddFunc_dedupRecords(t *testing.T) {
 	a.Len(s.funcs, 1)
 
 	// 関数名が一致すれば、その他のフィールドが異なっていても問題ない
-	id, added = s.AddFunc(&FuncSymbol{
+	id, added = s.AddFunc(&GoFunc{
 		Name: "main.test2",
 	})
 	a.Equal(false, added)
@@ -108,7 +108,7 @@ func TestSymbols_AddFunc_keepID(t *testing.T) {
 		KeepID:   true,
 	}
 	s.Init()
-	id, added := s.AddFunc(&FuncSymbol{
+	id, added := s.AddFunc(&GoFunc{
 		ID:    10,
 		Name:  "main.test2",
 		File:  "test2.go",
@@ -210,7 +210,7 @@ func TestSymbols_Func(t *testing.T) {
 	_, ok := s.Func(FuncID(10))
 	a.Equal(false, ok)
 
-	id1, added := s.AddFunc(&FuncSymbol{
+	id1, added := s.AddFunc(&GoFunc{
 		ID:    10,
 		Name:  "main.test2",
 		File:  "test2.go",
@@ -254,7 +254,7 @@ func TestSymbols_FuncIDFromName(t *testing.T) {
 	a := assert.New(t)
 	s := Symbols{}
 	s.Load(SymbolsData{
-		Funcs: []*FuncSymbol{
+		Funcs: []*GoFunc{
 			{
 				ID:    0,
 				Name:  "main.test",
@@ -277,7 +277,7 @@ func TestSymbols_FuncStatusIDFromPC(t *testing.T) {
 	a := assert.New(t)
 	s := Symbols{}
 	s.Load(SymbolsData{
-		Funcs: []*FuncSymbol{
+		Funcs: []*GoFunc{
 			{
 				ID:    0,
 				Name:  "main.test",

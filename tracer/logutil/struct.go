@@ -100,7 +100,7 @@ type Symbols struct {
 	KeepID bool
 
 	// index: FuncID
-	funcs []*FuncSymbol
+	funcs []*GoFunc
 	// index: FuncStatusID
 	funcStatus []*FuncStatus
 
@@ -115,7 +115,7 @@ type Symbols struct {
 }
 
 type SymbolsData struct {
-	Funcs      []*FuncSymbol
+	Funcs      []*GoFunc
 	FuncStatus []*FuncStatus
 }
 
@@ -149,7 +149,7 @@ type File string
 //}
 
 
-type FuncSymbol struct {
+type GoFunc struct {
 	ID    FuncID
 	Name  string  // example: "github.com/yuuki0xff/goapptrace.main"
 	File  string  // example: "/go/src/github.com/yuuki0xff/goapptrace/goapptrace.go"

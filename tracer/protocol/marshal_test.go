@@ -20,7 +20,7 @@ var (
 	uint64Value3 = uint64(0x00000000000000ff)
 	uint64Bytes3 = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff}
 
-	funcSymbol = &logutil.FuncSymbol{
+	funcSymbol = &logutil.GoFunc{
 		ID:    0xa00000000000000a,
 		Name:  "name",
 		File:  "file path",
@@ -297,7 +297,7 @@ func TestUnmarshalString(t *testing.T) {
 }
 func TestMarshalFuncSymbolSlice(t *testing.T) {
 	a := assert.New(t)
-	test := func(msg string, slice []*logutil.FuncSymbol, sliceLen, nonNilFlag, fsBytes []byte) {
+	test := func(msg string, slice []*logutil.GoFunc, sliceLen, nonNilFlag, fsBytes []byte) {
 		buf := make([]byte, packetBufferSize)
 		n := marshalFuncSymbolSlice(buf, slice)
 		buf = buf[:n]
@@ -310,26 +310,26 @@ func TestMarshalFuncSymbolSlice(t *testing.T) {
 		if fsBytes == nil {
 			return
 		}
-		a.Equal(fsBytes, buf[9:], msg+": FuncSymbol field")
+		a.Equal(fsBytes, buf[9:], msg+": GoFunc field")
 	}
 
 	test("empty slice",
-		[]*logutil.FuncSymbol{},
+		[]*logutil.GoFunc{},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 0},
 		nil, nil)
 	test("contains a nil item",
-		[]*logutil.FuncSymbol{nil},
+		[]*logutil.GoFunc{nil},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
 		[]byte{0}, nil)
 	test("contains a non-nil item",
-		[]*logutil.FuncSymbol{funcSymbol},
+		[]*logutil.GoFunc{funcSymbol},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
 		[]byte{1},
 		funcSymbolBytes)
 }
 func TestUnmarshalFuncSymbolSlice(t *testing.T) {
 	a := assert.New(t)
-	test := func(msg string, expected []*logutil.FuncSymbol, sliceLen, nonNilFlag, fsBytes []byte) {
+	test := func(msg string, expected []*logutil.GoFunc, sliceLen, nonNilFlag, fsBytes []byte) {
 		var buf bytes.Buffer
 		buf.Write(sliceLen)
 		buf.Write(nonNilFlag)
@@ -339,15 +339,15 @@ func TestUnmarshalFuncSymbolSlice(t *testing.T) {
 	}
 
 	test("empty",
-		[]*logutil.FuncSymbol{},
+		[]*logutil.GoFunc{},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 0},
 		nil, nil)
 	test("contains a nil item",
-		[]*logutil.FuncSymbol{nil},
+		[]*logutil.GoFunc{nil},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
 		[]byte{0}, nil)
 	test("contains a non-nil item",
-		[]*logutil.FuncSymbol{funcSymbol},
+		[]*logutil.GoFunc{funcSymbol},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
 		[]byte{1},
 		funcSymbolBytes)

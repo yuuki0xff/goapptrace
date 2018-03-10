@@ -70,7 +70,7 @@ func TestSymbolsStore_addASymbol(t *testing.T) {
 		t,
 		// write
 		func(s *logutil.Symbols) {
-			s.AddFunc(&logutil.FuncSymbol{})
+			s.AddFunc(&logutil.GoFunc{})
 			s.AddFuncStatus(&logutil.FuncStatus{})
 		},
 		// check data
@@ -85,7 +85,7 @@ func TestSymbolsStore_addSymbolsWithData(t *testing.T) {
 	a := assert.New(t)
 	var fIDs [2]logutil.FuncID
 	var fsIDs [2]logutil.FuncStatusID
-	funcSymbols := []*logutil.FuncSymbol{
+	funcSymbols := []*logutil.GoFunc{
 		{
 			Name:  "github.com/yuuki0xff/dummyModuleName.main",
 			File:  "/src/github.com/yuuki0xff/dummyModuleName/main.go",
@@ -127,8 +127,8 @@ func TestSymbolsStore_addSymbolsWithData(t *testing.T) {
 			a.Equal(2, symbols.FuncsSize(), "Mismatched length of Funcs array")
 			f1, _ := symbols.Func(0)
 			f2, _ := symbols.Func(1)
-			a.Equal(*funcSymbols[0], f1, "Mismatched FuncSymbol object")
-			a.Equal(*funcSymbols[1], f2, "Mismatched FuncSymbol object")
+			a.Equal(*funcSymbols[0], f1, "Mismatched GoFunc object")
+			a.Equal(*funcSymbols[1], f2, "Mismatched GoFunc object")
 
 			a.Equal(2, symbols.FuncStatusSize(), "Mismatched length of FuncStatus array")
 			fs1, _ := symbols.FuncStatus(0)
@@ -143,7 +143,7 @@ func symbols2string(symbols *logutil.Symbols) string {
 	buf := bytes.NewBuffer(nil)
 
 	fmt.Println(buf, "Symbols.Funcs:")
-	symbols.WalkFuncs(func(fs logutil.FuncSymbol) error {
+	symbols.WalkFuncs(func(fs logutil.GoFunc) error {
 		fmt.Fprintf(buf, "  Funcs[%d] = %+v", fs.ID, fs)
 		return nil
 	})

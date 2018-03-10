@@ -19,7 +19,7 @@ type Logs struct {
 type LogStatus storage.LogInfo
 
 type FuncCall = logutil.FuncLog
-type FuncInfo = logutil.FuncSymbol
+type FuncInfo = logutil.GoFunc
 type FuncStatusInfo = logutil.FuncStatus
 type Goroutine = logutil.Goroutine
 

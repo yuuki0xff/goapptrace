@@ -30,7 +30,7 @@ func (f *FuncStatusID) UnmarshalText(text []byte) error {
 
 // 初期化する。使用前に必ず呼び出すこと。
 func (s *Symbols) Init() {
-	s.funcs = make([]*FuncSymbol, 0)
+	s.funcs = make([]*GoFunc, 0)
 	s.funcStatus = make([]*FuncStatus, 0)
 	s.name2FuncID = make(map[string]FuncID)
 	s.pc2FSID = make(map[uintptr]FuncStatusID)
@@ -66,15 +66,15 @@ func (s *Symbols) Save(fn SymbolsWriteFn) error {
 }
 
 // FuncIDに対応するFuncSymbolを返す。
-func (s *Symbols) Func(id FuncID) (FuncSymbol, bool) {
+func (s *Symbols) Func(id FuncID) (GoFunc, bool) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	if FuncID(len(s.funcs)) <= id {
-		return FuncSymbol{}, false
+		return GoFunc{}, false
 	}
 	f := s.funcs[id]
 	if f == nil {
-		return FuncSymbol{}, false
+		return GoFunc{}, false
 	}
 	return *f, true
 }
@@ -109,7 +109,7 @@ func (s *Symbols) FuncStatusSize() int {
 
 // 登録済みの全てのFuncをコールバックする。。
 // fnがエラーを返すと、中断する。
-func (s *Symbols) WalkFuncs(fn func(fs FuncSymbol) error) error {
+func (s *Symbols) WalkFuncs(fn func(fs GoFunc) error) error {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	for _, fs := range s.funcs {
@@ -201,13 +201,13 @@ func (s *Symbols) AddSymbolsDiff(diff *SymbolsData) {
 // Funcを追加する。
 // 同一のFuncが既に存在する場合、一致したFunc.IDとadded=falseを返す。
 // IDが衝突した場合の動作は不定。
-func (s *Symbols) AddFunc(symbol *FuncSymbol) (id FuncID, added bool) {
+func (s *Symbols) AddFunc(symbol *GoFunc) (id FuncID, added bool) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	return s.addFuncNolock(symbol)
 }
 
-func (s *Symbols) addFuncNolock(symbol *FuncSymbol) (id FuncID, added bool) {
+func (s *Symbols) addFuncNolock(symbol *GoFunc) (id FuncID, added bool) {
 	if !s.Writable {
 		log.Panic("Symbols is not writable")
 	}

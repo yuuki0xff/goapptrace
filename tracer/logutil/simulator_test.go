@@ -19,7 +19,7 @@ func TestStateSimulator_Next_startStopFuncs(t *testing.T) {
 		NewTxID(),
 	}
 	symbols := &Symbols{
-		funcs: []*FuncSymbol{
+		funcs: []*GoFunc{
 			{ID: 0, Name: "dummy.main"},
 		},
 		funcStatus: []*FuncStatus{
@@ -61,7 +61,7 @@ func TestStateSimulator_Next_withNestedCall(t *testing.T) {
 		NewTxID(),
 	}
 	symbols := &Symbols{
-		funcs: []*FuncSymbol{
+		funcs: []*GoFunc{
 			{ID: 0, Name: "dummy.main"},
 			{ID: 1, Name: "dummy.func1"},
 			{ID: 2, Name: "dummy.func2"},
@@ -158,7 +158,7 @@ func TestStateSimulator_Next_startStopNewGoroutines(t *testing.T) {
 		NewTxID(),
 	}
 	symbols := &Symbols{
-		funcs: []*FuncSymbol{
+		funcs: []*GoFunc{
 			{ID: 0, Name: "dummy.main"},
 			{ID: 0, Name: "dummy.newGoroutine"},
 		},
@@ -224,7 +224,7 @@ func TestStateSimulator_Next_handlerIsNil(t *testing.T) {
 		NewTxID(),
 	}
 	symbols := &Symbols{
-		funcs: []*FuncSymbol{
+		funcs: []*GoFunc{
 			{ID: 0, Name: "dummy.main"},
 		},
 		funcStatus: []*FuncStatus{
@@ -264,7 +264,7 @@ func TestStateSimulator_Next_endlessFuncs(t *testing.T) {
 		NewTxID(),
 	}
 	symbols := &Symbols{
-		funcs: []*FuncSymbol{
+		funcs: []*GoFunc{
 			{ID: 0, Name: "dummy.main"},
 		},
 		funcStatus: []*FuncStatus{
