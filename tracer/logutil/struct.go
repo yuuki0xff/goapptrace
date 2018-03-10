@@ -105,6 +105,7 @@ type Symbols struct {
 }
 
 type SymbolsData struct {
+	// TODO: ポインター型だと遅い
 	Mods  []GoModule
 	Funcs []*GoFunc
 	Lines []*GoLine
