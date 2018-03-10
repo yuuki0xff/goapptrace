@@ -119,6 +119,36 @@ type SymbolsData struct {
 	FuncStatus []*FuncStatus
 }
 
+// FileID is index of Symbols.Files array.
+type FileID uint64
+
+// File is file path to the source code.
+// example: "/go/src/github.com/yuuki0xff/goapptrace/goapptrace.go"
+type File string
+
+// GoModules means a module in golang.
+//type GoModule struct {
+//	Name  string
+//	MinPC uintptr
+//	MaxPC uintptr
+//}
+
+// GoFunc means a function in golang.
+//type GoFunc struct {
+//	Entry uintptr
+//	// example: "github.com/yuuki0xff/goapptrace.main"
+//	Name string
+//	FileID FileID
+//}
+
+// GoLine haves a correspondence to position on source code from PC (Program Counter).
+//type GoLine struct {
+//	PC     uintptr
+//	FileID FileID
+//	Line   uint64
+//}
+
+
 type FuncSymbol struct {
 	ID    FuncID
 	Name  string  // example: "github.com/yuuki0xff/goapptrace.main"
