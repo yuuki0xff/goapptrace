@@ -134,7 +134,7 @@ type GoFunc struct {
 
 // GoLine haves a correspondence to position on source code from PC (Program Counter).
 type GoLine struct {
-	PC     uintptr
+	PC uintptr
 	// file location that defines this function.
 	FileID FileID
 	Line   uint64

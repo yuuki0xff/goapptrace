@@ -37,14 +37,6 @@ func unmarshalString(buf []byte) (string, int64) {
 	return string(buf[:length]), n + int64(length)
 }
 
-func marshalFuncID(buf []byte, fid logutil.FuncID) int64 {
-	return marshalUint64(buf, uint64(fid))
-}
-func unmarshalFuncID(buf []byte) (logutil.FuncID, int64) {
-	val, n := unmarshalUint64(buf)
-	return logutil.FuncID(val), n
-}
-
 func marshalRawFuncLogID(buf []byte, id logutil.RawFuncLogID) int64 {
 	return marshalUint64(buf, uint64(id))
 }
@@ -96,9 +88,8 @@ func unmarshalGoFuncSlice(buf []byte) ([]*logutil.GoFunc, int64) {
 
 func marshalGoFunc(buf []byte, s *logutil.GoFunc) int64 {
 	var total int64
-	total += marshalFuncID(buf, s.ID)
 	total += marshalString(buf[total:], s.Name)
-	total += marshalString(buf[total:], s.File)
+	total += marshalUint64(buf[total:], uint64(s.FileID))
 	total += marshalUint64(buf[total:], uint64(s.Entry))
 	return total
 }
@@ -107,13 +98,13 @@ func unmarshalGoFunc(buf []byte) (*logutil.GoFunc, int64) {
 	var n int64
 
 	s := &logutil.GoFunc{}
-	s.ID, n = unmarshalFuncID(buf)
 	total += n
 	s.Name, n = unmarshalString(buf[total:])
 	total += n
-	s.File, n = unmarshalString(buf[total:])
-	total += n
 	ptr, n := unmarshalUint64(buf[total:])
+	s.FileID = logutil.FileID(ptr)
+	total += n
+	ptr, n = unmarshalUint64(buf[total:])
 	total += n
 	s.Entry = uintptr(ptr)
 	return s, total
@@ -146,12 +137,33 @@ func unmarshalGoLineSlice(buf []byte) ([]*logutil.GoLine, int64) {
 	return funcs, total
 }
 
+//go:nosplit
+func marshalFileID(buf []byte, id logutil.FileID) int64 {
+	return marshalUint64(buf, uint64(id))
+}
+
+//go:nosplit
+func unmarshalFileID(buf []byte) (logutil.FileID, int64) {
+	id, n := unmarshalUint64(buf)
+	return logutil.FileID(id), n
+}
+
+//go:nosplit
+func marshalUintptr(buf []byte, ptr uintptr) int64 {
+	return marshalUint64(buf, uint64(ptr))
+}
+
+//go:nosplit
+func unmarshalUintptr(buf []byte) (uintptr, int64) {
+	ptr, n := unmarshalUint64(buf)
+	return uintptr(ptr), n
+}
+
 func marshalGoLine(buf []byte, s *logutil.GoLine) int64 {
 	var total int64
-	total += marshalGoLineID(buf, s.ID)
-	total += marshalFuncID(buf[total:], s.Func)
+	total += marshalUintptr(buf[total:], s.PC)
+	total += marshalFileID(buf[total:], s.FileID)
 	total += marshalUint64(buf[total:], s.Line)
-	total += marshalUint64(buf[total:], uint64(s.PC))
 	return total
 }
 func unmarshalGoLine(buf []byte) (*logutil.GoLine, int64) {
@@ -159,15 +171,12 @@ func unmarshalGoLine(buf []byte) (*logutil.GoLine, int64) {
 	var n int64
 
 	s := &logutil.GoLine{}
-	s.ID, n = unmarshalGoLineID(buf)
+	s.PC, n = unmarshalUintptr(buf[total:])
 	total += n
-	s.Func, n = unmarshalFuncID(buf[total:])
+	s.FileID, n = unmarshalFileID(buf[total:])
 	total += n
 	s.Line, n = unmarshalUint64(buf[total:])
 	total += n
-	ptr, n := unmarshalUint64(buf[total:])
-	total += n
-	s.PC = uintptr(ptr)
 	return s, total
 }
 

@@ -217,11 +217,11 @@ type PingPacket struct{}
 type ShutdownPacket struct{}
 
 type StartTraceCmdPacket struct {
-	FuncID     logutil.FuncID
+	FuncEntry  uintptr
 	ModuleName string
 }
 type StopTraceCmdPacket struct {
-	FuncID     logutil.FuncID
+	FuncEntry  uintptr
 	ModuleName string
 }
 
@@ -254,14 +254,14 @@ func (p *ShutdownPacket) Marshal(buf []byte) int64   { return 0 }
 func (p *ShutdownPacket) Unmarshal(buf []byte) int64 { return 0 }
 
 func (p *StartTraceCmdPacket) Marshal(buf []byte) int64 {
-	total := marshalFuncID(buf, p.FuncID)
+	total := marshalUintptr(buf, p.FuncEntry)
 	total += marshalString(buf[total:], p.ModuleName)
 	return total
 }
 func (p *StartTraceCmdPacket) Unmarshal(buf []byte) int64 {
 	var total int64
 	var n int64
-	p.FuncID, n = unmarshalFuncID(buf)
+	p.FuncEntry, n = unmarshalUintptr(buf)
 	total += n
 	p.ModuleName, n = unmarshalString(buf[total:])
 	total += n
@@ -269,14 +269,14 @@ func (p *StartTraceCmdPacket) Unmarshal(buf []byte) int64 {
 }
 
 func (p *StopTraceCmdPacket) Marshal(buf []byte) int64 {
-	total := marshalFuncID(buf, p.FuncID)
+	total := marshalUintptr(buf, p.FuncEntry)
 	total += marshalString(buf[total:], p.ModuleName)
 	return total
 }
 func (p *StopTraceCmdPacket) Unmarshal(buf []byte) int64 {
 	var total int64
 	var n int64
-	p.FuncID, n = unmarshalFuncID(buf)
+	p.FuncEntry, n = unmarshalUintptr(buf)
 	total += n
 	p.ModuleName, n = unmarshalString(buf)
 	total += n
