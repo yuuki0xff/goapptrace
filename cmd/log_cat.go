@@ -83,14 +83,14 @@ func runLogCat(conf *config.Config, stderr io.Writer, logID string, logw LogWrit
 	}()
 
 	logw.SetGoLineInfoGetter(func(pc uintptr) restapi.GoLineInfo {
-		s, err := api.GoLine(logID, strconv.Itoa(int(pc)))
+		s, err := api.GoLine(logID, pc)
 		if err != nil {
 			log.Panic(err)
 		}
 		return s
 	})
 	logw.SetFuncInfoGetter(func(pc uintptr) restapi.FuncInfo {
-		f, err := api.Func(logID, strconv.Itoa(int(pc)))
+		f, err := api.Func(logID, pc)
 		if err != nil {
 			log.Panic(err)
 		}
