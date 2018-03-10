@@ -105,6 +105,7 @@ type Symbols struct {
 }
 
 type SymbolsData struct {
+	Mods   []GoModule
 	Funcs  []*GoFunc
 	GoLine []*GoLine
 }
