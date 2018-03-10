@@ -164,5 +164,7 @@ func (s *Symbols) ModuleName(id GoLineID) string {
 }
 
 func (s *Symbols) SetSymbolsData(data *SymbolsData) {
-	// TODO
+	s.lock.Lock()
+	s.data = *data
+	s.lock.Unlock()
 }
