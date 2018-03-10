@@ -148,7 +148,6 @@ type File string
 //	Line   uint64
 //}
 
-
 type GoFunc struct {
 	ID    FuncID
 	Name  string  // example: "github.com/yuuki0xff/goapptrace.main"

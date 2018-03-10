@@ -236,4 +236,3 @@ func (l *_GAT_SilentLog) Fatal(s string) {
 	throw(s)
 }
 `
-
