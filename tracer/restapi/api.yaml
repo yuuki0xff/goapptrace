@@ -259,7 +259,7 @@ definitions:
         type: integer
         format: int64
         example: 20
-        description: FuncStatusID
+        description: GoLineID
       func-id:
         type: integer
         format: int64

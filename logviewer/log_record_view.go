@@ -25,7 +25,7 @@ type LogRecordState struct {
 	State      LRState
 	Error      error
 	Records    []restapi.FuncCall
-	FsMap      map[logutil.FuncStatusID]restapi.FuncStatusInfo
+	FsMap      map[logutil.GoLineID]restapi.GoLineInfo
 	FMap       map[logutil.FuncID]restapi.FuncInfo
 	SelectedID logutil.FuncLogID
 }
@@ -72,7 +72,7 @@ func (vm *LogRecordVM) View() View {
 }
 func (vm *LogRecordVM) fetch() (
 	records []restapi.FuncCall,
-	fsMap map[logutil.FuncStatusID]restapi.FuncStatusInfo,
+	fsMap map[logutil.GoLineID]restapi.GoLineInfo,
 	fMap map[logutil.FuncID]restapi.FuncInfo,
 	err error,
 ) {
@@ -90,9 +90,9 @@ func (vm *LogRecordVM) fetch() (
 	var eg errgroup.Group
 
 	// バックグラウンドでmetadataを取得するworkerへのリクエストを入れるチャンネル
-	reqCh := make(chan logutil.FuncStatusID, 10000)
+	reqCh := make(chan logutil.GoLineID, 10000)
 	// キャッシュ用。アクセスする前に必ずlockをすること。
-	fsMap = make(map[logutil.FuncStatusID]restapi.FuncStatusInfo, 10000)
+	fsMap = make(map[logutil.GoLineID]restapi.GoLineInfo, 10000)
 	fMap = make(map[logutil.FuncID]restapi.FuncInfo, 10000)
 	var lock sync.Mutex
 
@@ -118,15 +118,15 @@ func (vm *LogRecordVM) fetch() (
 	for i := 0; i < APIConnections; i++ {
 		eg.Go(func() (err error) {
 			for id := range reqCh {
-				// FuncStatusInfoを取得する
+				// GoLineInfoを取得する
 				lock.Lock()
 				_, ok := fsMap[id]
 				lock.Unlock()
 				if ok {
 					continue
 				}
-				var fs restapi.FuncStatusInfo
-				fs, err = vm.Client.FuncStatus(vm.LogID, strconv.Itoa(int(id)))
+				var fs restapi.GoLineInfo
+				fs, err = vm.Client.GoLine(vm.LogID, strconv.Itoa(int(id)))
 				if err != nil {
 					return
 				}

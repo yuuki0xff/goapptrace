@@ -10,7 +10,7 @@ func TestSymbols_ModuleName(t *testing.T) {
 	moduleName := "github.com/yuuki0xff/goapptrace/tracer/logutil"
 	funcName := moduleName + ".TestSymbols_ModuleName"
 	funcID := FuncID(0)
-	funcSID := FuncStatusID(0)
+	funcSID := GoLineID(0)
 
 	sym := Symbols{
 		funcs: []*GoFunc{
@@ -118,58 +118,58 @@ func TestSymbols_AddFunc_keepID(t *testing.T) {
 	a.Equal(FuncID(10), id)
 }
 
-func TestSymbols_AddFuncStatus_simple(t *testing.T) {
+func TestSymbols_AddGoLine_simple(t *testing.T) {
 	a := assert.New(t)
 	s := Symbols{
 		Writable: true,
 	}
 	s.Init()
-	id, added := s.AddFuncStatus(&GoLine{
+	id, added := s.AddGoLine(&GoLine{
 		Func: 10, // dummy
 		Line: 100,
 		PC:   101,
 	})
 	a.True(added)
-	a.Equal(FuncStatusID(0), id)
+	a.Equal(GoLineID(0), id)
 	a.Len(s.funcStatus, 1)
 
-	id, added = s.AddFuncStatus(&GoLine{
+	id, added = s.AddGoLine(&GoLine{
 		Func: 22, // dummy
 		Line: 200,
 		PC:   201,
 	})
 	a.True(added)
-	a.Equal(FuncStatusID(1), id)
+	a.Equal(GoLineID(1), id)
 	a.Len(s.funcStatus, 2)
 }
 
-func TestSymbols_AddFuncStatus_keepID(t *testing.T) {
+func TestSymbols_AddGoLine_keepID(t *testing.T) {
 	a := assert.New(t)
 	s := Symbols{
 		Writable: true,
 		KeepID:   true,
 	}
 	s.Init()
-	id, added := s.AddFuncStatus(&GoLine{
+	id, added := s.AddGoLine(&GoLine{
 		ID:   1000,
 		Func: 10, // dummy
 		Line: 100,
 		PC:   101,
 	})
 	a.True(added)
-	a.Equal(FuncStatusID(1000), id)
+	a.Equal(GoLineID(1000), id)
 
-	id, added = s.AddFuncStatus(&GoLine{
+	id, added = s.AddGoLine(&GoLine{
 		ID:   2200,
 		Func: 22, // dummy
 		Line: 200,
 		PC:   201,
 	})
 	a.True(added)
-	a.Equal(FuncStatusID(2200), id)
+	a.Equal(GoLineID(2200), id)
 }
 
-func TestSymbols_AddFuncStatus_dedup(t *testing.T) {
+func TestSymbols_AddGoLine_dedup(t *testing.T) {
 	a := assert.New(t)
 	s := Symbols{
 		Writable: true,
@@ -182,20 +182,20 @@ func TestSymbols_AddFuncStatus_dedup(t *testing.T) {
 		Line: 100,
 		PC:   101,
 	}
-	id, added := s.AddFuncStatus(rec)
+	id, added := s.AddGoLine(rec)
 	a.True(added)
-	a.Equal(FuncStatusID(2), id)
+	a.Equal(GoLineID(2), id)
 
-	id, added = s.AddFuncStatus(rec)
+	id, added = s.AddGoLine(rec)
 	a.Equal(false, added)
-	a.Equal(FuncStatusID(2), id)
+	a.Equal(GoLineID(2), id)
 
 	// PCが一致していれば、他のフィールドの値が異なっていても一致として判定する。
-	id, added = s.AddFuncStatus(&GoLine{
+	id, added = s.AddGoLine(&GoLine{
 		PC: 101,
 	})
 	a.Equal(false, added)
-	a.Equal(FuncStatusID(2), id)
+	a.Equal(GoLineID(2), id)
 }
 
 func TestSymbols_Func(t *testing.T) {
@@ -225,7 +225,7 @@ func TestSymbols_Func(t *testing.T) {
 	a.Equal(id1, f.ID)
 }
 
-func TestSymbols_FuncStatus(t *testing.T) {
+func TestSymbols_GoLine(t *testing.T) {
 	a := assert.New(t)
 	s := Symbols{
 		Writable: true,
@@ -233,19 +233,19 @@ func TestSymbols_FuncStatus(t *testing.T) {
 	}
 	s.Init()
 
-	_, ok := s.FuncStatus(FuncStatusID(1000))
+	_, ok := s.GoLine(GoLineID(1000))
 	a.Equal(false, ok)
 
-	id1, ok := s.AddFuncStatus(&GoLine{
+	id1, ok := s.AddGoLine(&GoLine{
 		ID:   1000,
 		Func: 10, // dummy
 		Line: 100,
 		PC:   101,
 	})
 	a.True(ok)
-	a.Equal(FuncStatusID(1000), id1)
+	a.Equal(GoLineID(1000), id1)
 
-	fs, ok := s.FuncStatus(id1)
+	fs, ok := s.GoLine(id1)
 	a.True(ok)
 	a.Equal(id1, fs.ID)
 }
@@ -262,7 +262,7 @@ func TestSymbols_FuncIDFromName(t *testing.T) {
 				Entry: 1000,
 			},
 		},
-		FuncStatus: []*GoLine{},
+		GoLine: []*GoLine{},
 	})
 
 	id, ok := s.FuncIDFromName("main.test")
@@ -273,7 +273,7 @@ func TestSymbols_FuncIDFromName(t *testing.T) {
 	a.Equal(false, ok)
 }
 
-func TestSymbols_FuncStatusIDFromPC(t *testing.T) {
+func TestSymbols_GoLineIDFromPC(t *testing.T) {
 	a := assert.New(t)
 	s := Symbols{}
 	s.Load(SymbolsData{
@@ -285,7 +285,7 @@ func TestSymbols_FuncStatusIDFromPC(t *testing.T) {
 				Entry: 1000,
 			},
 		},
-		FuncStatus: []*GoLine{
+		GoLine: []*GoLine{
 			{
 				ID:   0,
 				Func: FuncID(0),
@@ -295,15 +295,15 @@ func TestSymbols_FuncStatusIDFromPC(t *testing.T) {
 		},
 	})
 
-	id, ok := s.FuncStatusIDFromPC(1030)
+	id, ok := s.GoLineIDFromPC(1030)
 	a.True(ok)
-	a.Equal(FuncStatusID(0), id)
+	a.Equal(GoLineID(0), id)
 
 	// GoFuncのEntry pointの値は検索対象外
-	_, ok = s.FuncStatusIDFromPC(1000)
+	_, ok = s.GoLineIDFromPC(1000)
 	a.Equal(false, ok)
 
 	// 関数の範囲ぽくても、未登録ならfalseを返す。
-	_, ok = s.FuncStatusIDFromPC(1010)
+	_, ok = s.GoLineIDFromPC(1010)
 	a.Equal(false, ok)
 }

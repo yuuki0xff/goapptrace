@@ -57,7 +57,7 @@ func (s *GraphStateMutable) UpdateOffset(dx, dy int) {
 
 type GraphCache struct {
 	FcList  []funcCallWithFuncIDs
-	FsList  []restapi.FuncStatusInfo
+	FsList  []restapi.GoLineInfo
 	FList   []restapi.FuncInfo
 	LogInfo restapi.LogStatus
 	GMap    map[logutil.GID]restapi.Goroutine
@@ -141,10 +141,10 @@ func (c *GraphCache) getGoroutines() (map[logutil.GID]restapi.Goroutine, error) 
 	return gm, nil
 }
 
-// frames2funcs converts logutil.FuncStatusID to logutil.FuncID.
-func (c *GraphCache) frames2funcs(frames []logutil.FuncStatusID) (funcs []logutil.FuncID) {
+// frames2funcs converts logutil.GoLineID to logutil.FuncID.
+func (c *GraphCache) frames2funcs(frames []logutil.GoLineID) (funcs []logutil.FuncID) {
 	for _, id := range frames {
-		fs, err := c.client.FuncStatus(c.logID, strconv.Itoa(int(id)))
+		fs, err := c.client.GoLine(c.logID, strconv.Itoa(int(id)))
 		if err != nil {
 			log.Panic(err)
 		}
@@ -556,8 +556,8 @@ func (v *GraphView) newStatusBar(text string) *tui.StatusBar {
 type funcCallWithFuncIDs struct {
 	restapi.FuncCall
 	// 各フレームに対応するlogutil.FuncIDのリスト。
-	// FuncStatusIDから変換するオーバーヘッドが大きいため、ここにキャッシュしておく。
-	// TODO: FuncStatusID -> FuncIDをする共有キャッシュを作る
+	// GoLineIDから変換するオーバーヘッドが大きいため、ここにキャッシュしておく。
+	// TODO: GoLineID -> FuncIDをする共有キャッシュを作る
 	funcs []logutil.FuncID
 }
 

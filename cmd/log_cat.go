@@ -83,8 +83,8 @@ func runLogCat(conf *config.Config, stderr io.Writer, logID string, logw LogWrit
 		}
 	}()
 
-	logw.SetFuncStatusInfoGetter(func(id logutil.FuncStatusID) restapi.FuncStatusInfo {
-		s, err := api.FuncStatus(logID, strconv.Itoa(int(id)))
+	logw.SetGoLineInfoGetter(func(id logutil.GoLineID) restapi.GoLineInfo {
+		s, err := api.GoLine(logID, strconv.Itoa(int(id)))
 		if err != nil {
 			log.Panic(err)
 		}
@@ -112,7 +112,7 @@ type LogWriter interface {
 	WriteHeader() error
 	Write(evt restapi.FuncCall) error
 	SetFuncInfoGetter(func(id logutil.FuncID) restapi.FuncInfo)
-	SetFuncStatusInfoGetter(func(id logutil.FuncStatusID) restapi.FuncStatusInfo)
+	SetGoLineInfoGetter(func(id logutil.GoLineID) restapi.GoLineInfo)
 }
 
 func NewLogWriter(format string, out io.Writer) (LogWriter, error) {
@@ -151,13 +151,13 @@ func (w *JsonLogWriter) Write(evt restapi.FuncCall) error {
 
 func (w *JsonLogWriter) SetFuncInfoGetter(func(id logutil.FuncID) restapi.FuncInfo) {
 }
-func (w *JsonLogWriter) SetFuncStatusInfoGetter(func(id logutil.FuncStatusID) restapi.FuncStatusInfo) {
+func (w *JsonLogWriter) SetGoLineInfoGetter(func(id logutil.GoLineID) restapi.GoLineInfo) {
 }
 
 type TextLogWriter struct {
 	output     io.Writer
 	funcInfo   func(id logutil.FuncID) restapi.FuncInfo
-	funcStatus func(id logutil.FuncStatusID) restapi.FuncStatusInfo
+	funcStatus func(id logutil.GoLineID) restapi.GoLineInfo
 }
 
 func NewTextLogWriter(output io.Writer) *TextLogWriter {
@@ -199,7 +199,7 @@ func (w *TextLogWriter) Write(evt restapi.FuncCall) error {
 func (w *TextLogWriter) SetFuncInfoGetter(f func(id logutil.FuncID) restapi.FuncInfo) {
 	w.funcInfo = f
 }
-func (w *TextLogWriter) SetFuncStatusInfoGetter(f func(id logutil.FuncStatusID) restapi.FuncStatusInfo) {
+func (w *TextLogWriter) SetGoLineInfoGetter(f func(id logutil.GoLineID) restapi.GoLineInfo) {
 	w.funcStatus = f
 }
 

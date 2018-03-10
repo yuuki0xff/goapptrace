@@ -92,7 +92,7 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 	logmsg := &logutil.RawFuncLog{}
 	logmsg.Tag = tag
 	logmsg.Timestamp = logutil.NewTime(time.Now())
-	logmsg.Frames = make([]logutil.FuncStatusID, 0, maxStackSize)
+	logmsg.Frames = make([]logutil.GoLineID, 0, maxStackSize)
 	logmsg.GID = gid()
 	logmsg.TxID = id
 
@@ -118,7 +118,7 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 			if !more {
 				break
 			}
-			fsid, ok := symbols.FuncStatusIDFromPC(frame.PC)
+			fsid, ok := symbols.GoLineIDFromPC(frame.PC)
 			if !ok {
 				// SLOW PATH
 				shouldSendDiff = true
@@ -141,15 +141,15 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 
 				// GoFuncを追加する。
 				var funcStatusWasAdded bool
-				fsid, funcStatusWasAdded = symbols.AddFuncStatus(&logutil.GoLine{
+				fsid, funcStatusWasAdded = symbols.AddGoLine(&logutil.GoLine{
 					Func: fid,
 					Line: uint64(frame.Line),
 					PC:   frame.PC,
 				})
 				if funcStatusWasAdded {
 					f := &logutil.GoLine{}
-					*f, _ = symbols.FuncStatus(fsid)
-					diff.FuncStatus = append(diff.FuncStatus, f)
+					*f, _ = symbols.GoLine(fsid)
+					diff.GoLine = append(diff.GoLine, f)
 				}
 			}
 			logmsg.Frames = append(logmsg.Frames, fsid)
@@ -161,7 +161,7 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 		// これを使用するときは、*最適化を無効*にしてコンパイルすること。
 
 		for _, pc := range pcs {
-			fsid, ok := symbols.FuncStatusIDFromPC(pc)
+			fsid, ok := symbols.GoLineIDFromPC(pc)
 			if !ok {
 				// SLOW PATH
 				shouldSendDiff = true
@@ -187,15 +187,15 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 				// GoFuncを追加する。
 				var funcStatusWasAdded bool
 				_, line := f.FileLine(pc)
-				fsid, funcStatusWasAdded = symbols.AddFuncStatus(&logutil.GoLine{
+				fsid, funcStatusWasAdded = symbols.AddGoLine(&logutil.GoLine{
 					Func: fid,
 					Line: uint64(line),
 					PC:   pc,
 				})
 				if funcStatusWasAdded {
 					f := &logutil.GoLine{}
-					*f, _ = symbols.FuncStatus(fsid)
-					diff.FuncStatus = append(diff.FuncStatus, f)
+					*f, _ = symbols.GoLine(fsid)
+					diff.GoLine = append(diff.GoLine, f)
 				}
 			}
 			logmsg.Frames = append(logmsg.Frames, fsid)

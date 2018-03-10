@@ -65,7 +65,7 @@ type FuncLog struct {
 	EndTime   Time
 	ParentID  FuncLogID
 
-	Frames []FuncStatusID
+	Frames []GoLineID
 	GID    GID
 }
 
@@ -76,7 +76,7 @@ type RawFuncLog struct {
 	ID        RawFuncLogID
 	Tag       TagName        `json:"tag"`
 	Timestamp Time           `json:"timestamp"`
-	Frames    []FuncStatusID `json:"frames"` // Frames[0] is current frame, Frames[1] is the caller of Frame[0].
+	Frames    []GoLineID `json:"frames"` // Frames[0] is current frame, Frames[1] is the caller of Frame[0].
 	GID       GID            `json:"gid"`
 	TxID      TxID           `json:"txid"`
 }
@@ -88,35 +88,35 @@ func (fl FuncLog) IsEnded() bool {
 ////////////////////////////////////////////////////////////////
 // Symbols
 type FuncID uint64
-type FuncStatusID uint64
+type GoLineID uint64
 
 type SymbolsReadFn func() (SymbolsData, error)
 type SymbolsWriteFn func(data SymbolsData) error
 
 type Symbols struct {
 	Writable bool
-	// KeepIDがtrueのとき、FuncIDおよびFuncStatusIDは、追加時に指定されたIDを使用する。
+	// KeepIDがtrueのとき、FuncIDおよびGoLineIDは、追加時に指定されたIDを使用する。
 	// KeepIDがfalseのとき、追加時に指定されたIDは無視し、新たなIDを付与する。
 	KeepID bool
 
 	// index: FuncID
 	funcs []*GoFunc
-	// index: FuncStatusID
+	// index: GoLineID
 	funcStatus []*GoLine
 
 	lock sync.RWMutex
 
 	// SymbolName(string)とFuncIDの対応関係を保持する
 	name2FuncID map[string]FuncID
-	// PC(Program Counter)とFuncStatusIDの対応関係を保持する。
-	// 同一の内容のFuncStatusを追加しないようにするために使用する。
+	// PC(Program Counter)とGoLineIDの対応関係を保持する。
+	// 同一の内容のGoLineを追加しないようにするために使用する。
 	// inline化やループ展開などの最適化をされると破綻してしまうので、コンパイル時に最適化をoffにしているのが前提。
-	pc2FSID map[uintptr]FuncStatusID
+	pc2FSID map[uintptr]GoLineID
 }
 
 type SymbolsData struct {
 	Funcs      []*GoFunc
-	FuncStatus []*GoLine
+	GoLine []*GoLine
 }
 
 // FileID is index of Symbols.Files array.
@@ -156,7 +156,7 @@ type GoFunc struct {
 }
 
 type GoLine struct {
-	ID   FuncStatusID
+	ID   GoLineID
 	Func FuncID
 	Line uint64
 	PC   uintptr

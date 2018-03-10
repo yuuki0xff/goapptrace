@@ -44,7 +44,7 @@ type apiCache struct {
 
 type logCache struct {
 	m  sync.RWMutex
-	fs map[string]*FuncStatusInfo
+	fs map[string]*GoLineInfo
 	f  map[string]*FuncInfo
 }
 
@@ -187,9 +187,9 @@ func (c ClientWithCtx) Func(logID, funcID string) (f FuncInfo, err error) {
 	}
 	return
 }
-func (c ClientWithCtx) FuncStatus(logID, funcStatusID string) (fs FuncStatusInfo, err error) {
+func (c ClientWithCtx) GoLine(logID, funcStatusID string) (fs GoLineInfo, err error) {
 	if c.UseCache {
-		fscache := c.cache.Log(logID).FuncStatus(funcStatusID)
+		fscache := c.cache.Log(logID).GoLine(funcStatusID)
 		if fscache != nil {
 			// fast path
 			fs = *fscache
@@ -205,12 +205,12 @@ func (c ClientWithCtx) FuncStatus(logID, funcStatusID string) (fs FuncStatusInfo
 	if err == nil {
 		// validation
 		if funcStatusID != strconv.FormatUint(uint64(fs.ID), 10) {
-			err = fmt.Errorf("unexpected FuncStatusID: (expected) %s != %d (received)\nreceived FuncStatusInfo: %+v", funcStatusID, fs.ID, fs)
+			err = fmt.Errorf("unexpected GoLineID: (expected) %s != %d (received)\nreceived GoLineInfo: %+v", funcStatusID, fs.ID, fs)
 			log.Panic(errors.WithStack(err))
 		}
 	}
 	if err == nil && c.UseCache {
-		c.cache.AddLog(logID).AddFuncStatus(fs)
+		c.cache.AddLog(logID).AddGoLine(fs)
 	}
 	return
 }
@@ -333,7 +333,7 @@ func (c *apiCache) AddLog(logID string) *logCache {
 }
 
 func (c *logCache) init() {
-	c.fs = map[string]*FuncStatusInfo{}
+	c.fs = map[string]*GoLineInfo{}
 	c.f = map[string]*FuncInfo{}
 }
 
@@ -359,7 +359,7 @@ func (c *logCache) AddFunc(f FuncInfo) {
 	c.m.Unlock()
 }
 
-func (c *logCache) FuncStatus(id string) *FuncStatusInfo {
+func (c *logCache) GoLine(id string) *GoLineInfo {
 	if c == nil {
 		return nil
 	}
@@ -369,12 +369,12 @@ func (c *logCache) FuncStatus(id string) *FuncStatusInfo {
 	return fs
 }
 
-func (c *logCache) AddFuncStatus(fs FuncStatusInfo) {
+func (c *logCache) AddGoLine(fs GoLineInfo) {
 	id := strconv.FormatUint(uint64(fs.ID), 10)
 
 	c.m.Lock()
 	if _, ok := c.fs[id]; ok {
-		fsp := &FuncStatusInfo{}
+		fsp := &GoLineInfo{}
 		*fsp = fs
 		c.fs[id] = fsp
 	}

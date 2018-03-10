@@ -15,7 +15,7 @@ import (
 type FuncCallDetailState struct {
 	State  FCDState
 	Error  error
-	FSList []restapi.FuncStatusInfo
+	FSList []restapi.GoLineInfo
 	FList  []restapi.FuncInfo
 	Record restapi.FuncCall
 }
@@ -39,14 +39,14 @@ func (vm *FuncCallDetailVM) UpdateInterval() time.Duration {
 func (vm *FuncCallDetailVM) Update(ctx context.Context) {
 	vm.updateOnce.Do(func() {
 		length := len(vm.Record.Frames)
-		fsList := make([]restapi.FuncStatusInfo, length)
+		fsList := make([]restapi.GoLineInfo, length)
 		fList := make([]restapi.FuncInfo, length)
 
 		var eg errgroup.Group
 		fetch := func(i int) {
 			eg.Go(func() error {
 				fsid := vm.Record.Frames[i]
-				fs, err := vm.Client.FuncStatus(vm.LogID, strconv.Itoa(int(fsid)))
+				fs, err := vm.Client.GoLine(vm.LogID, strconv.Itoa(int(fsid)))
 				if err != nil {
 					return err
 				}

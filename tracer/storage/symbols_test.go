@@ -59,7 +59,7 @@ func TestSymbolsStore_loadEmptyFile(t *testing.T) {
 		func(symbols *logutil.Symbols) {
 			t.Log(symbols2string(symbols))
 			a.Equal(0, symbols.FuncsSize())
-			a.Equal(0, symbols.FuncStatusSize())
+			a.Equal(0, symbols.GoLineSize())
 		},
 	)
 }
@@ -71,20 +71,20 @@ func TestSymbolsStore_addASymbol(t *testing.T) {
 		// write
 		func(s *logutil.Symbols) {
 			s.AddFunc(&logutil.GoFunc{})
-			s.AddFuncStatus(&logutil.GoLine{})
+			s.AddGoLine(&logutil.GoLine{})
 		},
 		// check data
 		func(symbols *logutil.Symbols) {
 			t.Log(symbols2string(symbols))
 			a.Equal(1, symbols.FuncsSize())
-			a.Equal(1, symbols.FuncStatusSize())
+			a.Equal(1, symbols.GoLineSize())
 		},
 	)
 }
 func TestSymbolsStore_addSymbolsWithData(t *testing.T) {
 	a := assert.New(t)
 	var fIDs [2]logutil.FuncID
-	var fsIDs [2]logutil.FuncStatusID
+	var fsIDs [2]logutil.GoLineID
 	goFuncs := []*logutil.GoFunc{
 		{
 			Name:  "github.com/yuuki0xff/dummyModuleName.main",
@@ -114,11 +114,11 @@ func TestSymbolsStore_addSymbolsWithData(t *testing.T) {
 		func(s *logutil.Symbols) {
 			fIDs[0], _ = s.AddFunc(goFuncs[0])
 			funcStatuses[0].Func = fIDs[0]
-			fsIDs[0], _ = s.AddFuncStatus(funcStatuses[0])
+			fsIDs[0], _ = s.AddGoLine(funcStatuses[0])
 
 			fIDs[1], _ = s.AddFunc(goFuncs[1])
 			funcStatuses[1].Func = fIDs[1]
-			fsIDs[1], _ = s.AddFuncStatus(funcStatuses[1])
+			fsIDs[1], _ = s.AddGoLine(funcStatuses[1])
 		},
 		// check data
 		func(symbols *logutil.Symbols) {
@@ -130,9 +130,9 @@ func TestSymbolsStore_addSymbolsWithData(t *testing.T) {
 			a.Equal(*goFuncs[0], f1, "Mismatched GoFunc object")
 			a.Equal(*goFuncs[1], f2, "Mismatched GoFunc object")
 
-			a.Equal(2, symbols.FuncStatusSize(), "Mismatched length of GoLine array")
-			fs1, _ := symbols.FuncStatus(0)
-			fs2, _ := symbols.FuncStatus(1)
+			a.Equal(2, symbols.GoLineSize(), "Mismatched length of GoLine array")
+			fs1, _ := symbols.GoLine(0)
+			fs2, _ := symbols.GoLine(1)
 			a.Equal(*funcStatuses[0], fs1, "Mismatched GoLine object")
 			a.Equal(*funcStatuses[1], fs2, "Mismatched GoLine object")
 		},
@@ -149,7 +149,7 @@ func symbols2string(symbols *logutil.Symbols) string {
 	})
 
 	fmt.Println(buf, "Symbols.GoLine:")
-	symbols.WalkFuncStatus(func(fs logutil.GoLine) error {
+	symbols.WalkGoLine(func(fs logutil.GoLine) error {
 		fmt.Fprintf(buf, "  FuncStatu[%d] = %+v", fs.ID, fs)
 		return nil
 	})

@@ -71,13 +71,13 @@ func TestGraphVM_buildLines(t *testing.T) {
 						StartTime: 1,
 						EndTime:   2,
 						ParentID:  logutil.NotFoundParent,
-						Frames:    []logutil.FuncStatusID{1},
+						Frames:    []logutil.GoLineID{1},
 						GID:       0,
 					},
 					funcs: []logutil.FuncID{1},
 				},
 			},
-			FsList: []restapi.FuncStatusInfo{
+			FsList: []restapi.GoLineInfo{
 				{
 					ID:   1,
 					Func: 1,
@@ -133,7 +133,7 @@ func TestGraphVM_buildLines(t *testing.T) {
 						StartTime: 1,
 						EndTime:   2,
 						ParentID:  logutil.NotFoundParent,
-						Frames:    []logutil.FuncStatusID{1},
+						Frames:    []logutil.GoLineID{1},
 						GID:       1,
 					},
 					funcs: []logutil.FuncID{1},
@@ -143,13 +143,13 @@ func TestGraphVM_buildLines(t *testing.T) {
 						StartTime: 3,
 						EndTime:   4,
 						ParentID:  logutil.NotFoundParent,
-						Frames:    []logutil.FuncStatusID{2},
+						Frames:    []logutil.GoLineID{2},
 						GID:       2,
 					},
 					funcs: []logutil.FuncID{2},
 				},
 			},
-			FsList: []restapi.FuncStatusInfo{
+			FsList: []restapi.GoLineInfo{
 				{
 					ID:   1,
 					Func: 1,
@@ -239,7 +239,7 @@ func TestGraphVM_buildLines(t *testing.T) {
 						StartTime: 1,
 						EndTime:   4,
 						ParentID:  logutil.NotFoundParent,
-						Frames:    []logutil.FuncStatusID{1},
+						Frames:    []logutil.GoLineID{1},
 						GID:       1,
 					},
 					funcs: []logutil.FuncID{1},
@@ -249,13 +249,13 @@ func TestGraphVM_buildLines(t *testing.T) {
 						StartTime: 2,
 						EndTime:   3,
 						ParentID:  logutil.NotFoundParent,
-						Frames:    []logutil.FuncStatusID{2, 3},
+						Frames:    []logutil.GoLineID{2, 3},
 						GID:       1,
 					},
 					funcs: []logutil.FuncID{1, 2},
 				},
 			},
-			FsList: []restapi.FuncStatusInfo{
+			FsList: []restapi.GoLineInfo{
 				{
 					ID:   1,
 					Func: 1,

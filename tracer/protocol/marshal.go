@@ -53,12 +53,12 @@ func unmarshalRawFuncLogID(buf []byte) (logutil.RawFuncLogID, int64) {
 	return logutil.RawFuncLogID(val), n
 }
 
-func marshalFuncStatusID(buf []byte, fsid logutil.FuncStatusID) int64 {
+func marshalGoLineID(buf []byte, fsid logutil.GoLineID) int64 {
 	return marshalUint64(buf, uint64(fsid))
 }
-func unmarshalFuncStatusID(buf []byte) (logutil.FuncStatusID, int64) {
+func unmarshalGoLineID(buf []byte) (logutil.GoLineID, int64) {
 	val, n := unmarshalUint64(buf)
-	return logutil.FuncStatusID(val), n
+	return logutil.GoLineID(val), n
 }
 
 func marshalGoFuncSlice(buf []byte, funcs []*logutil.GoFunc) int64 {
@@ -119,17 +119,17 @@ func unmarshalGoFunc(buf []byte) (*logutil.GoFunc, int64) {
 	return s, total
 }
 
-func marshalFuncStatusSlice(buf []byte, status []*logutil.GoLine) int64 {
+func marshalGoLineSlice(buf []byte, status []*logutil.GoLine) int64 {
 	total := marshalUint64(buf, uint64(len(status)))
 	for i := range status {
 		total += marshalBool(buf[total:], status[i] != nil)
 		if status[i] != nil {
-			total += marshalFuncStatus(buf[total:], status[i])
+			total += marshalGoLine(buf[total:], status[i])
 		}
 	}
 	return total
 }
-func unmarshalFuncStatusSlice(buf []byte) ([]*logutil.GoLine, int64) {
+func unmarshalGoLineSlice(buf []byte) ([]*logutil.GoLine, int64) {
 	var total int64
 	length, n := unmarshalUint64(buf)
 	total += n
@@ -139,27 +139,27 @@ func unmarshalFuncStatusSlice(buf []byte) ([]*logutil.GoLine, int64) {
 		isNonNil, n := unmarshalBool(buf[total:])
 		total += n
 		if isNonNil {
-			funcs[i], n = unmarshalFuncStatus(buf[total:])
+			funcs[i], n = unmarshalGoLine(buf[total:])
 			total += n
 		}
 	}
 	return funcs, total
 }
 
-func marshalFuncStatus(buf []byte, s *logutil.GoLine) int64 {
+func marshalGoLine(buf []byte, s *logutil.GoLine) int64 {
 	var total int64
-	total += marshalFuncStatusID(buf, s.ID)
+	total += marshalGoLineID(buf, s.ID)
 	total += marshalFuncID(buf[total:], s.Func)
 	total += marshalUint64(buf[total:], s.Line)
 	total += marshalUint64(buf[total:], uint64(s.PC))
 	return total
 }
-func unmarshalFuncStatus(buf []byte) (*logutil.GoLine, int64) {
+func unmarshalGoLine(buf []byte) (*logutil.GoLine, int64) {
 	var total int64
 	var n int64
 
 	s := &logutil.GoLine{}
-	s.ID, n = unmarshalFuncStatusID(buf)
+	s.ID, n = unmarshalGoLineID(buf)
 	total += n
 	s.Func, n = unmarshalFuncID(buf[total:])
 	total += n
@@ -171,22 +171,22 @@ func unmarshalFuncStatus(buf []byte) (*logutil.GoLine, int64) {
 	return s, total
 }
 
-func marshalFuncStatusIDSlice(buf []byte, slice []logutil.FuncStatusID) int64 {
+func marshalGoLineIDSlice(buf []byte, slice []logutil.GoLineID) int64 {
 	total := marshalUint64(buf, uint64(len(slice)))
 	for i := range slice {
-		total += marshalFuncStatusID(buf[total:], slice[i])
+		total += marshalGoLineID(buf[total:], slice[i])
 	}
 	return total
 }
-func unmarshalFuncStatusIDSlice(buf []byte) ([]logutil.FuncStatusID, int64) {
+func unmarshalGoLineIDSlice(buf []byte) ([]logutil.GoLineID, int64) {
 	var total int64
 	length, n := unmarshalUint64(buf)
 	total += n
 
-	slice := make([]logutil.FuncStatusID, length)
+	slice := make([]logutil.GoLineID, length)
 	for i := range slice {
 		var n int64
-		slice[i], n = unmarshalFuncStatusID(buf[total:])
+		slice[i], n = unmarshalGoLineID(buf[total:])
 		total += n
 	}
 	return slice, total
@@ -227,7 +227,7 @@ func marshalRawFuncLog(buf []byte, r *logutil.RawFuncLog) int64 {
 	total := marshalRawFuncLogID(buf, r.ID)
 	total += marshalTagName(buf[total:], r.Tag)
 	total += marshalTime(buf[total:], r.Timestamp)
-	total += marshalFuncStatusIDSlice(buf[total:], r.Frames)
+	total += marshalGoLineIDSlice(buf[total:], r.Frames)
 	total += marshalGID(buf[total:], r.GID)
 	total += marshalTxID(buf[total:], r.TxID)
 	return total
@@ -243,7 +243,7 @@ func unmarshalRawFuncLog(buf []byte) (*logutil.RawFuncLog, int64) {
 	total += n
 	fl.Timestamp, n = unmarshalTime(buf[total:])
 	total += n
-	fl.Frames, n = unmarshalFuncStatusIDSlice(buf[total:])
+	fl.Frames, n = unmarshalGoLineIDSlice(buf[total:])
 	total += n
 	fl.GID, n = unmarshalGID(buf[total:])
 	total += n

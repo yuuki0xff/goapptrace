@@ -18,12 +18,12 @@ func (id *FuncID) UnmarshalJSON(data []byte) error {
 	return err
 }
 
-func (id FuncStatusID) MarshalJSON() ([]byte, error) {
+func (id GoLineID) MarshalJSON() ([]byte, error) {
 	return marshalUint64(uint64(id))
 }
-func (id *FuncStatusID) UnmarshalJSON(data []byte) error {
+func (id *GoLineID) UnmarshalJSON(data []byte) error {
 	val, err := unmarshalUint64(data)
-	*id = FuncStatusID(val)
+	*id = GoLineID(val)
 	return err
 }
 

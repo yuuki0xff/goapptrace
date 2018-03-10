@@ -32,8 +32,8 @@ func TestStateSimulator_Next_startStopFuncs(t *testing.T) {
 			ID:        RawFuncLogID(1),
 			Tag:       "funcStart",
 			Timestamp: 1,
-			Frames: []FuncStatusID{
-				FuncStatusID(0),
+			Frames: []GoLineID{
+				GoLineID(0),
 			},
 			GID:  0,
 			TxID: txids[0],
@@ -43,8 +43,8 @@ func TestStateSimulator_Next_startStopFuncs(t *testing.T) {
 			ID:        RawFuncLogID(2),
 			Tag:       "funcEnd",
 			Timestamp: 2,
-			Frames: []FuncStatusID{
-				FuncStatusID(0),
+			Frames: []GoLineID{
+				GoLineID(0),
 			},
 			GID:  0,
 			TxID: txids[0],
@@ -80,8 +80,8 @@ func TestStateSimulator_Next_withNestedCall(t *testing.T) {
 			ID:        RawFuncLogID(1),
 			Tag:       "funcStart",
 			Timestamp: 1,
-			Frames: []FuncStatusID{
-				FuncStatusID(0),
+			Frames: []GoLineID{
+				GoLineID(0),
 			},
 			GID:  0,
 			TxID: txids[0],
@@ -91,9 +91,9 @@ func TestStateSimulator_Next_withNestedCall(t *testing.T) {
 			ID:        RawFuncLogID(2),
 			Tag:       "funcStart",
 			Timestamp: 2,
-			Frames: []FuncStatusID{
-				FuncStatusID(0),
-				FuncStatusID(1),
+			Frames: []GoLineID{
+				GoLineID(0),
+				GoLineID(1),
 			},
 			GID:  0,
 			TxID: txids[1],
@@ -103,10 +103,10 @@ func TestStateSimulator_Next_withNestedCall(t *testing.T) {
 			ID:        RawFuncLogID(3),
 			Tag:       "funcStart",
 			Timestamp: 3,
-			Frames: []FuncStatusID{
-				FuncStatusID(0),
-				FuncStatusID(1),
-				FuncStatusID(2),
+			Frames: []GoLineID{
+				GoLineID(0),
+				GoLineID(1),
+				GoLineID(2),
 			},
 			GID:  0,
 			TxID: txids[2],
@@ -116,10 +116,10 @@ func TestStateSimulator_Next_withNestedCall(t *testing.T) {
 			ID:        RawFuncLogID(4),
 			Tag:       "funcEnd",
 			Timestamp: 4,
-			Frames: []FuncStatusID{
-				FuncStatusID(0),
-				FuncStatusID(1),
-				FuncStatusID(2),
+			Frames: []GoLineID{
+				GoLineID(0),
+				GoLineID(1),
+				GoLineID(2),
 			},
 			GID:  0,
 			TxID: txids[2],
@@ -129,9 +129,9 @@ func TestStateSimulator_Next_withNestedCall(t *testing.T) {
 			ID:        RawFuncLogID(5),
 			Tag:       "funcEnd",
 			Timestamp: 5,
-			Frames: []FuncStatusID{
-				FuncStatusID(0),
-				FuncStatusID(1),
+			Frames: []GoLineID{
+				GoLineID(0),
+				GoLineID(1),
 			},
 			GID:  0,
 			TxID: txids[1],
@@ -141,8 +141,8 @@ func TestStateSimulator_Next_withNestedCall(t *testing.T) {
 			ID:        RawFuncLogID(6),
 			Tag:       "funcEnd",
 			Timestamp: 6,
-			Frames: []FuncStatusID{
-				FuncStatusID(0),
+			Frames: []GoLineID{
+				GoLineID(0),
 			},
 			GID:  0,
 			TxID: txids[0],
@@ -173,8 +173,8 @@ func TestStateSimulator_Next_startStopNewGoroutines(t *testing.T) {
 			ID:        RawFuncLogID(1),
 			Tag:       "funcStart",
 			Timestamp: 1,
-			Frames: []FuncStatusID{
-				FuncStatusID(0),
+			Frames: []GoLineID{
+				GoLineID(0),
 			},
 			GID:  0,
 			TxID: txids[0],
@@ -185,8 +185,8 @@ func TestStateSimulator_Next_startStopNewGoroutines(t *testing.T) {
 			ID:        RawFuncLogID(2),
 			Tag:       "funcStart",
 			Timestamp: 2,
-			Frames: []FuncStatusID{
-				FuncStatusID(1),
+			Frames: []GoLineID{
+				GoLineID(1),
 			},
 			GID:  1,
 			TxID: txids[1],
@@ -197,8 +197,8 @@ func TestStateSimulator_Next_startStopNewGoroutines(t *testing.T) {
 			ID:        RawFuncLogID(3),
 			Tag:       "funcEnd",
 			Timestamp: 3,
-			Frames: []FuncStatusID{
-				FuncStatusID(1),
+			Frames: []GoLineID{
+				GoLineID(1),
 			},
 			GID:  1,
 			TxID: txids[1],
@@ -208,8 +208,8 @@ func TestStateSimulator_Next_startStopNewGoroutines(t *testing.T) {
 			ID:        RawFuncLogID(4),
 			Tag:       "funcEnd",
 			Timestamp: 4,
-			Frames: []FuncStatusID{
-				FuncStatusID(0),
+			Frames: []GoLineID{
+				GoLineID(0),
 			},
 			GID:  0,
 			TxID: txids[0],
@@ -237,8 +237,8 @@ func TestStateSimulator_Next_handlerIsNil(t *testing.T) {
 			ID:        RawFuncLogID(1),
 			Tag:       "funcStart",
 			Timestamp: 1,
-			Frames: []FuncStatusID{
-				FuncStatusID(0),
+			Frames: []GoLineID{
+				GoLineID(0),
 			},
 			GID:  0,
 			TxID: txids[0],
@@ -248,8 +248,8 @@ func TestStateSimulator_Next_handlerIsNil(t *testing.T) {
 			ID:        RawFuncLogID(2),
 			Tag:       "funcEnd",
 			Timestamp: 2,
-			Frames: []FuncStatusID{
-				FuncStatusID(0),
+			Frames: []GoLineID{
+				GoLineID(0),
 			},
 			GID:  0,
 			TxID: txids[0],
@@ -277,8 +277,8 @@ func TestStateSimulator_Next_endlessFuncs(t *testing.T) {
 			ID:        RawFuncLogID(1),
 			Tag:       "funcStart",
 			Timestamp: 1,
-			Frames: []FuncStatusID{
-				FuncStatusID(0),
+			Frames: []GoLineID{
+				GoLineID(0),
 			},
 			GID:  0,
 			TxID: txids[0],

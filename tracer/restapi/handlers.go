@@ -541,13 +541,13 @@ func (api APIv0) funcStatusSymbol(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var fsid logutil.FuncStatusID
+	var fsid logutil.GoLineID
 	if err := fsid.UnmarshalText([]byte(mux.Vars(r)["func-status-id"])); err != nil {
 		http.Error(w, "invalid func-status-id because id is not integer", http.StatusBadRequest)
 		return
 	}
 
-	fs, ok := logobj.Symbols().FuncStatus(fsid)
+	fs, ok := logobj.Symbols().GoLine(fsid)
 	if !ok {
 		http.Error(w, "func status is not found", http.StatusNotFound)
 		return

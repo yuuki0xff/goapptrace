@@ -57,16 +57,16 @@ func TestRetrySender(t *testing.T) {
 				{logutil.FuncID(0), "module.f1", "/go/src/module/src.go", 1},
 				{logutil.FuncID(1), "module.f2", "/go/src/module/src.go", 2},
 			},
-			FuncStatus: []*logutil.GoLine{
-				{logutil.FuncStatusID(0), logutil.FuncID(0), 10, 100},
-				{logutil.FuncStatusID(1), logutil.FuncID(1), 20, 200},
+			GoLine: []*logutil.GoLine{
+				{logutil.GoLineID(0), logutil.FuncID(0), 10, 100},
+				{logutil.GoLineID(1), logutil.FuncID(1), 20, 200},
 			},
 		},
 		&logutil.RawFuncLog{
 			ID:        logutil.RawFuncLogID(0),
 			Tag:       "funcStart",
 			Timestamp: logutil.NewTime(time.Now()),
-			Frames:    []logutil.FuncStatusID{0, 1},
+			Frames:    []logutil.GoLineID{0, 1},
 		},
 	))
 
@@ -76,15 +76,15 @@ func TestRetrySender(t *testing.T) {
 	a.NoError(sender.Send(
 		&logutil.SymbolsData{
 			Funcs: []*logutil.GoFunc{},
-			FuncStatus: []*logutil.GoLine{
-				{logutil.FuncStatusID(2), logutil.FuncID(1), 21, 210},
+			GoLine: []*logutil.GoLine{
+				{logutil.GoLineID(2), logutil.FuncID(1), 21, 210},
 			},
 		},
 		&logutil.RawFuncLog{
 			ID:        logutil.RawFuncLogID(1),
 			Tag:       "funcEnd",
 			Timestamp: logutil.NewTime(time.Now()),
-			Frames:    []logutil.FuncStatusID{0, 2},
+			Frames:    []logutil.GoLineID{0, 2},
 		},
 	))
 

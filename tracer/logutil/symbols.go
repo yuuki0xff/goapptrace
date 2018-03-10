@@ -19,12 +19,12 @@ func (f *FuncID) UnmarshalText(text []byte) error {
 	return nil
 }
 
-func (f *FuncStatusID) UnmarshalText(text []byte) error {
+func (f *GoLineID) UnmarshalText(text []byte) error {
 	id, err := strconv.ParseUint(string(text), 10, 64)
 	if err != nil {
 		return err
 	}
-	*f = FuncStatusID(id)
+	*f = GoLineID(id)
 	return nil
 }
 
@@ -33,16 +33,16 @@ func (s *Symbols) Init() {
 	s.funcs = make([]*GoFunc, 0)
 	s.funcStatus = make([]*GoLine, 0)
 	s.name2FuncID = make(map[string]FuncID)
-	s.pc2FSID = make(map[uintptr]FuncStatusID)
+	s.pc2FSID = make(map[uintptr]GoLineID)
 }
 
 // 指定した状態で初期化する。
 // Init()を呼び出す必要はない。
 func (s *Symbols) Load(data SymbolsData) {
 	s.funcs = data.Funcs
-	s.funcStatus = data.FuncStatus
+	s.funcStatus = data.GoLine
 	s.name2FuncID = make(map[string]FuncID)
-	s.pc2FSID = make(map[uintptr]FuncStatusID)
+	s.pc2FSID = make(map[uintptr]GoLineID)
 
 	for _, f := range s.funcs {
 		s.name2FuncID[f.Name] = f.ID
@@ -52,7 +52,7 @@ func (s *Symbols) Load(data SymbolsData) {
 	}
 }
 
-// 現在保持している全てのGoFuncとFuncStatusのsliceをコールバックする。
+// 現在保持している全てのGoFuncとGoLineのsliceをコールバックする。
 // fnの内部でファイルへの書き出しなどの処理を行うこと。
 // fnに渡された引数の参照先は、fn実行終了後は非同期的に変更される可能性がある。
 // fnの外部で使用する場合は、全てのオブジェクトをコピーすること。
@@ -61,7 +61,7 @@ func (s *Symbols) Save(fn SymbolsWriteFn) error {
 	defer s.lock.RUnlock()
 	return fn(SymbolsData{
 		Funcs:      s.funcs,
-		FuncStatus: s.funcStatus,
+		GoLine: s.funcStatus,
 	})
 }
 
@@ -79,11 +79,11 @@ func (s *Symbols) Func(id FuncID) (GoFunc, bool) {
 	return *f, true
 }
 
-// FuncStatusIDに対応するFuncStatusを返す。
-func (s *Symbols) FuncStatus(id FuncStatusID) (GoLine, bool) {
+// GoLineIDに対応するGoLineを返す。
+func (s *Symbols) GoLine(id GoLineID) (GoLine, bool) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	if FuncStatusID(len(s.funcStatus)) <= id {
+	if GoLineID(len(s.funcStatus)) <= id {
 		return GoLine{}, false
 	}
 	fs := s.funcStatus[id]
@@ -100,8 +100,8 @@ func (s *Symbols) FuncsSize() int {
 	return len(s.funcs)
 }
 
-// 登録済みのFuncStatusの数を返す。
-func (s *Symbols) FuncStatusSize() int {
+// 登録済みのGoLineの数を返す。
+func (s *Symbols) GoLineSize() int {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	return len(s.funcStatus)
@@ -122,9 +122,9 @@ func (s *Symbols) WalkFuncs(fn func(fs GoFunc) error) error {
 	return nil
 }
 
-// 登録済みの全てのFuncStatusをコールバックする。
+// 登録済みの全てのGoLineをコールバックする。
 // fnがエラーを返すと、中断する。
-func (s *Symbols) WalkFuncStatus(fn func(fs GoLine) error) error {
+func (s *Symbols) WalkGoLine(fn func(fs GoLine) error) error {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	for _, fs := range s.funcStatus {
@@ -147,32 +147,32 @@ func (s *Symbols) FuncIDFromName(name string) (id FuncID, ok bool) {
 	return
 }
 
-// PC(Program Counter)の値からFuncStatusIDを取得する。
+// PC(Program Counter)の値からGoLineIDを取得する。
 // この処理は高速で完了するので、追加済みのシンボルかどうかの判定に使用できる。
 //go:nosplit
-func (s *Symbols) FuncStatusIDFromPC(pc uintptr) (id FuncStatusID, ok bool) {
+func (s *Symbols) GoLineIDFromPC(pc uintptr) (id GoLineID, ok bool) {
 	s.lock.RLock()
 	id, ok = s.pc2FSID[pc]
 	s.lock.RUnlock()
 	return
 }
 
-// FuncStatusIDからFuncIDを取得する。
-func (s *Symbols) FuncID(id FuncStatusID) FuncID {
+// GoLineIDからFuncIDを取得する。
+func (s *Symbols) FuncID(id GoLineID) FuncID {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	return s.funcStatus[id].Func
 }
 
-// FuncStatusIDから関数名を取得する。
-func (s *Symbols) FuncName(id FuncStatusID) string {
+// GoLineIDから関数名を取得する。
+func (s *Symbols) FuncName(id GoLineID) string {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	return s.funcs[s.funcStatus[id].Func].Name
 }
 
-// FuncStatusIDからモジュール名を返す。
-func (s *Symbols) ModuleName(id FuncStatusID) string {
+// GoLineIDからモジュール名を返す。
+func (s *Symbols) ModuleName(id GoLineID) string {
 	funcName := s.FuncName(id)
 
 	// strip function name from funcName
@@ -185,7 +185,7 @@ func (s *Symbols) ModuleName(id FuncStatusID) string {
 }
 
 // diffからシンボルを一括追加する。
-// 注意: KeepIDがfalseのときは、FuncIDやFuncStatusIDのIDは引き継がれない。
+// 注意: KeepIDがfalseのときは、FuncIDやGoLineIDのIDは引き継がれない。
 func (s *Symbols) AddSymbolsDiff(diff *SymbolsData) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -193,8 +193,8 @@ func (s *Symbols) AddSymbolsDiff(diff *SymbolsData) {
 	for _, fsymbol := range diff.Funcs {
 		s.addFuncNolock(fsymbol)
 	}
-	for _, fsatus := range diff.FuncStatus {
-		s.addFuncStatusNolock(fsatus)
+	for _, fsatus := range diff.GoLine {
+		s.addGoLineNolock(fsatus)
 	}
 }
 
@@ -233,16 +233,16 @@ func (s *Symbols) addFuncNolock(symbol *GoFunc) (id FuncID, added bool) {
 	return symbol.ID, true
 }
 
-// FuncStatusを追加する。
-// 同一のFuncStatusが既に存在する場合、一致したFuncStatus.IDとadded=falseを返す。
+// GoLineを追加する。
+// 同一のGoLineが既に存在する場合、一致したGoLine.IDとadded=falseを返す。
 // IDが衝突した場合の動作は不定。
-func (s *Symbols) AddFuncStatus(status *GoLine) (id FuncStatusID, added bool) {
+func (s *Symbols) AddGoLine(status *GoLine) (id GoLineID, added bool) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	return s.addFuncStatusNolock(status)
+	return s.addGoLineNolock(status)
 }
 
-func (s *Symbols) addFuncStatusNolock(status *GoLine) (id FuncStatusID, added bool) {
+func (s *Symbols) addGoLineNolock(status *GoLine) (id GoLineID, added bool) {
 	if !s.Writable {
 		log.Panic("Symbols is not writable")
 	}
@@ -255,11 +255,11 @@ func (s *Symbols) addFuncStatusNolock(status *GoLine) (id FuncStatusID, added bo
 
 	if s.KeepID {
 		// status.IDの値が配列の長さを超えている場合、配列の長さを伸ばす。
-		for status.ID >= FuncStatusID(len(s.funcStatus)) {
+		for status.ID >= GoLineID(len(s.funcStatus)) {
 			s.funcStatus = append(s.funcStatus, nil)
 		}
 	} else {
-		status.ID = FuncStatusID(len(s.funcStatus))
+		status.ID = GoLineID(len(s.funcStatus))
 		// increase length of the GoLine array
 		s.funcStatus = append(s.funcStatus, status)
 	}
