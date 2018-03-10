@@ -135,10 +135,10 @@ func (s *Symbols) GoLineIDFromPC(pc uintptr) (id GoLineID, ok bool) {
 }
 
 // GoLineIDからFuncIDを取得する。
-func (s *Symbols) FuncID(id GoLineID) FuncID {
+func (s *Symbols) FuncID(pc uintptr) FuncID {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	// TODO: GoLineIDではなく、PCから変換するようにする
+	// TODO
 	panic("todo")
 }
 
