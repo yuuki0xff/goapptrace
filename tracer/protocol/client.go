@@ -148,7 +148,10 @@ func (c *Client) Serve() error {
 	}
 }
 
+// Send sends a packet asynchronously.
+// pkt is marshalled immediately. Caller can be reuse pkt after return this function.
 func (c *Client) Send(pkt xtcp.Packet) error {
+	// TODO: 直ぐにmarshalする
 	c.pktCh <- pkt
 	return nil
 }
