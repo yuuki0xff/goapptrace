@@ -30,7 +30,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 )
 
@@ -83,15 +82,15 @@ func runLogCat(conf *config.Config, stderr io.Writer, logID string, logw LogWrit
 		}
 	}()
 
-	logw.SetGoLineInfoGetter(func(id logutil.GoLineID) restapi.GoLineInfo {
-		s, err := api.GoLine(logID, strconv.Itoa(int(id)))
+	logw.SetGoLineInfoGetter(func(pc uintptr) restapi.GoLineInfo {
+		s, err := api.GoLine(logID, strconv.Itoa(int(pc)))
 		if err != nil {
 			log.Panic(err)
 		}
 		return s
 	})
-	logw.SetFuncInfoGetter(func(id logutil.FuncID) restapi.FuncInfo {
-		f, err := api.Func(logID, strconv.Itoa(int(id)))
+	logw.SetFuncInfoGetter(func(pc uintptr) restapi.FuncInfo {
+		f, err := api.Func(logID, strconv.Itoa(int(pc)))
 		if err != nil {
 			log.Panic(err)
 		}
@@ -111,8 +110,8 @@ func runLogCat(conf *config.Config, stderr io.Writer, logID string, logw LogWrit
 type LogWriter interface {
 	WriteHeader() error
 	Write(evt restapi.FuncCall) error
-	SetFuncInfoGetter(func(id logutil.FuncID) restapi.FuncInfo)
-	SetGoLineInfoGetter(func(id logutil.GoLineID) restapi.GoLineInfo)
+	SetFuncInfoGetter(func(pc uintptr) restapi.FuncInfo)
+	SetGoLineInfoGetter(func(pc uintptr) restapi.GoLineInfo)
 }
 
 func NewLogWriter(format string, out io.Writer) (LogWriter, error) {
@@ -149,15 +148,15 @@ func (w *JsonLogWriter) Write(evt restapi.FuncCall) error {
 	return w.encoder.Encode(evt)
 }
 
-func (w *JsonLogWriter) SetFuncInfoGetter(func(id logutil.FuncID) restapi.FuncInfo) {
+func (w *JsonLogWriter) SetFuncInfoGetter(func(pc uintptr) restapi.FuncInfo) {
 }
-func (w *JsonLogWriter) SetGoLineInfoGetter(func(id logutil.GoLineID) restapi.GoLineInfo) {
+func (w *JsonLogWriter) SetGoLineInfoGetter(func(pc uintptr) restapi.GoLineInfo) {
 }
 
 type TextLogWriter struct {
 	output   io.Writer
-	funcInfo func(id logutil.FuncID) restapi.FuncInfo
-	goLine   func(id logutil.GoLineID) restapi.GoLineInfo
+	funcInfo func(pc uintptr) restapi.FuncInfo
+	goLine   func(pc uintptr) restapi.GoLineInfo
 }
 
 func NewTextLogWriter(output io.Writer) *TextLogWriter {
@@ -172,7 +171,7 @@ func (w *TextLogWriter) WriteHeader() error {
 func (w *TextLogWriter) Write(evt restapi.FuncCall) error {
 	currentFrame := evt.Frames[0]
 	fs := w.goLine(currentFrame)
-	funcName := w.funcInfo(fs.Func).Name // module.func
+	funcName := w.funcInfo(currentFrame).Name // module.func
 	line := fs.Line
 
 	// 実行が終了していない場合、実行時間は"*"と表示する
@@ -196,10 +195,10 @@ func (w *TextLogWriter) Write(evt restapi.FuncCall) error {
 	)
 	return err
 }
-func (w *TextLogWriter) SetFuncInfoGetter(f func(id logutil.FuncID) restapi.FuncInfo) {
+func (w *TextLogWriter) SetFuncInfoGetter(f func(pc uintptr) restapi.FuncInfo) {
 	w.funcInfo = f
 }
-func (w *TextLogWriter) SetGoLineInfoGetter(f func(id logutil.GoLineID) restapi.GoLineInfo) {
+func (w *TextLogWriter) SetGoLineInfoGetter(f func(pc uintptr) restapi.GoLineInfo) {
 	w.goLine = f
 }
 
