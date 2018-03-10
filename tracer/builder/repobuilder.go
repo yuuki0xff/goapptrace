@@ -19,19 +19,6 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/srceditor"
 )
 
-const (
-	runtimePatch = `
-package runtime
-
-// GoID returns the Goroutine ID.
-//go:nosplit
-func GoID() int64 {
-	gp := getg()
-	return gp.goid
-}
-`
-)
-
 var (
 	ErrOutsideRoot = errors.New("file is outside the root directory")
 )
