@@ -47,7 +47,7 @@ func (s *RetrySender) retry(funcName string, fn func() error) error {
 	return err
 }
 
-// autoretry is automatically retry until reached to retry limit or fn() is succeed.
+// retrySend is automatically retry until reached to retry limit or fn() is succeed.
 func (s *RetrySender) retrySend(funcName string, send func() error) error {
 	var senderr error
 	for i := 0; i < s.MaxRetry; i++ {
