@@ -14,6 +14,7 @@ func GoID() int64 {
 
 // IterateSymbols walks the symbols table in this process.
 func IterateSymbols(
+	addModule func(minpc, maxpc uintptr, name string),
 	addFunc func(pc uintptr, name string),
 	addLine func(pc uintptr, file string, line int32),
 ) {
@@ -30,6 +31,7 @@ func IterateSymbols(
 	modules := activeModules()
 	for midx, datap := range modules {
 		log.Println("datap: minpc=", datap.minpc, " maxpc=", datap.maxpc)
+		addModule(datap.minpc, datap.maxpc, datap.modulename)
 
 		// ftab is lookup table for function by program counter.
 		// moduledataverify1 skips last item of ftab. what is last item???
