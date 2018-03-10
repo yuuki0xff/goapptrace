@@ -68,17 +68,36 @@ type Client struct {
 	workerCtx    context.Context
 	workerWg     sync.WaitGroup
 
-	proto Proto
-	// 送信バッファに入るのを待機しているパケット。
-	// 突発的に多量のログが生成される状況でのパフォーマンス改善のため、バッファサイズは大きくしている。
-	pktCh chan xtcp.Packet
-	// MergePacketのpool。
-	// 送信バッファのメモリ確保の回数削減のために使用している。
-	mergePktPool sync.Pool
+	mergeSender mergeSender
+	proto       Proto
 
 	opt          *xtcp.Options
 	xtcpconn     *xtcp.Conn
 	isNegotiated bool
+}
+
+// short packetを統合して、large packetにしてから送信する。
+// packet送信によるパフォーマンス低下を軽減するために利用する。
+type mergeSender struct {
+	Conn  *xtcp.Conn
+	Proto *Proto
+	// Client.BufferSizeを参照
+	BufferSize int
+	// Client.RefreshIntervalを参照
+	RefreshInterval time.Duration
+
+	// 送信バッファに入るのを待機しているパケット。
+	// 突発的に多量のログが生成される状況でのパフォーマンス改善のため、バッファサイズは大きくしている。
+	// 中身は全てMergePacketである。
+	ch chan *MergePacket
+	// MergePacketのpool。
+	// 送信バッファのメモリ確保の回数削減のために使用する。
+	pool sync.Pool
+
+	m sync.Mutex
+	// 構築中のmergePacket。
+	// アクセスする場合はlockを取ってからアクセスすること。
+	mergePkt *MergePacket
 }
 
 func (c *Client) Init() {
@@ -99,7 +118,6 @@ func (c *Client) Init() {
 		if c.BufferSize == 0 {
 			c.BufferSize = DefaultSendBufferSize
 		}
-		c.pktCh = make(chan xtcp.Packet, packetChannelBufferSize)
 	})
 }
 
@@ -128,6 +146,15 @@ func (c *Client) Serve() error {
 	c.opt.SetSendBufMaxSize(c.BufferSize * 10)
 	c.xtcpconn = xtcp.NewConn(c.opt)
 
+	// initialize mergeSender
+	c.mergeSender = mergeSender{
+		Conn:            c.xtcpconn,
+		Proto:           &c.proto,
+		BufferSize:      c.BufferSize,
+		RefreshInterval: c.RefreshInterval,
+	}
+	c.mergeSender.Init()
+
 	// retry loop
 	retries := 0
 	waitTime := MinWaitTime
@@ -151,9 +178,7 @@ func (c *Client) Serve() error {
 // Send sends a packet asynchronously.
 // pkt is marshalled immediately. Caller can be reuse pkt after return this function.
 func (c *Client) Send(pkt xtcp.Packet) error {
-	// TODO: 直ぐにmarshalする
-	c.pktCh <- pkt
-	return nil
+	return c.mergeSender.Send(pkt)
 }
 
 func (c *Client) Close() error {
@@ -192,55 +217,6 @@ func (c *Client) pingWorker() {
 	}
 }
 
-// pktChから送られてくるshort packetを統合して、large packetにしてから送信する。
-// RefreshInterval間隔で、強制的にバッファの中身を送信する。
-func (c *Client) mergeWorker() {
-	defer c.workerWg.Done()
-
-	send := func(pkt *MergePacket) {
-		if err := c.xtcpconn.Send(pkt); err != nil {
-			// TODO: try to reconnect.
-			log.Panic(err)
-		}
-	}
-
-	c.mergePktPool = sync.Pool{
-		New: func() interface{} {
-			return &MergePacket{
-				Proto: &c.proto,
-				// MergePacketのサイズは、BufferSizeよりも大きくなる。
-				// そのため、少し大きめのバッファを確保しておく。
-				BufferSize: c.BufferSize + 2048,
-			}
-		},
-	}
-	mergePkt := c.mergePktPool.Get().(*MergePacket)
-
-	ticker := time.NewTicker(c.RefreshInterval)
-	for {
-		select {
-		case pkt := <-c.pktCh:
-			// TODO: mergePkt.Merge(pkt)は時間がかかる処理である。マルチスレッド化する。
-			mergePkt.Merge(pkt)
-			if mergePkt.Len() >= c.BufferSize {
-				send(mergePkt)
-				mergePkt = c.mergePktPool.Get().(*MergePacket)
-				mergePkt.Reset()
-			}
-		case <-ticker.C:
-			if mergePkt.Len() > 0 {
-				send(mergePkt)
-				mergePkt = c.mergePktPool.Get().(*MergePacket)
-				mergePkt.Reset()
-			}
-		case <-c.workerCtx.Done():
-			ticker.Stop()
-			send(mergePkt)
-			return
-		}
-	}
-}
-
 // p will be nil when event is EventAccept/EventConnected/EventClosed
 func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 	switch et {
@@ -271,7 +247,7 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 
 			c.workerWg.Add(2)
 			go c.pingWorker()
-			go c.mergeWorker()
+			go c.mergeSender.RefreshWorker(c.workerCtx)
 
 			c.negotiated()
 
@@ -304,7 +280,7 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 	case xtcp.EventSend:
 		if _, ok := p.(*MergePacket); ok {
 			// 送信が完了したMergePacketは、poolに追加して再利用する。
-			c.mergePktPool.Put(p)
+			c.mergeSender.Put(p)
 		}
 	case xtcp.EventClosed:
 
@@ -325,4 +301,81 @@ func (c *Client) WaitNegotiation() {
 func (c *Client) negotiated() {
 	c.isNegotiated = true
 	close(c.negotiatedCh)
+}
+
+func (ms *mergeSender) Init() {
+	ms.ch = make(chan *MergePacket, packetChannelBufferSize)
+	ms.pool = sync.Pool{
+		New: func() interface{} {
+			return &MergePacket{
+				Proto: ms.Proto,
+				// MergePacketのサイズは、BufferSizeよりも大きくなる。
+				// そのため、少し大きめのバッファを確保しておく。
+				BufferSize: ms.BufferSize + 2048,
+			}
+		},
+	}
+}
+
+// いくつかのパケットをまとめて、一括送信する。
+// pkt is marshalled immediately. Caller can be reuse pkt after return this function.
+func (ms *mergeSender) Send(pkt xtcp.Packet) error {
+	ms.m.Lock()
+	defer ms.m.Unlock()
+
+	if ms.mergePkt == nil {
+		ms.mergePkt = ms.pool.Get().(*MergePacket)
+		ms.mergePkt.Reset()
+	}
+	mp := ms.mergePkt
+
+	mp.Merge(pkt)
+	if mp.Len() >= ms.BufferSize {
+		ms.mergePkt = nil
+		return ms.Conn.Send(mp)
+	}
+	return nil
+}
+
+// 送信が完了したMergePacketをpoolに追加して、MergePacketを再利用する。
+func (ms *mergeSender) Put(pkt xtcp.Packet) {
+	ms.pool.Put(pkt)
+}
+
+// 強制的にバッファの中身を送信する。
+func (ms *mergeSender) Refresh() error {
+	ms.m.Lock()
+	defer ms.m.Unlock()
+	pkt := ms.mergePkt
+	if pkt == nil || pkt.Len() == 0 {
+		return nil
+	}
+	ms.mergePkt = nil
+	return ms.Conn.Send(pkt)
+}
+
+// RefreshInterval間隔で、強制的にバッファの中身を送信する。
+// また、ctxが終了したときにもバッファの中身を送信する。
+// バッファに滞留してしまい、いつまでもサーバにパケットが届かなくなる問題を防ぐ。
+// 送信中にエラーが発生した場合、panicする。
+func (ms *mergeSender) RefreshWorker(ctx context.Context) {
+	ticker := time.NewTicker(ms.RefreshInterval)
+	for {
+		select {
+		case <-ticker.C:
+			err := ms.Refresh()
+			if err != nil {
+				// TODO: imrpove error handling
+				log.Panicln(err)
+			}
+		case <-ctx.Done():
+			ticker.Stop()
+			err := ms.Refresh()
+			if err != nil {
+				// TODO: imrpove error handling
+				log.Panicln(err)
+			}
+			return
+		}
+	}
 }

@@ -69,7 +69,6 @@ func (s *LogServerSender) Close() error {
 
 // send Symbols to the log server.
 func (s *LogServerSender) SendSymbols(data *logutil.SymbolsData) error {
-	// todo: Send()が直ぐにmarshalするのを保証しているのか検証する
 	if err := s.client.Send(&protocol.SymbolPacket{
 		SymbolsData: *data,
 	}); err != nil {
@@ -83,7 +82,6 @@ func (s *LogServerSender) SendLog(raw *logutil.RawFuncLog) error {
 		return ClosedError
 	}
 
-	// todo: Send()が直ぐにmarshalするのを保証しているのか検証する
 	if err := s.client.Send(&protocol.RawFuncLogPacket{
 		FuncLog: raw,
 	}); err != nil {
