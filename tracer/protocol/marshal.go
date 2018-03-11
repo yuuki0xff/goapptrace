@@ -238,7 +238,7 @@ func sizeGoLineSlice(lines []logutil.GoLine) int64 {
 
 //go:nosplit
 func marshalFileID(buf []byte, id logutil.FileID) int64 {
-	return marshalUint32(buf, uint64(id))
+	return marshalUint32(buf, uint32(id))
 }
 
 //go:nosplit
