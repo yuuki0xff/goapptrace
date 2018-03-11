@@ -71,8 +71,8 @@ func (opt *XtcpBufferOption) SetDefault() {
 	if opt.SendBufInitSize == 0 {
 		opt.SendBufInitSize = DefaultSendBufInitSize
 	}
-	if opt.RecvBufInitSize == 0 {
-		opt.RecvBufInitSize = DefaultRecvBufMaxSize
+	if opt.RecvBufMaxSize == 0 {
+		opt.RecvBufMaxSize = DefaultRecvBufMaxSize
 	}
 	if opt.SendBufMaxSize == 0 {
 		opt.SendBufMaxSize = DefaultSendBufMaxSize
@@ -83,6 +83,6 @@ func (opt *XtcpBufferOption) Set(o *xtcp.Options) {
 	o.SetSendListLen(opt.SendListLen)
 	o.SetRecvBufInitSize(opt.RecvBufInitSize)
 	o.SetSendBufInitSize(opt.SendBufInitSize)
-	o.SetRecvBufMaxSize(opt.RecvBufInitSize)
+	o.SetRecvBufMaxSize(opt.RecvBufMaxSize)
 	o.SetSendBufMaxSize(opt.SendBufMaxSize)
 }
