@@ -122,7 +122,7 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 
 	// メモリ確保のオーバーヘッドを削減するために、stack allocateされる固定長配列を使用する。
 	// MaxStackSizeを超えている場合、正しいログが取得できない。
-	pclen := runtime.Callers(skips, logmsg.Frames[:])
+	pclen := runtime.Callers(skips, logmsg.Frames)
 	logmsg.Frames = logmsg.Frames[:pclen]
 
 	// TODO: インライン化やループ展開により、正しくないデータが帰ってくる可能性がある問題を修正する。
