@@ -46,6 +46,15 @@ func init() {
 
 		//@@GAT@useNonStandardRuntime@ /*
 		/*/
+		fname2fileID := func(fname string) logutil.FileID {
+			for i, f := range sd.Files {
+				if f == fname {
+					return logutil.FileID(i)
+				}
+			}
+			sd.Files = append(sd.Files, fname)
+			return logutil.FileID(len(sd.Files) - 1)
+		}
 		runtime.IterateSymbols(
 			func(minpc, maxpc uintptr, name string) {
 				sd.Mods = append(sd.Mods, logutil.GoModule{
@@ -58,16 +67,16 @@ func init() {
 				sd.Funcs = append(sd.Funcs, &logutil.GoFunc{
 					Entry: pc,
 					Name:  name,
-					// TODO: FileIDをセットする
 				})
 			},
 			func(pc uintptr, file string, line int32) {
 				if line < 0 {
 					log.Panicf("invalid line: pc=%d, file=%s, line=%d", pc, file, line)
 				}
+
 				sd.Lines = append(sd.Lines, &logutil.GoLine{
 					PC:     pc,
-					FileID: 0,
+					FileID: fname2fileID(file),
 					Line:   uint32(line),
 				})
 			},

@@ -106,6 +106,7 @@ type Symbols struct {
 
 type SymbolsData struct {
 	// TODO: ポインター型だと遅い
+	Files []string
 	Mods  []GoModule
 	Funcs []*GoFunc
 	Lines []*GoLine
@@ -131,8 +132,6 @@ type GoFunc struct {
 	Entry uintptr
 	// example: "github.com/yuuki0xff/goapptrace.main"
 	Name string
-	// file location that defines this function.
-	FileID FileID
 }
 
 // GoLine haves a correspondence to position on source code from PC (Program Counter).
