@@ -120,8 +120,6 @@ func gid() logutil.GID {
 func sendLog(tag logutil.TagName, id logutil.TxID) {
 	// TODO: 初期化前だったときの処理を追加する
 
-	diff := &logutil.SymbolsData{}
-
 	logmsg := &logutil.RawFuncLog{}
 	logmsg.Tag = tag
 	logmsg.Timestamp = logutil.NewTime(time.Now())
@@ -158,7 +156,7 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 	if sender == nil {
 		setOutput()
 	}
-	if err := sender.Send(diff, logmsg); err != nil {
+	if err := sender.SendLog(logmsg); err != nil {
 		log.Panicf("failed to sender.Send():err=%s sender=%+v ", err, sender)
 	}
 }
