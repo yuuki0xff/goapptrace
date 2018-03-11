@@ -209,10 +209,10 @@ func sizeGoFunc(fn logutil.GoFunc) int64 {
 	return total
 }
 
-func marshalGoLineSlice(buf []byte, status []logutil.GoLine) int64 {
-	total := marshalUint64(buf, uint64(len(status)))
-	for i := range status {
-		total += marshalGoLine(buf[total:], status[i])
+func marshalGoLineSlice(buf []byte, line []logutil.GoLine) int64 {
+	total := marshalUint64(buf, uint64(len(line)))
+	for i := range line {
+		total += marshalGoLine(buf[total:], line[i])
 	}
 	return total
 }
@@ -221,12 +221,12 @@ func unmarshalGoLineSlice(buf []byte) ([]logutil.GoLine, int64) {
 	length, n := unmarshalUint64(buf)
 	total += n
 
-	funcs := make([]logutil.GoLine, length)
-	for i := range funcs {
-		funcs[i], n = unmarshalGoLine(buf[total:])
+	line := make([]logutil.GoLine, length)
+	for i := range line {
+		line[i], n = unmarshalGoLine(buf[total:])
 		total += n
 	}
-	return funcs, total
+	return line, total
 }
 func sizeGoLineSlice(lines []logutil.GoLine) int64 {
 	total := int64(8) // slice length
