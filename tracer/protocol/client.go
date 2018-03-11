@@ -181,6 +181,11 @@ func (c *Client) Send(pkt xtcp.Packet) error {
 	return c.mergeSender.Send(pkt)
 }
 
+// SendLarge sends a large packet.
+func (c *Client) SendLarge(largePkt xtcp.Packet) error {
+	return c.mergeSender.SendLarge(largePkt)
+}
+
 func (c *Client) Close() error {
 	var err error
 	c.closeOnce.Do(func() {
@@ -322,7 +327,9 @@ func (ms *mergeSender) Init() {
 func (ms *mergeSender) Send(pkt xtcp.Packet) error {
 	ms.m.Lock()
 	defer ms.m.Unlock()
-
+	return ms.sendNolock(pkt)
+}
+func (ms *mergeSender) sendNolock(pkt xtcp.Packet) error {
 	if ms.mergePkt == nil {
 		ms.mergePkt = ms.pool.Get().(*MergePacket)
 		ms.mergePkt.Reset()
@@ -337,6 +344,15 @@ func (ms *mergeSender) Send(pkt xtcp.Packet) error {
 	return nil
 }
 
+func (ms *mergeSender) SendLarge(largePkt xtcp.Packet) error {
+	ms.m.Lock()
+	defer ms.m.Unlock()
+	if err := ms.refreshNolock(); err != nil {
+		return err
+	}
+	return ms.sendNolock(largePkt)
+}
+
 // 送信が完了したMergePacketをpoolに追加して、MergePacketを再利用する。
 func (ms *mergeSender) Put(pkt xtcp.Packet) {
 	ms.pool.Put(pkt)
@@ -346,6 +362,9 @@ func (ms *mergeSender) Put(pkt xtcp.Packet) {
 func (ms *mergeSender) Refresh() error {
 	ms.m.Lock()
 	defer ms.m.Unlock()
+	return ms.refreshNolock()
+}
+func (ms *mergeSender) refreshNolock() error {
 	pkt := ms.mergePkt
 	if pkt == nil || pkt.Len() == 0 {
 		return nil
