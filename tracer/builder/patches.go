@@ -45,7 +45,6 @@ func IterateSymbols(
 				log.Println("\t", datap.minpc, " <= ", ft.entry, " <= ", datap.maxpc)
 				log.Println()
 				log.Fatal("invalid functab")
-				*(*int)(nil) = 0 // not reached
 			}
 
 			fp := unsafe.Pointer(&datap.pclntable[ft.funcoff])
@@ -54,7 +53,6 @@ func IterateSymbols(
 			fi := funcInfo{rawfn, datap}
 			if !fi.valid() {
 				log.Fatal("runtime.iterateSymbols: invalid funcInfo")
-				*(*int)(nil) = 0 // not reached
 			}
 			log.Println("_func: ", unsafe.Pointer(rawfn))
 			log.Println("\tentry=", rawfn.entry)
@@ -75,14 +73,12 @@ func IterateSymbols(
 				log.Println("fidx=", fidx, " len(ftab)=", len(datap.ftab))
 				log.Println()
 				log.Fatal("runtime.iterateSymbols: invalid state")
-				*(*int)(nil) = 0 // not reached
 			}
 			if len(pclns) != len(lines) {
 				log.Println()
 				log.Println("runtime.iterateSymbols: mismatch length: len(pclns)=", len(pclns), " len(lines)=", len(lines))
 				log.Println()
 				log.Fatal("mismatch length")
-				*(*int)(nil) = 0 // not reached
 			}
 
 			funcname := funcname(fi)
@@ -229,10 +225,11 @@ func (l *_GAT_SilentLog) Show() {
 }
 
 func (l *_GAT_SilentLog) Fatal(s string) {
-	if l == nil {
-		return
+	if l != nil {
+		l.Show()
 	}
-	l.Show()
 	throw(s)
+	*(*int)(nil) = 0 // not reached
+	return
 }
 `
