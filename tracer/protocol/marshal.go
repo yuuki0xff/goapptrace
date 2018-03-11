@@ -44,6 +44,9 @@ func unmarshalString(buf []byte) (string, int64) {
 	buf = buf[n:]
 	return string(buf[:length]), n + int64(length)
 }
+func sizeString(str string) int64 {
+	return int64(8 + len(str))
+}
 
 func marshalRawFuncLogID(buf []byte, id logutil.RawFuncLogID) int64 {
 	return marshalUint64(buf, uint64(id))
@@ -84,6 +87,13 @@ func unmarshalStringSlice(buf []byte) ([]string, int64) {
 	}
 	return strs, total
 }
+func sizeStringSlice(strs []string) int64 {
+	total := int64(8) // slice length
+	for i := range strs {
+		total += sizeString(strs[i])
+	}
+	return total
+}
 
 func marshalGoModuleSlice(buf []byte, mods []logutil.GoModule) int64 {
 	var total int64
@@ -108,6 +118,13 @@ func unmarshalGoModuleSlice(buf []byte) ([]logutil.GoModule, int64) {
 	}
 	return mods, total
 }
+func sizeGoModuleSlice(mods []logutil.GoModule) int64 {
+	total := int64(8) // 8 is bytes of slice length (int64)
+	for i := range mods {
+		total += sizeGoModule(mods[i])
+	}
+	return total
+}
 
 func marshalGoModule(buf []byte, mod logutil.GoModule) int64 {
 	var total int64
@@ -127,6 +144,12 @@ func unmarshalGoModule(buf []byte) (logutil.GoModule, int64) {
 	mod.MaxPC, n = unmarshalUintptr(buf[total:])
 	total += n
 	return mod, total
+}
+func sizeGoModule(mod logutil.GoModule) int64 {
+	total := sizeString(mod.Name) // Name
+	total += 8                    // MinPC
+	total += 8                    // MaxPC
+	return total
 }
 
 func marshalGoFuncSlice(buf []byte, funcs []*logutil.GoFunc) int64 {
@@ -160,6 +183,10 @@ func unmarshalGoFuncSlice(buf []byte) ([]*logutil.GoFunc, int64) {
 		}
 	}
 	return funcs, total
+}
+func sizeGoFuncSlice(funcs []*logutil.GoFunc) int64 {
+	// todo
+	panic("todo")
 }
 
 func marshalGoFunc(buf []byte, s *logutil.GoFunc) int64 {
@@ -207,6 +234,10 @@ func unmarshalGoLineSlice(buf []byte) ([]*logutil.GoLine, int64) {
 		}
 	}
 	return funcs, total
+}
+func sizeGoLineSlice(lines []*logutil.GoLine) int64 {
+	// todo
+	panic("todo")
 }
 
 //go:nosplit

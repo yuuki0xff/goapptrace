@@ -138,16 +138,14 @@ func (p *MergePacket) WriteTo(w io.Writer) (int64, error) {
 	return int64(n), err
 }
 
-// ByteWrapPacket wraps []byte.
-// Main purpose is to send large packets.
-type ByteWrapPacket struct {
-	Buff []byte
-}
-
-func (p *ByteWrapPacket) String() string { return "<ByteWrapPacket>" }
-func (p *ByteWrapPacket) WriteTo(w io.Writer) (int64, error) {
-	n, err := w.Write(p.Buff)
-	return int64(n), err
+// 巨大なパケットをMergePacketにラップして返す。
+// 巨大なパケットを通常の方法でmp.Merge()すると範囲外アクセスでパニックする。この問題を解消するために使用する。
+// pは直ぐにmarshalされるため、この関数の実行終了後にpを再利用することが出来る。
+func marshalLargePacket(p xtcp.Packet) *MergePacket {
+	mp := &MergePacket{}
+	mp.BufferSize = int(p.(SizePredictable).PacketSize())
+	mp.Merge(p)
+	return mp
 }
 
 // fakePacket is a mock of xtcp.Packet.
@@ -324,6 +322,13 @@ func (p *SymbolPacket) Unmarshal(buf []byte) int64 {
 	total += n
 	p.Lines, n = unmarshalGoLineSlice(buf[total:])
 	total += n
+	return total
+}
+func (p *SymbolPacket) PacketSize() int64 {
+	total := sizeStringSlice(p.Files)
+	total += sizeGoModuleSlice(p.Mods)
+	total += sizeGoFuncSlice(p.Funcs)
+	total += sizeGoLineSlice(p.Lines)
 	return total
 }
 

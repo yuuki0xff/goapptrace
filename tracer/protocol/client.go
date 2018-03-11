@@ -350,7 +350,8 @@ func (ms *mergeSender) SendLarge(largePkt xtcp.Packet) error {
 	if err := ms.refreshNolock(); err != nil {
 		return err
 	}
-	return ms.sendNolock(largePkt)
+
+	return ms.Conn.Send(marshalLargePacket(largePkt))
 }
 
 // 送信が完了したMergePacketをpoolに追加して、MergePacketを再利用する。
