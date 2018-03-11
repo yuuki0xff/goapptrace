@@ -16,11 +16,6 @@ import (
 const (
 	DefaultMaxRetries = 10
 	MinWaitTime       = 10 * time.Millisecond
-	// 送信バッファに溜まっているパケットを強制的に排出する間隔。
-	DefaultRefreshInterval = 100 * time.Millisecond
-	// 送信バッファのサイズ。
-	// 送信されるパケットサイズはこれよりも少し大きくなることがある。
-	DefaultSendBufferSize = 1 << 20 // 1MiB
 
 	packetChannelBufferSize = 1000000
 )
@@ -53,13 +48,7 @@ type Client struct {
 	Secret       string
 	PingInterval time.Duration
 	MaxRetries   int
-
-	// 送信バッファに溜まっているパケットを強制的に送信する間隔。
-	RefreshInterval time.Duration
-	// 送信バッファのサイズ。
-	// このサイズを超えた場合、バッファに溜まっているパケットをまとめて送信する。
-	// 送信されるパケットのサイズは、BufferSizeよりも大きいことに留意すること。
-	BufferSize int
+	BufferOpt    BufferOption
 
 	initOnce     sync.Once
 	closeOnce    sync.Once
@@ -81,10 +70,7 @@ type Client struct {
 type mergeSender struct {
 	Conn  *xtcp.Conn
 	Proto *Proto
-	// Client.BufferSizeを参照
-	BufferSize int
-	// Client.RefreshIntervalを参照
-	RefreshInterval time.Duration
+	Opt   BufferOption
 
 	// 送信バッファに入るのを待機しているパケット。
 	// 突発的に多量のログが生成される状況でのパフォーマンス改善のため、バッファサイズは大きくしている。
@@ -112,12 +98,7 @@ func (c *Client) Init() {
 		if c.PingInterval == time.Duration(0) {
 			c.PingInterval = DefaultPingInterval
 		}
-		if c.RefreshInterval == 0 {
-			c.RefreshInterval = DefaultRefreshInterval
-		}
-		if c.BufferSize == 0 {
-			c.BufferSize = DefaultSendBufferSize
-		}
+		c.BufferOpt.SetDefault()
 	})
 }
 
@@ -140,18 +121,14 @@ func (c *Client) Serve() error {
 	// xtcpのバッファサイズが足りないと、パケットの送信に失敗していまう。
 	// この問題を防ぐために、バッファサイズの最大サイズは十分に大きくしておく。
 	c.opt = xtcp.NewOpts(c, &c.proto)
-	c.opt.SetRecvBufInitSize(c.BufferSize * 2)
-	c.opt.SetSendBufInitSize(c.BufferSize * 2)
-	c.opt.SetRecvBufMaxSize(c.BufferSize * 10)
-	c.opt.SetSendBufMaxSize(c.BufferSize * 10)
+	c.BufferOpt.Xtcp.Set(c.opt)
 	c.xtcpconn = xtcp.NewConn(c.opt)
 
 	// initialize mergeSender
 	c.mergeSender = mergeSender{
-		Conn:            c.xtcpconn,
-		Proto:           &c.proto,
-		BufferSize:      c.BufferSize,
-		RefreshInterval: c.RefreshInterval,
+		Conn:  c.xtcpconn,
+		Proto: &c.proto,
+		Opt:   c.BufferOpt,
 	}
 	c.mergeSender.Init()
 
@@ -316,7 +293,7 @@ func (ms *mergeSender) Init() {
 				Proto: ms.Proto,
 				// MergePacketのサイズは、BufferSizeよりも大きくなる。
 				// そのため、少し大きめのバッファを確保しておく。
-				BufferSize: ms.BufferSize + 2048,
+				BufferSize: ms.Opt.MaxSmallPacketSize + 2048,
 			}
 		},
 	}
@@ -337,7 +314,7 @@ func (ms *mergeSender) sendNolock(pkt xtcp.Packet) error {
 	mp := ms.mergePkt
 
 	mp.Merge(pkt)
-	if mp.Len() >= ms.BufferSize {
+	if mp.Len() >= ms.Opt.MaxSmallPacketSize {
 		ms.mergePkt = nil
 		return ms.Conn.Send(mp)
 	}
@@ -379,7 +356,7 @@ func (ms *mergeSender) refreshNolock() error {
 // バッファに滞留してしまい、いつまでもサーバにパケットが届かなくなる問題を防ぐ。
 // 送信中にエラーが発生した場合、panicする。
 func (ms *mergeSender) RefreshWorker(ctx context.Context) {
-	ticker := time.NewTicker(ms.RefreshInterval)
+	ticker := time.NewTicker(ms.Opt.RefreshInterval)
 	for {
 		select {
 		case <-ticker.C:

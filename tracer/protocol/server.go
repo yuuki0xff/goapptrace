@@ -82,6 +82,7 @@ type Server struct {
 	AppName      string
 	Secret       string
 	PingInterval time.Duration
+	BufferOpt    BufferOption
 
 	listener net.Listener
 	wg       sync.WaitGroup
@@ -113,11 +114,13 @@ func (s *Server) init() error {
 		if s.PingInterval == time.Duration(0) {
 			s.PingInterval = DefaultPingInterval
 		}
+		s.BufferOpt.SetDefault()
 		s.connIDMap = map[*xtcp.Conn]ConnID{}
 		s.connMap = map[ConnID]*ServerConn{}
 
 		prt := &Proto{}
 		s.opt = xtcp.NewOpts(s, prt)
+		s.BufferOpt.Xtcp.Set(s.opt)
 		s.xtcpsrv = xtcp.NewServer(s.opt)
 	})
 	return nil
