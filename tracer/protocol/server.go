@@ -79,10 +79,9 @@ type Server struct {
 	Addr    string
 	Handler ServerHandler
 
-	AppName         string
-	Secret          string
-	MaxBufferedMsgs int
-	PingInterval    time.Duration
+	AppName      string
+	Secret       string
+	PingInterval time.Duration
 
 	listener net.Listener
 	wg       sync.WaitGroup
@@ -111,9 +110,6 @@ type ServerConn struct {
 
 func (s *Server) init() error {
 	s.initOnce.Do(func() {
-		if s.MaxBufferedMsgs <= 0 {
-			s.MaxBufferedMsgs = DefaultMaxBufferedMsgs
-		}
 		if s.PingInterval == time.Duration(0) {
 			s.PingInterval = DefaultPingInterval
 		}
