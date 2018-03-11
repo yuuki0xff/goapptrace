@@ -9,7 +9,7 @@ import (
 	"github.com/yuuki0xff/xtcp"
 )
 
-type PacketType uint64
+type PacketType uint8
 
 const (
 	fakePacketType = PacketType(iota)
@@ -97,10 +97,10 @@ type DirectWritable interface {
 }
 
 func (p PacketType) Marshal(buf []byte) int64 {
-	return marshalUint64(buf, uint64(p))
+	return marshalUint8(buf, uint8(p))
 }
 func (p *PacketType) Unmarshal(buf []byte) int64 {
-	val, n := unmarshalUint64(buf)
+	val, n := unmarshalUint8(buf)
 	*p = PacketType(val)
 	return n
 }
