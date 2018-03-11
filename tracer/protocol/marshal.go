@@ -97,7 +97,6 @@ func unmarshalGoFuncSlice(buf []byte) ([]*logutil.GoFunc, int64) {
 func marshalGoFunc(buf []byte, s *logutil.GoFunc) int64 {
 	var total int64
 	total += marshalString(buf[total:], s.Name)
-	total += marshalUint64(buf[total:], uint64(s.FileID))
 	total += marshalUint64(buf[total:], uint64(s.Entry))
 	return total
 }
@@ -110,9 +109,6 @@ func unmarshalGoFunc(buf []byte) (*logutil.GoFunc, int64) {
 	s.Name, n = unmarshalString(buf[total:])
 	total += n
 	ptr, n := unmarshalUint64(buf[total:])
-	s.FileID = logutil.FileID(ptr)
-	total += n
-	ptr, n = unmarshalUint64(buf[total:])
 	total += n
 	s.Entry = uintptr(ptr)
 	return s, total
