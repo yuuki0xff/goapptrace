@@ -54,7 +54,7 @@ func init() {
 			})
 		},
 		func(pc uintptr, name string) {
-			sd.Funcs = append(sd.Funcs, &logutil.GoFunc{
+			sd.Funcs = append(sd.Funcs, logutil.GoFunc{
 				Entry: pc,
 				Name:  name,
 			})
@@ -64,7 +64,7 @@ func init() {
 				log.Panicf("invalid line: pc=%d, file=%s, line=%d", pc, file, line)
 			}
 
-			sd.Lines = append(sd.Lines, &logutil.GoLine{
+			sd.Lines = append(sd.Lines, logutil.GoLine{
 				PC:     pc,
 				FileID: fname2fileID(file),
 				Line:   uint32(line),
