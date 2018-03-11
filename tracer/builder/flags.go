@@ -16,15 +16,10 @@ import "strings"
 //     * Comment MUST have a prefix of "//@@GAT@{flagName}@"
 //     * If the specific flag is true, comments will be removed and commented out codes can be executable.
 type LoggerFlags struct {
-	UseCallersFrames      bool
-	UseNonStandardRuntime bool
+	UseCallersFrames bool
 }
 
 func (f LoggerFlags) EditContent(content string) string {
-	if f.UseNonStandardRuntime {
-		content = f.enableFlag(content, "useNonStandardRuntime")
-	}
-
 	if f.UseCallersFrames {
 		content = f.enableFlag(content, "useCallersFrames")
 	}

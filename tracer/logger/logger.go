@@ -4,9 +4,7 @@ import (
 	"errors"
 	"log"
 	"os"
-	"regexp"
 	"runtime"
-	"strconv"
 	"sync"
 	"time"
 
@@ -17,11 +15,9 @@ const (
 	defaultMaxRetry      = 50
 	defaultRetryInterval = 1 * time.Second
 	skips                = 3
-	backtraceSize        = 1 << 16 // about 64KiB
 	maxStackSize         = 1024
 
-	useCallersFrames      = false //@@GAT#FLAG#
-	useNonStandardRuntime = false //@@GAT#FLAG#
+	useCallersFrames = false //@@GAT#FLAG#
 )
 
 var (
@@ -34,96 +30,87 @@ var (
 	}
 	initBuffer []*logutil.RawFuncLog
 	sender     Sender
-
-	// stack traceからGID(Goroutine ID)を取得するための正規表現
-	gidRegExp = regexp.MustCompile(`^goroutine (\d+)`)
 )
 
 func init() {
-	if useNonStandardRuntime {
-		// get all symbols in this process.
-		var sd logutil.SymbolsData
+	// get all symbols in this process.
+	var sd logutil.SymbolsData
 
-		//@@GAT@useNonStandardRuntime@ /*
-		/*/
-		fname2fileID := func(fname string) logutil.FileID {
-			for i, f := range sd.Files {
-				if f == fname {
-					return logutil.FileID(i)
-				}
+	//@@GAT@useNonStandardRuntime@ /*
+	/*/
+	fname2fileID := func(fname string) logutil.FileID {
+		for i, f := range sd.Files {
+			if f == fname {
+				return logutil.FileID(i)
 			}
-			sd.Files = append(sd.Files, fname)
-			return logutil.FileID(len(sd.Files) - 1)
 		}
-		runtime.IterateSymbols(
-			func(minpc, maxpc uintptr, name string) {
-				sd.Mods = append(sd.Mods, logutil.GoModule{
-					Name:  name,
-					MinPC: minpc,
-					MaxPC: maxpc,
-				})
-			},
-			func(pc uintptr, name string) {
-				sd.Funcs = append(sd.Funcs, &logutil.GoFunc{
-					Entry: pc,
-					Name:  name,
-				})
-			},
-			func(pc uintptr, file string, line int32) {
-				if line < 0 {
-					log.Panicf("invalid line: pc=%d, file=%s, line=%d", pc, file, line)
-				}
-
-				sd.Lines = append(sd.Lines, &logutil.GoLine{
-					PC:     pc,
-					FileID: fname2fileID(file),
-					Line:   uint32(line),
-				})
-			},
-		)
-		//*/
-
-		lock.Lock()
-		// setup sender.
-		setOutput()
-		if sender == nil {
-			log.Panicln("sender is nil")
-		}
-
-		// send SymbolsData
-		if err := sender.SendSymbols(&sd); err != nil {
-			log.Panic(err)
-		}
-
-		// send buffered logs on initBuffer.
-		for _, raw := range initBuffer {
-			sender.SendLog(raw)
-		}
-		initBuffer = nil
-		lock.Unlock()
+		sd.Files = append(sd.Files, fname)
+		return logutil.FileID(len(sd.Files) - 1)
 	}
+	runtime.IterateSymbols(
+		func(minpc, maxpc uintptr, name string) {
+			sd.Mods = append(sd.Mods, logutil.GoModule{
+				Name:  name,
+				MinPC: minpc,
+				MaxPC: maxpc,
+			})
+		},
+		func(pc uintptr, name string) {
+			sd.Funcs = append(sd.Funcs, &logutil.GoFunc{
+				Entry: pc,
+				Name:  name,
+			})
+		},
+		func(pc uintptr, file string, line int32) {
+			if line < 0 {
+				log.Panicf("invalid line: pc=%d, file=%s, line=%d", pc, file, line)
+			}
+
+			sd.Lines = append(sd.Lines, &logutil.GoLine{
+				PC:     pc,
+				FileID: fname2fileID(file),
+				Line:   uint32(line),
+			})
+		},
+	)
+	//*/
+
+	lock.Lock()
+	// setup sender.
+	setOutput()
+	if sender == nil {
+		log.Panicln("sender is nil")
+	}
+
+	// send SymbolsData
+	if err := sender.SendSymbols(&sd); err != nil {
+		log.Panic(err)
+	}
+
+	// send buffered logs on initBuffer.
+	for _, raw := range initBuffer {
+		sender.SendLog(raw)
+	}
+	initBuffer = nil
+	lock.Unlock()
 	symbols.Init()
 }
 
 func gid() logutil.GID {
 	// get GoroutineID (GID)
-	var id logutil.GID
-	if useNonStandardRuntime {
-		// runtime.GoID()は、標準のruntimeパッケージ内に存在しない関数である。
-		// tracer/builderパッケージによってパッチが当てられた環境でのみ使用可能。
+	//@@GAT@useNonStandardRuntime@ /*
 
-		//@@GAT@useNonStandardRuntime@ id = logutil.GID(runtime.GoID())
-	} else {
-		var buf [backtraceSize]byte
-		runtime.Stack(buf[:], false) // First line is "goroutine xxx [running]"
-		matches := gidRegExp.FindSubmatch(buf[:])
-		gid, err := strconv.ParseInt(string(matches[1]), 10, 64)
-		if err != nil {
-			log.Panic(err)
-		}
-		id = logutil.GID(gid)
-	}
-	return id
+	// ここはgoapptrace以外の環境でコンパイルしたときに実行される。
+	panic("not supported")
+
+	/*/
+
+	// ここは、`goapptrace run`を用いてコンパイルしたときに実行される。
+	// runtime.GoID()は、標準のruntimeパッケージ内に存在しない関数である。
+	// tracer/builderパッケージによってパッチが当てられた環境でのみ使用可能。
+	return logutil.GID(runtime.GoID())
+
+	//*/
 }
 
 func sendLog(tag logutil.TagName, id logutil.TxID) {
