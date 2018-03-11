@@ -177,8 +177,11 @@ func unmarshalGoFuncSlice(buf []byte) ([]logutil.GoFunc, int64) {
 	return funcs, total
 }
 func sizeGoFuncSlice(funcs []logutil.GoFunc) int64 {
-	// todo
-	panic("todo")
+	total := int64(8) // slice length
+	for i := range funcs {
+		total += sizeGoFunc(funcs[i])
+	}
+	return total
 }
 
 func marshalGoFunc(buf []byte, s logutil.GoFunc) int64 {
@@ -199,6 +202,11 @@ func unmarshalGoFunc(buf []byte) (logutil.GoFunc, int64) {
 	total += n
 	s.Entry = uintptr(ptr)
 	return s, total
+}
+func sizeGoFunc(fn logutil.GoFunc) int64 {
+	total := int64(8)            // Entry
+	total += sizeString(fn.Name) // Name
+	return total
 }
 
 func marshalGoLineSlice(buf []byte, status []logutil.GoLine) int64 {
@@ -221,8 +229,11 @@ func unmarshalGoLineSlice(buf []byte) ([]logutil.GoLine, int64) {
 	return funcs, total
 }
 func sizeGoLineSlice(lines []logutil.GoLine) int64 {
-	// todo
-	panic("todo")
+	total := int64(8) // slice length
+	for i := range lines {
+		total += sizeGoLine(lines[i])
+	}
+	return total
 }
 
 //go:nosplit
@@ -234,6 +245,9 @@ func marshalFileID(buf []byte, id logutil.FileID) int64 {
 func unmarshalFileID(buf []byte) (logutil.FileID, int64) {
 	id, n := unmarshalUint64(buf)
 	return logutil.FileID(id), n
+}
+func sizeFileID() int64 {
+	return 8
 }
 
 //go:nosplit
@@ -266,6 +280,12 @@ func unmarshalGoLine(buf []byte) (logutil.GoLine, int64) {
 	s.Line, n = unmarshalUint32(buf[total:])
 	total += n
 	return s, total
+}
+func sizeGoLine(line logutil.GoLine) int64 {
+	total := int64(9)     // PC
+	total += sizeFileID() // FileID
+	total += 4            // Line
+	return total
 }
 
 func marshalUintptrSlice(buf []byte, slice []uintptr) int64 {
