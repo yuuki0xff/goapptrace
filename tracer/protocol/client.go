@@ -351,7 +351,7 @@ func (ms *mergeSender) SendLarge(largePkt xtcp.Packet) error {
 		return err
 	}
 
-	return ms.Conn.Send(marshalLargePacket(largePkt))
+	return ms.Conn.Send(marshalLargePacket(ms.Proto, largePkt))
 }
 
 // 送信が完了したMergePacketをpoolに追加して、MergePacketを再利用する。

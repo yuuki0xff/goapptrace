@@ -141,9 +141,11 @@ func (p *MergePacket) WriteTo(w io.Writer) (int64, error) {
 // 巨大なパケットをMergePacketにラップして返す。
 // 巨大なパケットを通常の方法でmp.Merge()すると範囲外アクセスでパニックする。この問題を解消するために使用する。
 // pは直ぐにmarshalされるため、この関数の実行終了後にpを再利用することが出来る。
-func marshalLargePacket(p xtcp.Packet) *MergePacket {
-	mp := &MergePacket{}
-	mp.BufferSize = int(p.(SizePredictable).PacketSize())
+func marshalLargePacket(proto ProtoInterface, p xtcp.Packet) *MergePacket {
+	mp := &MergePacket{
+		Proto:      proto,
+		BufferSize: int(p.(SizePredictable).PacketSize()),
+	}
 	mp.Merge(p)
 	return mp
 }
