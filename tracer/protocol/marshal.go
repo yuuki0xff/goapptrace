@@ -282,7 +282,7 @@ func unmarshalGoLine(buf []byte) (logutil.GoLine, int64) {
 	return s, total
 }
 func sizeGoLine(line logutil.GoLine) int64 {
-	total := int64(9)     // PC
+	total := int64(8)     // PC
 	total += sizeFileID() // FileID
 	total += 4            // Line
 	return total
