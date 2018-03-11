@@ -66,18 +66,25 @@ func IterateSymbols(
 			log.Println("\tnfuncdata=", rawfn.nfuncdata)
 
 			if rawfn.args == 0 && rawfn.pcsp == 0 && rawfn.pcfile == 0 && rawfn.pcln == 0 && rawfn.npcdata == 0 && rawfn.nfuncdata == 0 {
-				// TODO: What is this functab??  What is this for??
-				// next functab seems the cgo function. Also, this and next functab seem to have the same entry point.
+				funcname := funcname(fi)
+				if len(funcname) >= 7 && funcname[len(funcname)-7:] == "(.text)" {
+					// TODO: What is this functab??  What is this for??
+					// next functab seems the cgo function. Also, this and next functab seem to have the same entry point.
 
-				// validation
-				if fidx+1 >= nftab {
-					// this is last function in this module.
-					log.Fatal("missing next functab")
-				}
-				if ft.entry != datap.ftab[fidx+1].entry {
-					log.Println("current ftab.entry=", ft.entry)
-					log.Println("   next ftab.entry=", datap.ftab[fidx+1].entry)
-					log.Fatal("mismatch entry point")
+					// validation
+					if fidx+1 >= nftab {
+						// this is last function in this module.
+						log.Fatal("missing next functab")
+					}
+					if ft.entry != datap.ftab[fidx+1].entry {
+						log.Println("current ftab.entry=", ft.entry)
+						log.Println("   next ftab.entry=", datap.ftab[fidx+1].entry)
+						log.Fatal("mismatch entry point")
+					}
+				} else if len(funcname) >= 5 && funcname[:5] == "_cgo_" {
+					// cgo function
+				} else {
+					// it is probably the built-in function
 				}
 
 				continue
