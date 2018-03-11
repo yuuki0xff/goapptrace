@@ -118,8 +118,6 @@ func gid() logutil.GID {
 }
 
 func sendLog(tag logutil.TagName, id logutil.TxID) {
-	// TODO: 初期化前だったときの処理を追加する
-
 	logmsg := &logutil.RawFuncLog{}
 	logmsg.Tag = tag
 	logmsg.Timestamp = logutil.NewTime(time.Now())
@@ -149,15 +147,16 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 		// これを使用するときは、*最適化を無効*にしてコンパイルすること。
 	}
 
-	// TODO: 排他ロックを取って、sendBufferに直接書き込む。
-	// CPUのキャッシュに乗っているうちにシリアライズしたほうがよい。
 	lock.Lock()
 	defer lock.Unlock()
 	if sender == nil {
-		setOutput()
-	}
-	if err := sender.SendLog(logmsg); err != nil {
-		log.Panicf("failed to sender.Send():err=%s sender=%+v ", err, sender)
+		// init()関数により初期化が完了する前に、sendLog()が実行された。
+		// この状態ではlogmsgを送信することが出来ないため、バッファに蓄積しておく。
+		initBuffer = append(initBuffer, logmsg)
+	} else {
+		if err := sender.SendLog(logmsg); err != nil {
+			log.Panicf("failed to sender.Send():err=%s sender=%+v ", err, sender)
+		}
 	}
 }
 
