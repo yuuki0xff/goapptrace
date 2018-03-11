@@ -105,11 +105,10 @@ type Symbols struct {
 }
 
 type SymbolsData struct {
-	// TODO: ポインター型だと遅い
 	Files []string
 	Mods  []GoModule
-	Funcs []*GoFunc
-	Lines []*GoLine
+	Funcs []GoFunc
+	Lines []GoLine
 }
 
 // FileID is index of Symbols.Files array.
