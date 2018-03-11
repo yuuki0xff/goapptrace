@@ -143,8 +143,10 @@ func (p *MergePacket) WriteTo(w io.Writer) (int64, error) {
 // pは直ぐにmarshalされるため、この関数の実行終了後にpを再利用することが出来る。
 func marshalLargePacket(proto ProtoInterface, p xtcp.Packet) *MergePacket {
 	mp := &MergePacket{
-		Proto:      proto,
-		BufferSize: int(p.(SizePredictable).PacketSize()),
+		Proto: proto,
+		// パケットをエンコードするとヘッダーが追加される。
+		// ヘッダーのサイズ分だけバッファを大きくする。
+		BufferSize: int(p.(SizePredictable).PacketSize()) + PacketHeaderSize,
 	}
 	mp.Merge(p)
 	return mp
