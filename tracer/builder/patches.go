@@ -36,7 +36,8 @@ func IterateSymbols(
 		// ftab is lookup table for function by program counter.
 		// moduledataverify1 skips last item of ftab. what is last item???
 		nftab := len(datap.ftab) - 1
-		for fidx, ft := range datap.ftab[:nftab] {
+		for fidx := 0; fidx < nftab; fidx++ {
+			ft := datap.ftab[fidx]
 			log.Println("functab: entry=", ft.entry, " funcoff=", ft.funcoff)
 
 			if ft.entry < datap.minpc && datap.maxpc < ft.entry {
@@ -56,13 +57,31 @@ func IterateSymbols(
 			}
 			log.Println("_func: ", unsafe.Pointer(rawfn))
 			log.Println("\tentry=", rawfn.entry)
-			log.Println("\tnameoff=", rawfn.nameoff)
+			log.Println("\tnameoff=", rawfn.nameoff, " name=", funcname(fi))
 			log.Println("\targs=", rawfn.args)
 			log.Println("\tpcsp=", rawfn.pcsp)
 			log.Println("\tpcfile=", rawfn.pcfile)
 			log.Println("\tpcln=", rawfn.pcln)
 			log.Println("\tnpcdata=", rawfn.npcdata)
 			log.Println("\tnfuncdata=", rawfn.nfuncdata)
+
+			if rawfn.args == 0 && rawfn.pcsp == 0 && rawfn.pcfile == 0 && rawfn.pcln == 0 && rawfn.npcdata == 0 && rawfn.nfuncdata == 0 {
+				// TODO: What is this functab??  What is this for??
+				// next functab seems the cgo function. Also, this and next functab seem to have the same entry point.
+
+				// validation
+				if fidx+1 >= nftab {
+					// this is last function in this module.
+					log.Fatal("missing next functab")
+				}
+				if ft.entry != datap.ftab[fidx+1].entry {
+					log.Println("current ftab.entry=", ft.entry)
+					log.Println("   next ftab.entry=", datap.ftab[fidx+1].entry)
+					log.Fatal("mismatch entry point")
+				}
+
+				continue
+			}
 
 			pclns, lines := pcvalueIterate(log, fi, rawfn.pcln, rawfn.entry, strict)
 			if len(pclns) == 0 || len(lines) == 0 {
