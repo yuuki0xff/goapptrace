@@ -88,6 +88,13 @@ type Marshalable interface {
 	Marshal(buf []byte) int64
 	Unmarshal(buf []byte) int64
 }
+type SizePredictable interface {
+	// PacketSize returns encoded byte size.
+	PacketSize() int64
+}
+type DirectWritable interface {
+	WriteTo(w io.Writer) (int64, error)
+}
 
 func (p PacketType) Marshal(buf []byte) int64 {
 	return marshalUint64(buf, uint64(p))
@@ -128,6 +135,18 @@ func (p *MergePacket) WriteTo(w io.Writer) (int64, error) {
 	if err == nil {
 		p.size = 0
 	}
+	return int64(n), err
+}
+
+// ByteWrapPacket wraps []byte.
+// Main purpose is to send large packets.
+type ByteWrapPacket struct {
+	Buff []byte
+}
+
+func (p *ByteWrapPacket) String() string { return "<ByteWrapPacket>" }
+func (p *ByteWrapPacket) WriteTo(w io.Writer) (int64, error) {
+	n, err := w.Write(p.Buff)
 	return int64(n), err
 }
 
@@ -285,8 +304,10 @@ func (p *StopTraceCmdPacket) Unmarshal(buf []byte) int64 {
 
 func (p *SymbolPacket) Marshal(buf []byte) int64 {
 	// TODO: marshal Files
+	total := marshalStringSlice(buf, p.Files)
 	// TODO: marshal Mods
-	total := marshalGoFuncSlice(buf, p.Funcs)
+	total += marshalGoModuleSlice(buf[total:], p.Mods)
+	total += marshalGoFuncSlice(buf[total:], p.Funcs)
 	total += marshalGoLineSlice(buf[total:], p.Lines)
 	return total
 }
@@ -294,10 +315,14 @@ func (p *SymbolPacket) Unmarshal(buf []byte) int64 {
 	var total int64
 	var n int64
 	// TODO: unmarshal Files
-	// TODO: unmarshal Mods
-	p.Funcs, n = unmarshalGoFuncSlice(buf)
+	p.Files, n = unmarshalStringSlice(buf)
 	total += n
-	p.Lines, n = unmarshalGoLineSlice(buf)
+	// TODO: unmarshal Mods
+	p.Mods, n = unmarshalGoModuleSlice(buf[total:])
+	total += n
+	p.Funcs, n = unmarshalGoFuncSlice(buf[total:])
+	total += n
+	p.Lines, n = unmarshalGoLineSlice(buf[total:])
 	total += n
 	return total
 }

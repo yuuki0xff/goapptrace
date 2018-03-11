@@ -61,6 +61,74 @@ func unmarshalGoLineID(buf []byte) (logutil.GoLineID, int64) {
 	return logutil.GoLineID(val), n
 }
 
+func marshalStringSlice(buf []byte, strs []string) int64 {
+	var total int64
+
+	n := marshalUint64(buf[total:], uint64(len(strs)))
+	total += n
+	for i := range strs {
+		n = marshalString(buf[total:], strs[i])
+		total += n
+	}
+	return total
+}
+func unmarshalStringSlice(buf []byte) ([]string, int64) {
+	var total int64
+	length, n := unmarshalUint64(buf)
+	total += n
+
+	strs := make([]string, length)
+	for i := range strs {
+		strs[i], n = unmarshalString(buf[total:])
+		total += n
+	}
+	return strs, total
+}
+
+func marshalGoModuleSlice(buf []byte, mods []logutil.GoModule) int64 {
+	var total int64
+
+	n := marshalUint64(buf[total:], uint64(len(mods)))
+	total += n
+	for i := range mods {
+		n = marshalGoModule(buf[total:], mods[i])
+		total += n
+	}
+	return total
+}
+func unmarshalGoModuleSlice(buf []byte) ([]logutil.GoModule, int64) {
+	var total int64
+	length, n := unmarshalUint64(buf)
+	total += n
+
+	mods := make([]logutil.GoModule, length)
+	for i := range mods {
+		mods[i], n = unmarshalGoModule(buf[total:])
+		total += n
+	}
+	return mods, total
+}
+
+func marshalGoModule(buf []byte, mod logutil.GoModule) int64 {
+	var total int64
+	total += marshalString(buf[total:], mod.Name)
+	total += marshalUintptr(buf[total:], mod.MinPC)
+	total += marshalUintptr(buf[total:], mod.MaxPC)
+	return total
+}
+func unmarshalGoModule(buf []byte) (logutil.GoModule, int64) {
+	var total int64
+	var n int64
+	var mod logutil.GoModule
+	mod.Name, n = unmarshalString(buf[total:])
+	total += n
+	mod.MinPC, n = unmarshalUintptr(buf[total:])
+	total += n
+	mod.MaxPC, n = unmarshalUintptr(buf[total:])
+	total += n
+	return mod, total
+}
+
 func marshalGoFuncSlice(buf []byte, funcs []*logutil.GoFunc) int64 {
 	var total int64
 
