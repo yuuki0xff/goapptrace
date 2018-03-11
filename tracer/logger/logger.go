@@ -116,7 +116,7 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 	logmsg.Tag = tag
 	logmsg.Timestamp = logutil.NewTime(time.Now())
 	// TODO: goroutine localな変数に、logmsg.Framesで確保するバッファをキャッシュする
-	logmsg.Frames = make([]uintptr, 0, maxStackSize)
+	logmsg.Frames = make([]uintptr, maxStackSize)
 	logmsg.GID = gid()
 	logmsg.TxID = id
 
