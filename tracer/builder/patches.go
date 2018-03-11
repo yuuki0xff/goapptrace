@@ -71,6 +71,7 @@ func IterateSymbols(
 				log.Println("runtime.iterateSymbols: invalid state")
 				log.Println("midx=", midx, " len(modules)=", len(modules), )
 				log.Println("fidx=", fidx, " len(ftab)=", len(datap.ftab))
+				log.Println("len(pclns)=", len(pclns), " len(lines)=", len(lines))
 				log.Println()
 				log.Fatal("runtime.iterateSymbols: invalid state")
 			}
