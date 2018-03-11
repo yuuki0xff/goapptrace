@@ -44,7 +44,6 @@ func init() {
 		// get all symbols in this process.
 		var sd logutil.SymbolsData
 
-		// TODO: call to some method in Symbols. Need to implement it before write this function.
 		//@@GAT@useNonStandardRuntime@ /*
 		/*/
 		runtime.IterateSymbols(
