@@ -16,8 +16,6 @@ const (
 	defaultRetryInterval = 1 * time.Second
 	skips                = 3
 	maxStackSize         = 1024
-
-	useCallersFrames = false //@@GAT#FLAG#
 )
 
 var (
@@ -131,17 +129,17 @@ func sendLog(tag logutil.TagName, id logutil.TxID) {
 	// これらは過去のコードであるが、今後の実装の参考になる可能性があるため、残しておく。
 	//
 	// symbolsに必要なシンボルを追加とlogmsg.Framesの作成を行う。
-	if useCallersFrames {
-		// runtime.CallersFrames()を使用する。
-		// インライン化やループ展開がされた場合に、行番号や呼び出し元関数の調整を行うことができる。
-		// しかし、オーバーヘッドが大きくなる。
-		// コンパイラの最適化を簡単に無効化できない場合に使用することを推薦する。
-	} else {
-		// runtime.FuncForPC()を使用する。
-		// runtime.CallersFrames()を使用するよりもオーバーヘッドが少ない。
-		// ただし、最適化が行われると呼び出し元の判定が狂ってしまう。
-		// これを使用するときは、*最適化を無効*にしてコンパイルすること。
-	}
+	//if useCallersFrames {
+	//	// runtime.CallersFrames()を使用する。
+	//	// インライン化やループ展開がされた場合に、行番号や呼び出し元関数の調整を行うことができる。
+	//	// しかし、オーバーヘッドが大きくなる。
+	//	// コンパイラの最適化を簡単に無効化できない場合に使用することを推薦する。
+	//} else {
+	//	// runtime.FuncForPC()を使用する。
+	//	// runtime.CallersFrames()を使用するよりもオーバーヘッドが少ない。
+	//	// ただし、最適化が行われると呼び出し元の判定が狂ってしまう。
+	//	// これを使用するときは、*最適化を無効*にしてコンパイルすること。
+	//}
 
 	lock.Lock()
 	defer lock.Unlock()
