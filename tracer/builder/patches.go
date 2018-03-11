@@ -69,9 +69,9 @@ func IterateSymbols(
 				// invalid
 				log.Println()
 				log.Println("runtime.iterateSymbols: invalid state")
-				log.Println("midx=", midx, " len(modules)=", len(modules), )
-				log.Println("fidx=", fidx, " len(ftab)=", len(datap.ftab))
-				log.Println("len(pclns)=", len(pclns), " len(lines)=", len(lines))
+				log.Println("\tmidx=", midx, " len(modules)=", len(modules), )
+				log.Println("\tfidx=", fidx, " len(ftab)=", len(datap.ftab))
+				log.Println("\tlen(pclns)=", len(pclns), " len(lines)=", len(lines))
 				log.Println()
 				log.Fatal("runtime.iterateSymbols: invalid state")
 			}
