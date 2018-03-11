@@ -184,6 +184,8 @@ func Close() {
 	sender = nil
 }
 
+// tracer.builderパッケージにより編集されたコードから呼び出される関数。
+// 全てのログを送信してからプログラムを終了させるために使用する。
 func CloseAndExit(code int) {
 	Close()
 	os.Exit(code)
