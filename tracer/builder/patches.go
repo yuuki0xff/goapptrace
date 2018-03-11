@@ -172,8 +172,6 @@ func pcvalueIterate(log *_GAT_SilentLog, f funcInfo, off int32, targetpc uintptr
 	return
 }
 
-
-
 type _GAT_SilentLog struct {
 	m    mutex
 	logs []interface{}
