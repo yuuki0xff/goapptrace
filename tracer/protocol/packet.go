@@ -284,6 +284,8 @@ func (p *StopTraceCmdPacket) Unmarshal(buf []byte) int64 {
 }
 
 func (p *SymbolPacket) Marshal(buf []byte) int64 {
+	// TODO: marshal Files
+	// TODO: marshal Mods
 	total := marshalGoFuncSlice(buf, p.Funcs)
 	total += marshalGoLineSlice(buf[total:], p.Lines)
 	return total
@@ -291,6 +293,8 @@ func (p *SymbolPacket) Marshal(buf []byte) int64 {
 func (p *SymbolPacket) Unmarshal(buf []byte) int64 {
 	var total int64
 	var n int64
+	// TODO: unmarshal Files
+	// TODO: unmarshal Mods
 	p.Funcs, n = unmarshalGoFuncSlice(buf)
 	total += n
 	p.Lines, n = unmarshalGoLineSlice(buf)
