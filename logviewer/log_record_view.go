@@ -21,13 +21,11 @@ const (
 )
 
 type LogRecordState struct {
-	// todo
 	State      LRState
 	Error      error
 	Records    []restapi.FuncCall
-	FsMap      map[logutil.GoLineID]restapi.GoLineInfo
-	FMap       map[logutil.FuncID]restapi.FuncInfo
 	SelectedID logutil.FuncLogID
+	Symbols    *logutil.Symbols
 }
 type LogRecordStateMutable LogRecordState
 
@@ -45,15 +43,14 @@ func (vm *LogRecordVM) UpdateInterval() time.Duration {
 	return 0
 }
 func (vm *LogRecordVM) Update(ctx context.Context) {
-	records, fsMap, fMap, err := vm.fetch()
+	records, symbols, err := vm.fetch()
 
 	vm.m.Lock()
 	vm.view = nil
 	vm.state.State = LRWait
 	vm.state.Error = err
 	vm.state.Records = records
-	vm.state.FsMap = fsMap
-	vm.state.FMap = fMap
+	vm.state.Symbols = symbols
 	vm.m.Unlock()
 
 	vm.Root.NotifyVMUpdated()
@@ -72,40 +69,25 @@ func (vm *LogRecordVM) View() View {
 }
 func (vm *LogRecordVM) fetch() (
 	records []restapi.FuncCall,
-	fsMap map[logutil.GoLineID]restapi.GoLineInfo,
-	fMap map[logutil.FuncID]restapi.FuncInfo,
+	symbols *logutil.Symbols,
 	err error,
 ) {
-	var ch chan restapi.FuncCall
-	records = make([]restapi.FuncCall, 0, 10000)
-	ch, err = vm.Client.SearchFuncCalls(vm.LogID, restapi.SearchFuncCallParams{
-		Limit:     fetchRecords,
-		SortKey:   restapi.SortByEndTime,
-		SortOrder: restapi.DescendingSortOrder,
-	})
-	if err != nil {
-		return
-	}
-
 	var eg errgroup.Group
 
-	// バックグラウンドでmetadataを取得するworkerへのリクエストを入れるチャンネル
-	reqCh := make(chan logutil.GoLineID, 10000)
-	// キャッシュ用。アクセスする前に必ずlockをすること。
-	fsMap = make(map[logutil.GoLineID]restapi.GoLineInfo, 10000)
-	fMap = make(map[logutil.FuncID]restapi.FuncInfo, 10000)
-	var lock sync.Mutex
-
+	// get records
 	eg.Go(func() error {
-		// FuncCalls apiのレスポンスを受け取る
+		records = make([]restapi.FuncCall, 0, 10000)
+		ch, err := vm.Client.SearchFuncCalls(vm.LogID, restapi.SearchFuncCallParams{
+			Limit:     fetchRecords,
+			SortKey:   restapi.SortByEndTime,
+			SortOrder: restapi.DescendingSortOrder,
+		})
+		if err != nil {
+			return err
+		}
 		for fc := range ch {
 			records = append(records, fc)
-
-			// metadata取得要求を出す
-			currentFrame := fc.Frames[0]
-			reqCh <- currentFrame
 		}
-		close(reqCh)
 
 		// 開始時刻が新しい順に並び替える
 		sort.Slice(records, func(i, j int) bool {
@@ -113,44 +95,12 @@ func (vm *LogRecordVM) fetch() (
 		})
 		return nil
 	})
+	eg.Go(func() error {
+		var err error
+		symbols, err = vm.Client.Symbols()
+		return err
+	})
 
-	// メタデータを取得するワーカを起動する
-	for i := 0; i < APIConnections; i++ {
-		eg.Go(func() (err error) {
-			for id := range reqCh {
-				// GoLineInfoを取得する
-				lock.Lock()
-				_, ok := fsMap[id]
-				lock.Unlock()
-				if ok {
-					continue
-				}
-				var fs restapi.GoLineInfo
-				fs, err = vm.Client.GoLine(vm.LogID, strconv.Itoa(int(id)))
-				if err != nil {
-					return
-				}
-				lock.Lock()
-				fsMap[id] = fs
-
-				// FuncInfoを取得する
-				_, ok = fMap[fs.Func]
-				lock.Unlock()
-				if ok {
-					continue
-				}
-				var fi restapi.FuncInfo
-				fi, err = vm.Client.GoFunc(vm.LogID, strconv.Itoa(int(fs.Func)))
-				if err != nil {
-					return
-				}
-				lock.Lock()
-				fMap[fs.Func] = fi
-				lock.Unlock()
-			}
-			return
-		})
-	}
 	err = eg.Wait()
 	return
 }

@@ -87,6 +87,11 @@ func (c *ClientWithCtx) SyncSymbols() error {
 	return nil
 }
 
+func (c *ClientWithCtx) Symbols() (*logutil.Symbols, error) {
+	// TODO:
+	return nil, nil
+}
+
 // Servers returns Log server list.
 func (c ClientWithCtx) Servers() ([]ServerStatus, error) {
 	var res Servers
