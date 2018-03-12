@@ -46,6 +46,21 @@ func (s *Symbols) Save(fn SymbolsWriteFn) error {
 	return fn(s.data)
 }
 
+// pcに対応するGoModule構造体を返す。
+func (s *Symbols) GoModule(pc uintptr) (GoModule, bool) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	for _, m := range s.data.Mods {
+		if m.MinPC <= pc && pc <= m.MaxPC {
+			// found
+			return m, true
+		}
+	}
+	// not found
+	return GoModule{}, false
+}
+
 // TODO: rename
 // FuncIDに対応するGoFuncを返す。
 func (s *Symbols) Func(pc uintptr) (GoFunc, bool) {
