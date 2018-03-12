@@ -13,6 +13,7 @@ import (
 
 	"github.com/levigross/grequests"
 	"github.com/pkg/errors"
+	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
 const (
@@ -159,6 +160,22 @@ func (c ClientWithCtx) SearchFuncCalls(id string, so SearchFuncCallParams) (chan
 		}
 	}()
 	return ch, nil
+}
+func (c ClientWithCtx) GoModule(logID string, pc uintptr) (m logutil.GoModule, err error) {
+	// TODO: lookup cache
+	url := c.url("/log", logID, "symbol", "module", FormatUintptr(pc))
+	ro := c.ro()
+	err = c.getJSON(url, &ro, &m)
+
+	if err == nil {
+		// validation
+		if m.Name == "" || m.MinPC == 0 || m.MaxPC == 0 {
+			err = fmt.Errorf("validation error: Module=%+v", m)
+			log.Panic(errors.WithStack(err))
+		}
+	}
+	// TODO: add to cache
+	return
 }
 func (c ClientWithCtx) GoFunc(logID string, pc uintptr) (f FuncInfo, err error) {
 	if c.UseCache {
