@@ -169,7 +169,7 @@ func (c ClientWithCtx) GoModule(logID string, pc uintptr) (m logutil.GoModule, e
 
 	if err == nil {
 		// validation
-		if m.Name == "" || m.MinPC == 0 || m.MaxPC == 0 {
+		if m.Name == "" || m.MinPC == 0 || m.MaxPC == 0 || pc < m.MinPC || m.MaxPC < pc {
 			err = fmt.Errorf("validation error: Module=%+v url=%s", m, url)
 			log.Panic(errors.WithStack(err))
 		}
