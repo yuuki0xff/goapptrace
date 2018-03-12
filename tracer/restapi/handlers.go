@@ -531,54 +531,29 @@ func (api APIv0) goModule(w http.ResponseWriter, r *http.Request) {
 	api.writeObj(w, m)
 }
 func (api APIv0) goFunc(w http.ResponseWriter, r *http.Request) {
-	logobj, ok := api.getLog(w, r)
+	logobj, pc, ok := api.getLogPC(w, r)
 	if !ok {
 		return
 	}
 
-	var fid logutil.FuncID
-	if err := fid.UnmarshalText([]byte(mux.Vars(r)["func-id"])); err != nil {
-		http.Error(w, "invalid func-id because id is not unsigned integer", http.StatusBadRequest)
-		return
-	}
-
-	f, ok := logobj.Symbols().Func(fid)
+	f, ok := logobj.Symbols().Func(pc)
 	if !ok {
-		http.Error(w, "func is not found", http.StatusNotFound)
+		http.Error(w, "not found function", http.StatusNotFound)
 		return
 	}
-
-	js, err := json.Marshal(f)
-	if err != nil {
-		api.serverError(w, err, "failed to json.Marshal")
-		return
-	}
-	api.write(w, js)
+	api.writeObj(w, f)
 }
 func (api APIv0) goLine(w http.ResponseWriter, r *http.Request) {
-	logobj, ok := api.getLog(w, r)
+	logobj, pc, ok := api.getLogPC(w, r)
 	if !ok {
 		return
 	}
 
-	var fsid logutil.GoLineID
-	if err := fsid.UnmarshalText([]byte(mux.Vars(r)["func-status-id"])); err != nil {
-		http.Error(w, "invalid func-status-id because id is not integer", http.StatusBadRequest)
-		return
-	}
-
-	fs, ok := logobj.Symbols().GoLine(fsid)
+	l, ok := logobj.Symbols().GoLine(pc)
 	if !ok {
-		http.Error(w, "func status is not found", http.StatusNotFound)
-		return
+		http.Error(w, "not found line", http.StatusNotFound)
 	}
-
-	js, err := json.Marshal(fs)
-	if err != nil {
-		api.serverError(w, err, "failed to json.Marshal")
-		return
-	}
-	api.write(w, js)
+	api.writeObj(w, l)
 }
 func (api APIv0) tracers(w http.ResponseWriter, r *http.Request) {
 	// TODO: これを実装する前に、どのトレーサが接続しているのか管理出来るようにする
