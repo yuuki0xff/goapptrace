@@ -67,10 +67,14 @@ func (s *Symbols) Func(pc uintptr) (GoFunc, bool) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
-	for _, fn := range s.data.Funcs {
-		if fn.Entry >= pc {
-			// found
-			return fn, true
+	// fn.Entry <= pcを満たす最後の要素を返す
+	for i, fn := range s.data.Funcs {
+		if fn.Entry > pc {
+			if i > 0 {
+				// found
+				return s.data.Funcs[i-1], true
+			}
+			break
 		}
 	}
 	// not found
@@ -82,12 +86,17 @@ func (s *Symbols) GoLine(pc uintptr) (GoLine, bool) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
-	for _, ln := range s.data.Lines {
-		if ln.PC >= pc {
+	// ln.PC <= pcを満たす最後の要素を返す
+	for i, ln := range s.data.Lines {
+		if ln.PC > pc {
 			// found
-			return ln, true
+			if i > 0 {
+				return s.data.Lines[i-1], true
+			}
+			break
 		}
 	}
+	// not found
 	return GoLine{}, false
 }
 
