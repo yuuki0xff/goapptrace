@@ -46,6 +46,7 @@ func (s *Symbols) Save(fn SymbolsWriteFn) error {
 	return fn(s.data)
 }
 
+// TODO: rename
 // FuncIDに対応するGoFuncを返す。
 func (s *Symbols) Func(pc uintptr) (GoFunc, bool) {
 	s.lock.RLock()
