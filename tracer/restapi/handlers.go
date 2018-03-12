@@ -518,14 +518,8 @@ func (api APIv0) goroutineSearch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func (api APIv0) goModule(w http.ResponseWriter, r *http.Request) {
-	logobj, ok := api.getLog(w, r)
+	logobj, pc, ok := api.getLogPC(w, r)
 	if !ok {
-		return
-	}
-
-	pc, err := parseUintptr(mux.Vars(r)["pc"])
-	if err != nil {
-		http.Error(w, "invalid pc parameter because pc is not unsigned integer", http.StatusBadRequest)
 		return
 	}
 
@@ -534,7 +528,6 @@ func (api APIv0) goModule(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found module", http.StatusNotFound)
 		return
 	}
-
 	api.writeObj(w, m)
 }
 func (api APIv0) goFunc(w http.ResponseWriter, r *http.Request) {
@@ -617,6 +610,23 @@ func (api APIv0) getLog(w http.ResponseWriter, r *http.Request) (*storage.Log, b
 		return nil, false
 	}
 	return logobj, true
+}
+
+// getLogPC returns Log object and PC.
+// If request is invalid, getLogPC writes the error message and returns false.
+func (api APIv0) getLogPC(w http.ResponseWriter, r *http.Request) (logobj *storage.Log, pc uintptr, ok bool) {
+	logobj, ok = api.getLog(w, r)
+	if !ok {
+		return
+	}
+
+	var err error
+	pc, err = parseUintptr(mux.Vars(r)["pc"])
+	if err != nil {
+		http.Error(w, "invalid pc parameter because pc is not unsigned integer", http.StatusBadRequest)
+		return
+	}
+	ok = true
 }
 
 func (api *APIv0) worker(parent context.Context, logobj *storage.Log) *APIWorker {
