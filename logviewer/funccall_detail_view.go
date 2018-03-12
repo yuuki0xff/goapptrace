@@ -8,16 +8,19 @@ import (
 	"time"
 
 	"github.com/marcusolsson/tui-go"
+	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 	"golang.org/x/sync/errgroup"
 )
 
 type FuncCallDetailState struct {
-	State  FCDState
-	Error  error
-	FSList []restapi.GoLineInfo
-	FList  []restapi.FuncInfo
+	State FCDState
+	Error error
+
 	Record restapi.FuncCall
+	Mods   []logutil.GoModule
+	Funcs  []logutil.GoFunc
+	Lines  []logutil.GoLine
 }
 type FuncCallDetailStateMutable FuncCallDetailState
 type FuncCallDetailVM struct {
@@ -39,25 +42,24 @@ func (vm *FuncCallDetailVM) UpdateInterval() time.Duration {
 func (vm *FuncCallDetailVM) Update(ctx context.Context) {
 	vm.updateOnce.Do(func() {
 		length := len(vm.Record.Frames)
-		fsList := make([]restapi.GoLineInfo, length)
-		fList := make([]restapi.FuncInfo, length)
+		mods := make([]logutil.GoModule, length)
+		funcs := make([]logutil.GoFunc, length)
+		lines := make([]logutil.GoLine, length)
 
 		var eg errgroup.Group
 		fetch := func(i int) {
-			eg.Go(func() error {
-				fsid := vm.Record.Frames[i]
-				fs, err := vm.Client.GoLine(vm.LogID, strconv.Itoa(int(fsid)))
-				if err != nil {
-					return err
-				}
-				fi, err := vm.Client.GoFunc(vm.LogID, strconv.Itoa(int(fs.Func)))
-				if err != nil {
-					return err
-				}
-
-				fsList[i] = fs
-				fList[i] = fi
-				return nil
+			pc := vm.Record.Frames[i]
+			eg.Go(func() (err error) {
+				mods[i], err = vm.Client.GoModule(vm.LogID, pc)
+				return
+			})
+			eg.Go(func() (err error) {
+				funcs[i], err = vm.Client.GoFunc(vm.LogID, pc)
+				return
+			})
+			eg.Go(func() (err error) {
+				lines[i], err = vm.Client.GoLine(vm.LogID, pc)
+				return
 			})
 		}
 		for i := range vm.Record.Frames {
@@ -69,15 +71,17 @@ func (vm *FuncCallDetailVM) Update(ctx context.Context) {
 		vm.view = nil
 		vm.state.State = FCDWait
 		vm.state.Error = err
+		vm.state.Record = vm.Record
 		if err == nil {
 			// no error
-			vm.state.FSList = fsList
-			vm.state.FList = fList
+			vm.state.Mods = mods
+			vm.state.Funcs = funcs
+			vm.state.Lines = lines
 		} else {
-			vm.state.FSList = nil
-			vm.state.FList = nil
+			vm.state.Mods = nil
+			vm.state.Funcs = nil
+			vm.state.Lines = nil
 		}
-		vm.state.Record = vm.Record
 		vm.m.Unlock()
 
 		vm.Root.NotifyVMUpdated()
@@ -209,13 +213,11 @@ func (v *FuncCallDetailView) newFramesTable() *headerTable {
 	t.SetColumnStretch(1, 1)
 	t.SetColumnStretch(2, 3)
 
-	for i := range v.FSList {
-		fs := v.FSList[i]
-		fi := v.FList[i]
+	for i := range v.Record.Frames {
 		t.AppendRow(
-			tui.NewLabel(fi.Name),
-			tui.NewLabel(strconv.Itoa(int(fs.Line))),
-			tui.NewLabel("("+strconv.Itoa(int(fs.PC))+")"),
+			tui.NewLabel(v.Funcs[i].Name),
+			tui.NewLabel(strconv.FormatUint(uint64(v.Lines[i].Line), 10)),
+			tui.NewLabel("("+strconv.FormatUint(uint64(v.Record.Frames[i]), 10)+")"),
 		)
 	}
 	return t
