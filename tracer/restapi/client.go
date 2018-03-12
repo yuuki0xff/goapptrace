@@ -160,7 +160,7 @@ func (c ClientWithCtx) SearchFuncCalls(id string, so SearchFuncCallParams) (chan
 	}()
 	return ch, nil
 }
-func (c ClientWithCtx) Func(logID string, pc uintptr) (f FuncInfo, err error) {
+func (c ClientWithCtx) GoFunc(logID string, pc uintptr) (f FuncInfo, err error) {
 	if c.UseCache {
 		fcache := c.cache.Log(logID).Func(pc)
 		if fcache != nil {

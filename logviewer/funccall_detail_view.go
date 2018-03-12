@@ -50,7 +50,7 @@ func (vm *FuncCallDetailVM) Update(ctx context.Context) {
 				if err != nil {
 					return err
 				}
-				fi, err := vm.Client.Func(vm.LogID, strconv.Itoa(int(fs.Func)))
+				fi, err := vm.Client.GoFunc(vm.LogID, strconv.Itoa(int(fs.Func)))
 				if err != nil {
 					return err
 				}

@@ -90,7 +90,7 @@ func runLogCat(conf *config.Config, stderr io.Writer, logID string, logw LogWrit
 		return s
 	})
 	logw.SetFuncInfoGetter(func(pc uintptr) restapi.FuncInfo {
-		f, err := api.Func(logID, pc)
+		f, err := api.GoFunc(logID, pc)
 		if err != nil {
 			log.Panic(err)
 		}

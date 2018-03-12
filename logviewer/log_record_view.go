@@ -140,7 +140,7 @@ func (vm *LogRecordVM) fetch() (
 					continue
 				}
 				var fi restapi.FuncInfo
-				fi, err = vm.Client.Func(vm.LogID, strconv.Itoa(int(fs.Func)))
+				fi, err = vm.Client.GoFunc(vm.LogID, strconv.Itoa(int(fs.Func)))
 				if err != nil {
 					return
 				}
