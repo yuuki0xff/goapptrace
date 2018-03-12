@@ -174,7 +174,9 @@ definitions:
       frames:
         type: array
         items:
-          $ref: '#/definitions/symbol-func-status'
+          type: integer
+          format: int64
+          description: PC (Program Coutner)
         example:
           - id: 20
             func: 15
@@ -221,20 +223,38 @@ definitions:
         format: int64
         example: 5900
         description: Unix time at the end of goroutine.
+  symbol-module:
+    description: Details of the module.
+    type: object
+    required:
+      - name
+      - min-pc
+      - max-pc
+    properties:
+      name:
+        type: string
+        example: github.com/yuuki0xff/goapptrace
+        description: Import path of the module.
+      min-pc:
+        type: integer
+        format: int64
+        example: 100000000
+      max-pc:
+        type: integer
+        format: int64
+        example: 100001111
   symbol-func:
     description: Details of the function.
     type: object
     required:
-      - func-id
-      - name
-      - file
       - entry
+      - name
     properties:
-      func-id:
+      entry:
         type: integer
         format: int64
-        example: 15
-        description: FuncID
+        example: 100000000
+        description: Entry point address of this function.
       name:
         type: string
         example: github.com/yuuki0xff/goapptrace.main
@@ -243,33 +263,28 @@ definitions:
         type: string
         example: /go/src/github.com/yuuki0xff/goapptrace/goapptrace.go
         description: Path to source file.
-      entry:
-        type: integer
-        format: int64
-        description: Entry point address of this function.
-  symbol-func-status:
-    description: Details of function execution status
+  symbol-line:
+    description: Details of the line.
     type: object
     required:
-      - func-status-id
-      - func-id
+      - pc
+      - file
       - line
     properties:
-      func-status-id:
+      pc:
         type: integer
         format: int64
-        example: 20
-        description: GoLineID
-      func-id:
-        type: integer
-        format: int64
-        example: 15
-        description: FuncID
+        example: 100000000
+        description: Address of this line.
+      file:
+        type: string
+        example: github.com/yuuki0xff/goapptrace/goapptrace.go
+        description: Path to source file.
       line:
         type: integer
         format: int64
-        example: 137
-        description: The line number of currently executing.
+        example: 16
+        description: The line number of this line.
   tracer-list:
     description: List of tracer.
     type: object
@@ -590,7 +605,24 @@ paths:
           description: success
           schema:
             $ref: '#/definitions/goroutine-jsonlines'
-  '/log/{log-id}/symbol/func/{func-id}':
+  '/log/{log-id}/symbol/module/{pc}':
+    get:
+      description: Returns detail of the module.
+      parameters:
+        - name: log-id
+          in: path
+          required: true
+          type: integer
+        - name: pc
+          in: path
+          required: true
+          type: integer
+      responses:
+        '200':
+          description: success
+          schema:
+            $ref: '#/definitions/symbol-module'
+  '/log/{log-id}/symbol/func/{pc}':
     get:
       description: Returns detail of the function.
       parameters:
@@ -598,7 +630,7 @@ paths:
           in: path
           required: true
           type: integer
-        - name: func-id
+        - name: pc
           in: path
           required: true
           type: integer
@@ -607,15 +639,15 @@ paths:
           description: success
           schema:
             $ref: '#/definitions/symbol-func'
-  '/log/{log-id}/symbol/func-status/{func-status-id}':
+  '/log/{log-id}/symbol/line/{pc}':
     get:
-      description: Returns the execution status of the function.
+      description: Returns detail of the line.
       parameters:
         - name: log-id
           in: path
           required: true
           type: integer
-        - name: func-status-id
+        - name: pc
           in: path
           required: true
           type: integer
@@ -623,7 +655,7 @@ paths:
         '200':
           description: success
           schema:
-            $ref: '#/definitions/symbol-func-status'
+            $ref: '#/definitions/symbol-line'
   /tracers:
     get:
       description: Returns all tracer list.
