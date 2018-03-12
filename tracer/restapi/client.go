@@ -170,7 +170,7 @@ func (c ClientWithCtx) GoModule(logID string, pc uintptr) (m logutil.GoModule, e
 	if err == nil {
 		// validation
 		if m.Name == "" || m.MinPC == 0 || m.MaxPC == 0 {
-			err = fmt.Errorf("validation error: Module=%+v", m)
+			err = fmt.Errorf("validation error: Module=%+v url=%s", m, url)
 			log.Panic(errors.WithStack(err))
 		}
 	}
@@ -195,7 +195,7 @@ func (c ClientWithCtx) GoFunc(logID string, pc uintptr) (f FuncInfo, err error) 
 	if err == nil {
 		// validation
 		if f.Entry == 0 || f.Entry > pc {
-			err = fmt.Errorf("validation error: FuncInfo=%+v", f)
+			err = fmt.Errorf("validation error: FuncInfo=%+v url=%s", f, url)
 			log.Panic(errors.WithStack(err))
 		}
 	}
@@ -222,7 +222,7 @@ func (c ClientWithCtx) GoLine(logID string, pc uintptr) (fs GoLineInfo, err erro
 	if err == nil {
 		// validation
 		if fs.PC == 0 || fs.PC > pc {
-			err = fmt.Errorf("validation error: GoLineInfo=%+v", fs)
+			err = fmt.Errorf("validation error: GoLineInfo=%+v url=%s", fs, url)
 			log.Panic(errors.WithStack(err))
 		}
 	}
