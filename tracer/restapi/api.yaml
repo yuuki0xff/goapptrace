@@ -171,6 +171,11 @@ definitions:
         format: int64
         example: 5900
         description: Unix time at the end of function execution.
+      parent-id:
+        type: integer
+        format: int64
+        example: 12
+        description: Parent ID
       frames:
         type: array
         items:
