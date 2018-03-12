@@ -93,7 +93,6 @@ type GenericHeap struct {
 type HttpRequestHandler func(w http.ResponseWriter, r *http.Request)
 type APIRequestHandler func(w http.ResponseWriter, r *http.Request) (status int, data interface{}, err error)
 
-// TODO: impl REST API server
 func NewRouter(args RouterArgs) *mux.Router {
 	router := mux.NewRouter()
 
