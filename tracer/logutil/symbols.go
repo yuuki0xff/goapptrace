@@ -201,6 +201,20 @@ func (s *Symbols) ModuleName(pc uintptr) string {
 	return moduleName
 }
 
+// FileLineは、pcに対応するファイル名と行数を文字列として返す。
+func (s *Symbols) FileLine(pc uintptr) string {
+	filename := "?"
+	linenumber := "?"
+	if line, ok := s.GoLine(pc); ok {
+		if int(line.FileID) <= len(s.data.Files) {
+			filename = s.data.Files[line.FileID]
+		}
+		linenumber = strconv.FormatUint(uint64(line.Line), 10)
+	}
+
+	return filename + ":" + linenumber
+}
+
 func (s *Symbols) SetSymbolsData(data *SymbolsData) {
 	s.lock.Lock()
 	s.data = *data

@@ -4,12 +4,10 @@ import (
 	"context"
 	"log"
 	"sort"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/marcusolsson/tui-go"
-	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 	"golang.org/x/sync/errgroup"
@@ -249,17 +247,14 @@ func (v *LogRecordView) newRecordTable() *headerTable {
 	}
 	records := v.Records[:n]
 	for _, fc := range records {
-		currentFrame := fc.Frames[0]
-
-		fs := v.FsMap[currentFrame]
-		fi := v.FMap[fs.Func]
+		pc := fc.Frames[0]
 		execTime := fc.EndTime - fc.StartTime
 
 		t.AppendRow(
-			tui.NewLabel(fc.StartTime.UnixTime().Format(config.TimestampFormat)),
-			tui.NewLabel(strconv.Itoa(int(execTime))),
-			tui.NewLabel(strconv.Itoa(int(fc.GID))),
-			tui.NewLabel(fi.Name+":"+strconv.Itoa(int(fs.Line))),
+			tui.NewLabel(fc.StartTime.String()),
+			tui.NewLabel(execTime.NumberString()),
+			tui.NewLabel(fc.GID.String()),
+			tui.NewLabel(v.Symbols.FileLine(pc)),
 		)
 	}
 
