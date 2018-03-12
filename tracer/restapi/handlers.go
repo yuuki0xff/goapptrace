@@ -130,8 +130,9 @@ func (api APIv0) SetHandlers(router *mux.Router) {
 	v01.HandleFunc("/log/{log-id}/func-call/search", api.funcCallSearch).Methods(http.MethodGet)
 	v01.HandleFunc("/log/{log-id}/func-call/stream", api.notImpl).Methods(http.MethodGet)
 	v01.HandleFunc("/log/{log-id}/goroutines/search", api.goroutineSearch).Methods(http.MethodGet)
-	v01.HandleFunc("/log/{log-id}/symbol/func/{func-id}", api.goFunc).Methods(http.MethodGet)
-	v01.HandleFunc("/log/{log-id}/symbol/func-status/{func-status-id}", api.goLine).Methods(http.MethodGet)
+	v01.HandleFunc("/log/{log-id]/symbol/module/{pc}", api.goModule).Methods(http.MethodGet)
+	v01.HandleFunc("/log/{log-id]/symbol/func/{pc}", api.goFunc).Methods(http.MethodGet)
+	v01.HandleFunc("/log/{log-id]/symbol/line/{pc}", api.goLine).Methods(http.MethodGet)
 
 	v01.HandleFunc("/tracers", api.tracers).Methods(http.MethodGet)
 	v01.HandleFunc("/tracer/{tracer-id}", api.tracer).Methods(http.MethodDelete)
