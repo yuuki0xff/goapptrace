@@ -65,7 +65,9 @@ func IterateSymbols(
 			log.Println("\tnpcdata=", rawfn.npcdata)
 			log.Println("\tnfuncdata=", rawfn.nfuncdata)
 
-			if rawfn.args == 0 && rawfn.pcsp == 0 && rawfn.pcfile == 0 && rawfn.pcln == 0 && rawfn.npcdata == 0 && rawfn.nfuncdata == 0 {
+			if *rawfn == (_func{}) {
+				log.Fatal("invalid functab")
+			} else if rawfn.entry != 0 && rawfn.nameoff != 0 && rawfn.args == 0 && rawfn.pcsp == 0 && rawfn.pcfile == 0 && rawfn.pcln == 0 && rawfn.npcdata == 0 && rawfn.nfuncdata == 0 {
 				funcname := funcname(fi)
 				if len(funcname) >= 7 && funcname[len(funcname)-7:] == "(.text)" {
 					// TODO: What is this functab??  What is this for??
