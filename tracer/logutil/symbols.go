@@ -46,7 +46,7 @@ func (s *Symbols) Save(fn SymbolsWriteFn) error {
 	return fn(s.data)
 }
 
-// pcに対応するGoModule構造体を返す。
+// pcに対応するGoModuleを返す。
 func (s *Symbols) GoModule(pc uintptr) (GoModule, bool) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
@@ -61,7 +61,7 @@ func (s *Symbols) GoModule(pc uintptr) (GoModule, bool) {
 	return GoModule{}, false
 }
 
-// FuncIDに対応するGoFuncを返す。
+// pcに対応するGoFuncを返す。
 func (s *Symbols) GoFunc(pc uintptr) (GoFunc, bool) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
@@ -80,7 +80,7 @@ func (s *Symbols) GoFunc(pc uintptr) (GoFunc, bool) {
 	return GoFunc{}, false
 }
 
-// GoLineIDに対応するGoLineを返す。
+// pcに対応するGoLineを返す。
 func (s *Symbols) GoLine(pc uintptr) (GoLine, bool) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
