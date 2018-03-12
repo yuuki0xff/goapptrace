@@ -215,7 +215,7 @@ func (c ClientWithCtx) GoLine(logID string, pc uintptr) (fs GoLineInfo, err erro
 	}
 
 	// slow path
-	url := c.url("/log", logID, "symbol", "func-status", FormatUintptr(pc))
+	url := c.url("/log", logID, "symbol", "line", FormatUintptr(pc))
 	ro := c.ro()
 	err = c.getJSON(url, &ro, &fs)
 
