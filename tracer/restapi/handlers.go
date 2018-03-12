@@ -149,6 +149,14 @@ func (api APIv0) write(w io.Writer, data []byte) {
 		api.Logger.Println(errors.Wrap(err, "failed to Write").Error())
 	}
 }
+func (api APIv0) writeObj(w http.ResponseWriter, obj interface{}) {
+	js, err := json.Marshal(obj)
+	if err != nil {
+		api.serverError(w, err, "failed to json.Marshal")
+		return
+	}
+	api.write(w, js)
+}
 
 // TODO: テストを書く
 func (api APIv0) servers(w http.ResponseWriter, r *http.Request) {
@@ -508,6 +516,26 @@ func (api APIv0) goroutineSearch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+}
+func (api APIv0) goModule(w http.ResponseWriter, r *http.Request) {
+	logobj, ok := api.getLog(w, r)
+	if !ok {
+		return
+	}
+
+	pc, err := parseUintptr(mux.Vars(r)["pc"])
+	if err != nil {
+		http.Error(w, "invalid pc parameter because pc is not unsigned integer", http.StatusBadRequest)
+		return
+	}
+
+	m, ok := logobj.Symbols().GoModule(pc)
+	if !ok {
+		http.Error(w, "not found module", http.StatusNotFound)
+		return
+	}
+
+	api.writeObj(w, m)
 }
 func (api APIv0) goFunc(w http.ResponseWriter, r *http.Request) {
 	logobj, ok := api.getLog(w, r)
@@ -919,4 +947,9 @@ func parseOrder(order string, defaultOrder SortOrder) (SortOrder, error) {
 	default:
 		return "", fmt.Errorf("invalid SortOrder: %s", order)
 	}
+}
+
+func parseUintptr(s string) (uintptr, error) {
+	ptr, err := strconv.ParseUint(s, 10, 64)
+	return uintptr(ptr), err
 }
