@@ -47,19 +47,32 @@ func (s *Symbols) Save(fn SymbolsWriteFn) error {
 }
 
 // FuncIDに対応するGoFuncを返す。
-func (s *Symbols) Func(id FuncID) (GoFunc, bool) {
+func (s *Symbols) Func(pc uintptr) (GoFunc, bool) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	// TODO: FuncIDではなく、PCに対応するGoFuncを返すように変更する
-	panic("todo")
+
+	for _, fn := range s.data.Funcs {
+		if fn.Entry >= pc {
+			// found
+			return fn, true
+		}
+	}
+	// not found
+	return GoFunc{}, false
 }
 
 // GoLineIDに対応するGoLineを返す。
-func (s *Symbols) GoLine(id GoLineID) (GoLine, bool) {
+func (s *Symbols) GoLine(pc uintptr) (GoLine, bool) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	// TODO: GoLineIDではなく、PCに対応するGoFUncを返すように変更する
-	panic("todo")
+
+	for _, ln := range s.data.Lines {
+		if ln.PC >= pc {
+			// found
+			return ln, true
+		}
+	}
+	return GoLine{}, false
 }
 
 // 登録済みのFuncの数を返す。
@@ -143,16 +156,17 @@ func (s *Symbols) FuncID(pc uintptr) FuncID {
 }
 
 // GoLineIDから関数名を取得する。
-func (s *Symbols) FuncName(id GoLineID) string {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-	// TODO: GoLineIDではなく、PCから変換するようにする
-	panic("todo")
+func (s *Symbols) FuncName(pc uintptr) string {
+	fn, ok := s.Func(pc)
+	if ok {
+		return "?"
+	}
+	return fn.Name
 }
 
 // GoLineIDからモジュール名を返す。
-func (s *Symbols) ModuleName(id GoLineID) string {
-	funcName := s.FuncName(id)
+func (s *Symbols) ModuleName(pc uintptr) string {
+	funcName := s.FuncName(pc)
 
 	// strip function name from funcName
 	moduleHierarchy := strings.Split(funcName, "/")
