@@ -602,6 +602,7 @@ func (api APIv0) getLogPC(w http.ResponseWriter, r *http.Request) (logobj *stora
 		return
 	}
 	ok = true
+	return
 }
 
 func (api *APIv0) worker(parent context.Context, logobj *storage.Log) *APIWorker {
