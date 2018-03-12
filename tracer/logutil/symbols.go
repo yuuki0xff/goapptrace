@@ -138,7 +138,7 @@ func (s *Symbols) GoLineIDFromPC(pc uintptr) (id GoLineID, ok bool) {
 func (s *Symbols) FuncID(pc uintptr) FuncID {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	// TODO
+	// TODO: 不要になったメソッドなので、削除する。
 	panic("todo")
 }
 
