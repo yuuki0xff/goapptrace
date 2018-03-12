@@ -125,8 +125,8 @@ func TestSymbolsStore_addSymbolsWithData(t *testing.T) {
 			t.Log(symbols2string(symbols))
 
 			a.Equal(2, symbols.FuncsSize(), "Mismatched length of Funcs array")
-			f1, _ := symbols.Func(0)
-			f2, _ := symbols.Func(1)
+			f1, _ := symbols.GoFunc(0)
+			f2, _ := symbols.GoFunc(1)
 			a.Equal(*goFuncs[0], f1, "Mismatched GoFunc object")
 			a.Equal(*goFuncs[1], f2, "Mismatched GoFunc object")
 

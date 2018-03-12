@@ -61,9 +61,8 @@ func (s *Symbols) GoModule(pc uintptr) (GoModule, bool) {
 	return GoModule{}, false
 }
 
-// TODO: rename
 // FuncIDに対応するGoFuncを返す。
-func (s *Symbols) Func(pc uintptr) (GoFunc, bool) {
+func (s *Symbols) GoFunc(pc uintptr) (GoFunc, bool) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -182,7 +181,7 @@ func (s *Symbols) FuncID(pc uintptr) FuncID {
 
 // GoLineIDから関数名を取得する。
 func (s *Symbols) FuncName(pc uintptr) string {
-	fn, ok := s.Func(pc)
+	fn, ok := s.GoFunc(pc)
 	if ok {
 		return "?"
 	}

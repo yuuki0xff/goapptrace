@@ -537,7 +537,7 @@ func (api APIv0) goFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	f, ok := logobj.Symbols().Func(pc)
+	f, ok := logobj.Symbols().GoFunc(pc)
 	if !ok {
 		http.Error(w, "not found function", http.StatusNotFound)
 		return

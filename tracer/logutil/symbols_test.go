@@ -207,7 +207,7 @@ func TestSymbols_Func(t *testing.T) {
 	s.Init()
 
 	// 存在しない関数は取得できない
-	_, ok := s.Func(FuncID(10))
+	_, ok := s.GoFunc(FuncID(10))
 	a.Equal(false, ok)
 
 	id1, added := s.AddFunc(&GoFunc{
@@ -220,7 +220,7 @@ func TestSymbols_Func(t *testing.T) {
 	a.Equal(FuncID(10), id1)
 
 	// 存在するものは取得できる
-	f, ok := s.Func(id1)
+	f, ok := s.GoFunc(id1)
 	a.True(ok)
 	a.Equal(id1, f.ID)
 }
