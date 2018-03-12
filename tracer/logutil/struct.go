@@ -13,14 +13,6 @@ const (
 	FuncEnd
 )
 
-type GID int64 // GID - Goroutine ID
-type TxID uint64
-type FuncLogID int
-type RawFuncLogID int
-type Time int64
-type TagName uint8
-type LogID [16]byte
-
 // RawFuncLogから実行時の状態を推測し、FuncLogとGoroutineオブジェクトを構築する。
 // 具体的には、関数やgoroutineの開始・終了のタイミングの推測を行う。
 // 仕様上、監視対象外のコードで生成されたgoroutineの終了タイミングは正確でない。
