@@ -79,7 +79,9 @@ func (s *Symbols) Save(fn SymbolsWriteFn) error {
 func (s *Symbols) GoModule(pc uintptr) (GoModule, bool) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-
+	return s.goModuleNolock(pc)
+}
+func (s *Symbols) goModuleNolock(pc uintptr) (GoModule, bool) {
 	for _, m := range s.data.Mods {
 		if m.MinPC <= pc && pc <= m.MaxPC {
 			// found
@@ -95,19 +97,34 @@ func (s *Symbols) GoFunc(pc uintptr) (GoFunc, bool) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
+	var found bool
+	var idx int
+	mod, ok := s.goModuleNolock(pc)
+	if !ok {
+		goto notFound
+	}
+
 	// fn.Entry <= pcを満たす最後の要素を返す
 	for i, fn := range s.data.Funcs {
-		if fn.Entry > pc {
-			if i > 0 {
-				// found
-				return s.data.Funcs[i-1], true
-			}
-			// not found
-			return GoFunc{}, false
+		if fn.Entry < mod.MinPC {
+			continue
+		}
+		if fn.Entry > mod.MaxPC {
+			goto notFound
+		}
+		if fn.Entry <= pc {
+			found = true
+			idx = i
+		} else {
+			break
 		}
 	}
-	// found
-	return s.data.Funcs[len(s.data.Funcs)-1], true
+
+	if found {
+		return s.data.Funcs[idx], true
+	}
+notFound:
+	return GoFunc{}, false
 }
 
 // pcに対応するGoLineを返す。
