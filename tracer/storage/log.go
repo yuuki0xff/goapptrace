@@ -11,7 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
-	"github.com/yuuki0xff/goapptrace/tracer/restapi"
+	"github.com/yuuki0xff/goapptrace/tracer/schema"
 )
 
 type LogID = logutil.LogID
@@ -35,7 +35,7 @@ type Log struct {
 	// メタデータを更新するたびにインクリメントされる値
 	Version  int
 	Root     DirLayout
-	Metadata *LogMetadata
+	Metadata *schema.LogMetadata
 	// 書き込み先ファイルが変更される直前に呼び出される。
 	// このイベント実行中はロックが外れるため、他のスレッドから随時書き込まれる可能性がある。
 	BeforeRotateEventHandler func()
@@ -71,37 +71,6 @@ type Log struct {
 	goroutineLog SplitReadWriter
 }
 
-// Logオブジェクトをmarshalするときに使用する。
-// Logとは異なる点は、APIのレスポンスに必要なフィールドしか持っていないこと、および
-// フィールドの値が更新されないため、ロックセずにフィールドの値にアクセスできることである。
-// APIのレスポンスとして使用することを想定している。
-type LogInfo struct {
-	ID          string      `json:"log-id"`
-	Version     int         `json:"version"`
-	Metadata    LogMetadata `json:"metadata"`
-	MaxFileSize int64       `json:"max-file-size"`
-	ReadOnly    bool        `json:"read-only"`
-}
-type LogMetadata struct {
-	// Timestamp of the last record
-	Timestamp time.Time `json:"timestamp"`
-
-	// The configuration of user interface
-	UI UIConfig `json:"ui"`
-}
-
-type UIConfig struct {
-	FuncCalls map[logutil.FuncLogID]UIItemConfig `json:"func-calls"`
-	// TODO: mapのkeyを関数名にする
-	Funcs      map[logutil.FuncID]UIItemConfig `json:"funcs"`
-	Goroutines map[logutil.GID]UIItemConfig    `json:"goroutines"`
-}
-type UIItemConfig struct {
-	Pinned  bool   `json:"pinned"`
-	Masked  bool   `json:"masked"`
-	Comment string `json:"comment"`
-}
-
 type LogStatus uint8
 
 const (
@@ -132,7 +101,7 @@ func (l *Log) Open() error {
 
 	// initialize Metadata
 	if l.Metadata == nil {
-		l.Metadata = &LogMetadata{}
+		l.Metadata = &schema.LogMetadata{}
 		metaFile := l.Root.MetaFile(l.ID)
 		if metaFile.Exists() {
 			// load metadata
@@ -620,10 +589,10 @@ func (l *Log) raiseBeforeRotateEvent() {
 }
 
 // ロックをかけた上で、JSONに変換する
-func (l *Log) LogInfo() LogInfo {
+func (l *Log) LogInfo() schema.LogInfo {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
-	return LogInfo{
+	return schema.LogInfo{
 		ID:          l.ID.Hex(),
 		Version:     l.Version,
 		Metadata:    *l.Metadata,
@@ -640,7 +609,7 @@ func (l *Log) timestampUpdateWorker() {
 
 	update := func() {
 		var needUpdate bool
-		var meta *LogMetadata
+		var meta *schema.LogMetadata
 		var ver int
 		func() {
 			l.lock.RLock()
@@ -654,7 +623,7 @@ func (l *Log) timestampUpdateWorker() {
 				return
 			}
 			needUpdate = true
-			meta = &LogMetadata{}
+			meta = &schema.LogMetadata{}
 			*meta = *l.Metadata
 			meta.Timestamp = ir.Timestamp.UnixTime()
 			ver = l.Version
@@ -683,33 +652,3 @@ func (l *Log) symbolsStore() SymbolsStore {
 		ReadOnly: l.ReadOnly,
 	}
 }
-
-func (c *UIConfig) IsMasked(fc restapi.FuncCall) (masked bool) {
-	var funcNames []string
-	// TODO: fc.FramesをfuncNamesに変換
-
-	for _, name := range funcNames {
-		if f, ok := c.Funcs[name]; ok {
-			masked = masked || f.Masked
-		}
-	}
-	if g, ok := c.Goroutines[fc.GID]; ok {
-		masked = masked || g.Masked
-	}
-	return
-}
-func (c *UIConfig) IsPinned(fc restapi.FuncCall) (pinned bool) {
-	var funcNames []string
-	// TODO: fc.FramesをfuncNamesに変換
-
-	for _, name := range funcNames {
-		if f, ok := c.Funcs[name]; ok {
-			pinned = pinned || f.Pinned
-		}
-	}
-	if g, ok := c.Goroutines[fc.GID]; ok {
-		pinned = pinned || g.Pinned
-	}
-	return
-}
-

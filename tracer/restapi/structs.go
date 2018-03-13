@@ -5,7 +5,7 @@ import (
 
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
-	"github.com/yuuki0xff/goapptrace/tracer/storage"
+	"github.com/yuuki0xff/goapptrace/tracer/schema"
 )
 
 type Servers struct {
@@ -16,8 +16,9 @@ type ServerStatus config.LogServerConfig
 type Logs struct {
 	Logs []LogStatus `json:"logs"`
 }
-type LogStatus storage.LogInfo
 
+// TODO: aliasを削除する
+type LogStatus schema.LogInfo
 type FuncCall = logutil.FuncLog
 type FuncInfo = logutil.GoFunc
 type GoLineInfo = logutil.GoLine
