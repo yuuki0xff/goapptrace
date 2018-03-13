@@ -102,11 +102,12 @@ func (s *Symbols) GoFunc(pc uintptr) (GoFunc, bool) {
 				// found
 				return s.data.Funcs[i-1], true
 			}
-			break
+			// not found
+			return GoFunc{}, false
 		}
 	}
-	// not found
-	return GoFunc{}, false
+	// found
+	return s.data.Funcs[len(s.data.Funcs)-1], true
 }
 
 // pcに対応するGoLineを返す。
