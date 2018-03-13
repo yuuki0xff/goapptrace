@@ -552,35 +552,3 @@ func (v *GraphView) newStatusBar(text string) *tui.StatusBar {
 	s.SetText(text)
 	return s
 }
-
-type funcCallWithFuncIDs struct {
-	restapi.FuncCall
-	// 各フレームに対応するlogutil.FuncIDのリスト。
-	// GoLineIDから変換するオーバーヘッドが大きいため、ここにキャッシュしておく。
-	// TODO: GoLineID -> FuncIDをする共有キャッシュを作る
-	funcs []logutil.FuncID
-}
-
-func (f *funcCallWithFuncIDs) isMasked(config *storage.UIConfig) (masked bool) {
-	for _, fid := range f.funcs {
-		if f, ok := config.Funcs[fid]; ok {
-			masked = masked || f.Masked
-		}
-	}
-	if g, ok := config.Goroutines[f.GID]; ok {
-		masked = masked || g.Masked
-	}
-	return
-}
-
-func (f *funcCallWithFuncIDs) isPinned(config *storage.UIConfig) (pinned bool) {
-	for _, fid := range f.funcs {
-		if f, ok := config.Funcs[fid]; ok {
-			pinned = pinned || f.Pinned
-		}
-	}
-	if g, ok := config.Goroutines[f.GID]; ok {
-		pinned = pinned || g.Pinned
-	}
-	return
-}

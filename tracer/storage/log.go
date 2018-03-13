@@ -11,6 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 )
 
 type LogID = logutil.LogID
@@ -681,3 +682,33 @@ func (l *Log) symbolsStore() SymbolsStore {
 		ReadOnly: l.ReadOnly,
 	}
 }
+
+func (c *UIConfig) IsMasked(fc restapi.FuncCall) (masked bool) {
+	var funcNames []string
+	// TODO: fc.FramesをfuncNamesに変換
+
+	for _, name := range funcNames {
+		if f, ok := c.Funcs[name]; ok {
+			masked = masked || f.Masked
+		}
+	}
+	if g, ok := c.Goroutines[fc.GID]; ok {
+		masked = masked || g.Masked
+	}
+	return
+}
+func(c *UIConfig)IsPinned(fc restapi.FuncCall)(pinned bool){
+	var funcNames []string
+	// TODO: fc.FramesをfuncNamesに変換
+
+	for _, name := range funcNames {
+		if f, ok := c.Funcs[name]; ok {
+			pinned = pinned || f.Pinned
+		}
+	}
+	if g, ok := c.Goroutines[fc.GID]; ok {
+		pinned = pinned || g.Pinned
+	}
+	return
+}
+
