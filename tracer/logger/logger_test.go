@@ -13,6 +13,12 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
+func init() {
+	dummyGid = func() types.GID {
+		return 1
+	}
+}
+
 var dummyTxid = types.NewTxID()
 
 func TestSetOutput_writeToFile_useDefaultPrefix(t *testing.T) {

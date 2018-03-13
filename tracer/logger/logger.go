@@ -28,6 +28,11 @@ var (
 	}
 	initBuffer []*types.RawFuncLog
 	sender     Sender
+
+	// 通常の環境で実行したときは、gid()はこの関数が返した値を返す。
+	// この変数が設定されていなければ、gid()はpanicする。
+	// Unit test実行時にダミーのGIDを返す目的で使用する。
+	dummyGid func() types.GID
 )
 
 func init() {
@@ -99,7 +104,13 @@ func gid() types.GID {
 	//@@GAT@useNonStandardRuntime@ /*
 
 	// ここはgoapptrace以外の環境でコンパイルしたときに実行される。
-	panic("not supported")
+	if dummyGid == nil {
+		// t通常の環境ではGIDを取得できないため、panicする。
+		panic("not supported")
+	} else {
+		// 単体テストの実行時にはダミーのGIDを返す
+		return dummyGid()
+	}
 
 	/*/
 
