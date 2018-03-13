@@ -115,16 +115,16 @@ func TestSymbols_GoLine(t *testing.T) {
 	// 最初の行にマッチする
 	ln, ok := s.GoLine(300)
 	a.True(ok)
-	a.Equal(100, ln.Line)
+	a.Equal(uint32(100), ln.Line)
 	ln, ok = s.GoLine(309)
 	a.True(ok)
-	a.Equal(100, ln.Line)
+	a.Equal(uint32(100), ln.Line)
 
 	// 最後の行にマッチする
 	ln, ok = s.GoLine(310)
 	a.True(ok)
-	a.Equal(101, ln.Line)
+	a.Equal(uint32(101), ln.Line)
 	ln, ok = s.GoLine(319)
 	a.True(ok)
-	a.Equal(101, ln.Line)
+	a.Equal(uint32(101), ln.Line)
 }
