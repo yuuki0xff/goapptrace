@@ -9,24 +9,6 @@ import (
 
 var ErrReadOnly = errors.New("read only")
 
-func (f *FuncID) UnmarshalText(text []byte) error {
-	id, err := strconv.ParseUint(string(text), 10, 64)
-	if err != nil {
-		return err
-	}
-	*f = FuncID(id)
-	return nil
-}
-
-func (f *GoLineID) UnmarshalText(text []byte) error {
-	id, err := strconv.ParseUint(string(text), 10, 64)
-	if err != nil {
-		return err
-	}
-	*f = GoLineID(id)
-	return nil
-}
-
 // 初期化する。使用前に必ず呼び出すこと。
 func (s *Symbols) Init() {}
 

@@ -37,6 +37,23 @@ func (id *FuncID) UnmarshalJSON(data []byte) error {
 	*id = FuncID(val)
 	return err
 }
+func (f *FuncID) UnmarshalText(text []byte) error {
+	id, err := strconv.ParseUint(string(text), 10, 64)
+	if err != nil {
+		return err
+	}
+	*f = FuncID(id)
+	return nil
+}
+
+func (f *GoLineID) UnmarshalText(text []byte) error {
+	id, err := strconv.ParseUint(string(text), 10, 64)
+	if err != nil {
+		return err
+	}
+	*f = GoLineID(id)
+	return nil
+}
 
 func (id GoLineID) MarshalJSON() ([]byte, error) {
 	return marshalUint64(uint64(id))
