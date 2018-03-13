@@ -493,7 +493,7 @@ func (l *Log) Symbols() *logutil.Symbols {
 
 // TODO: テストを書く
 // Metadataフィールドを更新して、Versionをインクリメントする。
-func (l *Log) UpdateMetadata(currentVer int, metadata *LogMetadata) error {
+func (l *Log) UpdateMetadata(currentVer int, metadata *schema.LogMetadata) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 	if l.Version != currentVer {
