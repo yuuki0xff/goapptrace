@@ -2,9 +2,6 @@ package schema
 
 import "sync"
 
-type FuncID uint64
-type GoLineID uint64
-
 type SymbolsReadFn func() (SymbolsData, error)
 type SymbolsWriteFn func(data SymbolsData) error
 
