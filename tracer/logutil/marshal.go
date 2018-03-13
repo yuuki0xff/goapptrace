@@ -27,23 +27,6 @@ func (id *GoLineID) UnmarshalJSON(data []byte) error {
 	return err
 }
 
-func (t Time) MarshalJSON() ([]byte, error) {
-	return marshalInt64(int64(t))
-}
-func (t *Time) UnmarshalJSON(data []byte) error {
-	val, err := unmarshalInt64(data)
-	*t = Time(val)
-	return err
-}
-
-func marshalInt64(val int64) ([]byte, error) {
-	s := strconv.FormatInt(val, 10)
-	return []byte(s), nil
-}
-func unmarshalInt64(data []byte) (int64, error) {
-	return strconv.ParseInt(string(data), 10, 64)
-}
-
 func marshalUint64(val uint64) ([]byte, error) {
 	s := strconv.FormatUint(val, 10)
 	return []byte(s), nil
