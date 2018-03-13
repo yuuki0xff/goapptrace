@@ -11,7 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
-	"github.com/yuuki0xff/goapptrace/tracer/schema"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 type LogID = logutil.LogID
@@ -35,7 +35,7 @@ type Log struct {
 	// メタデータを更新するたびにインクリメントされる値
 	Version  int
 	Root     DirLayout
-	Metadata *schema.LogMetadata
+	Metadata *types.LogMetadata
 	// 書き込み先ファイルが変更される直前に呼び出される。
 	// このイベント実行中はロックが外れるため、他のスレッドから随時書き込まれる可能性がある。
 	BeforeRotateEventHandler func()
@@ -101,7 +101,7 @@ func (l *Log) Open() error {
 
 	// initialize Metadata
 	if l.Metadata == nil {
-		l.Metadata = &schema.LogMetadata{}
+		l.Metadata = &types.LogMetadata{}
 		metaFile := l.Root.MetaFile(l.ID)
 		if metaFile.Exists() {
 			// load metadata
@@ -493,7 +493,7 @@ func (l *Log) Symbols() *logutil.Symbols {
 
 // TODO: テストを書く
 // Metadataフィールドを更新して、Versionをインクリメントする。
-func (l *Log) UpdateMetadata(currentVer int, metadata *schema.LogMetadata) error {
+func (l *Log) UpdateMetadata(currentVer int, metadata *types.LogMetadata) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 	if l.Version != currentVer {
@@ -589,10 +589,10 @@ func (l *Log) raiseBeforeRotateEvent() {
 }
 
 // ロックをかけた上で、JSONに変換する
-func (l *Log) LogInfo() schema.LogInfo {
+func (l *Log) LogInfo() types.LogInfo {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
-	return schema.LogInfo{
+	return types.LogInfo{
 		ID:          l.ID.Hex(),
 		Version:     l.Version,
 		Metadata:    *l.Metadata,
@@ -609,7 +609,7 @@ func (l *Log) timestampUpdateWorker() {
 
 	update := func() {
 		var needUpdate bool
-		var meta *schema.LogMetadata
+		var meta *types.LogMetadata
 		var ver int
 		func() {
 			l.lock.RLock()
@@ -623,7 +623,7 @@ func (l *Log) timestampUpdateWorker() {
 				return
 			}
 			needUpdate = true
-			meta = &schema.LogMetadata{}
+			meta = &types.LogMetadata{}
 			*meta = *l.Metadata
 			meta.Timestamp = ir.Timestamp.UnixTime()
 			ver = l.Version

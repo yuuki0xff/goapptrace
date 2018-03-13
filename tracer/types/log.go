@@ -1,4 +1,4 @@
-package schema
+package types
 
 // Goroutineの生存期間、およびそのGoroutine内で行われたアクションを保持する。
 // 実行終了後も、変更されることがある。

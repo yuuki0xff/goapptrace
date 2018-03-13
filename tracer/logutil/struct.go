@@ -4,7 +4,7 @@ package logutil
 import (
 	"sync"
 
-	"github.com/yuuki0xff/goapptrace/tracer/schema"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 // RawFuncLogから実行時の状態を推測し、FuncLogとGoroutineオブジェクトを構築する。
@@ -13,19 +13,19 @@ import (
 // 一度終了したと判定したgoroutineが、後になってまた動いていると判定されることがある。
 type StateSimulator struct {
 	// 次に追加するFuncLogのID
-	nextID schema.FuncLogID
+	nextID types.FuncLogID
 	// 実行中か実行が終了した関数についてのログ
-	funcLogs map[schema.FuncLogID]*schema.FuncLog
+	funcLogs map[types.FuncLogID]*types.FuncLog
 	// RawFuncLog.TxIDに対応するFuncLogIDを保持する。
 	// 関数の実行が終了したら、そのTxIDを削除すること。
-	txids map[schema.TxID]schema.FuncLogID
+	txids map[types.TxID]types.FuncLogID
 	// goroutineごとの、スタックトップのFuncLogID
 	// キーの存在チェックを行っていないため、goroutineの実行終了後も削除してはならない。
-	stacks map[schema.GID]schema.FuncLogID
+	stacks map[types.GID]types.FuncLogID
 	// 実行中か実行が終わったgoroutine
 	// 実行終了したと判断したgoroutineを動作中に変更することがあるので、
 	// 実行が終了しても削除してはならない。
-	goroutines map[schema.GID]*schema.Goroutine
+	goroutines map[types.GID]*types.Goroutine
 
 	lock sync.RWMutex
 }

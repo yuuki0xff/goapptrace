@@ -18,7 +18,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
-	"github.com/yuuki0xff/goapptrace/tracer/schema"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
 	"golang.org/x/sync/errgroup"
 )
@@ -255,7 +255,7 @@ func (api APIv0) log(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		meta := &schema.LogMetadata{}
+		meta := &types.LogMetadata{}
 		if err = json.Unmarshal(js, meta); err != nil {
 			http.Error(w, "invalid json", http.StatusBadRequest)
 			return
