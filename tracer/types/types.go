@@ -86,6 +86,7 @@ func (gid GID) String() string {
 }
 
 func NewTxID() TxID {
+	// TODO: randを使うのと、atomic.AddInt32を使うの、どちらが早いのか？
 	return TxID(rand.Int63())
 }
 
