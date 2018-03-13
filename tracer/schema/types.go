@@ -15,6 +15,10 @@ const (
 	NotEnded       = Time(-1)
 	NotFoundParent = FuncLogID(-1)
 )
+const (
+	FuncStart TagName = iota
+	FuncEnd
+)
 
 type GID int64 // GID - Goroutine ID
 type TxID uint64

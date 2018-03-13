@@ -6,11 +6,6 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/schema"
 )
 
-const (
-	FuncStart = iota
-	FuncEnd
-)
-
 // RawFuncLogから実行時の状態を推測し、FuncLogとGoroutineオブジェクトを構築する。
 // 具体的には、関数やgoroutineの開始・終了のタイミングの推測を行う。
 // 仕様上、監視対象外のコードで生成されたgoroutineの終了タイミングは正確でない。
