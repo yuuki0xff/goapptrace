@@ -32,9 +32,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/httpserver"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/protocol"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
+	"github.com/yuuki0xff/goapptrace/tracer/simulator"
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
 	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
@@ -88,7 +88,7 @@ func runServerRun(conf *config.Config, stdout io.Writer, stderr io.Writer, apiAd
 		logAddr = config.DefaultLogServerAddr
 	}
 
-	simulatorStore := logutil.StateSimulatorStore{}
+	simulatorStore := simulator.StateSimulatorStore{}
 
 	// start API Server
 	apiSrv := httpserver.NewHttpServer(apiAddr, restapi.NewRouter(restapi.RouterArgs{
@@ -172,7 +172,7 @@ func init() {
 	serverRunCmd.Flags().StringP("listen-log", "P", "", "Address and port for Log Server")
 }
 
-func getServerHandler(strg *storage.Storage, store *logutil.StateSimulatorStore) protocol.ServerHandler {
+func getServerHandler(strg *storage.Storage, store *simulator.StateSimulatorStore) protocol.ServerHandler {
 	// workerとの通信用。
 	// close()されたら、workerは終了するべき。
 	chMap := make(map[protocol.ConnID]chan interface{})

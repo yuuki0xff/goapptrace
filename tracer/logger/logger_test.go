@@ -9,8 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/yuuki0xff/goapptrace/info"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/protocol"
+	"github.com/yuuki0xff/goapptrace/tracer/simulator"
 	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
@@ -59,8 +59,8 @@ func TestRetrySender(t *testing.T) {
 				{types.FuncID(1), "module.f2", "/go/src/module/src.go", 2},
 			},
 			Lines: []*types.GoLine{
-				{types.GoLineID(0), logutil.FuncID(0), 10, 100},
-				{types.GoLineID(1), logutil.FuncID(1), 20, 200},
+				{types.GoLineID(0), simulator.FuncID(0), 10, 100},
+				{types.GoLineID(1), simulator.FuncID(1), 20, 200},
 			},
 		},
 		&types.RawFuncLog{
@@ -78,7 +78,7 @@ func TestRetrySender(t *testing.T) {
 		&types.SymbolsData{
 			Funcs: []*types.GoFunc{},
 			Lines: []*types.GoLine{
-				{types.GoLineID(2), logutil.FuncID(1), 21, 210},
+				{types.GoLineID(2), simulator.FuncID(1), 21, 210},
 			},
 		},
 		&types.RawFuncLog{
@@ -109,10 +109,10 @@ func checkFileSender(t *testing.T, prefix string) {
 	a.Truef(strings.HasSuffix(fpath, ".log.gz"), "invalid output file fpath: %s", fpath)
 
 	// check sendLog()
-	sendLog(types.FuncStart, logutil.TxID(0))
-	sendLog(types.FuncStart, logutil.TxID(1))
-	sendLog(types.FuncEnd, logutil.TxID(2))
-	sendLog(types.FuncEnd, logutil.TxID(3))
+	sendLog(types.FuncStart, simulator.TxID(0))
+	sendLog(types.FuncStart, simulator.TxID(1))
+	sendLog(types.FuncEnd, simulator.TxID(2))
+	sendLog(types.FuncEnd, simulator.TxID(3))
 
 	// check close
 	Close()
@@ -130,10 +130,10 @@ func checkLogServerSender(t *testing.T, connected, disconnected *bool) {
 	_ = retrySender.Sender.(*LogServerSender)
 
 	// check sendLog()
-	sendLog(types.FuncStart, logutil.TxID(0))
-	sendLog(types.FuncStart, logutil.TxID(1))
-	sendLog(types.FuncEnd, logutil.TxID(2))
-	sendLog(types.FuncEnd, logutil.TxID(3))
+	sendLog(types.FuncStart, simulator.TxID(0))
+	sendLog(types.FuncStart, simulator.TxID(1))
+	sendLog(types.FuncEnd, simulator.TxID(2))
+	sendLog(types.FuncEnd, simulator.TxID(3))
 
 	// is handled Connected event?
 	a.True(*connected)

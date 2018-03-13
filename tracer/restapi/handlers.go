@@ -17,7 +17,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/yuuki0xff/goapptrace/config"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	"github.com/yuuki0xff/goapptrace/tracer/simulator"
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
 	"github.com/yuuki0xff/goapptrace/tracer/types"
 	"golang.org/x/sync/errgroup"
@@ -41,7 +41,7 @@ var (
 type RouterArgs struct {
 	Config         *config.Config
 	Storage        *storage.Storage
-	SimulatorStore *logutil.StateSimulatorStore
+	SimulatorStore *simulator.StateSimulatorStore
 }
 
 // Goapptrace REST API v0.xのハンドラを提供する

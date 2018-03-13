@@ -1,4 +1,4 @@
-package logutil
+package simulator
 
 import (
 	"fmt"

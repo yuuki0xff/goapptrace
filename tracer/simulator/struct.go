@@ -1,5 +1,4 @@
-// TODO: パッケージ名をsimulatorに変更する
-package logutil
+package simulator
 
 import (
 	"sync"
