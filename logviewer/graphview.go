@@ -6,14 +6,12 @@ import (
 	"image"
 	"log"
 	"sort"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/marcusolsson/tui-go"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
-	"github.com/yuuki0xff/goapptrace/tracer/storage"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/tools/container/intsets"
 )
@@ -56,42 +54,36 @@ func (s *GraphStateMutable) UpdateOffset(dx, dy int) {
 }
 
 type GraphCache struct {
-	FcList  []funcCallWithFuncIDs
-	FsList  []restapi.GoLineInfo
-	FList   []restapi.FuncInfo
 	LogInfo restapi.LogStatus
+	Symbols *logutil.Symbols
+	Records []restapi.FuncCall
 	GMap    map[logutil.GID]restapi.Goroutine
 
-	logID  string
-	client restapi.ClientWithCtx
+	logID string
 }
 
 func (c *GraphCache) Update(logID string, client restapi.ClientWithCtx) error {
 	c.logID = logID
-	c.client = client
 
-	var eg errgroup.Group
+	var err error
+	c.LogInfo, err = client.LogStatus(c.logID)
+	if err != nil {
+		return err
+	}
+
+	eg, ctx := errgroup.WithContext(client.Ctx())
+	api := client.WithCtx(ctx)
 	eg.Go(func() error {
 		var err error
-		c.FcList, c.LogInfo, err = c.getFCLogs()
 		return err
 	})
 	eg.Go(func() error {
 		var err error
-		c.GMap, err = c.getGoroutines()
+		c.Symbols, err = api.Symbols()
 		return err
 	})
-	return eg.Wait()
-}
-
-// getFCLogs returns latest function call logs.
-func (c *GraphCache) getFCLogs() ([]funcCallWithFuncIDs, restapi.LogStatus, error) {
-	ch2 := make(chan funcCallWithFuncIDs, 10000)
-	var conf restapi.LogStatus
-
-	var eg errgroup.Group
 	eg.Go(func() error {
-		ch, err := c.client.SearchFuncCalls(c.logID, restapi.SearchFuncCallParams{
+		ch, err := api.SearchFuncCalls(c.logID, restapi.SearchFuncCallParams{
 			//Limit:     fetchRecords,
 			SortKey:   restapi.SortByID,
 			SortOrder: restapi.DescendingSortOrder,
@@ -99,75 +91,37 @@ func (c *GraphCache) getFCLogs() ([]funcCallWithFuncIDs, restapi.LogStatus, erro
 		if err != nil {
 			return err
 		}
-
-		go func() {
-			defer close(ch2)
-			// TODO: 内部でAPI呼び出しを伴う遅い関数。必要に応じて並列度を上げる。
-			c.withFuncIDs(ch, ch2)
+		defer func() {
+			for range ch {
+			}
 		}()
+		for fc := range ch {
+			if c.LogInfo.Metadata.UI.IsMasked(fc) {
+				continue
+			}
+			c.Records = append(c.Records, fc)
+		}
 		return nil
 	})
 	eg.Go(func() error {
-		var err error
-		conf, err = c.client.LogStatus(c.logID)
-		return err
-	})
-
-	if err := eg.Wait(); err != nil {
-		return nil, restapi.LogStatus{}, err
-	}
-
-	// 関数呼び出しのログの一覧
-	fcList := make([]funcCallWithFuncIDs, 0, 10000)
-	for item := range ch2 {
-		// マスクされているイベントを削除する
-		if item.isMasked(&conf.Metadata.UI) {
-			continue
-		}
-
-		fcList = append(fcList, item)
-	}
-	return fcList, conf, nil
-}
-func (c *GraphCache) getGoroutines() (map[logutil.GID]restapi.Goroutine, error) {
-	ch, err := c.client.Goroutines(c.logID)
-	if err != nil {
-		return nil, err
-	}
-	gm := make(map[logutil.GID]restapi.Goroutine, 10000)
-	for g := range ch {
-		gm[g.GID] = g
-	}
-	return gm, nil
-}
-
-// frames2funcs converts logutil.GoLineID to logutil.FuncID.
-func (c *GraphCache) frames2funcs(frames []logutil.GoLineID) (funcs []logutil.FuncID) {
-	for _, id := range frames {
-		fs, err := c.client.GoLine(c.logID, strconv.Itoa(int(id)))
+		ch, err := api.Goroutines(c.logID)
 		if err != nil {
-			log.Panic(err)
+			return err
 		}
-		funcs = append(funcs, fs.Func)
-	}
-	return
-}
-
-// withFuncIDsはFuncCallのIDsを
-func (c *GraphCache) withFuncIDs(in chan restapi.FuncCall, out chan funcCallWithFuncIDs) {
-	for fc := range in {
-		funcs := c.frames2funcs(fc.Frames)
-		out <- funcCallWithFuncIDs{
-			FuncCall: fc,
-			funcs:    funcs,
+		gm := make(map[logutil.GID]restapi.Goroutine, 10000)
+		for g := range ch {
+			gm[g.GID] = g
 		}
-	}
+		c.GMap = gm
+		return nil
+	})
+	return eg.Wait()
 }
 
 // EndedFuncCallsは、時刻tの時点で実行が終了したFuncCallの数を返す。
 func (c *GraphCache) EndedFuncCalls(t logutil.Time) int {
 	n := 0
-	for _, fc := range c.FcList {
+	for _, fc := range c.Records {
 		if fc.IsEnded() && fc.EndTime < t {
 			n++
 		}
@@ -178,7 +132,7 @@ func (c *GraphCache) EndedFuncCalls(t logutil.Time) int {
 // RunningFuncCallsは、時刻tの時点で実行中のFuncCallの数を返す。
 func (c *GraphCache) RunningFuncCalls(t logutil.Time) int {
 	n := 0
-	for _, fc := range c.FcList {
+	for _, fc := range c.Records {
 		if fc.StartTime < t {
 			if !fc.IsEnded() || fc.EndTime >= t {
 				n++
@@ -240,31 +194,28 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 	selected := vm.state.Selected
 	vm.m.Unlock()
 
-	fcList := c.FcList
-	gMap := c.GMap
-
 	// TODO: 活動していないgoroutineも表示する。goroutineが生きているのか、死んでいるのかを把握できない。
 
 	// goroutineごとの、最も最初に活動のあった時刻に相当するX座標。
 	// 関数呼び出し間のギャップ、つまりgoroutineが何も活動していない？と思われる区間を埋めるための線を描画するために使用する。
-	firstXSet := make(map[logutil.GID]int, len(gMap))
-	lastXSet := make(map[logutil.GID]int, len(gMap))
+	firstXSet := make(map[logutil.GID]int, len(c.GMap))
+	lastXSet := make(map[logutil.GID]int, len(c.GMap))
 
 	var wg sync.WaitGroup
 	wg.Add(2)
 
 	// 長さとX座標を決める
-	fcLen := make([]int, len(fcList))
-	fcX := make([]int, len(fcList))
+	fcLen := make([]int, len(c.Records))
+	fcX := make([]int, len(c.Records))
 	go func() {
 		defer wg.Done()
 		// 関数の実行開始時刻が早い順(StartTimeの値が小さい順)にソートする。
-		sort.Slice(fcList, func(i, j int) bool {
-			return fcList[i].StartTime > fcList[j].StartTime
+		sort.Slice(c.Records, func(i, j int) bool {
+			return c.Records[i].StartTime > c.Records[j].StartTime
 		})
 
 		maxTime := logutil.Time(0)
-		for _, fc := range fcList {
+		for _, fc := range c.Records {
 			if maxTime < fc.StartTime {
 				maxTime = fc.StartTime
 			}
@@ -277,7 +228,7 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 		calcXPos := func(t logutil.Time) int {
 			return c.EndedFuncCalls(t)*2 + c.RunningFuncCalls(t)
 		}
-		for i, fc := range fcList {
+		for i, fc := range c.Records {
 			left := calcXPos(fc.StartTime)
 			right := calcXPos(fc.EndTime)
 			if !fc.IsEnded() {
@@ -298,14 +249,14 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 			last := intsets.MinInt
 			exists := false
 
-			for i, f := range fcList {
-				if f.GID != gid {
+			for i, fc := range c.Records {
+				if fc.GID != gid {
 					continue
 				}
 				exists = true
 				if first > fcX[i] {
 					first = fcX[i]
-					if g.StartTime < f.StartTime {
+					if g.StartTime < fc.StartTime {
 						// goroutineは、関数fより少し早く開始された。
 						// 開始位置を1つ前にする。
 						first--
@@ -314,7 +265,7 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 				x := fcX[i] + fcLen[i]
 				if last < x {
 					last = x
-					if f.EndTime < g.EndTime {
+					if fc.EndTime < g.EndTime {
 						// goroutineは、関数fより少し遅く終了した。
 						// 開始位置を1つ後ろにする。
 						last++
@@ -330,12 +281,12 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 	}()
 
 	// Y座標を決める
-	gidY := make(map[logutil.GID]int, len(gMap))
+	gidY := make(map[logutil.GID]int, len(c.GMap))
 	go func() {
 		defer wg.Done()
 		// 描画対象のGoroutine IDの小さい順にソートする。
-		gidList := make([]logutil.GID, 0, len(gMap))
-		for gid := range gMap {
+		gidList := make([]logutil.GID, 0, len(c.GMap))
+		for gid := range c.GMap {
 			gidList = append(gidList, gid)
 		}
 		sort.Slice(gidList, func(i, j int) bool {
@@ -349,7 +300,7 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 		}
 	}()
 
-	lines = make([]Line, 0, len(fcList)+len(gMap))
+	lines = make([]Line, 0, len(c.Records)+len(c.GMap))
 	wg.Wait()
 
 	// 関数呼び出し間のギャップを埋めるための線を追加。
@@ -372,10 +323,10 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 		lines = append(lines, line)
 	}
 
-	for i := len(fcList) - 1; i >= 0; i-- {
-		// fcListを逆順にループする。
+	for i := len(c.Records) - 1; i >= 0; i-- {
+		// c.Recordsを逆順にループする。
 		// 呼び出し元が呼び出し先のlineを上書きして見えなくしてしまうから。
-		fc := fcList[i]
+		fc := c.Records[i]
 
 		// スタイル名の決定をする。
 		styleName := "line."
@@ -386,7 +337,7 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 		}
 		if fc.ID == selected {
 			styleName += ".selected"
-		} else if fc.isPinned(&c.LogInfo.Metadata.UI) {
+		} else if c.LogInfo.Metadata.UI.IsPinned(fc) {
 			styleName += ".marked"
 		}
 

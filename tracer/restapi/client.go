@@ -80,6 +80,10 @@ func (c Client) WithCtx(ctx context.Context) ClientWithCtx {
 	return cc
 }
 
+func (c *ClientWithCtx) Ctx() context.Context {
+	return c.ctx
+}
+
 // SyncSymbolsはサーバからシンボルテーブルをダウンロードし、キャッシュする。
 // キャッシュを作っておくことで、クライアント側のみでシンボル解決が出来るようになり、高速化が出来る。
 func (c *ClientWithCtx) SyncSymbols() error {
@@ -165,6 +169,7 @@ func (c ClientWithCtx) SearchFuncCalls(id string, so SearchFuncCallParams) (chan
 				if err == io.EOF {
 					return
 				}
+				// TODO: ここで発生したエラーを、クライアント側に通知する
 				log.Println(err)
 				return
 			}
