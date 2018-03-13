@@ -3,16 +3,11 @@ package logutil
 import (
 	"fmt"
 	"log"
-	"math/rand"
 )
 
 const (
 	DefaultBufferSize = 65536
 )
-
-func NewTxID() TxID {
-	return TxID(rand.Int63())
-}
 
 func (s *StateSimulator) Init() {
 	s.nextID = FuncLogID(0)

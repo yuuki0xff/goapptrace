@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/rand"
 	"strconv"
 	"time"
 
@@ -82,6 +83,10 @@ type LogID [16]byte
 
 func (gid GID) String() string {
 	return strconv.FormatInt(int64(gid), 10)
+}
+
+func NewTxID() TxID {
+	return TxID(rand.Int63())
 }
 
 func NewTime(t time.Time) Time {
