@@ -2,8 +2,6 @@ package schema
 
 import (
 	"time"
-
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 )
 
 // Logオブジェクトをmarshalするときに使用する。
@@ -32,7 +30,7 @@ type UIConfig struct {
 	Goroutines map[GID]UIItemConfig       `json:"goroutines"`
 }
 
-func (c *UIConfig) IsMasked(fc logutil.FuncLog) (masked bool) {
+func (c *UIConfig) IsMasked(fc FuncLog) (masked bool) {
 	var funcNames []string
 	// TODO: fc.FramesをfuncNamesに変換
 
@@ -46,7 +44,7 @@ func (c *UIConfig) IsMasked(fc logutil.FuncLog) (masked bool) {
 	}
 	return
 }
-func (c *UIConfig) IsPinned(fc logutil.FuncLog) (pinned bool) {
+func (c *UIConfig) IsPinned(fc FuncLog) (pinned bool) {
 	var funcNames []string
 	// TODO: fc.FramesをfuncNamesに変換
 
