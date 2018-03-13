@@ -27,10 +27,9 @@ type LogMetadata struct {
 }
 
 type UIConfig struct {
-	FuncCalls map[logutil.FuncLogID]UIItemConfig `json:"func-calls"`
-	// TODO: mapのkeyを関数名にする
-	Funcs      map[logutil.FuncID]UIItemConfig `json:"funcs"`
-	Goroutines map[logutil.GID]UIItemConfig    `json:"goroutines"`
+	FuncCalls  map[logutil.FuncLogID]UIItemConfig `json:"func-calls"`
+	Funcs      map[string]UIItemConfig            `json:"funcs"`
+	Goroutines map[logutil.GID]UIItemConfig       `json:"goroutines"`
 }
 
 func (c *UIConfig) IsMasked(fc logutil.FuncLog) (masked bool) {
