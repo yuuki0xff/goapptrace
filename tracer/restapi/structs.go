@@ -4,7 +4,6 @@ import (
 	"strconv"
 
 	"github.com/yuuki0xff/goapptrace/config"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
@@ -19,10 +18,10 @@ type Logs struct {
 
 // TODO: aliasを削除する
 type LogStatus types.LogInfo
-type FuncCall = logutil.FuncLog
-type FuncInfo = logutil.GoFunc
-type GoLineInfo = logutil.GoLine
-type Goroutine = logutil.Goroutine
+type FuncCall = types.FuncLog
+type FuncInfo = types.GoFunc
+type GoLineInfo = types.GoLine
+type Goroutine = types.Goroutine
 
 type SortOrder string
 type SortKey string

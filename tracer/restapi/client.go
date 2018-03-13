@@ -13,7 +13,7 @@ import (
 
 	"github.com/levigross/grequests"
 	"github.com/pkg/errors"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 const (
@@ -91,7 +91,7 @@ func (c *ClientWithCtx) SyncSymbols() error {
 	return nil
 }
 
-func (c *ClientWithCtx) Symbols() (*logutil.Symbols, error) {
+func (c *ClientWithCtx) Symbols() (*types.Symbols, error) {
 	// TODO:
 	return nil, nil
 }
@@ -178,7 +178,7 @@ func (c ClientWithCtx) SearchFuncCalls(id string, so SearchFuncCallParams) (chan
 	}()
 	return ch, nil
 }
-func (c ClientWithCtx) GoModule(logID string, pc uintptr) (m logutil.GoModule, err error) {
+func (c ClientWithCtx) GoModule(logID string, pc uintptr) (m types.GoModule, err error) {
 	// TODO: lookup cache
 	url := c.url("/log", logID, "symbol", "module", FormatUintptr(pc))
 	ro := c.ro()

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 const (
@@ -20,7 +20,7 @@ var (
 	uint64Value3 = uint64(0x00000000000000ff)
 	uint64Bytes3 = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff}
 
-	goFunc = &logutil.GoFunc{
+	goFunc = &types.GoFunc{
 		ID:    0xa00000000000000a,
 		Name:  "name",
 		File:  "file path",
@@ -41,7 +41,7 @@ var (
 		0xb0, 0, 0, 0, 0, 0, 0, 0x0b,
 	}
 
-	goLine = &logutil.GoLine{
+	goLine = &types.GoLine{
 		ID:   0xa00000000000000a,
 		Func: 0xb00000000000000b,
 		Line: 0xc00000000000000c,
@@ -58,15 +58,15 @@ var (
 		0xd0, 0, 0, 0, 0, 0, 0, 0x0d,
 	}
 
-	rawFuncLog = &logutil.RawFuncLog{
-		ID:        logutil.RawFuncLogID(0x0a0000000000000a),
+	rawFuncLog = &types.RawFuncLog{
+		ID:        types.RawFuncLogID(0x0a0000000000000a),
 		Tag:       "tag name",
-		Timestamp: logutil.Time(0x0b0000000000000b),
-		Frames: []logutil.GoLineID{
+		Timestamp: types.Time(0x0b0000000000000b),
+		Frames: []types.GoLineID{
 			1, 2, 3,
 		},
-		GID:  logutil.GID(0x0c0000000000000c),
-		TxID: logutil.TxID(0x0d0000000000000d),
+		GID:  types.GID(0x0c0000000000000c),
+		TxID: types.TxID(0x0d0000000000000d),
 	}
 	rawFuncLogBytes = []byte{
 		// ID
@@ -182,7 +182,7 @@ func BenchmarkUnmarshalGoLine(b *testing.B) {
 }
 func BenchmarkMarshalGoLineIDSlice(b *testing.B) {
 	buf := make([]byte, packetBufferSize)
-	val := []logutil.GoLineID{1, 2, 3, 4, 5, 6, 8, 9, 10}
+	val := []types.GoLineID{1, 2, 3, 4, 5, 6, 8, 9, 10}
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
 		marshalUintptrSlice(buf, val)
@@ -191,7 +191,7 @@ func BenchmarkMarshalGoLineIDSlice(b *testing.B) {
 }
 func BenchmarkUnmarshalGoLineIDSlice(b *testing.B) {
 	buf := make([]byte, packetBufferSize)
-	n := marshalUintptrSlice(buf, []logutil.GoLineID{1, 2, 3, 4, 5, 6, 8, 9, 10})
+	n := marshalUintptrSlice(buf, []types.GoLineID{1, 2, 3, 4, 5, 6, 8, 9, 10})
 	buf = buf[:n]
 
 	b.ResetTimer()
@@ -297,7 +297,7 @@ func TestUnmarshalString(t *testing.T) {
 }
 func TestMarshalGoFuncSlice(t *testing.T) {
 	a := assert.New(t)
-	test := func(msg string, slice []*logutil.GoFunc, sliceLen, nonNilFlag, fsBytes []byte) {
+	test := func(msg string, slice []*types.GoFunc, sliceLen, nonNilFlag, fsBytes []byte) {
 		buf := make([]byte, packetBufferSize)
 		n := marshalGoFuncSlice(buf, slice)
 		buf = buf[:n]
@@ -314,22 +314,22 @@ func TestMarshalGoFuncSlice(t *testing.T) {
 	}
 
 	test("empty slice",
-		[]*logutil.GoFunc{},
+		[]*types.GoFunc{},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 0},
 		nil, nil)
 	test("contains a nil item",
-		[]*logutil.GoFunc{nil},
+		[]*types.GoFunc{nil},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
 		[]byte{0}, nil)
 	test("contains a non-nil item",
-		[]*logutil.GoFunc{goFunc},
+		[]*types.GoFunc{goFunc},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
 		[]byte{1},
 		goFuncBytes)
 }
 func TestUnmarshalGoFuncSlice(t *testing.T) {
 	a := assert.New(t)
-	test := func(msg string, expected []*logutil.GoFunc, sliceLen, nonNilFlag, fsBytes []byte) {
+	test := func(msg string, expected []*types.GoFunc, sliceLen, nonNilFlag, fsBytes []byte) {
 		var buf bytes.Buffer
 		buf.Write(sliceLen)
 		buf.Write(nonNilFlag)
@@ -339,15 +339,15 @@ func TestUnmarshalGoFuncSlice(t *testing.T) {
 	}
 
 	test("empty",
-		[]*logutil.GoFunc{},
+		[]*types.GoFunc{},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 0},
 		nil, nil)
 	test("contains a nil item",
-		[]*logutil.GoFunc{nil},
+		[]*types.GoFunc{nil},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
 		[]byte{0}, nil)
 	test("contains a non-nil item",
-		[]*logutil.GoFunc{goFunc},
+		[]*types.GoFunc{goFunc},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
 		[]byte{1},
 		goFuncBytes)
@@ -368,7 +368,7 @@ func TestUnmarshalGoFunc(t *testing.T) {
 }
 func TestMarshalGoLineSlice(t *testing.T) {
 	a := assert.New(t)
-	test := func(msg string, slice []*logutil.GoLine, sliceLen, nonNilFlag, fsBytes []byte) {
+	test := func(msg string, slice []*types.GoLine, sliceLen, nonNilFlag, fsBytes []byte) {
 		buf := make([]byte, packetBufferSize)
 		n := marshalGoLineSlice(buf, slice)
 		buf = buf[:n]
@@ -385,22 +385,22 @@ func TestMarshalGoLineSlice(t *testing.T) {
 	}
 
 	test("empty slice",
-		[]*logutil.GoLine{},
+		[]*types.GoLine{},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 0},
 		nil, nil)
 	test("contains a nil item",
-		[]*logutil.GoLine{nil},
+		[]*types.GoLine{nil},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
 		[]byte{0}, nil)
 	test("contains a non-nil item",
-		[]*logutil.GoLine{goLine},
+		[]*types.GoLine{goLine},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
 		[]byte{1},
 		goLineBytes)
 }
 func TestUnmarshalGoLineSlice(t *testing.T) {
 	a := assert.New(t)
-	test := func(msg string, expected []*logutil.GoLine, sliceLen, nonNilFlag, fsBytes []byte) {
+	test := func(msg string, expected []*types.GoLine, sliceLen, nonNilFlag, fsBytes []byte) {
 		var buf bytes.Buffer
 		buf.Write(sliceLen)
 		buf.Write(nonNilFlag)
@@ -411,15 +411,15 @@ func TestUnmarshalGoLineSlice(t *testing.T) {
 	}
 
 	test("empty",
-		[]*logutil.GoLine{},
+		[]*types.GoLine{},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 0},
 		nil, nil)
 	test("contains a nil item",
-		[]*logutil.GoLine{nil},
+		[]*types.GoLine{nil},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
 		[]byte{0}, nil)
 	test("contains a non-nil item",
-		[]*logutil.GoLine{goLine},
+		[]*types.GoLine{goLine},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
 		[]byte{1},
 		goLineBytes)

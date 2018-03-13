@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/marcusolsson/tui-go"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/tools/container/intsets"
 )
@@ -27,7 +27,7 @@ type GraphState struct {
 	State    GState
 	Error    error
 	Lines    []Line
-	Selected logutil.FuncLogID
+	Selected types.FuncLogID
 
 	ScrollMode ScrollMode
 	// X軸方向のスクロール量
@@ -55,9 +55,9 @@ func (s *GraphStateMutable) UpdateOffset(dx, dy int) {
 
 type GraphCache struct {
 	LogInfo restapi.LogStatus
-	Symbols *logutil.Symbols
+	Symbols *types.Symbols
 	Records []restapi.FuncCall
-	GMap    map[logutil.GID]restapi.Goroutine
+	GMap    map[types.GID]restapi.Goroutine
 
 	logID string
 }
@@ -108,7 +108,7 @@ func (c *GraphCache) Update(logID string, client restapi.ClientWithCtx) error {
 		if err != nil {
 			return err
 		}
-		gm := make(map[logutil.GID]restapi.Goroutine, 10000)
+		gm := make(map[types.GID]restapi.Goroutine, 10000)
 		for g := range ch {
 			gm[g.GID] = g
 		}
@@ -119,7 +119,7 @@ func (c *GraphCache) Update(logID string, client restapi.ClientWithCtx) error {
 }
 
 // EndedFuncCallsは、時刻tの時点で実行が終了したFuncCallの数を返す。
-func (c *GraphCache) EndedFuncCalls(t logutil.Time) int {
+func (c *GraphCache) EndedFuncCalls(t types.Time) int {
 	n := 0
 	for _, fc := range c.Records {
 		if fc.IsEnded() && fc.EndTime < t {
@@ -130,7 +130,7 @@ func (c *GraphCache) EndedFuncCalls(t logutil.Time) int {
 }
 
 // RunningFuncCallsは、時刻tの時点で実行中のFuncCallの数を返す。
-func (c *GraphCache) RunningFuncCalls(t logutil.Time) int {
+func (c *GraphCache) RunningFuncCalls(t types.Time) int {
 	n := 0
 	for _, fc := range c.Records {
 		if fc.StartTime < t {
@@ -198,8 +198,8 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 
 	// goroutineごとの、最も最初に活動のあった時刻に相当するX座標。
 	// 関数呼び出し間のギャップ、つまりgoroutineが何も活動していない？と思われる区間を埋めるための線を描画するために使用する。
-	firstXSet := make(map[logutil.GID]int, len(c.GMap))
-	lastXSet := make(map[logutil.GID]int, len(c.GMap))
+	firstXSet := make(map[types.GID]int, len(c.GMap))
+	lastXSet := make(map[types.GID]int, len(c.GMap))
 
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -214,7 +214,7 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 			return c.Records[i].StartTime > c.Records[j].StartTime
 		})
 
-		maxTime := logutil.Time(0)
+		maxTime := types.Time(0)
 		for _, fc := range c.Records {
 			if maxTime < fc.StartTime {
 				maxTime = fc.StartTime
@@ -225,7 +225,7 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 		}
 
 		// 長さとX座標を決める
-		calcXPos := func(t logutil.Time) int {
+		calcXPos := func(t types.Time) int {
 			return c.EndedFuncCalls(t)*2 + c.RunningFuncCalls(t)
 		}
 		for i, fc := range c.Records {
@@ -281,11 +281,11 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 	}()
 
 	// Y座標を決める
-	gidY := make(map[logutil.GID]int, len(c.GMap))
+	gidY := make(map[types.GID]int, len(c.GMap))
 	go func() {
 		defer wg.Done()
 		// 描画対象のGoroutine IDの小さい順にソートする。
-		gidList := make([]logutil.GID, 0, len(c.GMap))
+		gidList := make([]types.GID, 0, len(c.GMap))
 		for gid := range c.GMap {
 			gidList = append(gidList, gid)
 		}

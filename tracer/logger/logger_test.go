@@ -11,6 +11,7 @@ import (
 	"github.com/yuuki0xff/goapptrace/info"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/protocol"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 func TestSetOutput_writeToFile_useDefaultPrefix(t *testing.T) {
@@ -52,21 +53,21 @@ func TestRetrySender(t *testing.T) {
 
 	// send a log.
 	a.NoError(sender.Send(
-		&logutil.SymbolsData{
-			Funcs: []*logutil.GoFunc{
-				{logutil.FuncID(0), "module.f1", "/go/src/module/src.go", 1},
-				{logutil.FuncID(1), "module.f2", "/go/src/module/src.go", 2},
+		&types.SymbolsData{
+			Funcs: []*types.GoFunc{
+				{types.FuncID(0), "module.f1", "/go/src/module/src.go", 1},
+				{types.FuncID(1), "module.f2", "/go/src/module/src.go", 2},
 			},
-			Lines: []*logutil.GoLine{
-				{logutil.GoLineID(0), logutil.FuncID(0), 10, 100},
-				{logutil.GoLineID(1), logutil.FuncID(1), 20, 200},
+			Lines: []*types.GoLine{
+				{types.GoLineID(0), logutil.FuncID(0), 10, 100},
+				{types.GoLineID(1), logutil.FuncID(1), 20, 200},
 			},
 		},
-		&logutil.RawFuncLog{
-			ID:        logutil.RawFuncLogID(0),
+		&types.RawFuncLog{
+			ID:        types.RawFuncLogID(0),
 			Tag:       "funcStart",
-			Timestamp: logutil.NewTime(time.Now()),
-			Frames:    []logutil.GoLineID{0, 1},
+			Timestamp: types.NewTime(time.Now()),
+			Frames:    []types.GoLineID{0, 1},
 		},
 	))
 
@@ -74,17 +75,17 @@ func TestRetrySender(t *testing.T) {
 	// so sender.Send() will return the nil.
 	a.NoError(sender.Sender.Close())
 	a.NoError(sender.Send(
-		&logutil.SymbolsData{
-			Funcs: []*logutil.GoFunc{},
-			Lines: []*logutil.GoLine{
-				{logutil.GoLineID(2), logutil.FuncID(1), 21, 210},
+		&types.SymbolsData{
+			Funcs: []*types.GoFunc{},
+			Lines: []*types.GoLine{
+				{types.GoLineID(2), logutil.FuncID(1), 21, 210},
 			},
 		},
-		&logutil.RawFuncLog{
-			ID:        logutil.RawFuncLogID(1),
+		&types.RawFuncLog{
+			ID:        types.RawFuncLogID(1),
 			Tag:       "funcEnd",
-			Timestamp: logutil.NewTime(time.Now()),
-			Frames:    []logutil.GoLineID{0, 2},
+			Timestamp: types.NewTime(time.Now()),
+			Frames:    []types.GoLineID{0, 2},
 		},
 	))
 
@@ -108,10 +109,10 @@ func checkFileSender(t *testing.T, prefix string) {
 	a.Truef(strings.HasSuffix(fpath, ".log.gz"), "invalid output file fpath: %s", fpath)
 
 	// check sendLog()
-	sendLog(logutil.FuncStart, logutil.TxID(0))
-	sendLog(logutil.FuncStart, logutil.TxID(1))
-	sendLog(logutil.FuncEnd, logutil.TxID(2))
-	sendLog(logutil.FuncEnd, logutil.TxID(3))
+	sendLog(types.FuncStart, logutil.TxID(0))
+	sendLog(types.FuncStart, logutil.TxID(1))
+	sendLog(types.FuncEnd, logutil.TxID(2))
+	sendLog(types.FuncEnd, logutil.TxID(3))
 
 	// check close
 	Close()
@@ -129,10 +130,10 @@ func checkLogServerSender(t *testing.T, connected, disconnected *bool) {
 	_ = retrySender.Sender.(*LogServerSender)
 
 	// check sendLog()
-	sendLog(logutil.FuncStart, logutil.TxID(0))
-	sendLog(logutil.FuncStart, logutil.TxID(1))
-	sendLog(logutil.FuncEnd, logutil.TxID(2))
-	sendLog(logutil.FuncEnd, logutil.TxID(3))
+	sendLog(types.FuncStart, logutil.TxID(0))
+	sendLog(types.FuncStart, logutil.TxID(1))
+	sendLog(types.FuncEnd, logutil.TxID(2))
+	sendLog(types.FuncEnd, logutil.TxID(3))
 
 	// is handled Connected event?
 	a.True(*connected)

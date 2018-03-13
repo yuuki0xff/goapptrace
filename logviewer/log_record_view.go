@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/marcusolsson/tui-go"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -22,8 +22,8 @@ type LogRecordState struct {
 	State      LRState
 	Error      error
 	Records    []restapi.FuncCall
-	SelectedID logutil.FuncLogID
-	Symbols    *logutil.Symbols
+	SelectedID types.FuncLogID
+	Symbols    *types.Symbols
 }
 type LogRecordStateMutable LogRecordState
 
@@ -67,7 +67,7 @@ func (vm *LogRecordVM) View() View {
 }
 func (vm *LogRecordVM) fetch() (
 	records []restapi.FuncCall,
-	symbols *logutil.Symbols,
+	symbols *types.Symbols,
 	err error,
 ) {
 	var eg errgroup.Group
@@ -113,7 +113,7 @@ func (vm *LogRecordVM) onActivatedRecord(record restapi.FuncCall) {
 		Record:   record,
 	})
 }
-func (vm *LogRecordVM) onSelectionChanged(id logutil.FuncLogID) {
+func (vm *LogRecordVM) onSelectionChanged(id types.FuncLogID) {
 	vm.m.Lock()
 	vm.view = nil
 	vm.state.SelectedID = id

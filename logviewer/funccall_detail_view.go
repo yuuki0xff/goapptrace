@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/marcusolsson/tui-go"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -18,9 +18,9 @@ type FuncCallDetailState struct {
 	Error error
 
 	Record restapi.FuncCall
-	Mods   []logutil.GoModule
-	Funcs  []logutil.GoFunc
-	Lines  []logutil.GoLine
+	Mods   []types.GoModule
+	Funcs  []types.GoFunc
+	Lines  []types.GoLine
 }
 type FuncCallDetailStateMutable FuncCallDetailState
 type FuncCallDetailVM struct {
@@ -42,9 +42,9 @@ func (vm *FuncCallDetailVM) UpdateInterval() time.Duration {
 func (vm *FuncCallDetailVM) Update(ctx context.Context) {
 	vm.updateOnce.Do(func() {
 		length := len(vm.Record.Frames)
-		mods := make([]logutil.GoModule, length)
-		funcs := make([]logutil.GoFunc, length)
-		lines := make([]logutil.GoLine, length)
+		mods := make([]types.GoModule, length)
+		funcs := make([]types.GoFunc, length)
+		lines := make([]types.GoLine, length)
 
 		var eg errgroup.Group
 		fetch := func(i int) {

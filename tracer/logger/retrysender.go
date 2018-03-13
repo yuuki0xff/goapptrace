@@ -4,7 +4,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 // RetrySender is automatically retry to all operations.
@@ -21,7 +21,7 @@ func (s *RetrySender) Close() error {
 	return s.retry("Close", s.Sender.Close)
 }
 
-func (s *RetrySender) SendSymbols(data *logutil.SymbolsData) error {
+func (s *RetrySender) SendSymbols(data *types.SymbolsData) error {
 	return s.retrySend("SendSymbols", func() error {
 		// try to send
 		return s.Sender.SendSymbols(data)
@@ -30,7 +30,7 @@ func (s *RetrySender) SendSymbols(data *logutil.SymbolsData) error {
 
 // SendLog sends a RawFuncLog.
 // if occur the any error, retry to send after re-open.
-func (s *RetrySender) SendLog(raw *logutil.RawFuncLog) error {
+func (s *RetrySender) SendLog(raw *types.RawFuncLog) error {
 	return s.retrySend("SendLog", func() error {
 		return s.Sender.SendLog(raw)
 	})

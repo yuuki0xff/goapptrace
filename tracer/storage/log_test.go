@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 func TestLogID_Hex(t *testing.T) {
@@ -52,7 +52,7 @@ func TestLog_withEmptyFile(t *testing.T) {
 	a.NoError(l.Close())
 
 	a.NotNil(l.Symbols())
-	a.NoError(l.WalkRawFuncLog(func(evt logutil.RawFuncLog) error {
+	a.NoError(l.WalkRawFuncLog(func(evt types.RawFuncLog) error {
 		return errors.New("should not contains any log record, but found a log record")
 	}), "Log.WalkRawFuncLog():")
 	a.NoError(l.Close())
@@ -75,11 +75,11 @@ func TestLog_AppendRawFuncLog(t *testing.T) {
 		rotateInterval: 1,
 	}
 	a.NoError(l.Open())
-	a.NoError(l.AppendRawFuncLog(&logutil.RawFuncLog{}))
-	a.NoError(l.AppendRawFuncLog(&logutil.RawFuncLog{}))
+	a.NoError(l.AppendRawFuncLog(&types.RawFuncLog{}))
+	a.NoError(l.AppendRawFuncLog(&types.RawFuncLog{}))
 
 	var i int
-	a.NoError(l.WalkRawFuncLog(func(evt logutil.RawFuncLog) error {
+	a.NoError(l.WalkRawFuncLog(func(evt types.RawFuncLog) error {
 		i++
 		return nil
 	}), "Log.WalkRawFuncLog():")
@@ -125,7 +125,7 @@ func TestLog_ReadDuringWriting(t *testing.T) {
 
 	checkRecordCount := func(expect int64) error {
 		var actual int64
-		l.WalkRawFuncLog(func(evt logutil.RawFuncLog) error {
+		l.WalkRawFuncLog(func(evt types.RawFuncLog) error {
 			actual++
 			return nil
 		})
@@ -150,11 +150,11 @@ func TestLog_ReadDuringWriting(t *testing.T) {
 			rune(rand.Int()),
 			rune(rand.Int()),
 		})
-		a.NoError(l.AppendRawFuncLog(&logutil.RawFuncLog{
-			ID:   logutil.RawFuncLogID(i),
-			Tag:  logutil.TagName(randomName),
-			GID:  logutil.GID(rand.Int()),
-			TxID: logutil.TxID(rand.Int()),
+		a.NoError(l.AppendRawFuncLog(&types.RawFuncLog{
+			ID:   types.RawFuncLogID(i),
+			Tag:  types.TagName(randomName),
+			GID:  types.GID(rand.Int()),
+			TxID: types.TxID(rand.Int()),
 		}), "Log.AppendRawFuncLog():")
 
 		// RawFuncLogが1つあたり0.1バイト未満で書き込まれるのは考えにくい。

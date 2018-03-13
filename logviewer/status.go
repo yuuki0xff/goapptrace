@@ -1,14 +1,14 @@
 package logviewer
 
 import (
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 // UIState is status of Coordinator.
 type UIState struct {
 	LogID        string
-	RecordID     logutil.FuncLogID
+	RecordID     types.FuncLogID
 	Record       restapi.FuncCall
 	UseGraphView bool
 }

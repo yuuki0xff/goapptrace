@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 func sortLines(lines []Line) []Line {
@@ -67,14 +67,14 @@ func TestGraphVM_buildLines(t *testing.T) {
 			FcList: []funcCallWithFuncIDs{
 				{
 					FuncCall: restapi.FuncCall{
-						ID:        logutil.FuncLogID(1),
+						ID:        types.FuncLogID(1),
 						StartTime: 1,
 						EndTime:   2,
-						ParentID:  logutil.NotFoundParent,
-						Frames:    []logutil.GoLineID{1},
+						ParentID:  types.NotFoundParent,
+						Frames:    []types.GoLineID{1},
 						GID:       0,
 					},
-					funcs: []logutil.FuncID{1},
+					funcs: []types.FuncID{1},
 				},
 			},
 			FsList: []restapi.GoLineInfo{
@@ -94,7 +94,7 @@ func TestGraphVM_buildLines(t *testing.T) {
 				},
 			},
 			LogInfo: restapi.LogStatus{},
-			GMap: map[logutil.GID]restapi.Goroutine{
+			GMap: map[types.GID]restapi.Goroutine{
 				0: {
 					GID:       0,
 					StartTime: 1,
@@ -132,21 +132,21 @@ func TestGraphVM_buildLines(t *testing.T) {
 						ID:        1,
 						StartTime: 1,
 						EndTime:   2,
-						ParentID:  logutil.NotFoundParent,
-						Frames:    []logutil.GoLineID{1},
+						ParentID:  types.NotFoundParent,
+						Frames:    []types.GoLineID{1},
 						GID:       1,
 					},
-					funcs: []logutil.FuncID{1},
+					funcs: []types.FuncID{1},
 				}, {
 					FuncCall: restapi.FuncCall{
 						ID:        2,
 						StartTime: 3,
 						EndTime:   4,
-						ParentID:  logutil.NotFoundParent,
-						Frames:    []logutil.GoLineID{2},
+						ParentID:  types.NotFoundParent,
+						Frames:    []types.GoLineID{2},
 						GID:       2,
 					},
-					funcs: []logutil.FuncID{2},
+					funcs: []types.FuncID{2},
 				},
 			},
 			FsList: []restapi.GoLineInfo{
@@ -175,7 +175,7 @@ func TestGraphVM_buildLines(t *testing.T) {
 					Entry: 2000,
 				},
 			},
-			GMap: map[logutil.GID]restapi.Goroutine{
+			GMap: map[types.GID]restapi.Goroutine{
 				1: {
 					GID:       1,
 					StartTime: 1,
@@ -238,21 +238,21 @@ func TestGraphVM_buildLines(t *testing.T) {
 						ID:        1,
 						StartTime: 1,
 						EndTime:   4,
-						ParentID:  logutil.NotFoundParent,
-						Frames:    []logutil.GoLineID{1},
+						ParentID:  types.NotFoundParent,
+						Frames:    []types.GoLineID{1},
 						GID:       1,
 					},
-					funcs: []logutil.FuncID{1},
+					funcs: []types.FuncID{1},
 				}, {
 					FuncCall: restapi.FuncCall{
 						ID:        2,
 						StartTime: 2,
 						EndTime:   3,
-						ParentID:  logutil.NotFoundParent,
-						Frames:    []logutil.GoLineID{2, 3},
+						ParentID:  types.NotFoundParent,
+						Frames:    []types.GoLineID{2, 3},
 						GID:       1,
 					},
-					funcs: []logutil.FuncID{1, 2},
+					funcs: []types.FuncID{1, 2},
 				},
 			},
 			FsList: []restapi.GoLineInfo{
@@ -286,7 +286,7 @@ func TestGraphVM_buildLines(t *testing.T) {
 					Entry: 2000,
 				},
 			},
-			GMap: map[logutil.GID]restapi.Goroutine{
+			GMap: map[types.GID]restapi.Goroutine{
 				1: {
 					GID:       1,
 					StartTime: 1,

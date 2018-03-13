@@ -36,6 +36,7 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/protocol"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 const (
@@ -216,12 +217,12 @@ func getServerHandler(strg *storage.Storage, store *logutil.StateSimulatorStore)
 
 		for rawobj := range ch {
 			switch obj := rawobj.(type) {
-			case *logutil.RawFuncLog:
+			case *types.RawFuncLog:
 				if err := logobj.AppendRawFuncLog(obj); err != nil {
 					log.Panicln("failed to append RawFuncLog:", err.Error())
 				}
 				ss.Next(*obj)
-			case *logutil.SymbolsData:
+			case *types.SymbolsData:
 				if err := logobj.SetSymbolsData(obj); err != nil {
 					log.Panicln("failed to append Symbols:", err.Error())
 				}
@@ -253,12 +254,12 @@ func getServerHandler(strg *storage.Storage, store *logutil.StateSimulatorStore)
 		Error: func(id protocol.ConnID, err error) {
 			log.Printf("ERROR: Server: connID=%d err=%s", id, err.Error())
 		},
-		Symbols: func(id protocol.ConnID, s *logutil.SymbolsData) {
+		Symbols: func(id protocol.ConnID, s *types.SymbolsData) {
 			chMapLock.RLock()
 			chMap[id] <- s
 			chMapLock.RUnlock()
 		},
-		RawFuncLog: func(id protocol.ConnID, f *logutil.RawFuncLog) {
+		RawFuncLog: func(id protocol.ConnID, f *types.RawFuncLog) {
 			chMapLock.RLock()
 			chMap[id] <- f
 			chMapLock.RUnlock()

@@ -2,7 +2,7 @@ package storage
 
 import (
 	"github.com/pkg/errors"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 var ErrReadOnly = errors.New("read only")
@@ -17,7 +17,7 @@ func (s SymbolsStore) Open() error {
 	return nil
 }
 
-func (s SymbolsStore) Read(symbols *logutil.Symbols) (err error) {
+func (s SymbolsStore) Read(symbols *types.Symbols) (err error) {
 	defer func() {
 		err = errors.Wrap(err, "SymbolsStore")
 	}()
@@ -28,13 +28,13 @@ func (s SymbolsStore) Read(symbols *logutil.Symbols) (err error) {
 	}
 	defer dec.Close() // nolint
 
-	var data *logutil.SymbolsData
+	var data *types.SymbolsData
 	if err = dec.Walk(
 		func() interface{} {
-			return &logutil.SymbolsData{}
+			return &types.SymbolsData{}
 		},
 		func(val interface{}) error {
-			data = val.(*logutil.SymbolsData)
+			data = val.(*types.SymbolsData)
 			return nil
 		},
 	); err != nil {
@@ -46,7 +46,7 @@ func (s SymbolsStore) Read(symbols *logutil.Symbols) (err error) {
 	err = dec.Close()
 	return
 }
-func (s SymbolsStore) Write(symbols *logutil.Symbols) (err error) {
+func (s SymbolsStore) Write(symbols *types.Symbols) (err error) {
 	defer func() {
 		err = errors.Wrap(err, "SymbolsStore")
 	}()
@@ -61,7 +61,7 @@ func (s SymbolsStore) Write(symbols *logutil.Symbols) (err error) {
 	}
 	defer enc.Close() // nolint
 
-	if err = symbols.Save(func(data logutil.SymbolsData) error {
+	if err = symbols.Save(func(data types.SymbolsData) error {
 		return enc.Append(&data)
 	}); err != nil {
 		return

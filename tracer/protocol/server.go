@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 	"github.com/yuuki0xff/xtcp"
 )
 
@@ -28,8 +28,8 @@ type ServerHandler struct {
 
 	Error func(id ConnID, err error)
 
-	Symbols    func(id ConnID, diff *logutil.SymbolsData)
-	RawFuncLog func(id ConnID, funclog *logutil.RawFuncLog)
+	Symbols    func(id ConnID, diff *types.SymbolsData)
+	RawFuncLog func(id ConnID, funclog *types.RawFuncLog)
 }
 
 // SetDefault sets "fn" to all nil fields.
@@ -50,12 +50,12 @@ func (sh ServerHandler) SetDefault(fn func(field string)) ServerHandler {
 		}
 	}
 	if sh.Symbols == nil {
-		sh.Symbols = func(id ConnID, diff *logutil.SymbolsData) {
+		sh.Symbols = func(id ConnID, diff *types.SymbolsData) {
 			fn("Symbols")
 		}
 	}
 	if sh.RawFuncLog == nil {
-		sh.RawFuncLog = func(id ConnID, funclog *logutil.RawFuncLog) {
+		sh.RawFuncLog = func(id ConnID, funclog *types.RawFuncLog) {
 			fn("RawFuncLog")
 		}
 	}

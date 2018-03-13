@@ -5,7 +5,7 @@ import (
 	"io"
 	"log"
 
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 	"github.com/yuuki0xff/xtcp"
 )
 
@@ -247,10 +247,10 @@ type StopTraceCmdPacket struct {
 }
 
 type SymbolPacket struct {
-	logutil.SymbolsData
+	types.SymbolsData
 }
 type RawFuncLogPacket struct {
-	FuncLog *logutil.RawFuncLog
+	FuncLog *types.RawFuncLog
 }
 
 func (p LogPacket) String() string           { return "<LogPacket>" }

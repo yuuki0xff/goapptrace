@@ -3,6 +3,8 @@ package logutil
 import (
 	"fmt"
 	"log"
+
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 const (
@@ -10,22 +12,22 @@ const (
 )
 
 func (s *StateSimulator) Init() {
-	s.nextID = FuncLogID(0)
-	s.funcLogs = make(map[FuncLogID]*FuncLog, DefaultBufferSize)
-	s.txids = make(map[TxID]FuncLogID, DefaultBufferSize)
-	s.stacks = make(map[GID]FuncLogID, DefaultBufferSize)
-	s.goroutines = make(map[GID]*Goroutine, DefaultBufferSize)
+	s.nextID = types.FuncLogID(0)
+	s.funcLogs = make(map[types.FuncLogID]*types.FuncLog, DefaultBufferSize)
+	s.txids = make(map[types.TxID]types.FuncLogID, DefaultBufferSize)
+	s.stacks = make(map[types.GID]types.FuncLogID, DefaultBufferSize)
+	s.goroutines = make(map[types.GID]*types.Goroutine, DefaultBufferSize)
 }
 
 // 新しいRawFuncLogを受け取り、シミュレータの状態を更新する。
-func (s *StateSimulator) Next(fl RawFuncLog) {
+func (s *StateSimulator) Next(fl types.RawFuncLog) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	_, isExistsGID := s.goroutines[fl.GID]
 
 	switch fl.Tag {
-	case FuncStart:
-		parentID := NotFoundParent
+	case types.FuncStart:
+		parentID := types.NotFoundParent
 		if isExistsGID {
 			parentID = s.stacks[fl.GID]
 		}
@@ -33,10 +35,10 @@ func (s *StateSimulator) Next(fl RawFuncLog) {
 		id := s.nextID
 		s.nextID++
 
-		s.funcLogs[id] = &FuncLog{
+		s.funcLogs[id] = &types.FuncLog{
 			ID:        id,
 			StartTime: fl.Timestamp,
-			EndTime:   NotEnded,
+			EndTime:   types.NotEnded,
 			ParentID:  parentID,
 			Frames:    fl.Frames,
 			GID:       fl.GID,
@@ -44,19 +46,19 @@ func (s *StateSimulator) Next(fl RawFuncLog) {
 		s.txids[fl.TxID] = id
 		s.stacks[fl.GID] = id
 
-		if !isExistsGID && parentID == FuncLogID(-1) {
+		if !isExistsGID && parentID == types.FuncLogID(-1) {
 			// 新しいgoroutineを追加
-			s.goroutines[fl.GID] = &Goroutine{
+			s.goroutines[fl.GID] = &types.Goroutine{
 				GID:       fl.GID,
 				StartTime: fl.Timestamp,
-				EndTime:   NotEnded,
+				EndTime:   types.NotEnded,
 			}
-		} else if isExistsGID && parentID == FuncLogID(-1) {
+		} else if isExistsGID && parentID == types.FuncLogID(-1) {
 			// 終了したと思っていたgoroutineが、実はまだ動いていた。
 			// 動作中に変更。
-			s.goroutines[fl.GID].EndTime = NotEnded
+			s.goroutines[fl.GID].EndTime = types.NotEnded
 		}
-	case FuncEnd:
+	case types.FuncEnd:
 		if !isExistsGID {
 			log.Panicf("ERROR: not found goroutine: gid=%d", fl.GID)
 		}
@@ -72,7 +74,7 @@ func (s *StateSimulator) Next(fl RawFuncLog) {
 		delete(s.txids, fl.TxID)
 		s.stacks[fl.GID] = parentID
 
-		if parentID == FuncLogID(-1) {
+		if parentID == types.FuncLogID(-1) {
 			// スタックが空になったので、goroutineが終了したと見なす。
 			// 終了時刻を更新。
 			s.goroutines[fl.GID].EndTime = fl.Timestamp
@@ -84,16 +86,16 @@ func (s *StateSimulator) Next(fl RawFuncLog) {
 
 // この期間に動作していた全ての関数についてのログを返す
 // 返されるログの順序は、不定である。
-func (s *StateSimulator) FuncLogs() []*FuncLog {
+func (s *StateSimulator) FuncLogs() []*types.FuncLog {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	funclogs := make([]*FuncLog, len(s.funcLogs))
+	funclogs := make([]*types.FuncLog, len(s.funcLogs))
 
 	var i int
 	for _, fl := range s.funcLogs {
-		if fl.EndTime == NotEnded {
+		if fl.EndTime == types.NotEnded {
 			// flは更新される可能性があるため、コピーをしておく
-			newfl := &FuncLog{}
+			newfl := &types.FuncLog{}
 			*newfl = *fl
 			funclogs[i] = newfl
 		} else {
@@ -107,15 +109,15 @@ func (s *StateSimulator) FuncLogs() []*FuncLog {
 }
 
 // この期間に動作していた全てのgoroutineについてのログを返す
-func (s *StateSimulator) Goroutines() []*Goroutine {
+func (s *StateSimulator) Goroutines() []*types.Goroutine {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	goroutines := make([]*Goroutine, len(s.goroutines))
+	goroutines := make([]*types.Goroutine, len(s.goroutines))
 
 	var i int
 	for _, g := range s.goroutines {
 		// gは変更される可能性があるため、コピーを取る
-		newg := &Goroutine{}
+		newg := &types.Goroutine{}
 		*newg = *g
 		goroutines[i] = newg
 		i++
@@ -128,7 +130,7 @@ func (s *StateSimulator) Clear() {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	for id, fl := range s.funcLogs {
-		if fl.EndTime == NotEnded {
+		if fl.EndTime == types.NotEnded {
 			continue
 		}
 		delete(s.funcLogs, id)
@@ -137,7 +139,7 @@ func (s *StateSimulator) Clear() {
 
 // StateSimulatorへの参照を返す。
 // 指定したIDに対応するStateSimulatorが存在しない場合、nilを返す。
-func (s *StateSimulatorStore) Get(id LogID) *StateSimulator {
+func (s *StateSimulatorStore) Get(id types.LogID) *StateSimulator {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	if s.m == nil {
@@ -147,7 +149,7 @@ func (s *StateSimulatorStore) Get(id LogID) *StateSimulator {
 }
 
 // 指定したIDに対応するStateSimulatorを新規作成してから返す。
-func (s *StateSimulatorStore) New(id LogID) *StateSimulator {
+func (s *StateSimulatorStore) New(id types.LogID) *StateSimulator {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	if s.m == nil {
@@ -163,7 +165,7 @@ func (s *StateSimulatorStore) New(id LogID) *StateSimulator {
 }
 
 // StateSimulatorをこのストアから削除する。
-func (s *StateSimulatorStore) Delete(id LogID) {
+func (s *StateSimulatorStore) Delete(id types.LogID) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	if s.m == nil {

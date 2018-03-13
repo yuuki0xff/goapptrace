@@ -18,8 +18,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
-	"github.com/yuuki0xff/goapptrace/tracer/types"
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -66,7 +66,7 @@ type APIWorker struct {
 
 type FuncLogAPIWorker struct {
 	api  *APIWorker
-	inCh chan logutil.FuncLog
+	inCh chan types.FuncLog
 	// 呼び出すと、readerとfilterが終了する。
 	stopReader func()
 	// readerとfilterに対するcontext。
@@ -310,8 +310,8 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 	//var mid int64
 	var minId int64
 	var maxId int64
-	var minTs logutil.Time
-	var maxTs logutil.Time
+	var minTs types.Time
+	var maxTs types.Time
 	var limit int64
 	var sortKey SortKey
 	var order SortOrder
@@ -363,18 +363,18 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var sortFn func(f1, f2 *logutil.FuncLog) bool
+	var sortFn func(f1, f2 *types.FuncLog) bool
 	switch sortKey {
 	case SortByID:
-		sortFn = func(f1, f2 *logutil.FuncLog) bool {
+		sortFn = func(f1, f2 *types.FuncLog) bool {
 			return f1.ID < f2.ID
 		}
 	case SortByStartTime:
-		sortFn = func(f1, f2 *logutil.FuncLog) bool {
+		sortFn = func(f1, f2 *types.FuncLog) bool {
 			return f1.StartTime < f2.StartTime
 		}
 	case SortByEndTime:
-		sortFn = func(f1, f2 *logutil.FuncLog) bool {
+		sortFn = func(f1, f2 *types.FuncLog) bool {
 			return f1.EndTime < f2.EndTime
 		}
 	case NoSortKey:
@@ -388,7 +388,7 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 	case DescendingSortOrder:
 		// 降順にするために、大小を入れ替える。
 		oldSortFn := sortFn
-		sortFn = func(f1, f2 *logutil.FuncLog) bool {
+		sortFn = func(f1, f2 *types.FuncLog) bool {
 			return oldSortFn(f2, f1)
 		}
 	default:
@@ -402,7 +402,7 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 	// narrow the search range by ID and Timestamp.
 	if minId >= 0 || maxId >= 0 || minTs >= 0 || maxTs >= 0 {
 		var total int64
-		var lowerTs logutil.Time // inclusive
+		var lowerTs types.Time // inclusive
 		err = logobj.WalkIndexRecord(func(i int64, ir storage.IndexRecord) error {
 			lowerID := total // exclusive if i != 0, else inclusive
 			total += ir.Records
@@ -436,17 +436,17 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// evtが除外されるべきレコードなら、trueを返す。
-	isFiltered := func(evt *logutil.FuncLog) bool {
-		if gid >= 0 && evt.GID != logutil.GID(gid) {
+	isFiltered := func(evt *types.FuncLog) bool {
+		if gid >= 0 && evt.GID != types.GID(gid) {
 			return true
 		}
-		if fid >= 0 && logobj.Symbols().FuncID(evt.Frames[0]) != logutil.FuncID(fid) {
+		if fid >= 0 && logobj.Symbols().FuncID(evt.Frames[0]) != types.FuncID(fid) {
 			return true
 		}
-		if minId >= 0 && evt.ID < logutil.FuncLogID(minId) {
+		if minId >= 0 && evt.ID < types.FuncLogID(minId) {
 			return true
 		}
-		if maxId >= 0 && logutil.FuncLogID(maxId) < evt.ID {
+		if maxId >= 0 && types.FuncLogID(maxId) < evt.ID {
 			return true
 		}
 		if minTs >= 0 && (evt.StartTime < minTs && evt.EndTime < minTs) {
@@ -492,12 +492,12 @@ func (api APIv0) goroutineSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// read all records in the search range.
-	ch := make(chan logutil.Goroutine, 1<<20) // buffer size is 1M records
+	ch := make(chan types.Goroutine, 1<<20) // buffer size is 1M records
 	go func() {
 		defer close(ch)
 		err = logobj.WalkIndexRecord(func(i int64, ir storage.IndexRecord) error {
 			if (minTs == -1 || minTs <= ir.Timestamp) && (maxTs == -1 || ir.Timestamp <= maxTs) {
-				return logobj.WalkGoroutine(i, func(g logutil.Goroutine) error {
+				return logobj.WalkGoroutine(i, func(g types.Goroutine) error {
 					ch <- g
 					return nil
 				})
@@ -624,7 +624,7 @@ func (w *APIWorker) wait() error {
 	return w.group.Wait()
 }
 func (w *APIWorker) readFuncLog(minIdx, maxIdx, indexLen int64) *FuncLogAPIWorker {
-	ch := make(chan logutil.FuncLog, w.BufferSize)
+	ch := make(chan types.FuncLog, w.BufferSize)
 	newctx, cancel := context.WithCancel(w.ctx)
 	fw := &FuncLogAPIWorker{
 		api:        w,
@@ -642,7 +642,7 @@ func (w *APIWorker) readFuncLog(minIdx, maxIdx, indexLen int64) *FuncLogAPIWorke
 		defer log.Print("readFuncLog: done")
 		for i := minIdx; i <= maxIdx; i++ {
 			log.Println("readFuncLog: read from file:", i)
-			err := w.Logobj.WalkFuncLogFile(i, func(evt logutil.FuncLog) error {
+			err := w.Logobj.WalkFuncLogFile(i, func(evt types.FuncLog) error {
 				select {
 				case ch <- evt:
 				case <-fw.readCtx.Done():
@@ -678,15 +678,15 @@ func (w *APIWorker) readFuncLog(minIdx, maxIdx, indexLen int64) *FuncLogAPIWorke
 	return fw
 }
 
-func (w *FuncLogAPIWorker) nextWorker(inCh chan logutil.FuncLog) *FuncLogAPIWorker {
+func (w *FuncLogAPIWorker) nextWorker(inCh chan types.FuncLog) *FuncLogAPIWorker {
 	worker := &FuncLogAPIWorker{}
 	*worker = *w
 	worker.inCh = inCh
 	return worker
 }
 
-func (w *FuncLogAPIWorker) filterFuncLog(isFiltered func(evt *logutil.FuncLog) bool) *FuncLogAPIWorker {
-	ch := make(chan logutil.FuncLog, w.api.BufferSize)
+func (w *FuncLogAPIWorker) filterFuncLog(isFiltered func(evt *types.FuncLog) bool) *FuncLogAPIWorker {
+	ch := make(chan types.FuncLog, w.api.BufferSize)
 	w.api.group.Go(func() error {
 		log.Print("filterFuncLog: start")
 		defer close(ch)
@@ -711,8 +711,8 @@ func (w *FuncLogAPIWorker) filterFuncLog(isFiltered func(evt *logutil.FuncLog) b
 	return w.nextWorker(ch)
 }
 
-func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *logutil.FuncLog) bool, limit int64) *FuncLogAPIWorker {
-	ch := make(chan logutil.FuncLog, w.api.BufferSize)
+func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *types.FuncLog) bool, limit int64) *FuncLogAPIWorker {
+	ch := make(chan types.FuncLog, w.api.BufferSize)
 
 	if less == nil {
 		// sortしない
@@ -756,7 +756,7 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *logutil.FuncLog) bool,
 		defer w.stopReader()
 		defer close(ch)
 		defer log.Print("sortAndLimit: done exec-time=", time.Since(start))
-		var items []logutil.FuncLog
+		var items []types.FuncLog
 
 		// sort関数用の比較関数。
 		sortComparator := func(i, j int) bool {
@@ -800,7 +800,7 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *logutil.FuncLog) bool,
 				LenFn:  func() int { return len(items) },
 				LessFn: heapComparator,
 				SwapFn: func(i, j int) { items[i], items[j] = items[j], items[i] },
-				PushFn: func(x interface{}) { items = append(items, x.(logutil.FuncLog)) },
+				PushFn: func(x interface{}) { items = append(items, x.(types.FuncLog)) },
 				PopFn: func() interface{} {
 					n := len(items)
 					last := items[n-1]
@@ -897,11 +897,11 @@ func parseInt(value string, defaultValue int64) (int64, error) {
 	return int64(intValue), nil
 }
 
-func parseTimestamp(value string, defaultValue logutil.Time) (logutil.Time, error) {
+func parseTimestamp(value string, defaultValue types.Time) (types.Time, error) {
 	if value == "" {
 		return defaultValue, nil
 	}
-	var ts logutil.Time
+	var ts types.Time
 	err := ts.UnmarshalJSON([]byte(value))
 	if err != nil {
 		return 0, err

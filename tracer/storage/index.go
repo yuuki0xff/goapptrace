@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 const (
@@ -25,7 +25,7 @@ type Index struct {
 // 1つのRawFuncLogファイルに関する情報。
 type IndexRecord struct {
 	// Timestamp of the last record.
-	Timestamp logutil.Time
+	Timestamp types.Time
 	// Number of records.
 	Records int64
 	// このFuncLogFileが書き込み中なら、true

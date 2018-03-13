@@ -4,12 +4,12 @@ import (
 	"encoding/gob"
 	"io"
 
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 var (
-	nilDiff       = &logutil.SymbolsData{}
-	nilRawFuncLog = &logutil.RawFuncLog{}
+	nilDiff       = &types.SymbolsData{}
+	nilRawFuncLog = &types.RawFuncLog{}
 )
 
 // CompactLogフォーマットは、"1つのファイル"に全てのシンボルデータと関数呼び出しのログを記録する方式である。
@@ -47,7 +47,7 @@ func (c *CompactLogWriter) Open() error {
 }
 
 // ログを書き込む
-func (c *CompactLogWriter) Write(data *logutil.SymbolsData, funclog *logutil.RawFuncLog) error {
+func (c *CompactLogWriter) Write(data *types.SymbolsData, funclog *types.RawFuncLog) error {
 	if data == nil {
 		data = nilDiff
 	}
@@ -79,9 +79,9 @@ func (c *CompactLogReader) Open() error {
 	c.dec = gob.NewDecoder(c.r)
 	return err
 }
-func (c *CompactLogReader) Read() (*logutil.SymbolsData, *logutil.RawFuncLog, error) {
-	diff := &logutil.SymbolsData{}
-	funclog := &logutil.RawFuncLog{}
+func (c *CompactLogReader) Read() (*types.SymbolsData, *types.RawFuncLog, error) {
+	diff := &types.SymbolsData{}
+	funclog := &types.RawFuncLog{}
 	if err := c.dec.Decode(diff); err != nil {
 		return nil, nil, err
 	}

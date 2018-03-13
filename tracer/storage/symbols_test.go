@@ -7,14 +7,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 	"github.com/yuuki0xff/goapptrace/tracer/util"
 )
 
 func doTestSymbolsStore(
 	t *testing.T,
-	writerFunc func(symbols *logutil.Symbols),
-	checkFunc func(symbols *logutil.Symbols),
+	writerFunc func(symbols *types.Symbols),
+	checkFunc func(symbols *types.Symbols),
 ) {
 	a := assert.New(t)
 	util.WithTempFile(func(tmpfile string) {
@@ -27,7 +27,7 @@ func doTestSymbolsStore(
 
 		// writing phase
 		{
-			symbols := logutil.Symbols{
+			symbols := types.Symbols{
 				Writable: true,
 			}
 			symbols.Init()
@@ -38,7 +38,7 @@ func doTestSymbolsStore(
 
 		// reading phase
 		{
-			symbols := logutil.Symbols{
+			symbols := types.Symbols{
 				Writable: true,
 			}
 			symbols.Init()
@@ -54,9 +54,9 @@ func TestSymbolsStore_loadEmptyFile(t *testing.T) {
 	doTestSymbolsStore(
 		t,
 		// write
-		func(symbols *logutil.Symbols) {},
+		func(symbols *types.Symbols) {},
 		// check data
-		func(symbols *logutil.Symbols) {
+		func(symbols *types.Symbols) {
 			t.Log(symbols2string(symbols))
 			a.Equal(0, symbols.FuncsSize())
 			a.Equal(0, symbols.GoLineSize())
@@ -69,12 +69,12 @@ func TestSymbolsStore_addASymbol(t *testing.T) {
 	doTestSymbolsStore(
 		t,
 		// write
-		func(s *logutil.Symbols) {
-			s.AddFunc(&logutil.GoFunc{})
-			s.AddGoLine(&logutil.GoLine{})
+		func(s *types.Symbols) {
+			s.AddFunc(&types.GoFunc{})
+			s.AddGoLine(&types.GoLine{})
 		},
 		// check data
-		func(symbols *logutil.Symbols) {
+		func(symbols *types.Symbols) {
 			t.Log(symbols2string(symbols))
 			a.Equal(1, symbols.FuncsSize())
 			a.Equal(1, symbols.GoLineSize())
@@ -83,9 +83,9 @@ func TestSymbolsStore_addASymbol(t *testing.T) {
 }
 func TestSymbolsStore_addSymbolsWithData(t *testing.T) {
 	a := assert.New(t)
-	var fIDs [2]logutil.FuncID
-	var fsIDs [2]logutil.GoLineID
-	goFuncs := []*logutil.GoFunc{
+	var fIDs [2]types.FuncID
+	var fsIDs [2]types.GoLineID
+	goFuncs := []*types.GoFunc{
 		{
 			Name:  "github.com/yuuki0xff/dummyModuleName.main",
 			File:  "/src/github.com/yuuki0xff/dummyModuleName/main.go",
@@ -96,7 +96,7 @@ func TestSymbolsStore_addSymbolsWithData(t *testing.T) {
 			Entry: 100,
 		},
 	}
-	goLines := []*logutil.GoLine{
+	goLines := []*types.GoLine{
 		{
 			//Func: fIDs[0],
 			Line: 10,
@@ -111,7 +111,7 @@ func TestSymbolsStore_addSymbolsWithData(t *testing.T) {
 	doTestSymbolsStore(
 		t,
 		// write
-		func(s *logutil.Symbols) {
+		func(s *types.Symbols) {
 			fIDs[0], _ = s.AddFunc(goFuncs[0])
 			goLines[0].Func = fIDs[0]
 			fsIDs[0], _ = s.AddGoLine(goLines[0])
@@ -121,7 +121,7 @@ func TestSymbolsStore_addSymbolsWithData(t *testing.T) {
 			fsIDs[1], _ = s.AddGoLine(goLines[1])
 		},
 		// check data
-		func(symbols *logutil.Symbols) {
+		func(symbols *types.Symbols) {
 			t.Log(symbols2string(symbols))
 
 			a.Equal(2, symbols.FuncsSize(), "Mismatched length of Funcs array")
@@ -139,17 +139,17 @@ func TestSymbolsStore_addSymbolsWithData(t *testing.T) {
 	)
 }
 
-func symbols2string(symbols *logutil.Symbols) string {
+func symbols2string(symbols *types.Symbols) string {
 	buf := bytes.NewBuffer(nil)
 
 	fmt.Println(buf, "Symbols.Funcs:")
-	symbols.WalkFuncs(func(fs logutil.GoFunc) error {
+	symbols.WalkFuncs(func(fs types.GoFunc) error {
 		fmt.Fprintf(buf, "  Funcs[%d] = %+v", fs.ID, fs)
 		return nil
 	})
 
 	fmt.Println(buf, "Symbols.Lines:")
-	symbols.WalkGoLine(func(fs logutil.GoLine) error {
+	symbols.WalkGoLine(func(fs types.GoLine) error {
 		fmt.Fprintf(buf, "  GoLine[%d] = %+v", fs.ID, fs)
 		return nil
 	})

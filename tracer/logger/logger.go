@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 const (
@@ -22,39 +23,39 @@ var (
 	ClosedError = errors.New("already closed")
 
 	lock    = sync.Mutex{}
-	symbols = logutil.Symbols{
+	symbols = types.Symbols{
 		Writable: true,
 		KeepID:   false,
 	}
-	initBuffer []*logutil.RawFuncLog
+	initBuffer []*types.RawFuncLog
 	sender     Sender
 )
 
 func init() {
 	// get all symbols in this process.
-	var sd logutil.SymbolsData
+	var sd types.SymbolsData
 
 	//@@GAT@useNonStandardRuntime@ /*
 	/*/
-	fname2fileID := func(fname string) logutil.FileID {
+	fname2fileID := func(fname string) types.FileID {
 		for i, f := range sd.Files {
 			if f == fname {
-				return logutil.FileID(i)
+				return types.FileID(i)
 			}
 		}
 		sd.Files = append(sd.Files, fname)
-		return logutil.FileID(len(sd.Files) - 1)
+		return types.FileID(len(sd.Files) - 1)
 	}
 	runtime.IterateSymbols(
 		func(minpc, maxpc uintptr, name string) {
-			sd.Mods = append(sd.Mods, logutil.GoModule{
+			sd.Mods = append(sd.Mods, types.GoModule{
 				Name:  name,
 				MinPC: minpc,
 				MaxPC: maxpc,
 			})
 		},
 		func(pc uintptr, name string) {
-			sd.Funcs = append(sd.Funcs, logutil.GoFunc{
+			sd.Funcs = append(sd.Funcs, types.GoFunc{
 				Entry: pc,
 				Name:  name,
 			})
@@ -64,7 +65,7 @@ func init() {
 				log.Panicf("invalid line: pc=%d, file=%s, line=%d", pc, file, line)
 			}
 
-			sd.Lines = append(sd.Lines, logutil.GoLine{
+			sd.Lines = append(sd.Lines, types.GoLine{
 				PC:     pc,
 				FileID: fname2fileID(file),
 				Line:   uint32(line),
@@ -94,7 +95,7 @@ func init() {
 	symbols.Init()
 }
 
-func gid() logutil.GID {
+func gid() types.GID {
 	// get GoroutineID (GID)
 	//@@GAT@useNonStandardRuntime@ /*
 
@@ -106,15 +107,15 @@ func gid() logutil.GID {
 	// ここは、`goapptrace run`を用いてコンパイルしたときに実行される。
 	// runtime.GoID()は、標準のruntimeパッケージ内に存在しない関数である。
 	// tracer/builderパッケージによってパッチが当てられた環境でのみ使用可能。
-	return logutil.GID(runtime.GoID())
+	return types.GID(runtime.GoID())
 
 	//*/
 }
 
-func sendLog(tag logutil.TagName, id logutil.TxID) {
-	logmsg := &logutil.RawFuncLog{}
+func sendLog(tag types.TagName, id logutil.TxID) {
+	logmsg := &types.RawFuncLog{}
 	logmsg.Tag = tag
-	logmsg.Timestamp = logutil.NewTime(time.Now())
+	logmsg.Timestamp = types.NewTime(time.Now())
 	// TODO: goroutine localな変数に、logmsg.Framesで確保するバッファをキャッシュする
 	logmsg.Frames = make([]uintptr, maxStackSize)
 	logmsg.GID = gid()
@@ -200,12 +201,12 @@ func setOutput() {
 	}
 }
 
-func FuncStart() (id logutil.TxID) {
-	id = logutil.NewTxID()
-	sendLog(logutil.FuncStart, id)
+func FuncStart() (id types.TxID) {
+	id = types.NewTxID()
+	sendLog(types.FuncStart, id)
 	return
 }
 
-func FuncEnd(id logutil.TxID) {
-	sendLog(logutil.FuncEnd, id)
+func FuncEnd(id types.TxID) {
+	sendLog(types.FuncEnd, id)
 }
