@@ -132,17 +132,33 @@ func (s *Symbols) GoLine(pc uintptr) (GoLine, bool) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
+	var found bool
+	var idx int
+	mod, ok := s.goModuleNolock(pc)
+	if !ok {
+		goto notFound
+	}
+
 	// ln.PC <= pcを満たす最後の要素を返す
 	for i, ln := range s.data.Lines {
-		if ln.PC > pc {
-			// found
-			if i > 0 {
-				return s.data.Lines[i-1], true
-			}
+		if ln.PC < mod.MinPC {
+			continue
+		}
+		if ln.PC > mod.MaxPC {
+			break
+		}
+		if ln.PC <= pc {
+			found = true
+			idx = i
+		} else {
 			break
 		}
 	}
-	// not found
+
+	if found {
+		return s.data.Lines[idx], true
+	}
+notFound:
 	return GoLine{}, false
 }
 
