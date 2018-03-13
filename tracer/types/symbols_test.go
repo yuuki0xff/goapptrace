@@ -95,7 +95,7 @@ func TestSymbols_GoLine(t *testing.T) {
 			{Name: "net", MinPC: 400, MaxPC: 999},
 		},
 		Lines: []GoLine{
-			{PC: 400, FileID: 0, Line: 200},
+			{PC: 200, FileID: 0, Line: 200},
 			{PC: 300, FileID: 0, Line: 100},
 			{PC: 310, FileID: 0, Line: 101},
 			{PC: 400, FileID: 0, Line: 300},

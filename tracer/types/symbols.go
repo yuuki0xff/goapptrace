@@ -110,7 +110,7 @@ func (s *Symbols) GoFunc(pc uintptr) (GoFunc, bool) {
 			continue
 		}
 		if fn.Entry > mod.MaxPC {
-			goto notFound
+			break
 		}
 		if fn.Entry <= pc {
 			found = true
