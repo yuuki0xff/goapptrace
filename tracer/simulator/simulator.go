@@ -80,7 +80,7 @@ func (s *StateSimulator) Next(fl types.RawFuncLog) {
 			s.goroutines[fl.GID].EndTime = fl.Timestamp
 		}
 	default:
-		panic(fmt.Errorf("Unsupported tag: %s", fl.Tag))
+		panic(fmt.Errorf("unsupported tag: %d", fl.Tag))
 	}
 }
 

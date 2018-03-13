@@ -32,7 +32,7 @@ func (fakeProto) Unpack(b []byte) (xtcp.Packet, int, error) {
 func fakeMergePacket() *MergePacket {
 	return &MergePacket{
 		Proto:      &fakeProto{},
-		BufferSize: packetBufferSize,
+		BufferSize: DefaultMaxSmallPacketSize,
 	}
 }
 
@@ -77,7 +77,7 @@ func BenchmarkCreatePacket(b *testing.B) {
 func BenchmarkMergePacket_Merge(b *testing.B) {
 	mp := MergePacket{
 		Proto:      &Proto{},
-		BufferSize: DefaultSendBufferSize + 2048,
+		BufferSize: DefaultSendBufMaxSize + 2048,
 	}
 	p := &RawFuncLogPacket{
 		FuncLog: rawFuncLog,
@@ -86,7 +86,7 @@ func BenchmarkMergePacket_Merge(b *testing.B) {
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
 		mp.Merge(p)
-		if mp.Len() >= DefaultSendBufferSize {
+		if mp.Len() >= DefaultSendBufMaxSize {
 			mp.Reset()
 		}
 	}
@@ -96,7 +96,7 @@ func BenchmarkRawFuncLogPacket_Marshal(b *testing.B) {
 	rp := RawFuncLogPacket{
 		FuncLog: rawFuncLog,
 	}
-	buf := make([]byte, packetBufferSize)
+	buf := make([]byte, DefaultMaxSmallPacketSize)
 
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
@@ -116,7 +116,7 @@ func BenchmarkRawFuncLogPacket_Unmarshal(b *testing.B) {
 }
 
 func TestPacketType_Marshal(t *testing.T) {
-	buf := make([]byte, packetBufferSize)
+	buf := make([]byte, DefaultMaxSmallPacketSize)
 	a := assert.New(t)
 	n := PacketType(10).Marshal(buf)
 	a.Equal([]byte{0, 0, 0, 0, 0, 0, 0, 10}, buf[:n])

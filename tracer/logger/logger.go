@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yuuki0xff/goapptrace/tracer/simulator"
 	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
@@ -112,7 +111,7 @@ func gid() types.GID {
 	//*/
 }
 
-func sendLog(tag types.TagName, id simulator.TxID) {
+func sendLog(tag types.TagName, id types.TxID) {
 	logmsg := &types.RawFuncLog{}
 	logmsg.Tag = tag
 	logmsg.Timestamp = types.NewTime(time.Now())

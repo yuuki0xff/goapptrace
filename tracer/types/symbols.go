@@ -178,28 +178,6 @@ func (s *Symbols) WalkGoLine(fn func(fs GoLine) error) error {
 	//return nil
 }
 
-// 関数名からFuncIDを取得する.
-// この処理は高速で完了するので、追加済みのシンボルかどうかの判定に使用できる。
-//go:nosplit
-func (s *Symbols) FuncIDFromName(name string) (id FuncID, ok bool) {
-	s.lock.RLock()
-	// TODO: logger.sendLog()の改修により不要になるため、削除する
-	panic("todo")
-	s.lock.RUnlock()
-	return
-}
-
-// PC(Program Counter)の値からGoLineIDを取得する。
-// この処理は高速で完了するので、追加済みのシンボルかどうかの判定に使用できる。
-//go:nosplit
-func (s *Symbols) GoLineIDFromPC(pc uintptr) (id GoLineID, ok bool) {
-	s.lock.RLock()
-	// TODO: logger.sendLog()の改修により不要になるため、削除する
-	panic("todo")
-	s.lock.RUnlock()
-	return
-}
-
 // GoLineIDからFuncIDを取得する。
 func (s *Symbols) FuncID(pc uintptr) FuncID {
 	s.lock.RLock()

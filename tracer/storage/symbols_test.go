@@ -2,156 +2,96 @@ package storage
 
 import (
 	"bytes"
-	"fmt"
-	"os"
 	"testing"
 
+	"github.com/kr/pretty"
 	"github.com/stretchr/testify/assert"
 	"github.com/yuuki0xff/goapptrace/tracer/types"
 	"github.com/yuuki0xff/goapptrace/tracer/util"
 )
 
-func doTestSymbolsStore(
-	t *testing.T,
-	writerFunc func(symbols *types.Symbols),
-	checkFunc func(symbols *types.Symbols),
-) {
-	a := assert.New(t)
-	util.WithTempFile(func(tmpfile string) {
-		file := File(tmpfile)
-		defer a.NoError(os.Remove(string(file)))
-
-		store := SymbolsStore{
-			File: file,
-		}
-
-		// writing phase
-		{
-			symbols := types.Symbols{
-				Writable: true,
+func TestSymbolsStore_Write(t *testing.T) {
+	t.Run("read-only", func(t *testing.T) {
+		a := assert.New(t)
+		util.WithTempFile(func(tmpfile string) {
+			ss := SymbolsStore{
+				File:     File(tmpfile),
+				ReadOnly: true,
 			}
-			symbols.Init()
-
-			writerFunc(&symbols)
-			a.NoError(store.Write(&symbols))
-		}
-
-		// reading phase
-		{
-			symbols := types.Symbols{
-				Writable: true,
+			a.EqualError(ss.Write(emptySymbols()), "SymbolsStore: read only")
+		})
+	})
+}
+func TestSymbolsStore_ReadWrite(t *testing.T) {
+	testReadWrite := func(t *testing.T, expected types.SymbolsData, write *types.Symbols) {
+		a := assert.New(t)
+		util.WithTempFile(func(tmpfile string) {
+			ss := SymbolsStore{
+				File: File(tmpfile),
 			}
-			symbols.Init()
+			// write
+			a.NoError(ss.Write(emptySymbols()))
 
-			a.NoError(store.Read(&symbols))
-			checkFunc(&symbols)
-		}
+			// read
+			s := &types.Symbols{}
+			a.NoError(ss.Read(s))
+			called := false
+			s.Save(func(data types.SymbolsData) error {
+				called = true
+				t.Log(symbolsData2string(data))
+				a.Equal(emptySymbolsData(), data)
+				return nil
+			})
+			a.True(called)
+		})
+	}
+
+	t.Run("empty", func(t *testing.T) {
+		testReadWrite(t, emptySymbolsData(), emptySymbols())
+	})
+	t.Run("non-empty", func(t *testing.T) {
+		testReadWrite(t, nonEmptySymbolsData(), nonEmptySymbols())
 	})
 }
 
-func TestSymbolsStore_loadEmptyFile(t *testing.T) {
-	a := assert.New(t)
-	doTestSymbolsStore(
-		t,
-		// write
-		func(symbols *types.Symbols) {},
-		// check data
-		func(symbols *types.Symbols) {
-			t.Log(symbols2string(symbols))
-			a.Equal(0, symbols.FuncsSize())
-			a.Equal(0, symbols.GoLineSize())
-		},
-	)
-}
-
-func TestSymbolsStore_addASymbol(t *testing.T) {
-	a := assert.New(t)
-	doTestSymbolsStore(
-		t,
-		// write
-		func(s *types.Symbols) {
-			s.AddFunc(&types.GoFunc{})
-			s.AddGoLine(&types.GoLine{})
-		},
-		// check data
-		func(symbols *types.Symbols) {
-			t.Log(symbols2string(symbols))
-			a.Equal(1, symbols.FuncsSize())
-			a.Equal(1, symbols.GoLineSize())
-		},
-	)
-}
-func TestSymbolsStore_addSymbolsWithData(t *testing.T) {
-	a := assert.New(t)
-	var fIDs [2]types.FuncID
-	var fsIDs [2]types.GoLineID
-	goFuncs := []*types.GoFunc{
-		{
-			Name:  "github.com/yuuki0xff/dummyModuleName.main",
-			File:  "/src/github.com/yuuki0xff/dummyModuleName/main.go",
-			Entry: 1,
-		}, {
-			Name:  "github.com/yuuki0xff/dummyModuleName.OtherFunc",
-			File:  "/src/github.com/yuuki0xff/dummyModuleName/util.go",
-			Entry: 100,
-		},
-	}
-	goLines := []*types.GoLine{
-		{
-			//Func: fIDs[0],
-			Line: 10,
-			PC:   11,
-		}, {
-			//Func: fIDs[1],
-			Line: 110,
-			PC:   111,
-		},
-	}
-
-	doTestSymbolsStore(
-		t,
-		// write
-		func(s *types.Symbols) {
-			fIDs[0], _ = s.AddFunc(goFuncs[0])
-			goLines[0].Func = fIDs[0]
-			fsIDs[0], _ = s.AddGoLine(goLines[0])
-
-			fIDs[1], _ = s.AddFunc(goFuncs[1])
-			goLines[1].Func = fIDs[1]
-			fsIDs[1], _ = s.AddGoLine(goLines[1])
-		},
-		// check data
-		func(symbols *types.Symbols) {
-			t.Log(symbols2string(symbols))
-
-			a.Equal(2, symbols.FuncsSize(), "Mismatched length of Funcs array")
-			f1, _ := symbols.GoFunc(0)
-			f2, _ := symbols.GoFunc(1)
-			a.Equal(*goFuncs[0], f1, "Mismatched GoFunc object")
-			a.Equal(*goFuncs[1], f2, "Mismatched GoFunc object")
-
-			a.Equal(2, symbols.GoLineSize(), "Mismatched length of GoLine array")
-			fs1, _ := symbols.GoLine(0)
-			fs2, _ := symbols.GoLine(1)
-			a.Equal(*goLines[0], fs1, "Mismatched GoLine object")
-			a.Equal(*goLines[1], fs2, "Mismatched GoLine object")
-		},
-	)
-}
-
-func symbols2string(symbols *types.Symbols) string {
+func symbolsData2string(data types.SymbolsData) string {
 	buf := bytes.NewBuffer(nil)
-
-	fmt.Println(buf, "Symbols.Funcs:")
-	symbols.WalkFuncs(func(fs types.GoFunc) error {
-		fmt.Fprintf(buf, "  Funcs[%d] = %+v", fs.ID, fs)
-		return nil
-	})
-
-	fmt.Println(buf, "Symbols.Lines:")
-	symbols.WalkGoLine(func(fs types.GoLine) error {
-		fmt.Fprintf(buf, "  GoLine[%d] = %+v", fs.ID, fs)
-		return nil
-	})
+	pretty.Fprintf(buf, "Files = %s\n", data.Files)
+	pretty.Fprintf(buf, "Mods  = %s\n", data.Mods)
+	pretty.Fprintf(buf, "Funcs = %s\n", data.Funcs)
+	pretty.Fprintf(buf, "Lines = %s\n", data.Lines)
 	return buf.String()
+}
+
+func emptySymbols() *types.Symbols {
+	return &types.Symbols{}
+}
+func emptySymbolsData() types.SymbolsData {
+	return types.SymbolsData{}
+}
+
+func nonEmptySymbols() *types.Symbols {
+	s := &types.Symbols{}
+	s.Load(nonEmptySymbolsData())
+	return s
+}
+func nonEmptySymbolsData() types.SymbolsData {
+	return types.SymbolsData{
+		Files: []string{"0", "1", "2"},
+		Mods: []types.GoModule{
+			{Name: "0", MinPC: 1000, MaxPC: 1099},
+			{Name: "1", MinPC: 1100, MaxPC: 1199},
+			{Name: "2", MinPC: 1200, MaxPC: 1299},
+		},
+		Funcs: []types.GoFunc{
+			{Entry: 1000, Name: "main.main"},
+			{Entry: 1030, Name: "main.foo"},
+			{Entry: 1060, Name: "main.bar"},
+		},
+		Lines: []types.GoLine{
+			{PC: 1000, FileID: 0, Line: 10},
+			{PC: 1010, FileID: 0, Line: 11},
+			{PC: 1020, FileID: 1, Line: 30},
+		},
+	}
 }

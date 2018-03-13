@@ -45,7 +45,7 @@ func TestLog_withEmptyFile(t *testing.T) {
 	l := Log{
 		ID:       LogID{},
 		Root:     dirlayout,
-		Metadata: &LogMetadata{},
+		Metadata: &types.LogMetadata{},
 	}
 	a.NoError(l.Open())
 	a.NoError(err)
@@ -69,7 +69,7 @@ func TestLog_AppendRawFuncLog(t *testing.T) {
 	l := Log{
 		ID:          LogID{},
 		Root:        dirlayout,
-		Metadata:    &LogMetadata{},
+		Metadata:    &types.LogMetadata{},
 		MaxFileSize: 1,
 		// 自動ローテーションを発生させるため
 		rotateInterval: 1,
@@ -116,7 +116,7 @@ func TestLog_ReadDuringWriting(t *testing.T) {
 	l := Log{
 		ID:          LogID{},
 		Root:        dirlayout,
-		Metadata:    &LogMetadata{},
+		Metadata:    &types.LogMetadata{},
 		MaxFileSize: 1000,
 		// 自動ローテーションを発生させるため
 		rotateInterval: 10,
@@ -140,19 +140,9 @@ func TestLog_ReadDuringWriting(t *testing.T) {
 		// 書き込み先のファイルは圧縮されていた場合、同じデータが連続していると大幅に圧縮されてしまう。
 		// そのため、いつまで経ってもファイルのローテーションが発生しない可能性がある。
 		// このような問題を回避するために、乱数を使用して圧縮率を低くする。
-		randomName := string([]rune{
-			rune(rand.Int()),
-			rune(rand.Int()),
-			rune(rand.Int()),
-			rune(rand.Int()),
-			rune(rand.Int()),
-			rune(rand.Int()),
-			rune(rand.Int()),
-			rune(rand.Int()),
-		})
 		a.NoError(l.AppendRawFuncLog(&types.RawFuncLog{
 			ID:   types.RawFuncLogID(i),
-			Tag:  types.TagName(randomName),
+			Tag:  types.TagName(rand.Uint32()),
 			GID:  types.GID(rand.Int()),
 			TxID: types.TxID(rand.Int()),
 		}), "Log.AppendRawFuncLog():")

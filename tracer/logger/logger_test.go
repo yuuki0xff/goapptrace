@@ -10,9 +10,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/yuuki0xff/goapptrace/info"
 	"github.com/yuuki0xff/goapptrace/tracer/protocol"
-	"github.com/yuuki0xff/goapptrace/tracer/simulator"
 	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
+
+var dummyTxid = types.NewTxID()
 
 func TestSetOutput_writeToFile_useDefaultPrefix(t *testing.T) {
 	a := assert.New(t)
@@ -51,43 +52,15 @@ func TestRetrySender(t *testing.T) {
 
 	a.NoError(sender.Open())
 
-	// send a log.
-	a.NoError(sender.Send(
-		&types.SymbolsData{
-			Funcs: []*types.GoFunc{
-				{types.FuncID(0), "module.f1", "/go/src/module/src.go", 1},
-				{types.FuncID(1), "module.f2", "/go/src/module/src.go", 2},
-			},
-			Lines: []*types.GoLine{
-				{types.GoLineID(0), simulator.FuncID(0), 10, 100},
-				{types.GoLineID(1), simulator.FuncID(1), 20, 200},
-			},
-		},
-		&types.RawFuncLog{
-			ID:        types.RawFuncLogID(0),
-			Tag:       "funcStart",
-			Timestamp: types.NewTime(time.Now()),
-			Frames:    []types.GoLineID{0, 1},
-		},
-	))
+	// send
+	a.NoError(sender.SendSymbols(dummySymbolsData()))
+	a.NoError(sender.SendLog(dummyRawFuncLog()))
 
 	// will be occur the send error. but RetrySender will handle error, and try to recovery.
 	// so sender.Send() will return the nil.
 	a.NoError(sender.Sender.Close())
-	a.NoError(sender.Send(
-		&types.SymbolsData{
-			Funcs: []*types.GoFunc{},
-			Lines: []*types.GoLine{
-				{types.GoLineID(2), simulator.FuncID(1), 21, 210},
-			},
-		},
-		&types.RawFuncLog{
-			ID:        types.RawFuncLogID(1),
-			Tag:       "funcEnd",
-			Timestamp: types.NewTime(time.Now()),
-			Frames:    []types.GoLineID{0, 2},
-		},
-	))
+	a.NoError(sender.SendSymbols(dummySymbolsData()))
+	a.NoError(sender.SendLog(dummyRawFuncLog()))
 
 	a.NoError(sender.Close())
 }
@@ -109,10 +82,10 @@ func checkFileSender(t *testing.T, prefix string) {
 	a.Truef(strings.HasSuffix(fpath, ".log.gz"), "invalid output file fpath: %s", fpath)
 
 	// check sendLog()
-	sendLog(types.FuncStart, simulator.TxID(0))
-	sendLog(types.FuncStart, simulator.TxID(1))
-	sendLog(types.FuncEnd, simulator.TxID(2))
-	sendLog(types.FuncEnd, simulator.TxID(3))
+	sendLog(types.FuncStart, types.TxID(0))
+	sendLog(types.FuncStart, types.TxID(1))
+	sendLog(types.FuncEnd, types.TxID(2))
+	sendLog(types.FuncEnd, types.TxID(3))
 
 	// check close
 	Close()
@@ -130,10 +103,10 @@ func checkLogServerSender(t *testing.T, connected, disconnected *bool) {
 	_ = retrySender.Sender.(*LogServerSender)
 
 	// check sendLog()
-	sendLog(types.FuncStart, simulator.TxID(0))
-	sendLog(types.FuncStart, simulator.TxID(1))
-	sendLog(types.FuncEnd, simulator.TxID(2))
-	sendLog(types.FuncEnd, simulator.TxID(3))
+	sendLog(types.FuncStart, types.TxID(0))
+	sendLog(types.FuncStart, types.TxID(1))
+	sendLog(types.FuncEnd, types.TxID(2))
+	sendLog(types.FuncEnd, types.TxID(3))
 
 	// is handled Connected event?
 	a.True(*connected)
@@ -173,4 +146,32 @@ func startLogServer(t *testing.T, connected, disconnected *bool) *protocol.Serve
 	a.NoError(srv.Listen())
 	go srv.Serve()
 	return srv
+}
+
+func dummySymbolsData() *types.SymbolsData {
+	return &types.SymbolsData{
+		Files: []string{"fmt.go", "main.go"},
+		Mods: []types.GoModule{
+			{Name: "fmt", MinPC: 0, MaxPC: 90},
+			{Name: "main", MinPC: 100, MaxPC: 300},
+		},
+		Funcs: []types.GoFunc{
+			{Entry: 100, Name: "module.f1"},
+			{Entry: 200, Name: "module.f2"},
+		},
+		Lines: []types.GoLine{
+			{PC: 100, FileID: 1, Line: 100},
+			{PC: 110, FileID: 1, Line: 101},
+		},
+	}
+}
+func dummyRawFuncLog() *types.RawFuncLog {
+	return &types.RawFuncLog{
+		ID:        types.RawFuncLogID(0),
+		Tag:       types.FuncStart,
+		Timestamp: types.NewTime(time.Now()),
+		Frames:    []uintptr{0, 1},
+		GID:       types.GID(10),
+		TxID:      dummyTxid,
+	}
 }

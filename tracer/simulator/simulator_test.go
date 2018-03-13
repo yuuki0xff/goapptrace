@@ -2,9 +2,11 @@ package simulator
 
 import (
 	"testing"
+
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
-func testStateSimulatorHelper(t *testing.T, s *StateSimulator, symbols *Symbols, testData []RawFuncLog) {
+func testStateSimulatorHelper(t *testing.T, s *StateSimulator, symbols *types.Symbols, testData []types.RawFuncLog) {
 	if s == nil {
 		s = &StateSimulator{}
 	}
@@ -15,39 +17,36 @@ func testStateSimulatorHelper(t *testing.T, s *StateSimulator, symbols *Symbols,
 }
 
 func TestStateSimulator_Next_startStopFuncs(t *testing.T) {
-	txids := []TxID{
-		NewTxID(),
+	txids := []types.TxID{
+		types.NewTxID(),
 	}
-	symbols := &Symbols{
-		funcs: []*GoFunc{
-			{ID: 0, Name: "dummy.main"},
+	symbols := &types.Symbols{}
+	symbols.Load(types.SymbolsData{
+		Mods: []types.GoModule{
+			{Name: "main", MinPC: 100, MaxPC: 500},
 		},
-		goLine: []*GoLine{
-			{ID: 0, Func: 0},
+		Funcs: []types.GoFunc{
+			{Entry: 200, Name: "main.main"},
 		},
-	}
-	testData := []RawFuncLog{
+	})
+	testData := []types.RawFuncLog{
 		// main() start
 		{
-			ID:        RawFuncLogID(1),
-			Tag:       "funcStart",
+			ID:        types.RawFuncLogID(1),
+			Tag:       types.FuncStart,
 			Timestamp: 1,
-			Frames: []GoLineID{
-				GoLineID(0),
-			},
-			GID:  0,
-			TxID: txids[0],
+			Frames:    []uintptr{101},
+			GID:       0,
+			TxID:      txids[0],
 		},
 		// main() end
 		{
-			ID:        RawFuncLogID(2),
-			Tag:       "funcEnd",
+			ID:        types.RawFuncLogID(2),
+			Tag:       types.FuncEnd,
 			Timestamp: 2,
-			Frames: []GoLineID{
-				GoLineID(0),
-			},
-			GID:  0,
-			TxID: txids[0],
+			Frames:    []uintptr{110},
+			GID:       0,
+			TxID:      txids[0],
 		},
 	}
 
@@ -55,97 +54,76 @@ func TestStateSimulator_Next_startStopFuncs(t *testing.T) {
 }
 
 func TestStateSimulator_Next_withNestedCall(t *testing.T) {
-	txids := []TxID{
-		NewTxID(),
-		NewTxID(),
-		NewTxID(),
+	txids := []types.TxID{
+		types.NewTxID(),
+		types.NewTxID(),
+		types.NewTxID(),
 	}
-	symbols := &Symbols{
-		funcs: []*GoFunc{
-			{ID: 0, Name: "dummy.main"},
-			{ID: 1, Name: "dummy.func1"},
-			{ID: 2, Name: "dummy.func2"},
-			{ID: 3, Name: "dummy.newGoroutine"},
+	symbols := &types.Symbols{}
+	symbols.Load(types.SymbolsData{
+		Mods: []types.GoModule{
+			{Name: "main", MinPC: 100, MaxPC: 999},
 		},
-		goLine: []*GoLine{
-			{ID: 0, Func: 0},
-			{ID: 1, Func: 1},
-			{ID: 2, Func: 2},
-			{ID: 3, Func: 3},
+		Funcs: []types.GoFunc{
+			{Entry: 100, Name: "main.main"},
+			{Entry: 200, Name: "main.func1"},
+			{Entry: 300, Name: "main.func2"},
 		},
-	}
-	testData := []RawFuncLog{
+	})
+	testData := []types.RawFuncLog{
 		// main() start
 		{
-			ID:        RawFuncLogID(1),
-			Tag:       "funcStart",
+			ID:        types.RawFuncLogID(1),
+			Tag:       types.FuncStart,
 			Timestamp: 1,
-			Frames: []GoLineID{
-				GoLineID(0),
-			},
-			GID:  0,
-			TxID: txids[0],
+			Frames:    []uintptr{100},
+			GID:       0,
+			TxID:      txids[0],
 		},
 		// main() -> func1() start
 		{
-			ID:        RawFuncLogID(2),
-			Tag:       "funcStart",
+			ID:        types.RawFuncLogID(2),
+			Tag:       types.FuncStart,
 			Timestamp: 2,
-			Frames: []GoLineID{
-				GoLineID(0),
-				GoLineID(1),
-			},
-			GID:  0,
-			TxID: txids[1],
+			Frames:    []uintptr{110, 200},
+			GID:       0,
+			TxID:      txids[1],
 		},
 		// main() -> func1() -> func2() start
 		{
-			ID:        RawFuncLogID(3),
-			Tag:       "funcStart",
+			ID:        types.RawFuncLogID(3),
+			Tag:       types.FuncStart,
 			Timestamp: 3,
-			Frames: []GoLineID{
-				GoLineID(0),
-				GoLineID(1),
-				GoLineID(2),
-			},
-			GID:  0,
-			TxID: txids[2],
+			Frames:    []uintptr{110, 210, 300},
+			GID:       0,
+			TxID:      txids[2],
 		},
 		// main() -> func1() -> func2() end
 		{
-			ID:        RawFuncLogID(4),
-			Tag:       "funcEnd",
+			ID:        types.RawFuncLogID(4),
+			Tag:       types.FuncEnd,
 			Timestamp: 4,
-			Frames: []GoLineID{
-				GoLineID(0),
-				GoLineID(1),
-				GoLineID(2),
-			},
-			GID:  0,
-			TxID: txids[2],
+			Frames:    []uintptr{110, 210, 320},
+			GID:       0,
+			TxID:      txids[2],
 		},
 		// main() -> func1() end
 		{
-			ID:        RawFuncLogID(5),
-			Tag:       "funcEnd",
+			ID:        types.RawFuncLogID(5),
+			Tag:       types.FuncEnd,
 			Timestamp: 5,
-			Frames: []GoLineID{
-				GoLineID(0),
-				GoLineID(1),
-			},
-			GID:  0,
-			TxID: txids[1],
+			Frames:    []uintptr{110, 220},
+			GID:       0,
+			TxID:      txids[1],
 		},
 		// main() end
 		{
-			ID:        RawFuncLogID(6),
-			Tag:       "funcEnd",
+			ID:        types.RawFuncLogID(6),
+			Tag:       types.FuncEnd,
 			Timestamp: 6,
-			Frames: []GoLineID{
-				GoLineID(0),
-			},
-			GID:  0,
-			TxID: txids[0],
+			Frames:    []uintptr{120},
+			GID:       0,
+			TxID:      txids[0],
 		},
 	}
 
@@ -153,106 +131,96 @@ func TestStateSimulator_Next_withNestedCall(t *testing.T) {
 }
 
 func TestStateSimulator_Next_startStopNewGoroutines(t *testing.T) {
-	txids := []TxID{
-		NewTxID(),
-		NewTxID(),
+	txids := []types.TxID{
+		types.NewTxID(),
+		types.NewTxID(),
 	}
-	symbols := &Symbols{
-		funcs: []*GoFunc{
-			{ID: 0, Name: "dummy.main"},
-			{ID: 0, Name: "dummy.newGoroutine"},
+	symbols := &types.Symbols{}
+	symbols.Load(types.SymbolsData{
+		Mods: []types.GoModule{
+			{Name: "main", MinPC: 100, MaxPC: 999},
 		},
-		goLine: []*GoLine{
-			{ID: 0, Func: 0},
-			{ID: 1, Func: 1},
+		Funcs: []types.GoFunc{
+			{Entry: 100, Name: "main.main"},
+			{Entry: 200, Name: "main.newGoroutine"},
 		},
-	}
-	testData := []RawFuncLog{
+	})
+	testData := []types.RawFuncLog{
 		// main() start
 		{
-			ID:        RawFuncLogID(1),
-			Tag:       "funcStart",
+			ID:        types.RawFuncLogID(1),
+			Tag:       types.FuncStart,
 			Timestamp: 1,
-			Frames: []GoLineID{
-				GoLineID(0),
-			},
-			GID:  0,
-			TxID: txids[0],
+			Frames:    []uintptr{100},
+			GID:       0,
+			TxID:      txids[0],
 		},
 		// main()
 		// newGoroutine() start
 		{
-			ID:        RawFuncLogID(2),
-			Tag:       "funcStart",
+			ID:        types.RawFuncLogID(2),
+			Tag:       types.FuncStart,
 			Timestamp: 2,
-			Frames: []GoLineID{
-				GoLineID(1),
-			},
-			GID:  1,
-			TxID: txids[1],
+			Frames:    []uintptr{200},
+			GID:       1,
+			TxID:      txids[1],
 		},
 		// main()
 		// newGoroutine() end
 		{
-			ID:        RawFuncLogID(3),
-			Tag:       "funcEnd",
+			ID:        types.RawFuncLogID(3),
+			Tag:       types.FuncEnd,
 			Timestamp: 3,
-			Frames: []GoLineID{
-				GoLineID(1),
-			},
-			GID:  1,
-			TxID: txids[1],
+			Frames:    []uintptr{210},
+			GID:       1,
+			TxID:      txids[1],
 		},
 		// main() end
 		{
-			ID:        RawFuncLogID(4),
-			Tag:       "funcEnd",
+			ID:        types.RawFuncLogID(4),
+			Tag:       types.FuncEnd,
 			Timestamp: 4,
-			Frames: []GoLineID{
-				GoLineID(0),
-			},
-			GID:  0,
-			TxID: txids[0],
+			Frames:    []uintptr{110},
+			GID:       0,
+			TxID:      txids[0],
 		},
 	}
 
 	testStateSimulatorHelper(t, nil, symbols, testData)
 }
 
+// TODO: ?
 func TestStateSimulator_Next_handlerIsNil(t *testing.T) {
-	txids := []TxID{
-		NewTxID(),
+	txids := []types.TxID{
+		types.NewTxID(),
 	}
-	symbols := &Symbols{
-		funcs: []*GoFunc{
-			{ID: 0, Name: "dummy.main"},
+	symbols := &types.Symbols{}
+	symbols.Load(types.SymbolsData{
+		Mods: []types.GoModule{
+			{Name: "main", MinPC: 100, MaxPC: 999},
 		},
-		goLine: []*GoLine{
-			{ID: 0, Func: 0},
+		Funcs: []types.GoFunc{
+			{Entry: 100, Name: "main.main"},
 		},
-	}
-	testData := []RawFuncLog{
+	})
+	testData := []types.RawFuncLog{
 		// main() start
 		{
-			ID:        RawFuncLogID(1),
-			Tag:       "funcStart",
+			ID:        types.RawFuncLogID(1),
+			Tag:       types.FuncStart,
 			Timestamp: 1,
-			Frames: []GoLineID{
-				GoLineID(0),
-			},
-			GID:  0,
-			TxID: txids[0],
+			Frames:    []uintptr{100},
+			GID:       0,
+			TxID:      txids[0],
 		},
 		// main() end
 		{
-			ID:        RawFuncLogID(2),
-			Tag:       "funcEnd",
+			ID:        types.RawFuncLogID(2),
+			Tag:       types.FuncEnd,
 			Timestamp: 2,
-			Frames: []GoLineID{
-				GoLineID(0),
-			},
-			GID:  0,
-			TxID: txids[0],
+			Frames:    []uintptr{110},
+			GID:       0,
+			TxID:      txids[0],
 		},
 	}
 
@@ -260,28 +228,27 @@ func TestStateSimulator_Next_handlerIsNil(t *testing.T) {
 }
 
 func TestStateSimulator_Next_endlessFuncs(t *testing.T) {
-	txids := []TxID{
-		NewTxID(),
+	txids := []types.TxID{
+		types.NewTxID(),
 	}
-	symbols := &Symbols{
-		funcs: []*GoFunc{
-			{ID: 0, Name: "dummy.main"},
+	symbols := &types.Symbols{}
+	symbols.Load(types.SymbolsData{
+		Mods: []types.GoModule{
+			{Name: "main", MinPC: 100, MaxPC: 999},
 		},
-		goLine: []*GoLine{
-			{ID: 0, Func: 0},
+		Funcs: []types.GoFunc{
+			{Entry: 100, Name: "main.main"},
 		},
-	}
-	testData := []RawFuncLog{
+	})
+	testData := []types.RawFuncLog{
 		// main() start
 		{
-			ID:        RawFuncLogID(1),
-			Tag:       "funcStart",
+			ID:        types.RawFuncLogID(1),
+			Tag:       types.FuncStart,
 			Timestamp: 1,
-			Frames: []GoLineID{
-				GoLineID(0),
-			},
-			GID:  0,
-			TxID: txids[0],
+			Frames:    []uintptr{100},
+			GID:       0,
+			TxID:      txids[0],
 		},
 	}
 	testStateSimulatorHelper(t, nil, symbols, testData)

@@ -8,10 +8,6 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
-const (
-	packetBufferSize = 1024
-)
-
 var (
 	uint64Value1 = uint64(0x123456789abcdef0)
 	uint64Bytes1 = []byte{0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0}
@@ -21,48 +17,34 @@ var (
 	uint64Bytes3 = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff}
 
 	goFunc = &types.GoFunc{
-		ID:    0xa00000000000000a,
 		Name:  "name",
-		File:  "file path",
 		Entry: 0xb00000000000000b,
 	}
 	goFuncBytes = []byte{
-		// ID
-		0xa0, 0, 0, 0, 0, 0, 0, 0x0a,
 		// Name: string len
 		0, 0, 0, 0, 0, 0, 0, 4,
 		// Name: string body
 		0x6e, 0x61, 0x6d, 0x65,
-		// File: string len
-		0, 0, 0, 0, 0, 0, 0, 9,
-		// File: string body
-		0x66, 0x69, 0x6c, 0x65, 0x20, 0x70, 0x61, 0x74, 0x68,
 		// Entry
 		0xb0, 0, 0, 0, 0, 0, 0, 0x0b,
 	}
 
 	goLine = &types.GoLine{
-		ID:   0xa00000000000000a,
-		Func: 0xb00000000000000b,
-		Line: 0xc00000000000000c,
+		Line: 0xa000000c,
 		PC:   0xd00000000000000d,
 	}
 	goLineBytes = []byte{
-		// ID
-		0xa0, 0, 0, 0, 0, 0, 0, 0x0a,
-		// Func ID
-		0xb0, 0, 0, 0, 0, 0, 0, 0x0b,
 		// Line
-		0xc0, 0, 0, 0, 0, 0, 0, 0x0c,
+		0xa0, 0, 0, 0x0c,
 		// PC
 		0xd0, 0, 0, 0, 0, 0, 0, 0x0d,
 	}
 
 	rawFuncLog = &types.RawFuncLog{
 		ID:        types.RawFuncLogID(0x0a0000000000000a),
-		Tag:       "tag name",
+		Tag:       types.FuncEnd,
 		Timestamp: types.Time(0x0b0000000000000b),
-		Frames: []types.GoLineID{
+		Frames: []uintptr{
 			1, 2, 3,
 		},
 		GID:  types.GID(0x0c0000000000000c),
@@ -71,10 +53,8 @@ var (
 	rawFuncLogBytes = []byte{
 		// ID
 		0x0a, 0, 0, 0, 0, 0, 0, 0x0a,
-		// Tag: string len
-		0, 0, 0, 0, 0, 0, 0, 8,
-		// Tag: string body
-		0x74, 0x61, 0x67, 0x20, 0x6e, 0x61, 0x6d, 0x65,
+		// Tag: FuncEnd
+		1,
 		// Timestamp
 		0x0b, 0, 0, 0, 0, 0, 0, 0x0b,
 		// Frames: slice len
@@ -91,7 +71,7 @@ var (
 )
 
 func BenchmarkMarshalBool(b *testing.B) {
-	buf := make([]byte, packetBufferSize)
+	buf := make([]byte, DefaultMaxSmallPacketSize)
 	val := true
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
@@ -108,7 +88,7 @@ func BenchmarkUnmarshalBool(b *testing.B) {
 	b.StopTimer()
 }
 func BenchmarkMarshalUint64(b *testing.B) {
-	buf := make([]byte, packetBufferSize)
+	buf := make([]byte, DefaultMaxSmallPacketSize)
 	val := uint64(10)
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
@@ -125,7 +105,7 @@ func BenchmarkUnmarshalUint64(b *testing.B) {
 	b.StopTimer()
 }
 func BenchmarkMarshalString(b *testing.B) {
-	buf := make([]byte, packetBufferSize)
+	buf := make([]byte, DefaultMaxSmallPacketSize)
 	val := "test string"
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
@@ -147,11 +127,11 @@ func BenchmarkUnmarshalString(b *testing.B) {
 	b.StopTimer()
 }
 func BenchmarkMarshalGoFunc(b *testing.B) {
-	buf := make([]byte, packetBufferSize)
+	buf := make([]byte, DefaultMaxSmallPacketSize)
 	val := goFunc
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		marshalGoFunc(buf, val)
+		marshalGoFunc(buf, *val)
 	}
 	b.StopTimer()
 }
@@ -164,11 +144,11 @@ func BenchmarkUnmarshalGoFunc(b *testing.B) {
 	b.StopTimer()
 }
 func BenchmarkMarshalGoLine(b *testing.B) {
-	buf := make([]byte, packetBufferSize)
+	buf := make([]byte, DefaultMaxSmallPacketSize)
 	val := goLine
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		marshalGoLine(buf, val)
+		marshalGoLine(buf, *val)
 	}
 	b.StopTimer()
 }
@@ -181,8 +161,8 @@ func BenchmarkUnmarshalGoLine(b *testing.B) {
 	b.StopTimer()
 }
 func BenchmarkMarshalGoLineIDSlice(b *testing.B) {
-	buf := make([]byte, packetBufferSize)
-	val := []types.GoLineID{1, 2, 3, 4, 5, 6, 8, 9, 10}
+	buf := make([]byte, DefaultMaxSmallPacketSize)
+	val := []uintptr{1, 2, 3, 4, 5, 6, 8, 9, 10}
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
 		marshalUintptrSlice(buf, val)
@@ -190,8 +170,8 @@ func BenchmarkMarshalGoLineIDSlice(b *testing.B) {
 	b.StopTimer()
 }
 func BenchmarkUnmarshalGoLineIDSlice(b *testing.B) {
-	buf := make([]byte, packetBufferSize)
-	n := marshalUintptrSlice(buf, []types.GoLineID{1, 2, 3, 4, 5, 6, 8, 9, 10})
+	buf := make([]byte, DefaultMaxSmallPacketSize)
+	n := marshalUintptrSlice(buf, []uintptr{1, 2, 3, 4, 5, 6, 8, 9, 10})
 	buf = buf[:n]
 
 	b.ResetTimer()
@@ -201,7 +181,7 @@ func BenchmarkUnmarshalGoLineIDSlice(b *testing.B) {
 	b.StopTimer()
 }
 func BenchmarkMarshalRawFuncLog(b *testing.B) {
-	buf := make([]byte, packetBufferSize)
+	buf := make([]byte, DefaultMaxSmallPacketSize)
 	val := rawFuncLog
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
@@ -238,7 +218,7 @@ func TestUnmarshalBool(t *testing.T) {
 func TestMarshalUint64(t *testing.T) {
 	a := assert.New(t)
 	test := func(val uint64, b []byte) {
-		buf := make([]byte, packetBufferSize)
+		buf := make([]byte, DefaultMaxSmallPacketSize)
 		n := marshalUint64(buf, val)
 		buf = buf[:n]
 
@@ -264,7 +244,7 @@ func TestUnmarshalUint64(t *testing.T) {
 func TestMarshalString(t *testing.T) {
 	a := assert.New(t)
 	test := func(msg, s string, blen, bstr []byte) {
-		buf := make([]byte, packetBufferSize)
+		buf := make([]byte, DefaultMaxSmallPacketSize)
 		n := marshalString(buf, s)
 		buf = buf[:n]
 		a.Equal(blen, buf[:8], msg+": length field")
@@ -297,34 +277,25 @@ func TestUnmarshalString(t *testing.T) {
 }
 func TestMarshalGoFuncSlice(t *testing.T) {
 	a := assert.New(t)
-	test := func(msg string, slice []*types.GoFunc, sliceLen, nonNilFlag, fsBytes []byte) {
-		buf := make([]byte, packetBufferSize)
+	test := func(msg string, slice []types.GoFunc, sliceLen, golineBytes []byte) {
+		buf := make([]byte, DefaultMaxSmallPacketSize)
 		n := marshalGoFuncSlice(buf, slice)
 		buf = buf[:n]
 
 		a.Equal(sliceLen, buf[:8], msg+": length field")
-		if nonNilFlag == nil {
+		if golineBytes == nil {
 			return
 		}
-		a.Equal(nonNilFlag, buf[8:9], msg+": non-nil flag field")
-		if fsBytes == nil {
-			return
-		}
-		a.Equal(fsBytes, buf[9:], msg+": GoFunc field")
+		a.Equal(golineBytes, buf[8:], msg+": GoFunc field")
 	}
 
 	test("empty slice",
-		[]*types.GoFunc{},
+		[]types.GoFunc{},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 0},
-		nil, nil)
-	test("contains a nil item",
-		[]*types.GoFunc{nil},
+		nil)
+	test("contains a item",
+		[]types.GoFunc{*goFunc},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
-		[]byte{0}, nil)
-	test("contains a non-nil item",
-		[]*types.GoFunc{goFunc},
-		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
-		[]byte{1},
 		goFuncBytes)
 }
 func TestUnmarshalGoFuncSlice(t *testing.T) {
@@ -353,10 +324,10 @@ func TestUnmarshalGoFuncSlice(t *testing.T) {
 		goFuncBytes)
 }
 func TestMarshalGoFunc(t *testing.T) {
-	buf := make([]byte, packetBufferSize)
+	buf := make([]byte, DefaultMaxSmallPacketSize)
 	a := assert.New(t)
 
-	n := marshalGoFunc(buf, goFunc)
+	n := marshalGoFunc(buf, *goFunc)
 	buf = buf[:n]
 	a.Equal(goFuncBytes, buf)
 }
@@ -368,34 +339,25 @@ func TestUnmarshalGoFunc(t *testing.T) {
 }
 func TestMarshalGoLineSlice(t *testing.T) {
 	a := assert.New(t)
-	test := func(msg string, slice []*types.GoLine, sliceLen, nonNilFlag, fsBytes []byte) {
-		buf := make([]byte, packetBufferSize)
+	test := func(msg string, slice []types.GoLine, sliceLen, golineBytes []byte) {
+		buf := make([]byte, DefaultMaxSmallPacketSize)
 		n := marshalGoLineSlice(buf, slice)
 		buf = buf[:n]
 
 		a.Equal(sliceLen, buf[:8], msg+": length field")
-		if nonNilFlag == nil {
+		if golineBytes == nil {
 			return
 		}
-		a.Equal(nonNilFlag, buf[8:9], msg+": non-nil flag field")
-		if fsBytes == nil {
-			return
-		}
-		a.Equal(fsBytes, buf[9:], msg+": GoLine field")
+		a.Equal(golineBytes, buf[9:], msg+": GoLine field")
 	}
 
 	test("empty slice",
-		[]*types.GoLine{},
+		[]types.GoLine{},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 0},
-		nil, nil)
-	test("contains a nil item",
-		[]*types.GoLine{nil},
+		nil)
+	test("contains a item",
+		[]types.GoLine{*goLine},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
-		[]byte{0}, nil)
-	test("contains a non-nil item",
-		[]*types.GoLine{goLine},
-		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
-		[]byte{1},
 		goLineBytes)
 }
 func TestUnmarshalGoLineSlice(t *testing.T) {
@@ -425,10 +387,10 @@ func TestUnmarshalGoLineSlice(t *testing.T) {
 		goLineBytes)
 }
 func TestMarshalGoLine(t *testing.T) {
-	buf := make([]byte, packetBufferSize)
+	buf := make([]byte, DefaultMaxSmallPacketSize)
 	a := assert.New(t)
 
-	n := marshalGoLine(buf, goLine)
+	n := marshalGoLine(buf, *goLine)
 	buf = buf[:n]
 	a.Equal(goLineBytes, buf)
 }
@@ -439,7 +401,7 @@ func TestUnmarshalGoLine(t *testing.T) {
 	a.Equal(goLine, fs)
 }
 func TestMarshalRawFuncLog(t *testing.T) {
-	buf := make([]byte, packetBufferSize)
+	buf := make([]byte, DefaultMaxSmallPacketSize)
 	a := assert.New(t)
 
 	n := marshalRawFuncLog(buf, rawFuncLog)
