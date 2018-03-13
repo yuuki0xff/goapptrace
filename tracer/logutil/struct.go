@@ -1,3 +1,4 @@
+// TODO: パッケージ名をsimulatorに変更する
 package logutil
 
 import (
