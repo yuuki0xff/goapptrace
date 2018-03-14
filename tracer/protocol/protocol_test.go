@@ -12,10 +12,10 @@ var (
 	pingPkt      = &PingPacket{}
 	pingPktBytes = []byte{
 		// length
-		0, 0, 0, 8,
+		0, 0, 0, 1,
 		// header packet data
 		// NOTE: PingPacketType is 4.
-		0, 0, 0, 0, 0, 0, 0, 4,
+		4,
 		// ping packet data is empty.
 	}
 
@@ -24,10 +24,10 @@ var (
 	}
 	fakePktBytes = []byte{
 		// length
-		0, 0, 0, 15,
+		0, 0, 0, 8,
 		// header packet data
 		// NOTE: fakePacketType is 0.
-		0, 0, 0, 0, 0, 0, 0, 0,
+		0,
 		// packet data
 		0x66, 0x61, 0x6b, 0x65, 0x50, 0x6b, 0x74,
 	}
@@ -43,21 +43,21 @@ func TestProto_PackSize(t *testing.T) {
 }
 
 func TestProto_PackTo(t *testing.T) {
-	test := func(name string, size int, pkt xtcp.Packet, b []byte) {
+	test := func(name string, pkt xtcp.Packet, b []byte) {
 		t.Run(name, func(t *testing.T) {
 			var buf bytes.Buffer
 			a := assert.New(t)
 			p := Proto{}
 
 			n, err := p.PackTo(pkt, &buf)
-			a.Equal(size, n)
+			a.Equal(len(b), n)
 			a.NoError(err)
 			a.Equal(b, buf.Bytes())
 		})
 	}
 
-	test("pingPacket", 12, pingPkt, pingPktBytes)
-	test("fakePacket", 19, fakePkt, fakePktBytes)
+	test("pingPacket", pingPkt, pingPktBytes)
+	test("fakePacket", fakePkt, fakePktBytes)
 }
 
 func TestProto_Pack(t *testing.T) {

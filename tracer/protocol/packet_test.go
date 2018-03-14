@@ -119,10 +119,10 @@ func TestPacketType_Marshal(t *testing.T) {
 	buf := make([]byte, DefaultMaxSmallPacketSize)
 	a := assert.New(t)
 	n := PacketType(10).Marshal(buf)
-	a.Equal([]byte{0, 0, 0, 0, 0, 0, 0, 10}, buf[:n])
+	a.Equal([]byte{10}, buf[:n])
 }
 func TestPacketType_Unmarshal(t *testing.T) {
-	buf := []byte{0, 0, 0, 0, 0, 0, 0, 5}
+	buf := []byte{5}
 	a := assert.New(t)
 	var pt PacketType
 	pt.Unmarshal(buf)
