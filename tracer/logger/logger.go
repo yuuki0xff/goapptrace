@@ -92,7 +92,9 @@ func init() {
 
 	// send buffered logs on initBuffer.
 	for _, raw := range initBuffer {
-		sender.SendLog(raw)
+		if err := sender.SendLog(raw); err != nil {
+			log.Panic(err)
+		}
 	}
 	initBuffer = nil
 	lock.Unlock()
