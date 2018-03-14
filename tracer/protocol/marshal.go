@@ -34,11 +34,11 @@ func unmarshalUint32(buf []byte) (uint32, int64) {
 	return binary.BigEndian.Uint32(buf[:4]), 4
 }
 func marshalUint8(buf []byte, val uint8) int64 {
-	buf[0] = uint8(val)
+	buf[0] = val
 	return 1
 }
 func unmarshalUint8(buf []byte) (uint8, int64) {
-	return uint8(buf[0]), 1
+	return buf[0], 1
 }
 
 func marshalString(buf []byte, str string) int64 {
