@@ -30,14 +30,17 @@ var (
 	}
 
 	goLine = &types.GoLine{
-		Line: 0xa000000c,
-		PC:   0xd00000000000000d,
+		PC:     0xd00000000000000d,
+		FileID: 0xb000000c,
+		Line:   0xa000000c,
 	}
 	goLineBytes = []byte{
-		// Line
-		0xa0, 0, 0, 0x0c,
 		// PC
 		0xd0, 0, 0, 0, 0, 0, 0, 0x0d,
+		// FileID
+		0xb0, 0x00, 0x00, 0x0c,
+		// Line
+		0xa0, 0, 0, 0x0c,
 	}
 
 	rawFuncLog = &types.RawFuncLog{
@@ -300,27 +303,21 @@ func TestMarshalGoFuncSlice(t *testing.T) {
 }
 func TestUnmarshalGoFuncSlice(t *testing.T) {
 	a := assert.New(t)
-	test := func(msg string, expected []*types.GoFunc, sliceLen, nonNilFlag, fsBytes []byte) {
+	test := func(msg string, expected []types.GoFunc, sliceLen, gofuncBytes []byte) {
 		var buf bytes.Buffer
 		buf.Write(sliceLen)
-		buf.Write(nonNilFlag)
-		buf.Write(fsBytes)
+		buf.Write(gofuncBytes)
 		actual, _ := unmarshalGoFuncSlice(buf.Bytes())
 		a.Equal(expected, actual, msg)
 	}
 
 	test("empty",
-		[]*types.GoFunc{},
+		[]types.GoFunc{},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 0},
-		nil, nil)
-	test("contains a nil item",
-		[]*types.GoFunc{nil},
+		nil)
+	test("contains a item",
+		[]types.GoFunc{*goFunc},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
-		[]byte{0}, nil)
-	test("contains a non-nil item",
-		[]*types.GoFunc{goFunc},
-		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
-		[]byte{1},
 		goFuncBytes)
 }
 func TestMarshalGoFunc(t *testing.T) {
@@ -335,7 +332,7 @@ func TestUnmarshalGoFunc(t *testing.T) {
 	a := assert.New(t)
 
 	s, _ := unmarshalGoFunc(goFuncBytes)
-	a.Equal(goFunc, s)
+	a.Equal(*goFunc, s)
 }
 func TestMarshalGoLineSlice(t *testing.T) {
 	a := assert.New(t)
@@ -348,7 +345,7 @@ func TestMarshalGoLineSlice(t *testing.T) {
 		if golineBytes == nil {
 			return
 		}
-		a.Equal(golineBytes, buf[9:], msg+": GoLine field")
+		a.Equal(golineBytes, buf[8:], msg+": GoLine field")
 	}
 
 	test("empty slice",
@@ -362,28 +359,22 @@ func TestMarshalGoLineSlice(t *testing.T) {
 }
 func TestUnmarshalGoLineSlice(t *testing.T) {
 	a := assert.New(t)
-	test := func(msg string, expected []*types.GoLine, sliceLen, nonNilFlag, fsBytes []byte) {
+	test := func(msg string, expected []types.GoLine, sliceLen, golineBytes []byte) {
 		var buf bytes.Buffer
 		buf.Write(sliceLen)
-		buf.Write(nonNilFlag)
-		buf.Write(fsBytes)
+		buf.Write(golineBytes)
 
 		actual, _ := unmarshalGoLineSlice(buf.Bytes())
 		a.Equal(expected, actual, msg)
 	}
 
 	test("empty",
-		[]*types.GoLine{},
+		[]types.GoLine{},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 0},
-		nil, nil)
-	test("contains a nil item",
-		[]*types.GoLine{nil},
+		nil)
+	test("contains item",
+		[]types.GoLine{*goLine},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
-		[]byte{0}, nil)
-	test("contains a non-nil item",
-		[]*types.GoLine{goLine},
-		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
-		[]byte{1},
 		goLineBytes)
 }
 func TestMarshalGoLine(t *testing.T) {
@@ -398,7 +389,7 @@ func TestUnmarshalGoLine(t *testing.T) {
 	a := assert.New(t)
 
 	fs, _ := unmarshalGoLine(goLineBytes)
-	a.Equal(goLine, fs)
+	a.Equal(*goLine, fs)
 }
 func TestMarshalRawFuncLog(t *testing.T) {
 	buf := make([]byte, DefaultMaxSmallPacketSize)
