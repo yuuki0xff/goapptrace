@@ -6,7 +6,7 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
-func marshalBool(buf []byte, val bool) int64 {
+func marshalBool(buf []byte, val bool) int64 { // nolint
 	if val {
 		buf[0] = 1
 	} else {
@@ -14,7 +14,7 @@ func marshalBool(buf []byte, val bool) int64 {
 	}
 	return 1
 }
-func unmarshalBool(buf []byte) (bool, int64) {
+func unmarshalBool(buf []byte) (bool, int64) { // nolint
 	return buf[0] != 0, 1
 }
 
