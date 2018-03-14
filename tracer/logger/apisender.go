@@ -70,12 +70,9 @@ func (s *LogServerSender) Close() error {
 // send Symbols to the log server.
 func (s *LogServerSender) SendSymbols(data *types.SymbolsData) error {
 	// SymbolPacketは非常に大きくなる可能性が高いため、SendLargeを使って送信する。
-	if err := s.client.SendLarge(&protocol.SymbolPacket{
+	return s.client.SendLarge(&protocol.SymbolPacket{
 		SymbolsData: *data,
-	}); err != nil {
-		return err
-	}
-	return nil
+	})
 }
 
 // send RawFuncLog to the log server.
