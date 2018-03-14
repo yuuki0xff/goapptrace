@@ -63,14 +63,6 @@ func unmarshalRawFuncLogID(buf []byte) (types.RawFuncLogID, int64) {
 	return types.RawFuncLogID(val), n
 }
 
-func marshalGoLineID(buf []byte, fsid types.GoLineID) int64 {
-	return marshalUint64(buf, uint64(fsid))
-}
-func unmarshalGoLineID(buf []byte) (types.GoLineID, int64) {
-	val, n := unmarshalUint64(buf)
-	return types.GoLineID(val), n
-}
-
 func marshalStringSlice(buf []byte, strs []string) int64 {
 	var total int64
 
