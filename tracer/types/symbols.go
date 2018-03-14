@@ -162,56 +162,6 @@ notFound:
 	return GoLine{}, false
 }
 
-// 登録済みのFuncの数を返す。
-func (s *Symbols) FuncsSize() int {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-	// TODO: テストケース以外から使用されていないため、削除する
-	panic("todo")
-}
-
-// 登録済みのGoLineの数を返す。
-func (s *Symbols) GoLineSize() int {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-	// TODO: テストケース以外から使用されていないため、削除する
-	panic("todo")
-}
-
-// 登録済みの全てのFuncをコールバックする。。
-// fnがエラーを返すと、中断する。
-func (s *Symbols) WalkFuncs(fn func(fs GoFunc) error) error {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-	// TODO: テストケース以外から使用されていない。扱いを検討する
-	panic("todo")
-	//for _, fs := range s.funcs {
-	//	if fs != nil {
-	//		if err := fn(*fs); err != nil {
-	//			return err
-	//		}
-	//	}
-	//}
-	//return nil
-}
-
-// 登録済みの全てのGoLineをコールバックする。
-// fnがエラーを返すと、中断する。
-func (s *Symbols) WalkGoLine(fn func(fs GoLine) error) error {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-	panic("todo")
-	// TODO: テストケース以外から使用されていない。扱いを検討する
-	//for _, fs := range s.goLine {
-	//	if fs != nil {
-	//		if err := fn(*fs); err != nil {
-	//			return err
-	//		}
-	//	}
-	//}
-	//return nil
-}
-
 // GoLineIDからFuncIDを取得する。
 func (s *Symbols) FuncID(pc uintptr) FuncID {
 	s.lock.RLock()
