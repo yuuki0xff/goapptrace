@@ -229,7 +229,7 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 
 			c.workerWg.Add(2)
 			go c.pingWorker()
-			go c.mergeSender.RefreshWorker(c.workerCtx)
+			go c.mergeSender.RefreshWorker(&c.workerWg, c.workerCtx)
 
 			c.negotiated()
 
@@ -355,7 +355,9 @@ func (ms *mergeSender) refreshNolock() error {
 // また、ctxが終了したときにもバッファの中身を送信する。
 // バッファに滞留してしまい、いつまでもサーバにパケットが届かなくなる問題を防ぐ。
 // 送信中にエラーが発生した場合、panicする。
-func (ms *mergeSender) RefreshWorker(ctx context.Context) {
+func (ms *mergeSender) RefreshWorker(wg *sync.WaitGroup, ctx context.Context) {
+	defer wg.Done()
+
 	ticker := time.NewTicker(ms.Opt.RefreshInterval)
 	for {
 		select {
