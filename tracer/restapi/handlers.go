@@ -131,6 +131,7 @@ func (api APIv0) SetHandlers(router *mux.Router) {
 	v01.HandleFunc("/log/{log-id}/func-call/search", api.funcCallSearch).Methods(http.MethodGet)
 	v01.HandleFunc("/log/{log-id}/func-call/stream", api.notImpl).Methods(http.MethodGet)
 	v01.HandleFunc("/log/{log-id}/goroutines/search", api.goroutineSearch).Methods(http.MethodGet)
+	v01.HandleFunc("/log/{log-id}/symbols", api.symbols).Methods(http.MethodGet)
 	v01.HandleFunc("/log/{log-id}/symbol/module/{pc}", api.goModule).Methods(http.MethodGet)
 	v01.HandleFunc("/log/{log-id}/symbol/func/{pc}", api.goFunc).Methods(http.MethodGet)
 	v01.HandleFunc("/log/{log-id}/symbol/line/{pc}", api.goLine).Methods(http.MethodGet)
@@ -518,6 +519,24 @@ func (api APIv0) goroutineSearch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+}
+func (api APIv0) symbols(w http.ResponseWriter, r *http.Request) {
+	logobj, ok := api.getLog(w, r)
+	if !ok {
+		return
+	}
+
+	var js []byte
+	err := logobj.Symbols().Save(func(data types.SymbolsData) error {
+		var err error
+		js, err = json.Marshal(&data)
+		return err
+	})
+	if err != nil {
+		api.serverError(w, err, "unknown error")
+		return
+	}
+	api.write(w, js)
 }
 func (api APIv0) goModule(w http.ResponseWriter, r *http.Request) {
 	logobj, pc, ok := api.getLogPC(w, r)

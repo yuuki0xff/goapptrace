@@ -79,7 +79,7 @@ func (c *GraphCache) Update(logID string, client restapi.ClientWithCtx) error {
 	})
 	eg.Go(func() error {
 		var err error
-		c.Symbols, err = api.Symbols()
+		c.Symbols, err = api.Symbols(c.logID)
 		return err
 	})
 	eg.Go(func() error {

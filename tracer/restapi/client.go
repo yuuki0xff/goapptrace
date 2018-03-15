@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"unsafe"
 
 	"github.com/levigross/grequests"
 	"github.com/pkg/errors"
@@ -21,7 +23,12 @@ const (
 )
 
 var (
-	ErrConflict = errors.New("conflict")
+	msgUseCache = "<cache>"
+
+	ErrConflict         = errors.New("conflict")
+	ErrNotFoundGoModule = errors.New("not found GoModule")
+	ErrNotFoundGoFunc   = errors.New("not found GoFunc")
+	ErrNotFoundGoLine   = errors.New("not found GoLine")
 )
 
 // Client helps calling the Goapptrace REST API client.
@@ -44,9 +51,8 @@ type apiCache struct {
 }
 
 type logCache struct {
-	m  sync.RWMutex
-	fs map[uintptr]*types.GoLine
-	f  map[uintptr]*types.GoFunc
+	// types.Symbols へのポインタ
+	s unsafe.Pointer
 }
 
 // Init initialize the Goapptrace REST API client.
@@ -86,14 +92,32 @@ func (c *ClientWithCtx) Ctx() context.Context {
 
 // SyncSymbolsはサーバからシンボルテーブルをダウンロードし、キャッシュする。
 // キャッシュを作っておくことで、クライアント側のみでシンボル解決が出来るようになり、高速化が出来る。
-func (c *ClientWithCtx) SyncSymbols() error {
-	// TODO: not implements
+func (c *ClientWithCtx) SyncSymbols(logID string) error {
+	var data types.SymbolsData
+	url := c.url("/log", logID, "symbols")
+	ro := c.ro()
+	err := c.getJSON(url, &ro, &data)
+	if err != nil {
+		return err
+	}
+
+	s := &types.Symbols{}
+	s.Load(data)
+	c.cache.AddLog(logID).SetSymbols(s)
 	return nil
 }
 
-func (c *ClientWithCtx) Symbols() (*types.Symbols, error) {
-	// TODO:
-	return nil, nil
+func (c *ClientWithCtx) Symbols(logID string) (s *types.Symbols, err error) {
+	s = c.cache.Log(logID).Symbols()
+	if s != nil {
+		return
+	}
+	err = c.SyncSymbols(logID)
+	if err != nil {
+		return
+	}
+	s = c.cache.Log(logID).Symbols()
+	return
 }
 
 // Servers returns Log server list.
@@ -179,7 +203,24 @@ func (c ClientWithCtx) SearchFuncLogs(id string, so SearchFuncLogParams) (chan t
 	return ch, nil
 }
 func (c ClientWithCtx) GoModule(logID string, pc uintptr) (m types.GoModule, err error) {
-	// TODO: lookup cache
+	if c.UseCache {
+		// fast path
+		var s *types.Symbols
+		var ok bool
+		s, err = c.Symbols(logID)
+		if err != nil {
+			return
+		}
+		m, ok = s.GoModule(pc)
+		if !ok {
+			err = ErrNotFoundGoModule
+			return
+		}
+		c.validateGoModule(pc, msgUseCache, m)
+		return
+	}
+
+	// slow path
 	url := c.url("/log", logID, "symbol", "module", FormatUintptr(pc))
 	ro := c.ro()
 	err = c.getJSON(url, &ro, &m)
@@ -187,17 +228,24 @@ func (c ClientWithCtx) GoModule(logID string, pc uintptr) (m types.GoModule, err
 	if err == nil {
 		c.validateGoModule(pc, url, m)
 	}
-	// TODO: add to cache
 	return
 }
 func (c ClientWithCtx) GoFunc(logID string, pc uintptr) (f types.GoFunc, err error) {
 	if c.UseCache {
-		fcache := c.cache.Log(logID).Func(pc)
-		if fcache != nil {
-			// fast path
-			f = *fcache
+		// fast path
+		var s *types.Symbols
+		var ok bool
+		s, err = c.Symbols(logID)
+		if err != nil {
 			return
 		}
+		f, ok = s.GoFunc(pc)
+		if !ok {
+			err = ErrNotFoundGoFunc
+			return
+		}
+		c.validateGoFunc(pc, msgUseCache, f)
+		return
 	}
 
 	// slow path
@@ -208,19 +256,24 @@ func (c ClientWithCtx) GoFunc(logID string, pc uintptr) (f types.GoFunc, err err
 	if err == nil {
 		c.validateGoFunc(pc, url, f)
 	}
-	if err == nil && c.UseCache {
-		c.cache.AddLog(logID).AddFunc(f)
-	}
 	return
 }
 func (c ClientWithCtx) GoLine(logID string, pc uintptr) (l types.GoLine, err error) {
 	if c.UseCache {
-		fscache := c.cache.Log(logID).GoLine(pc)
-		if fscache != nil {
-			// fast path
-			l = *fscache
+		// fast path
+		var s *types.Symbols
+		var ok bool
+		s, err = c.Symbols(logID)
+		if err != nil {
 			return
 		}
+		l, ok = s.GoLine(pc)
+		if !ok {
+			err = ErrNotFoundGoLine
+			return
+		}
+		c.validateGoLine(pc, msgUseCache, l)
+		return
 	}
 
 	// slow path
@@ -230,9 +283,6 @@ func (c ClientWithCtx) GoLine(logID string, pc uintptr) (l types.GoLine, err err
 
 	if err == nil {
 		c.validateGoLine(pc, url, l)
-	}
-	if err == nil && c.UseCache {
-		c.cache.AddLog(logID).AddGoLine(l)
 	}
 	return
 }
@@ -372,49 +422,45 @@ func (c *apiCache) AddLog(logID string) *logCache {
 	return l
 }
 
-func (c *logCache) init() {
-	c.fs = map[uintptr]*types.GoLine{}
-	c.f = map[uintptr]*types.GoFunc{}
+func (c *logCache) init() {}
+
+func (c *logCache) SetSymbols(s *types.Symbols) {
+	atomic.StorePointer(&c.s, unsafe.Pointer(s)) // nolint: gas
 }
 
-func (c *logCache) Func(pc uintptr) *types.GoFunc {
+func (c *logCache) Symbols() *types.Symbols {
 	if c == nil {
 		return nil
 	}
-	c.m.RLock()
-	f := c.f[pc]
-	c.m.RUnlock()
-	return f
+	sp := atomic.LoadPointer(&c.s)
+	return (*types.Symbols)(sp)
 }
 
-func (c *logCache) AddFunc(f types.GoFunc) {
-	c.m.Lock()
-	if _, ok := c.f[f.Entry]; ok {
-		fp := &types.GoFunc{}
-		*fp = f
-		c.f[f.Entry] = fp
+func (c *logCache) GoModule(pc uintptr) (m types.GoModule, ok bool) {
+	s := c.Symbols()
+	if s == nil {
+		return
 	}
-	c.m.Unlock()
+	m, ok = s.GoModule(pc)
+	return
 }
 
-func (c *logCache) GoLine(pc uintptr) *types.GoLine {
-	if c == nil {
-		return nil
+func (c *logCache) GoFunc(pc uintptr) (f types.GoFunc, ok bool) {
+	s := c.Symbols()
+	if s == nil {
+		return
 	}
-	c.m.RLock()
-	fs := c.fs[pc]
-	c.m.RUnlock()
-	return fs
+	f, ok = s.GoFunc(pc)
+	return
 }
 
-func (c *logCache) AddGoLine(fs types.GoLine) {
-	c.m.Lock()
-	if _, ok := c.fs[fs.PC]; ok {
-		fsp := &types.GoLine{}
-		*fsp = fs
-		c.fs[fs.PC] = fsp
+func (c *logCache) GoLine(pc uintptr) (l types.GoLine, ok bool) {
+	s := c.Symbols()
+	if s == nil {
+		return
 	}
-	c.m.Unlock()
+	l, ok = s.GoLine(pc)
+	return
 }
 
 func FormatUintptr(ptr uintptr) string {

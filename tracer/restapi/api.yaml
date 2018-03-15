@@ -228,6 +228,32 @@ definitions:
         format: int64
         example: 5900
         description: Unix time at the end of goroutine.
+  symbols:
+    description: Details of the module.
+    type: object
+    required:
+      - files
+      - modules
+      - functions
+      - lines
+    properties:
+      files:
+        type: array
+        items:
+          type: string
+          description: file name
+      modules:
+        type: array
+        items:
+          $ref: '#/definitions/symbol-module'
+      functions:
+        type: array
+        items:
+          $ref: '#/definitions/symbol-func'
+      lines:
+        type: array
+        items:
+          $ref: '#/definitions/symbol-line'
   symbol-module:
     description: Details of the module.
     type: object
@@ -610,6 +636,19 @@ paths:
           description: success
           schema:
             $ref: '#/definitions/goroutine-jsonlines'
+  '/log/{log-id}/symbols':
+    get:
+      description: Returns symbols.
+      parameters:
+        - name: log-id
+          in: path
+          required: true
+          type: integer
+      responses:
+        '200':
+          description: success
+          schema:
+            $ref: '#/definitions/symbols'
   '/log/{log-id}/symbol/module/{pc}':
     get:
       description: Returns detail of the module.

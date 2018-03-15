@@ -95,7 +95,7 @@ func (vm *LogRecordVM) fetch() (
 	})
 	eg.Go(func() error {
 		var err error
-		symbols, err = vm.Client.Symbols()
+		symbols, err = vm.Client.Symbols(vm.LogID)
 		return err
 	})
 
