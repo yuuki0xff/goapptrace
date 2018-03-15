@@ -307,10 +307,10 @@ definitions:
         format: int64
         example: 100000000
         description: Address of this line.
-      file:
-        type: string
-        example: github.com/yuuki0xff/goapptrace/goapptrace.go
-        description: Path to source file.
+      file-id:
+        type: integer
+        example: 12
+        description: Index of files array.
       line:
         type: integer
         format: int64

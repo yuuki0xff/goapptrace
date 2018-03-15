@@ -20,10 +20,10 @@ type Symbols struct {
 }
 
 type SymbolsData struct {
-	Files []string
-	Mods  []GoModule
-	Funcs []GoFunc
-	Lines []GoLine
+	Files []string   `json:"files"`
+	Mods  []GoModule `json:"modules"`
+	Funcs []GoFunc   `json:"functions"`
+	Lines []GoLine   `json:"lines"`
 }
 
 // FileID is index of Symbols.Files array.
@@ -35,25 +35,25 @@ type File string
 
 // GoModules means a module in golang.
 type GoModule struct {
-	Name  string
-	MinPC uintptr
-	MaxPC uintptr
+	Name  string  `json:"name"`
+	MinPC uintptr `json:"min-pc"`
+	MaxPC uintptr `json:"max-pc"`
 }
 
 // GoFunc means a function in golang.
 type GoFunc struct {
 	// entry point of this function
-	Entry uintptr
+	Entry uintptr `json:"entry"`
 	// example: "github.com/yuuki0xff/goapptrace.main"
-	Name string
+	Name string `json:"name"`
 }
 
 // GoLine haves a correspondence to position on source code from PC (Program Counter).
 type GoLine struct {
-	PC uintptr
+	PC uintptr `json:"pc"`
 	// file location that defines this function.
-	FileID FileID
-	Line   uint32
+	FileID FileID `json:"file-id"`
+	Line   uint32 `json:"line"`
 }
 
 // 初期化する。使用前に必ず呼び出すこと。

@@ -3,22 +3,22 @@ package types
 // Goroutineの生存期間、およびそのGoroutine内で行われたアクションを保持する。
 // 実行終了後も、変更されることがある。
 type Goroutine struct {
-	GID       GID
-	StartTime Time
-	EndTime   Time
+	GID       GID  `json:"goroutine-id"`
+	StartTime Time `json:"start-time"`
+	EndTime   Time `json:"end-time"`
 }
 
 // 1回の関数呼び出しに関する情報。
 // 関数の生存期間、呼び出し元の関数など。
 // 関数の実行終了後は、フィールドの値は変更されない。
 type FuncLog struct {
-	ID        FuncLogID
-	StartTime Time
-	EndTime   Time
-	ParentID  FuncLogID
+	ID        FuncLogID `json:"id"`
+	StartTime Time      `json:"start-time"`
+	EndTime   Time      `json:"end-time"`
+	ParentID  FuncLogID `json:"parent-id"`
 
-	Frames []uintptr
-	GID    GID
+	Frames []uintptr `json:"frames"`
+	GID    GID       `json:"gid"`
 }
 
 type RawFuncLog struct {
