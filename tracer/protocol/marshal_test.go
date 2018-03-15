@@ -5,11 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
-)
-
-const (
-	packetBufferSize = 1024
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 var (
@@ -20,61 +16,48 @@ var (
 	uint64Value3 = uint64(0x00000000000000ff)
 	uint64Bytes3 = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff}
 
-	funcSymbol = &logutil.FuncSymbol{
-		ID:    0xa00000000000000a,
+	goFunc = &types.GoFunc{
 		Name:  "name",
-		File:  "file path",
 		Entry: 0xb00000000000000b,
 	}
-	funcSymbolBytes = []byte{
-		// ID
-		0xa0, 0, 0, 0, 0, 0, 0, 0x0a,
+	goFuncBytes = []byte{
 		// Name: string len
 		0, 0, 0, 0, 0, 0, 0, 4,
 		// Name: string body
 		0x6e, 0x61, 0x6d, 0x65,
-		// File: string len
-		0, 0, 0, 0, 0, 0, 0, 9,
-		// File: string body
-		0x66, 0x69, 0x6c, 0x65, 0x20, 0x70, 0x61, 0x74, 0x68,
 		// Entry
 		0xb0, 0, 0, 0, 0, 0, 0, 0x0b,
 	}
 
-	funcStatus = &logutil.FuncStatus{
-		ID:   0xa00000000000000a,
-		Func: 0xb00000000000000b,
-		Line: 0xc00000000000000c,
-		PC:   0xd00000000000000d,
+	goLine = &types.GoLine{
+		PC:     0xd00000000000000d,
+		FileID: 0xb000000c,
+		Line:   0xa000000c,
 	}
-	funcStatusBytes = []byte{
-		// ID
-		0xa0, 0, 0, 0, 0, 0, 0, 0x0a,
-		// Func ID
-		0xb0, 0, 0, 0, 0, 0, 0, 0x0b,
-		// Line
-		0xc0, 0, 0, 0, 0, 0, 0, 0x0c,
+	goLineBytes = []byte{
 		// PC
 		0xd0, 0, 0, 0, 0, 0, 0, 0x0d,
+		// FileID
+		0xb0, 0x00, 0x00, 0x0c,
+		// Line
+		0xa0, 0, 0, 0x0c,
 	}
 
-	rawFuncLog = &logutil.RawFuncLog{
-		ID:        logutil.RawFuncLogID(0x0a0000000000000a),
-		Tag:       "tag name",
-		Timestamp: logutil.Time(0x0b0000000000000b),
-		Frames: []logutil.FuncStatusID{
+	rawFuncLog = &types.RawFuncLog{
+		ID:        types.RawFuncLogID(0x0a0000000000000a),
+		Tag:       types.FuncEnd,
+		Timestamp: types.Time(0x0b0000000000000b),
+		Frames: []uintptr{
 			1, 2, 3,
 		},
-		GID:  logutil.GID(0x0c0000000000000c),
-		TxID: logutil.TxID(0x0d0000000000000d),
+		GID:  types.GID(0x0c0000000000000c),
+		TxID: types.TxID(0x0d0000000000000d),
 	}
 	rawFuncLogBytes = []byte{
 		// ID
 		0x0a, 0, 0, 0, 0, 0, 0, 0x0a,
-		// Tag: string len
-		0, 0, 0, 0, 0, 0, 0, 8,
-		// Tag: string body
-		0x74, 0x61, 0x67, 0x20, 0x6e, 0x61, 0x6d, 0x65,
+		// Tag: FuncEnd
+		1,
 		// Timestamp
 		0x0b, 0, 0, 0, 0, 0, 0, 0x0b,
 		// Frames: slice len
@@ -91,7 +74,7 @@ var (
 )
 
 func BenchmarkMarshalBool(b *testing.B) {
-	buf := make([]byte, packetBufferSize)
+	buf := make([]byte, DefaultMaxSmallPacketSize)
 	val := true
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
@@ -108,7 +91,7 @@ func BenchmarkUnmarshalBool(b *testing.B) {
 	b.StopTimer()
 }
 func BenchmarkMarshalUint64(b *testing.B) {
-	buf := make([]byte, packetBufferSize)
+	buf := make([]byte, DefaultMaxSmallPacketSize)
 	val := uint64(10)
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
@@ -125,7 +108,7 @@ func BenchmarkUnmarshalUint64(b *testing.B) {
 	b.StopTimer()
 }
 func BenchmarkMarshalString(b *testing.B) {
-	buf := make([]byte, packetBufferSize)
+	buf := make([]byte, DefaultMaxSmallPacketSize)
 	val := "test string"
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
@@ -146,62 +129,62 @@ func BenchmarkUnmarshalString(b *testing.B) {
 	}
 	b.StopTimer()
 }
-func BenchmarkMarshalFuncSymbol(b *testing.B) {
-	buf := make([]byte, packetBufferSize)
-	val := funcSymbol
+func BenchmarkMarshalGoFunc(b *testing.B) {
+	buf := make([]byte, DefaultMaxSmallPacketSize)
+	val := goFunc
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		marshalFuncSymbol(buf, val)
+		marshalGoFunc(buf, *val)
 	}
 	b.StopTimer()
 }
-func BenchmarkUnmarshalFuncSymbol(b *testing.B) {
-	buf := funcSymbolBytes
+func BenchmarkUnmarshalGoFunc(b *testing.B) {
+	buf := goFuncBytes
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		unmarshalFuncSymbol(buf)
+		unmarshalGoFunc(buf)
 	}
 	b.StopTimer()
 }
-func BenchmarkMarshalFuncStatus(b *testing.B) {
-	buf := make([]byte, packetBufferSize)
-	val := funcStatus
+func BenchmarkMarshalGoLine(b *testing.B) {
+	buf := make([]byte, DefaultMaxSmallPacketSize)
+	val := goLine
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		marshalFuncStatus(buf, val)
+		marshalGoLine(buf, *val)
 	}
 	b.StopTimer()
 }
-func BenchmarkUnmarshalFuncStatus(b *testing.B) {
-	buf := funcStatusBytes
+func BenchmarkUnmarshalGoLine(b *testing.B) {
+	buf := goLineBytes
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		unmarshalFuncStatus(buf)
+		unmarshalGoLine(buf)
 	}
 	b.StopTimer()
 }
-func BenchmarkMarshalFuncStatusIDSlice(b *testing.B) {
-	buf := make([]byte, packetBufferSize)
-	val := []logutil.FuncStatusID{1, 2, 3, 4, 5, 6, 8, 9, 10}
+func BenchmarkMarshalGoLineIDSlice(b *testing.B) {
+	buf := make([]byte, DefaultMaxSmallPacketSize)
+	val := []uintptr{1, 2, 3, 4, 5, 6, 8, 9, 10}
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		marshalFuncStatusIDSlice(buf, val)
+		marshalUintptrSlice(buf, val)
 	}
 	b.StopTimer()
 }
-func BenchmarkUnmarshalFuncStatusIDSlice(b *testing.B) {
-	buf := make([]byte, packetBufferSize)
-	n := marshalFuncStatusIDSlice(buf, []logutil.FuncStatusID{1, 2, 3, 4, 5, 6, 8, 9, 10})
+func BenchmarkUnmarshalGoLineIDSlice(b *testing.B) {
+	buf := make([]byte, DefaultMaxSmallPacketSize)
+	n := marshalUintptrSlice(buf, []uintptr{1, 2, 3, 4, 5, 6, 8, 9, 10})
 	buf = buf[:n]
 
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		unmarshalFuncStatus(buf)
+		unmarshalGoLine(buf)
 	}
 	b.StopTimer()
 }
 func BenchmarkMarshalRawFuncLog(b *testing.B) {
-	buf := make([]byte, packetBufferSize)
+	buf := make([]byte, DefaultMaxSmallPacketSize)
 	val := rawFuncLog
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
@@ -238,7 +221,7 @@ func TestUnmarshalBool(t *testing.T) {
 func TestMarshalUint64(t *testing.T) {
 	a := assert.New(t)
 	test := func(val uint64, b []byte) {
-		buf := make([]byte, packetBufferSize)
+		buf := make([]byte, DefaultMaxSmallPacketSize)
 		n := marshalUint64(buf, val)
 		buf = buf[:n]
 
@@ -264,7 +247,7 @@ func TestUnmarshalUint64(t *testing.T) {
 func TestMarshalString(t *testing.T) {
 	a := assert.New(t)
 	test := func(msg, s string, blen, bstr []byte) {
-		buf := make([]byte, packetBufferSize)
+		buf := make([]byte, DefaultMaxSmallPacketSize)
 		n := marshalString(buf, s)
 		buf = buf[:n]
 		a.Equal(blen, buf[:8], msg+": length field")
@@ -295,151 +278,121 @@ func TestUnmarshalString(t *testing.T) {
 		[]byte{0, 0, 0, 0, 0, 0, 0, 7},
 		[]byte{0x66, 0x6f, 0x6f, 0x20, 0x62, 0x61, 0x72})
 }
-func TestMarshalFuncSymbolSlice(t *testing.T) {
+func TestMarshalGoFuncSlice(t *testing.T) {
 	a := assert.New(t)
-	test := func(msg string, slice []*logutil.FuncSymbol, sliceLen, nonNilFlag, fsBytes []byte) {
-		buf := make([]byte, packetBufferSize)
-		n := marshalFuncSymbolSlice(buf, slice)
+	test := func(msg string, slice []types.GoFunc, sliceLen, golineBytes []byte) {
+		buf := make([]byte, DefaultMaxSmallPacketSize)
+		n := marshalGoFuncSlice(buf, slice)
 		buf = buf[:n]
 
 		a.Equal(sliceLen, buf[:8], msg+": length field")
-		if nonNilFlag == nil {
+		if golineBytes == nil {
 			return
 		}
-		a.Equal(nonNilFlag, buf[8:9], msg+": non-nil flag field")
-		if fsBytes == nil {
-			return
-		}
-		a.Equal(fsBytes, buf[9:], msg+": FuncSymbol field")
+		a.Equal(golineBytes, buf[8:], msg+": GoFunc field")
 	}
 
 	test("empty slice",
-		[]*logutil.FuncSymbol{},
+		[]types.GoFunc{},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 0},
-		nil, nil)
-	test("contains a nil item",
-		[]*logutil.FuncSymbol{nil},
+		nil)
+	test("contains a item",
+		[]types.GoFunc{*goFunc},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
-		[]byte{0}, nil)
-	test("contains a non-nil item",
-		[]*logutil.FuncSymbol{funcSymbol},
-		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
-		[]byte{1},
-		funcSymbolBytes)
+		goFuncBytes)
 }
-func TestUnmarshalFuncSymbolSlice(t *testing.T) {
+func TestUnmarshalGoFuncSlice(t *testing.T) {
 	a := assert.New(t)
-	test := func(msg string, expected []*logutil.FuncSymbol, sliceLen, nonNilFlag, fsBytes []byte) {
+	test := func(msg string, expected []types.GoFunc, sliceLen, gofuncBytes []byte) {
 		var buf bytes.Buffer
 		buf.Write(sliceLen)
-		buf.Write(nonNilFlag)
-		buf.Write(fsBytes)
-		actual, _ := unmarshalFuncSymbolSlice(buf.Bytes())
+		buf.Write(gofuncBytes)
+		actual, _ := unmarshalGoFuncSlice(buf.Bytes())
 		a.Equal(expected, actual, msg)
 	}
 
 	test("empty",
-		[]*logutil.FuncSymbol{},
+		[]types.GoFunc{},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 0},
-		nil, nil)
-	test("contains a nil item",
-		[]*logutil.FuncSymbol{nil},
+		nil)
+	test("contains a item",
+		[]types.GoFunc{*goFunc},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
-		[]byte{0}, nil)
-	test("contains a non-nil item",
-		[]*logutil.FuncSymbol{funcSymbol},
-		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
-		[]byte{1},
-		funcSymbolBytes)
+		goFuncBytes)
 }
-func TestMarshalFuncSymbol(t *testing.T) {
-	buf := make([]byte, packetBufferSize)
+func TestMarshalGoFunc(t *testing.T) {
+	buf := make([]byte, DefaultMaxSmallPacketSize)
 	a := assert.New(t)
 
-	n := marshalFuncSymbol(buf, funcSymbol)
+	n := marshalGoFunc(buf, *goFunc)
 	buf = buf[:n]
-	a.Equal(funcSymbolBytes, buf)
+	a.Equal(goFuncBytes, buf)
 }
-func TestUnmarshalFuncSymbol(t *testing.T) {
+func TestUnmarshalGoFunc(t *testing.T) {
 	a := assert.New(t)
 
-	s, _ := unmarshalFuncSymbol(funcSymbolBytes)
-	a.Equal(funcSymbol, s)
+	s, _ := unmarshalGoFunc(goFuncBytes)
+	a.Equal(*goFunc, s)
 }
-func TestMarshalFuncStatusSlice(t *testing.T) {
+func TestMarshalGoLineSlice(t *testing.T) {
 	a := assert.New(t)
-	test := func(msg string, slice []*logutil.FuncStatus, sliceLen, nonNilFlag, fsBytes []byte) {
-		buf := make([]byte, packetBufferSize)
-		n := marshalFuncStatusSlice(buf, slice)
+	test := func(msg string, slice []types.GoLine, sliceLen, golineBytes []byte) {
+		buf := make([]byte, DefaultMaxSmallPacketSize)
+		n := marshalGoLineSlice(buf, slice)
 		buf = buf[:n]
 
 		a.Equal(sliceLen, buf[:8], msg+": length field")
-		if nonNilFlag == nil {
+		if golineBytes == nil {
 			return
 		}
-		a.Equal(nonNilFlag, buf[8:9], msg+": non-nil flag field")
-		if fsBytes == nil {
-			return
-		}
-		a.Equal(fsBytes, buf[9:], msg+": FuncStatus field")
+		a.Equal(golineBytes, buf[8:], msg+": GoLine field")
 	}
 
 	test("empty slice",
-		[]*logutil.FuncStatus{},
+		[]types.GoLine{},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 0},
-		nil, nil)
-	test("contains a nil item",
-		[]*logutil.FuncStatus{nil},
+		nil)
+	test("contains a item",
+		[]types.GoLine{*goLine},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
-		[]byte{0}, nil)
-	test("contains a non-nil item",
-		[]*logutil.FuncStatus{funcStatus},
-		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
-		[]byte{1},
-		funcStatusBytes)
+		goLineBytes)
 }
-func TestUnmarshalFuncStatusSlice(t *testing.T) {
+func TestUnmarshalGoLineSlice(t *testing.T) {
 	a := assert.New(t)
-	test := func(msg string, expected []*logutil.FuncStatus, sliceLen, nonNilFlag, fsBytes []byte) {
+	test := func(msg string, expected []types.GoLine, sliceLen, golineBytes []byte) {
 		var buf bytes.Buffer
 		buf.Write(sliceLen)
-		buf.Write(nonNilFlag)
-		buf.Write(fsBytes)
+		buf.Write(golineBytes)
 
-		actual, _ := unmarshalFuncStatusSlice(buf.Bytes())
+		actual, _ := unmarshalGoLineSlice(buf.Bytes())
 		a.Equal(expected, actual, msg)
 	}
 
 	test("empty",
-		[]*logutil.FuncStatus{},
+		[]types.GoLine{},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 0},
-		nil, nil)
-	test("contains a nil item",
-		[]*logutil.FuncStatus{nil},
+		nil)
+	test("contains item",
+		[]types.GoLine{*goLine},
 		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
-		[]byte{0}, nil)
-	test("contains a non-nil item",
-		[]*logutil.FuncStatus{funcStatus},
-		[]byte{0, 0, 0, 0, 0, 0, 0, 1},
-		[]byte{1},
-		funcStatusBytes)
+		goLineBytes)
 }
-func TestMarshalFuncStatus(t *testing.T) {
-	buf := make([]byte, packetBufferSize)
+func TestMarshalGoLine(t *testing.T) {
+	buf := make([]byte, DefaultMaxSmallPacketSize)
 	a := assert.New(t)
 
-	n := marshalFuncStatus(buf, funcStatus)
+	n := marshalGoLine(buf, *goLine)
 	buf = buf[:n]
-	a.Equal(funcStatusBytes, buf)
+	a.Equal(goLineBytes, buf)
 }
-func TestUnmarshalFuncStatus(t *testing.T) {
+func TestUnmarshalGoLine(t *testing.T) {
 	a := assert.New(t)
 
-	fs, _ := unmarshalFuncStatus(funcStatusBytes)
-	a.Equal(funcStatus, fs)
+	fs, _ := unmarshalGoLine(goLineBytes)
+	a.Equal(*goLine, fs)
 }
 func TestMarshalRawFuncLog(t *testing.T) {
-	buf := make([]byte, packetBufferSize)
+	buf := make([]byte, DefaultMaxSmallPacketSize)
 	a := assert.New(t)
 
 	n := marshalRawFuncLog(buf, rawFuncLog)

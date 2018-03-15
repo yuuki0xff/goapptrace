@@ -5,11 +5,11 @@ import (
 	"io"
 	"log"
 
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 	"github.com/yuuki0xff/xtcp"
 )
 
-type PacketType uint64
+type PacketType uint8
 
 const (
 	fakePacketType = PacketType(iota)
@@ -88,12 +88,19 @@ type Marshalable interface {
 	Marshal(buf []byte) int64
 	Unmarshal(buf []byte) int64
 }
+type SizePredictable interface {
+	// PacketSize returns encoded byte size.
+	PacketSize() int64
+}
+type DirectWritable interface {
+	WriteTo(w io.Writer) (int64, error)
+}
 
 func (p PacketType) Marshal(buf []byte) int64 {
-	return marshalUint64(buf, uint64(p))
+	return marshalUint8(buf, uint8(p))
 }
 func (p *PacketType) Unmarshal(buf []byte) int64 {
-	val, n := unmarshalUint64(buf)
+	val, n := unmarshalUint8(buf)
 	*p = PacketType(val)
 	return n
 }
@@ -129,6 +136,20 @@ func (p *MergePacket) WriteTo(w io.Writer) (int64, error) {
 		p.size = 0
 	}
 	return int64(n), err
+}
+
+// 巨大なパケットをMergePacketにラップして返す。
+// 巨大なパケットを通常の方法でmp.Merge()すると範囲外アクセスでパニックする。この問題を解消するために使用する。
+// pは直ぐにmarshalされるため、この関数の実行終了後にpを再利用することが出来る。
+func marshalLargePacket(proto ProtoInterface, p xtcp.Packet) *MergePacket {
+	mp := &MergePacket{
+		Proto: proto,
+		// パケットをエンコードするとヘッダーが追加される。
+		// ヘッダーのサイズ分だけバッファを大きくする。
+		BufferSize: int(p.(SizePredictable).PacketSize()) + PacketHeaderSize,
+	}
+	mp.Merge(p)
+	return mp
 }
 
 // fakePacket is a mock of xtcp.Packet.
@@ -217,19 +238,19 @@ type PingPacket struct{}
 type ShutdownPacket struct{}
 
 type StartTraceCmdPacket struct {
-	FuncID     logutil.FuncID
+	FuncEntry  uintptr
 	ModuleName string
 }
 type StopTraceCmdPacket struct {
-	FuncID     logutil.FuncID
+	FuncEntry  uintptr
 	ModuleName string
 }
 
 type SymbolPacket struct {
-	logutil.SymbolsData
+	types.SymbolsData
 }
 type RawFuncLogPacket struct {
-	FuncLog *logutil.RawFuncLog
+	FuncLog *types.RawFuncLog
 }
 
 func (p LogPacket) String() string           { return "<LogPacket>" }
@@ -254,14 +275,14 @@ func (p *ShutdownPacket) Marshal(buf []byte) int64   { return 0 }
 func (p *ShutdownPacket) Unmarshal(buf []byte) int64 { return 0 }
 
 func (p *StartTraceCmdPacket) Marshal(buf []byte) int64 {
-	total := marshalFuncID(buf, p.FuncID)
+	total := marshalUintptr(buf, p.FuncEntry)
 	total += marshalString(buf[total:], p.ModuleName)
 	return total
 }
 func (p *StartTraceCmdPacket) Unmarshal(buf []byte) int64 {
 	var total int64
 	var n int64
-	p.FuncID, n = unmarshalFuncID(buf)
+	p.FuncEntry, n = unmarshalUintptr(buf)
 	total += n
 	p.ModuleName, n = unmarshalString(buf[total:])
 	total += n
@@ -269,14 +290,14 @@ func (p *StartTraceCmdPacket) Unmarshal(buf []byte) int64 {
 }
 
 func (p *StopTraceCmdPacket) Marshal(buf []byte) int64 {
-	total := marshalFuncID(buf, p.FuncID)
+	total := marshalUintptr(buf, p.FuncEntry)
 	total += marshalString(buf[total:], p.ModuleName)
 	return total
 }
 func (p *StopTraceCmdPacket) Unmarshal(buf []byte) int64 {
 	var total int64
 	var n int64
-	p.FuncID, n = unmarshalFuncID(buf)
+	p.FuncEntry, n = unmarshalUintptr(buf)
 	total += n
 	p.ModuleName, n = unmarshalString(buf)
 	total += n
@@ -284,17 +305,30 @@ func (p *StopTraceCmdPacket) Unmarshal(buf []byte) int64 {
 }
 
 func (p *SymbolPacket) Marshal(buf []byte) int64 {
-	total := marshalFuncSymbolSlice(buf, p.Funcs)
-	total += marshalFuncStatusSlice(buf[total:], p.FuncStatus)
+	total := marshalStringSlice(buf, p.Files)
+	total += marshalGoModuleSlice(buf[total:], p.Mods)
+	total += marshalGoFuncSlice(buf[total:], p.Funcs)
+	total += marshalGoLineSlice(buf[total:], p.Lines)
 	return total
 }
 func (p *SymbolPacket) Unmarshal(buf []byte) int64 {
 	var total int64
 	var n int64
-	p.Funcs, n = unmarshalFuncSymbolSlice(buf)
+	p.Files, n = unmarshalStringSlice(buf)
 	total += n
-	p.FuncStatus, n = unmarshalFuncStatusSlice(buf)
+	p.Mods, n = unmarshalGoModuleSlice(buf[total:])
 	total += n
+	p.Funcs, n = unmarshalGoFuncSlice(buf[total:])
+	total += n
+	p.Lines, n = unmarshalGoLineSlice(buf[total:])
+	total += n
+	return total
+}
+func (p *SymbolPacket) PacketSize() int64 {
+	total := sizeStringSlice(p.Files)
+	total += sizeGoModuleSlice(p.Mods)
+	total += sizeGoFuncSlice(p.Funcs)
+	total += sizeGoLineSlice(p.Lines)
 	return total
 }
 

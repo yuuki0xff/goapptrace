@@ -4,14 +4,12 @@ import (
 	"context"
 	"log"
 	"sort"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/marcusolsson/tui-go"
-	"github.com/yuuki0xff/goapptrace/config"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -21,13 +19,11 @@ const (
 )
 
 type LogRecordState struct {
-	// todo
 	State      LRState
 	Error      error
-	Records    []restapi.FuncCall
-	FsMap      map[logutil.FuncStatusID]restapi.FuncStatusInfo
-	FMap       map[logutil.FuncID]restapi.FuncInfo
-	SelectedID logutil.FuncLogID
+	Records    []types.FuncLog
+	SelectedID types.FuncLogID
+	Symbols    *types.Symbols
 }
 type LogRecordStateMutable LogRecordState
 
@@ -45,15 +41,14 @@ func (vm *LogRecordVM) UpdateInterval() time.Duration {
 	return 0
 }
 func (vm *LogRecordVM) Update(ctx context.Context) {
-	records, fsMap, fMap, err := vm.fetch()
+	records, symbols, err := vm.fetch()
 
 	vm.m.Lock()
 	vm.view = nil
 	vm.state.State = LRWait
 	vm.state.Error = err
 	vm.state.Records = records
-	vm.state.FsMap = fsMap
-	vm.state.FMap = fMap
+	vm.state.Symbols = symbols
 	vm.m.Unlock()
 
 	vm.Root.NotifyVMUpdated()
@@ -71,41 +66,26 @@ func (vm *LogRecordVM) View() View {
 	return vm.view
 }
 func (vm *LogRecordVM) fetch() (
-	records []restapi.FuncCall,
-	fsMap map[logutil.FuncStatusID]restapi.FuncStatusInfo,
-	fMap map[logutil.FuncID]restapi.FuncInfo,
+	records []types.FuncLog,
+	symbols *types.Symbols,
 	err error,
 ) {
-	var ch chan restapi.FuncCall
-	records = make([]restapi.FuncCall, 0, 10000)
-	ch, err = vm.Client.SearchFuncCalls(vm.LogID, restapi.SearchFuncCallParams{
-		Limit:     fetchRecords,
-		SortKey:   restapi.SortByEndTime,
-		SortOrder: restapi.DescendingSortOrder,
-	})
-	if err != nil {
-		return
-	}
-
 	var eg errgroup.Group
 
-	// バックグラウンドでmetadataを取得するworkerへのリクエストを入れるチャンネル
-	reqCh := make(chan logutil.FuncStatusID, 10000)
-	// キャッシュ用。アクセスする前に必ずlockをすること。
-	fsMap = make(map[logutil.FuncStatusID]restapi.FuncStatusInfo, 10000)
-	fMap = make(map[logutil.FuncID]restapi.FuncInfo, 10000)
-	var lock sync.Mutex
-
+	// get records
 	eg.Go(func() error {
-		// FuncCalls apiのレスポンスを受け取る
+		records = make([]types.FuncLog, 0, 10000)
+		ch, err := vm.Client.SearchFuncLogs(vm.LogID, restapi.SearchFuncLogParams{
+			Limit:     fetchRecords,
+			SortKey:   restapi.SortByEndTime,
+			SortOrder: restapi.DescendingSortOrder,
+		})
+		if err != nil {
+			return err
+		}
 		for fc := range ch {
 			records = append(records, fc)
-
-			// metadata取得要求を出す
-			currentFrame := fc.Frames[0]
-			reqCh <- currentFrame
 		}
-		close(reqCh)
 
 		// 開始時刻が新しい順に並び替える
 		sort.Slice(records, func(i, j int) bool {
@@ -113,44 +93,12 @@ func (vm *LogRecordVM) fetch() (
 		})
 		return nil
 	})
+	eg.Go(func() error {
+		var err error
+		symbols, err = vm.Client.Symbols(vm.LogID)
+		return err
+	})
 
-	// メタデータを取得するワーカを起動する
-	for i := 0; i < APIConnections; i++ {
-		eg.Go(func() (err error) {
-			for id := range reqCh {
-				// FuncStatusInfoを取得する
-				lock.Lock()
-				_, ok := fsMap[id]
-				lock.Unlock()
-				if ok {
-					continue
-				}
-				var fs restapi.FuncStatusInfo
-				fs, err = vm.Client.FuncStatus(vm.LogID, strconv.Itoa(int(id)))
-				if err != nil {
-					return
-				}
-				lock.Lock()
-				fsMap[id] = fs
-
-				// FuncInfoを取得する
-				_, ok = fMap[fs.Func]
-				lock.Unlock()
-				if ok {
-					continue
-				}
-				var fi restapi.FuncInfo
-				fi, err = vm.Client.Func(vm.LogID, strconv.Itoa(int(fs.Func)))
-				if err != nil {
-					return
-				}
-				lock.Lock()
-				fMap[fs.Func] = fi
-				lock.Unlock()
-			}
-			return
-		})
-	}
 	err = eg.Wait()
 	return
 }
@@ -158,14 +106,14 @@ func (vm *LogRecordVM) onUnselectedLog() {
 	// LogIDを指定しない状態に戻す。
 	vm.Root.SetState(UIState{})
 }
-func (vm *LogRecordVM) onActivatedRecord(record restapi.FuncCall) {
+func (vm *LogRecordVM) onActivatedRecord(record types.FuncLog) {
 	vm.Root.SetState(UIState{
 		LogID:    vm.LogID,
 		RecordID: record.ID,
 		Record:   record,
 	})
 }
-func (vm *LogRecordVM) onSelectionChanged(id logutil.FuncLogID) {
+func (vm *LogRecordVM) onSelectionChanged(id types.FuncLogID) {
 	vm.m.Lock()
 	vm.view = nil
 	vm.state.SelectedID = id
@@ -299,17 +247,14 @@ func (v *LogRecordView) newRecordTable() *headerTable {
 	}
 	records := v.Records[:n]
 	for _, fc := range records {
-		currentFrame := fc.Frames[0]
-
-		fs := v.FsMap[currentFrame]
-		fi := v.FMap[fs.Func]
+		pc := fc.Frames[0]
 		execTime := fc.EndTime - fc.StartTime
 
 		t.AppendRow(
-			tui.NewLabel(fc.StartTime.UnixTime().Format(config.TimestampFormat)),
-			tui.NewLabel(strconv.Itoa(int(execTime))),
-			tui.NewLabel(strconv.Itoa(int(fc.GID))),
-			tui.NewLabel(fi.Name+":"+strconv.Itoa(int(fs.Line))),
+			tui.NewLabel(fc.StartTime.String()),
+			tui.NewLabel(execTime.NumberString()),
+			tui.NewLabel(fc.GID.String()),
+			tui.NewLabel(v.Symbols.FileLine(pc)),
 		)
 	}
 

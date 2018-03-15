@@ -36,7 +36,8 @@ func IterateSymbols(
 		// ftab is lookup table for function by program counter.
 		// moduledataverify1 skips last item of ftab. what is last item???
 		nftab := len(datap.ftab) - 1
-		for fidx, ft := range datap.ftab[:nftab] {
+		for fidx := 0; fidx < nftab; fidx++ {
+			ft := datap.ftab[fidx]
 			log.Println("functab: entry=", ft.entry, " funcoff=", ft.funcoff)
 
 			if ft.entry < datap.minpc && datap.maxpc < ft.entry {
@@ -45,7 +46,6 @@ func IterateSymbols(
 				log.Println("\t", datap.minpc, " <= ", ft.entry, " <= ", datap.maxpc)
 				log.Println()
 				log.Fatal("invalid functab")
-				*(*int)(nil) = 0 // not reached
 			}
 
 			fp := unsafe.Pointer(&datap.pclntable[ft.funcoff])
@@ -54,11 +54,10 @@ func IterateSymbols(
 			fi := funcInfo{rawfn, datap}
 			if !fi.valid() {
 				log.Fatal("runtime.iterateSymbols: invalid funcInfo")
-				*(*int)(nil) = 0 // not reached
 			}
 			log.Println("_func: ", unsafe.Pointer(rawfn))
 			log.Println("\tentry=", rawfn.entry)
-			log.Println("\tnameoff=", rawfn.nameoff)
+			log.Println("\tnameoff=", rawfn.nameoff, " name=", funcname(fi))
 			log.Println("\targs=", rawfn.args)
 			log.Println("\tpcsp=", rawfn.pcsp)
 			log.Println("\tpcfile=", rawfn.pcfile)
@@ -66,23 +65,49 @@ func IterateSymbols(
 			log.Println("\tnpcdata=", rawfn.npcdata)
 			log.Println("\tnfuncdata=", rawfn.nfuncdata)
 
+			if *rawfn == (_func{}) {
+				log.Fatal("invalid functab")
+			} else if rawfn.entry != 0 && rawfn.nameoff != 0 && rawfn.args == 0 && rawfn.pcsp == 0 && rawfn.pcfile == 0 && rawfn.pcln == 0 && rawfn.npcdata == 0 && rawfn.nfuncdata == 0 {
+				funcname := funcname(fi)
+				if len(funcname) >= 7 && funcname[len(funcname)-7:] == "(.text)" {
+					// TODO: What is this functab??  What is this for??
+					// next functab seems the cgo function. Also, this and next functab seem to have the same entry point.
+
+					// validation
+					if fidx+1 >= nftab {
+						// this is last function in this module.
+						log.Fatal("missing next functab")
+					}
+					if ft.entry != datap.ftab[fidx+1].entry {
+						log.Println("current ftab.entry=", ft.entry)
+						log.Println("   next ftab.entry=", datap.ftab[fidx+1].entry)
+						log.Fatal("mismatch entry point")
+					}
+				} else if len(funcname) >= 5 && funcname[:5] == "_cgo_" {
+					// cgo function
+				} else {
+					// it is probably the built-in function
+				}
+
+				continue
+			}
+
 			pclns, lines := pcvalueIterate(log, fi, rawfn.pcln, rawfn.entry, strict)
 			if len(pclns) == 0 || len(lines) == 0 {
 				// invalid
 				log.Println()
 				log.Println("runtime.iterateSymbols: invalid state")
-				log.Println("midx=", midx, " len(modules)=", len(modules), )
-				log.Println("fidx=", fidx, " len(ftab)=", len(datap.ftab))
+				log.Println("\tmidx=", midx, " len(modules)=", len(modules), )
+				log.Println("\tfidx=", fidx, " len(ftab)=", len(datap.ftab))
+				log.Println("\tlen(pclns)=", len(pclns), " len(lines)=", len(lines))
 				log.Println()
 				log.Fatal("runtime.iterateSymbols: invalid state")
-				*(*int)(nil) = 0 // not reached
 			}
 			if len(pclns) != len(lines) {
 				log.Println()
 				log.Println("runtime.iterateSymbols: mismatch length: len(pclns)=", len(pclns), " len(lines)=", len(lines))
 				log.Println()
 				log.Fatal("mismatch length")
-				*(*int)(nil) = 0 // not reached
 			}
 
 			funcname := funcname(fi)
@@ -175,8 +200,6 @@ func pcvalueIterate(log *_GAT_SilentLog, f funcInfo, off int32, targetpc uintptr
 	return
 }
 
-
-
 type _GAT_SilentLog struct {
 	m    mutex
 	logs []interface{}
@@ -229,11 +252,11 @@ func (l *_GAT_SilentLog) Show() {
 }
 
 func (l *_GAT_SilentLog) Fatal(s string) {
-	if l == nil {
-		return
+	if l != nil {
+		l.Show()
 	}
-	l.Show()
 	throw(s)
+	*(*int)(nil) = 0 // not reached
+	return
 }
 `
-

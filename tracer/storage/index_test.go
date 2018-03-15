@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 	"github.com/yuuki0xff/goapptrace/tracer/util"
 )
 
@@ -15,19 +15,19 @@ func TestIndex(t *testing.T) {
 		file := File(tmpfile)
 		records := []IndexRecord{
 			{
-				Timestamp: logutil.NewTime(time.Unix(10, 0)),
+				Timestamp: types.NewTime(time.Unix(10, 0)),
 				Records:   10,
 			}, {
-				Timestamp: logutil.NewTime(time.Unix(30, 0)),
+				Timestamp: types.NewTime(time.Unix(30, 0)),
 				Records:   20,
 			}, {
-				Timestamp: logutil.NewTime(time.Unix(50, 0)),
+				Timestamp: types.NewTime(time.Unix(50, 0)),
 				Records:   15,
 			}, {
-				Timestamp: logutil.NewTime(time.Unix(90, 0)),
+				Timestamp: types.NewTime(time.Unix(90, 0)),
 				Records:   5,
 			}, {
-				Timestamp: logutil.NewTime(time.Unix(110, 0)),
+				Timestamp: types.NewTime(time.Unix(110, 0)),
 				Records:   50,
 			},
 		}

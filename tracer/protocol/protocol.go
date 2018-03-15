@@ -11,6 +11,10 @@ import (
 
 const (
 	ProtocolVersion = "1"
+
+	// パケットをエンコードすることにより増加するバイト数。
+	// 内約は、パケットサイズ(4byte)+HeaderPacket(1byte)
+	PacketHeaderSize = 5
 )
 
 // isCompatibleVersion returns true if "version" has compatibility of current version

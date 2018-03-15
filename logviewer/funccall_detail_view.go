@@ -9,55 +9,57 @@ import (
 
 	"github.com/marcusolsson/tui-go"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 	"golang.org/x/sync/errgroup"
 )
 
-type FuncCallDetailState struct {
-	State  FCDState
-	Error  error
-	FSList []restapi.FuncStatusInfo
-	FList  []restapi.FuncInfo
-	Record restapi.FuncCall
+type FuncLogDetailState struct {
+	State FCDState
+	Error error
+
+	Record types.FuncLog
+	Mods   []types.GoModule
+	Funcs  []types.GoFunc
+	Lines  []types.GoLine
 }
-type FuncCallDetailStateMutable FuncCallDetailState
-type FuncCallDetailVM struct {
+type FuncLogDetailStateMutable FuncLogDetailState
+type FuncLogDetailVM struct {
 	Root   Coordinator
 	Client restapi.ClientWithCtx
 	LogID  string
-	Record restapi.FuncCall
+	Record types.FuncLog
 
 	m     sync.Mutex
-	view  *FuncCallDetailView
-	state FuncCallDetailStateMutable
+	view  *FuncLogDetailView
+	state FuncLogDetailStateMutable
 
 	updateOnce sync.Once
 }
 
-func (vm *FuncCallDetailVM) UpdateInterval() time.Duration {
+func (vm *FuncLogDetailVM) UpdateInterval() time.Duration {
 	return 0
 }
-func (vm *FuncCallDetailVM) Update(ctx context.Context) {
+func (vm *FuncLogDetailVM) Update(ctx context.Context) {
 	vm.updateOnce.Do(func() {
 		length := len(vm.Record.Frames)
-		fsList := make([]restapi.FuncStatusInfo, length)
-		fList := make([]restapi.FuncInfo, length)
+		mods := make([]types.GoModule, length)
+		funcs := make([]types.GoFunc, length)
+		lines := make([]types.GoLine, length)
 
 		var eg errgroup.Group
 		fetch := func(i int) {
-			eg.Go(func() error {
-				fsid := vm.Record.Frames[i]
-				fs, err := vm.Client.FuncStatus(vm.LogID, strconv.Itoa(int(fsid)))
-				if err != nil {
-					return err
-				}
-				fi, err := vm.Client.Func(vm.LogID, strconv.Itoa(int(fs.Func)))
-				if err != nil {
-					return err
-				}
-
-				fsList[i] = fs
-				fList[i] = fi
-				return nil
+			pc := vm.Record.Frames[i]
+			eg.Go(func() (err error) {
+				mods[i], err = vm.Client.GoModule(vm.LogID, pc)
+				return
+			})
+			eg.Go(func() (err error) {
+				funcs[i], err = vm.Client.GoFunc(vm.LogID, pc)
+				return
+			})
+			eg.Go(func() (err error) {
+				lines[i], err = vm.Client.GoLine(vm.LogID, pc)
+				return
 			})
 		}
 		for i := range vm.Record.Frames {
@@ -69,48 +71,50 @@ func (vm *FuncCallDetailVM) Update(ctx context.Context) {
 		vm.view = nil
 		vm.state.State = FCDWait
 		vm.state.Error = err
+		vm.state.Record = vm.Record
 		if err == nil {
 			// no error
-			vm.state.FSList = fsList
-			vm.state.FList = fList
+			vm.state.Mods = mods
+			vm.state.Funcs = funcs
+			vm.state.Lines = lines
 		} else {
-			vm.state.FSList = nil
-			vm.state.FList = nil
+			vm.state.Mods = nil
+			vm.state.Funcs = nil
+			vm.state.Lines = nil
 		}
-		vm.state.Record = vm.Record
 		vm.m.Unlock()
 
 		vm.Root.NotifyVMUpdated()
 	})
 }
-func (vm *FuncCallDetailVM) View() View {
+func (vm *FuncLogDetailVM) View() View {
 	vm.m.Lock()
 	defer vm.m.Unlock()
 
 	if vm.view == nil {
-		vm.view = &FuncCallDetailView{
-			VM:                  vm,
-			FuncCallDetailState: FuncCallDetailState(vm.state),
+		vm.view = &FuncLogDetailView{
+			VM:                 vm,
+			FuncLogDetailState: FuncLogDetailState(vm.state),
 		}
 	}
 	return vm.view
 }
-func (vm *FuncCallDetailVM) onUnselectedRecord(logID string) {
+func (vm *FuncLogDetailVM) onUnselectedRecord(logID string) {
 	vm.Root.SetState(UIState{
 		LogID: logID,
 	})
 }
 
-type FuncCallDetailView struct {
-	VM *FuncCallDetailVM
-	FuncCallDetailState
+type FuncLogDetailView struct {
+	VM *FuncLogDetailVM
+	FuncLogDetailState
 
 	initOnce sync.Once
 	widget   tui.Widget
 	fc       tui.FocusChain
 }
 
-func (v *FuncCallDetailView) init() {
+func (v *FuncLogDetailView) init() {
 	switch v.State {
 	case FCDLoading:
 		space := tui.NewSpacer()
@@ -133,7 +137,7 @@ func (v *FuncCallDetailView) init() {
 		} else {
 			fcInfo := tui.NewVBox(
 				tui.NewLabel("Func Info:"),
-				v.newFuncInfoTable(),
+				v.newGoFuncTable(),
 			)
 
 			framesInfo := tui.NewVBox(
@@ -155,11 +159,11 @@ func (v *FuncCallDetailView) init() {
 		log.Panic("bug")
 	}
 }
-func (v *FuncCallDetailView) Widget() tui.Widget {
+func (v *FuncLogDetailView) Widget() tui.Widget {
 	v.initOnce.Do(v.init)
 	return v.widget
 }
-func (v *FuncCallDetailView) Keybindings() map[string]func() {
+func (v *FuncLogDetailView) Keybindings() map[string]func() {
 	v.initOnce.Do(v.init)
 	unselect := func() {
 		v.VM.onUnselectedRecord(v.VM.LogID)
@@ -169,23 +173,23 @@ func (v *FuncCallDetailView) Keybindings() map[string]func() {
 		"h":    unselect,
 	}
 }
-func (v *FuncCallDetailView) FocusChain() tui.FocusChain {
+func (v *FuncLogDetailView) FocusChain() tui.FocusChain {
 	v.initOnce.Do(v.init)
 	return v.fc
 }
-func (v *FuncCallDetailView) onSelectedFilter(funcInfoTable *tui.Table) {
+func (v *FuncLogDetailView) onSelectedFilter(funcInfoTable *tui.Table) {
 	if funcInfoTable.Selected() <= 0 {
 		return
 	}
 	log.Panic("not implemented")
 }
-func (v *FuncCallDetailView) onSelectedFrame(framesTable *tui.Table) {
+func (v *FuncLogDetailView) onSelectedFrame(framesTable *tui.Table) {
 	if framesTable.Selected() <= 0 {
 		return
 	}
 	log.Panic("not implemented")
 }
-func (v *FuncCallDetailView) newFuncInfoTable() *headerTable {
+func (v *FuncLogDetailView) newGoFuncTable() *headerTable {
 	t := newHeaderTable(
 		tui.NewLabel("Name"),
 		tui.NewLabel("Value"),
@@ -198,7 +202,7 @@ func (v *FuncCallDetailView) newFuncInfoTable() *headerTable {
 	)
 	return t
 }
-func (v *FuncCallDetailView) newFramesTable() *headerTable {
+func (v *FuncLogDetailView) newFramesTable() *headerTable {
 	t := newHeaderTable(
 		tui.NewLabel("Name"),
 		tui.NewLabel("Line"),
@@ -209,18 +213,16 @@ func (v *FuncCallDetailView) newFramesTable() *headerTable {
 	t.SetColumnStretch(1, 1)
 	t.SetColumnStretch(2, 3)
 
-	for i := range v.FSList {
-		fs := v.FSList[i]
-		fi := v.FList[i]
+	for i := range v.Record.Frames {
 		t.AppendRow(
-			tui.NewLabel(fi.Name),
-			tui.NewLabel(strconv.Itoa(int(fs.Line))),
-			tui.NewLabel("("+strconv.Itoa(int(fs.PC))+")"),
+			tui.NewLabel(v.Funcs[i].Name),
+			tui.NewLabel(strconv.FormatUint(uint64(v.Lines[i].Line), 10)),
+			tui.NewLabel("("+strconv.FormatUint(uint64(v.Record.Frames[i]), 10)+")"),
 		)
 	}
 	return t
 }
-func (v *FuncCallDetailView) newStatusBar(text string) *tui.StatusBar {
+func (v *FuncLogDetailView) newStatusBar(text string) *tui.StatusBar {
 	s := tui.NewStatusBar(LoadingText)
 	s.SetPermanentText("Function Call Detail")
 	s.SetText(text)

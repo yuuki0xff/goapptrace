@@ -10,12 +10,13 @@ import (
 
 	"github.com/marcusolsson/tui-go"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 type LogListState struct {
 	State      LLState
 	Error      error
-	Logs       []restapi.LogStatus
+	Logs       []types.LogInfo
 	SelectedID string
 }
 type LogListStateMutable LogListState
@@ -186,7 +187,7 @@ func (v *LogListView) newStatusBar(text string) *tui.StatusBar {
 	return s
 }
 
-func (v *LogListView) newLogTable(logs []restapi.LogStatus) *headerTable {
+func (v *LogListView) newLogTable(logs []types.LogInfo) *headerTable {
 	t := newHeaderTable(
 		tui.NewLabel("Status"),
 		tui.NewLabel("LogID"),

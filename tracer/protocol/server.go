@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 	"github.com/yuuki0xff/xtcp"
 )
 
@@ -28,8 +28,8 @@ type ServerHandler struct {
 
 	Error func(id ConnID, err error)
 
-	Symbols    func(id ConnID, diff *logutil.SymbolsData)
-	RawFuncLog func(id ConnID, funclog *logutil.RawFuncLog)
+	Symbols    func(id ConnID, diff *types.SymbolsData)
+	RawFuncLog func(id ConnID, funclog *types.RawFuncLog)
 }
 
 // SetDefault sets "fn" to all nil fields.
@@ -50,12 +50,12 @@ func (sh ServerHandler) SetDefault(fn func(field string)) ServerHandler {
 		}
 	}
 	if sh.Symbols == nil {
-		sh.Symbols = func(id ConnID, diff *logutil.SymbolsData) {
+		sh.Symbols = func(id ConnID, diff *types.SymbolsData) {
 			fn("Symbols")
 		}
 	}
 	if sh.RawFuncLog == nil {
-		sh.RawFuncLog = func(id ConnID, funclog *logutil.RawFuncLog) {
+		sh.RawFuncLog = func(id ConnID, funclog *types.RawFuncLog) {
 			fn("RawFuncLog")
 		}
 	}
@@ -79,10 +79,10 @@ type Server struct {
 	Addr    string
 	Handler ServerHandler
 
-	AppName         string
-	Secret          string
-	MaxBufferedMsgs int
-	PingInterval    time.Duration
+	AppName      string
+	Secret       string
+	PingInterval time.Duration
+	BufferOpt    BufferOption
 
 	listener net.Listener
 	wg       sync.WaitGroup
@@ -111,17 +111,16 @@ type ServerConn struct {
 
 func (s *Server) init() error {
 	s.initOnce.Do(func() {
-		if s.MaxBufferedMsgs <= 0 {
-			s.MaxBufferedMsgs = DefaultMaxBufferedMsgs
-		}
 		if s.PingInterval == time.Duration(0) {
 			s.PingInterval = DefaultPingInterval
 		}
+		s.BufferOpt.SetDefault()
 		s.connIDMap = map[*xtcp.Conn]ConnID{}
 		s.connMap = map[ConnID]*ServerConn{}
 
 		prt := &Proto{}
 		s.opt = xtcp.NewOpts(s, prt)
+		s.BufferOpt.Xtcp.Set(s.opt)
 		s.xtcpsrv = xtcp.NewServer(s.opt)
 	})
 	return nil

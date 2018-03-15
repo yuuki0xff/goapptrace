@@ -32,10 +32,11 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/httpserver"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/protocol"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
+	"github.com/yuuki0xff/goapptrace/tracer/simulator"
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 const (
@@ -87,7 +88,7 @@ func runServerRun(conf *config.Config, stdout io.Writer, stderr io.Writer, apiAd
 		logAddr = config.DefaultLogServerAddr
 	}
 
-	simulatorStore := logutil.StateSimulatorStore{}
+	simulatorStore := simulator.StateSimulatorStore{}
 
 	// start API Server
 	apiSrv := httpserver.NewHttpServer(apiAddr, restapi.NewRouter(restapi.RouterArgs{
@@ -171,7 +172,7 @@ func init() {
 	serverRunCmd.Flags().StringP("listen-log", "P", "", "Address and port for Log Server")
 }
 
-func getServerHandler(strg *storage.Storage, store *logutil.StateSimulatorStore) protocol.ServerHandler {
+func getServerHandler(strg *storage.Storage, store *simulator.StateSimulatorStore) protocol.ServerHandler {
 	// workerとの通信用。
 	// close()されたら、workerは終了するべき。
 	chMap := make(map[protocol.ConnID]chan interface{})
@@ -216,13 +217,13 @@ func getServerHandler(strg *storage.Storage, store *logutil.StateSimulatorStore)
 
 		for rawobj := range ch {
 			switch obj := rawobj.(type) {
-			case *logutil.RawFuncLog:
+			case *types.RawFuncLog:
 				if err := logobj.AppendRawFuncLog(obj); err != nil {
 					log.Panicln("failed to append RawFuncLog:", err.Error())
 				}
 				ss.Next(*obj)
-			case *logutil.SymbolsData:
-				if err := logobj.AppendSymbolsDiff(obj); err != nil {
+			case *types.SymbolsData:
+				if err := logobj.SetSymbolsData(obj); err != nil {
 					log.Panicln("failed to append Symbols:", err.Error())
 				}
 			default:
@@ -253,12 +254,12 @@ func getServerHandler(strg *storage.Storage, store *logutil.StateSimulatorStore)
 		Error: func(id protocol.ConnID, err error) {
 			log.Printf("ERROR: Server: connID=%d err=%s", id, err.Error())
 		},
-		Symbols: func(id protocol.ConnID, s *logutil.SymbolsData) {
+		Symbols: func(id protocol.ConnID, s *types.SymbolsData) {
 			chMapLock.RLock()
 			chMap[id] <- s
 			chMapLock.RUnlock()
 		},
-		RawFuncLog: func(id protocol.ConnID, f *logutil.RawFuncLog) {
+		RawFuncLog: func(id protocol.ConnID, f *types.RawFuncLog) {
 			chMapLock.RLock()
 			chMap[id] <- f
 			chMapLock.RUnlock()

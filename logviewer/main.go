@@ -71,7 +71,7 @@ func (c *UICoordinator) SetState(s UIState) {
 
 	if s.RecordID != 0 {
 		c.setVM(func(ctx context.Context) ViewModel {
-			return &FuncCallDetailVM{
+			return &FuncLogDetailVM{
 				Root:   c,
 				Client: c.Api.WithCtx(ctx),
 				LogID:  s.LogID,

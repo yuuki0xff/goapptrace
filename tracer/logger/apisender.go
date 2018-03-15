@@ -6,8 +6,8 @@ import (
 	"os"
 
 	"github.com/yuuki0xff/goapptrace/info"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/protocol"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 // LogServerSender sends Symbols and FuncLog to the log server
@@ -67,25 +67,24 @@ func (s *LogServerSender) Close() error {
 	return nil
 }
 
-// send Symbols and RawFuncLog to the log server.
-func (s *LogServerSender) Send(diff *logutil.SymbolsData, funclog *logutil.RawFuncLog) error {
+// send Symbols to the log server.
+func (s *LogServerSender) SendSymbols(data *types.SymbolsData) error {
+	// SymbolPacketは非常に大きくなる可能性が高いため、SendLargeを使って送信する。
+	return s.client.SendLarge(&protocol.SymbolPacket{
+		SymbolsData: *data,
+	})
+}
+
+// send RawFuncLog to the log server.
+func (s *LogServerSender) SendLog(raw *types.RawFuncLog) error {
 	if s.client == nil {
 		return ClosedError
 	}
 
-	if diff != nil {
-		if err := s.client.Send(&protocol.SymbolPacket{
-			SymbolsData: *diff,
-		}); err != nil {
-			return err
-		}
-	}
-	if funclog != nil {
-		if err := s.client.Send(&protocol.RawFuncLogPacket{
-			FuncLog: funclog,
-		}); err != nil {
-			return err
-		}
+	if err := s.client.Send(&protocol.RawFuncLogPacket{
+		FuncLog: raw,
+	}); err != nil {
+		return err
 	}
 	return nil
 }

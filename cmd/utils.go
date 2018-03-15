@@ -168,7 +168,6 @@ func prepareRepo(tmpdir string, targets []string, conf *config.Config) (*builder
 		IgnoreFiles:   ignoreFiles,
 		IgnoreStdPkgs: true,
 		LoggerFlags: builder.LoggerFlags{
-			UseCallersFrames:      true,
 			UseNonStandardRuntime: true,
 		},
 	}

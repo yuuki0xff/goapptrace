@@ -10,9 +10,12 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"unsafe"
 
 	"github.com/levigross/grequests"
 	"github.com/pkg/errors"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 const (
@@ -20,7 +23,12 @@ const (
 )
 
 var (
-	ErrConflict = errors.New("conflict")
+	msgUseCache = "<cache>"
+
+	ErrConflict         = errors.New("conflict")
+	ErrNotFoundGoModule = errors.New("not found GoModule")
+	ErrNotFoundGoFunc   = errors.New("not found GoFunc")
+	ErrNotFoundGoLine   = errors.New("not found GoLine")
 )
 
 // Client helps calling the Goapptrace REST API client.
@@ -43,9 +51,8 @@ type apiCache struct {
 }
 
 type logCache struct {
-	m  sync.RWMutex
-	fs map[string]*FuncStatusInfo
-	f  map[string]*FuncInfo
+	// types.Symbols へのポインタ
+	s unsafe.Pointer
 }
 
 // Init initialize the Goapptrace REST API client.
@@ -79,6 +86,40 @@ func (c Client) WithCtx(ctx context.Context) ClientWithCtx {
 	return cc
 }
 
+func (c *ClientWithCtx) Ctx() context.Context {
+	return c.ctx
+}
+
+// SyncSymbolsはサーバからシンボルテーブルをダウンロードし、キャッシュする。
+// キャッシュを作っておくことで、クライアント側のみでシンボル解決が出来るようになり、高速化が出来る。
+func (c *ClientWithCtx) SyncSymbols(logID string) error {
+	var data types.SymbolsData
+	url := c.url("/log", logID, "symbols")
+	ro := c.ro()
+	err := c.getJSON(url, &ro, &data)
+	if err != nil {
+		return err
+	}
+
+	s := &types.Symbols{}
+	s.Load(data)
+	c.cache.AddLog(logID).SetSymbols(s)
+	return nil
+}
+
+func (c *ClientWithCtx) Symbols(logID string) (s *types.Symbols, err error) {
+	s = c.cache.Log(logID).Symbols()
+	if s != nil {
+		return
+	}
+	err = c.SyncSymbols(logID)
+	if err != nil {
+		return
+	}
+	s = c.cache.Log(logID).Symbols()
+	return
+}
+
 // Servers returns Log server list.
 func (c ClientWithCtx) Servers() ([]ServerStatus, error) {
 	var res Servers
@@ -92,7 +133,7 @@ func (c ClientWithCtx) Servers() ([]ServerStatus, error) {
 }
 
 // Logs returns a list of log status.
-func (c ClientWithCtx) Logs() ([]LogStatus, error) {
+func (c ClientWithCtx) Logs() ([]types.LogInfo, error) {
 	var res Logs
 	url := c.url("/logs")
 	ro := c.ro()
@@ -110,29 +151,29 @@ func (c ClientWithCtx) RemoveLog(id string) error {
 	return c.delete(url, &ro)
 }
 
-// LogStatus returns latest log status
-func (c ClientWithCtx) LogStatus(id string) (res LogStatus, err error) {
+// LogInfo returns latest log status
+func (c ClientWithCtx) LogInfo(id string) (res types.LogInfo, err error) {
 	url := c.url("/log", id)
 	ro := c.ro()
 	err = c.getJSON(url, &ro, res)
 	return
 }
 
-// UpdateLogStatus updates the log status.
+// UpdateLogInfo updates the log status.
 // If update operation conflicts, it returns ErrConflict.
-func (c ClientWithCtx) UpdateLogStatus(id string, status LogStatus) (newStatus LogStatus, err error) {
+func (c ClientWithCtx) UpdateLogInfo(id string, old types.LogInfo) (new types.LogInfo, err error) {
 	url := c.url("/log", id)
 	ro := &grequests.RequestOptions{
 		Params: map[string]string{
-			"version": strconv.Itoa(status.Version),
+			"version": strconv.Itoa(old.Version),
 		},
 	}
-	err = c.putJSON(url, ro, &newStatus)
+	err = c.putJSON(url, ro, &new)
 	return
 }
 
-// SearchFuncCalls filters the function call log records.
-func (c ClientWithCtx) SearchFuncCalls(id string, so SearchFuncCallParams) (chan FuncCall, error) {
+// SearchFuncLogs filters the function call log records.
+func (c ClientWithCtx) SearchFuncLogs(id string, so SearchFuncLogParams) (chan types.FuncLog, error) {
 	url := c.url("/log", id, "func-call", "search")
 	ro := c.ro()
 	ro.Params = so.ToParamMap()
@@ -142,16 +183,17 @@ func (c ClientWithCtx) SearchFuncCalls(id string, so SearchFuncCallParams) (chan
 	}
 
 	dec := json.NewDecoder(r)
-	ch := make(chan FuncCall, 1<<20)
+	ch := make(chan types.FuncLog, 1<<20)
 	go func() {
 		defer r.Close() // nolint: errcheck
 		defer close(ch)
 		for {
-			var fc FuncCall
+			var fc types.FuncLog
 			if err := dec.Decode(&fc); err != nil {
 				if err == io.EOF {
 					return
 				}
+				// TODO: ここで発生したエラーを、クライアント側に通知する
 				log.Println(err)
 				return
 			}
@@ -160,62 +202,92 @@ func (c ClientWithCtx) SearchFuncCalls(id string, so SearchFuncCallParams) (chan
 	}()
 	return ch, nil
 }
-func (c ClientWithCtx) Func(logID, funcID string) (f FuncInfo, err error) {
+func (c ClientWithCtx) GoModule(logID string, pc uintptr) (m types.GoModule, err error) {
 	if c.UseCache {
-		fcache := c.cache.Log(logID).Func(funcID)
-		if fcache != nil {
-			// fast path
-			f = *fcache
+		// fast path
+		var s *types.Symbols
+		var ok bool
+		s, err = c.Symbols(logID)
+		if err != nil {
 			return
 		}
+		m, ok = s.GoModule(pc)
+		if !ok {
+			err = ErrNotFoundGoModule
+			return
+		}
+		c.validateGoModule(pc, msgUseCache, m)
+		return
 	}
 
 	// slow path
-	url := c.url("/log", logID, "symbol", "func", funcID)
+	url := c.url("/log", logID, "symbol", "module", FormatUintptr(pc))
+	ro := c.ro()
+	err = c.getJSON(url, &ro, &m)
+
+	if err == nil {
+		c.validateGoModule(pc, url, m)
+	}
+	return
+}
+func (c ClientWithCtx) GoFunc(logID string, pc uintptr) (f types.GoFunc, err error) {
+	if c.UseCache {
+		// fast path
+		var s *types.Symbols
+		var ok bool
+		s, err = c.Symbols(logID)
+		if err != nil {
+			return
+		}
+		f, ok = s.GoFunc(pc)
+		if !ok {
+			err = ErrNotFoundGoFunc
+			return
+		}
+		c.validateGoFunc(pc, msgUseCache, f)
+		return
+	}
+
+	// slow path
+	url := c.url("/log", logID, "symbol", "func", FormatUintptr(pc))
 	ro := c.ro()
 	err = c.getJSON(url, &ro, &f)
 
 	if err == nil {
-		// validation
-		if funcID != strconv.FormatUint(uint64(f.ID), 10) {
-			err = fmt.Errorf("unexpected FuncID: (expected) %s != %d (received)\nreceived FuncInfo: %+v", funcID, f.ID, f)
-			log.Panic(errors.WithStack(err))
-		}
-	}
-	if err == nil && c.UseCache {
-		c.cache.AddLog(logID).AddFunc(f)
+		c.validateGoFunc(pc, url, f)
 	}
 	return
 }
-func (c ClientWithCtx) FuncStatus(logID, funcStatusID string) (fs FuncStatusInfo, err error) {
+func (c ClientWithCtx) GoLine(logID string, pc uintptr) (l types.GoLine, err error) {
 	if c.UseCache {
-		fscache := c.cache.Log(logID).FuncStatus(funcStatusID)
-		if fscache != nil {
-			// fast path
-			fs = *fscache
+		// fast path
+		var s *types.Symbols
+		var ok bool
+		s, err = c.Symbols(logID)
+		if err != nil {
 			return
 		}
+		l, ok = s.GoLine(pc)
+		if !ok {
+			err = ErrNotFoundGoLine
+			return
+		}
+		c.validateGoLine(pc, msgUseCache, l)
+		return
 	}
 
 	// slow path
-	url := c.url("/log", logID, "symbol", "func-status", funcStatusID)
+	url := c.url("/log", logID, "symbol", "line", FormatUintptr(pc))
 	ro := c.ro()
-	err = c.getJSON(url, &ro, &fs)
+	err = c.getJSON(url, &ro, &l)
 
 	if err == nil {
-		// validation
-		if funcStatusID != strconv.FormatUint(uint64(fs.ID), 10) {
-			err = fmt.Errorf("unexpected FuncStatusID: (expected) %s != %d (received)\nreceived FuncStatusInfo: %+v", funcStatusID, fs.ID, fs)
-			log.Panic(errors.WithStack(err))
-		}
-	}
-	if err == nil && c.UseCache {
-		c.cache.AddLog(logID).AddFuncStatus(fs)
+		c.validateGoLine(pc, url, l)
 	}
 	return
 }
 
-func (c ClientWithCtx) Goroutines(logID string) (gl chan Goroutine, err error) {
+func (c ClientWithCtx) Goroutines(logID string) (gl chan types.Goroutine, err error) {
 	var r *grequests.Response
 	url := c.url("/log", logID, "goroutines", "search")
 	ro := c.ro()
@@ -225,12 +297,12 @@ func (c ClientWithCtx) Goroutines(logID string) (gl chan Goroutine, err error) {
 	}
 
 	dec := json.NewDecoder(r)
-	ch := make(chan Goroutine, 1<<20)
+	ch := make(chan types.Goroutine, 1<<20)
 	go func() {
 		defer r.Close() // nolint: errcheck
 		defer close(ch)
 		for {
-			var g Goroutine
+			var g types.Goroutine
 			if err := dec.Decode(&g); err != nil {
 				if err == io.EOF {
 					return
@@ -308,6 +380,24 @@ func (c Client) putJSON(url string, ro *grequests.RequestOptions, data interface
 	defer r.Close() // nolint: errcheck
 	return errors.Wrapf(r.JSON(&data), "PUT %s returned invalid JSON", url)
 }
+func (c Client) validateGoModule(pc uintptr, url string, m types.GoModule) {
+	if m.Name == "" || m.MinPC == 0 || m.MaxPC == 0 || pc < m.MinPC || m.MaxPC < pc {
+		err := fmt.Errorf("validation error: Module=%+v url=%s", m, url)
+		log.Panic(errors.WithStack(err))
+	}
+}
+func (c Client) validateGoFunc(pc uintptr, url string, f types.GoFunc) {
+	if f.Entry == 0 || f.Entry > pc {
+		err := fmt.Errorf("validation error: GoFunc=%+v url=%s", f, url)
+		log.Panic(errors.WithStack(err))
+	}
+}
+func (c Client) validateGoLine(pc uintptr, url string, l types.GoLine) {
+	if l.PC == 0 || l.PC > pc {
+		err := fmt.Errorf("validation error: GoLine=%+v url=%s", l, url)
+		log.Panic(errors.WithStack(err))
+	}
+}
 
 func (c *apiCache) init() {
 	c.logs = map[string]*logCache{}
@@ -332,51 +422,52 @@ func (c *apiCache) AddLog(logID string) *logCache {
 	return l
 }
 
-func (c *logCache) init() {
-	c.fs = map[string]*FuncStatusInfo{}
-	c.f = map[string]*FuncInfo{}
+func (c *logCache) init() {}
+
+func (c *logCache) SetSymbols(s *types.Symbols) {
+	atomic.StorePointer(&c.s, unsafe.Pointer(s)) // nolint: gas
 }
 
-func (c *logCache) Func(funcID string) *FuncInfo {
+func (c *logCache) Symbols() *types.Symbols {
 	if c == nil {
 		return nil
 	}
-	c.m.RLock()
-	f := c.f[funcID]
-	c.m.RUnlock()
-	return f
+	sp := atomic.LoadPointer(&c.s)
+	return (*types.Symbols)(sp)
 }
 
-func (c *logCache) AddFunc(f FuncInfo) {
-	id := strconv.FormatUint(uint64(f.ID), 10)
-
-	c.m.Lock()
-	if _, ok := c.f[id]; ok {
-		fp := &FuncInfo{}
-		*fp = f
-		c.f[id] = fp
+func (c *logCache) GoModule(pc uintptr) (m types.GoModule, ok bool) {
+	s := c.Symbols()
+	if s == nil {
+		return
 	}
-	c.m.Unlock()
+	m, ok = s.GoModule(pc)
+	return
 }
 
-func (c *logCache) FuncStatus(id string) *FuncStatusInfo {
-	if c == nil {
-		return nil
+func (c *logCache) GoFunc(pc uintptr) (f types.GoFunc, ok bool) {
+	s := c.Symbols()
+	if s == nil {
+		return
 	}
-	c.m.RLock()
-	fs := c.fs[id]
-	c.m.RUnlock()
-	return fs
+	f, ok = s.GoFunc(pc)
+	return
 }
 
-func (c *logCache) AddFuncStatus(fs FuncStatusInfo) {
-	id := strconv.FormatUint(uint64(fs.ID), 10)
-
-	c.m.Lock()
-	if _, ok := c.fs[id]; ok {
-		fsp := &FuncStatusInfo{}
-		*fsp = fs
-		c.fs[id] = fsp
+func (c *logCache) GoLine(pc uintptr) (l types.GoLine, ok bool) {
+	s := c.Symbols()
+	if s == nil {
+		return
 	}
-	c.m.Unlock()
+	l, ok = s.GoLine(pc)
+	return
+}
+
+func FormatUintptr(ptr uintptr) string {
+	return strconv.FormatUint(uint64(ptr), 10)
+}
+
+func ParseUintptr(s string) (uintptr, error) {
+	ptr, err := strconv.ParseUint(s, 10, 64)
+	return uintptr(ptr), err
 }

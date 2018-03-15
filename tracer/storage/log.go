@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
-type LogID = logutil.LogID
+type LogID = types.LogID
 
 const (
 	defaultRotateInterval         = 100000
@@ -34,7 +34,7 @@ type Log struct {
 	// メタデータを更新するたびにインクリメントされる値
 	Version  int
 	Root     DirLayout
-	Metadata *LogMetadata
+	Metadata *types.LogMetadata
 	// 書き込み先ファイルが変更される直前に呼び出される。
 	// このイベント実行中はロックが外れるため、他のスレッドから随時書き込まれる可能性がある。
 	BeforeRotateEventHandler func()
@@ -63,41 +63,11 @@ type Log struct {
 	rotateInterval int
 
 	index   *Index
-	symbols *logutil.Symbols
+	symbols *types.Symbols
 
 	funcLog      SplitReadWriter
 	rawFuncLog   SplitReadWriter
 	goroutineLog SplitReadWriter
-}
-
-// Logオブジェクトをmarshalするときに使用する。
-// Logとは異なる点は、APIのレスポンスに必要なフィールドしか持っていないこと、および
-// フィールドの値が更新されないため、ロックセずにフィールドの値にアクセスできることである。
-// APIのレスポンスとして使用することを想定している。
-type LogInfo struct {
-	ID          string      `json:"log-id"`
-	Version     int         `json:"version"`
-	Metadata    LogMetadata `json:"metadata"`
-	MaxFileSize int64       `json:"max-file-size"`
-	ReadOnly    bool        `json:"read-only"`
-}
-type LogMetadata struct {
-	// Timestamp of the last record
-	Timestamp time.Time `json:"timestamp"`
-
-	// The configuration of user interface
-	UI UIConfig `json:"ui"`
-}
-
-type UIConfig struct {
-	FuncCalls  map[logutil.FuncLogID]UIItemConfig `json:"func-calls"`
-	Funcs      map[logutil.FuncID]UIItemConfig    `json:"funcs"`
-	Goroutines map[logutil.GID]UIItemConfig       `json:"goroutines"`
-}
-type UIItemConfig struct {
-	Pinned  bool   `json:"pinned"`
-	Masked  bool   `json:"masked"`
-	Comment string `json:"comment"`
 }
 
 type LogStatus uint8
@@ -130,7 +100,7 @@ func (l *Log) Open() error {
 
 	// initialize Metadata
 	if l.Metadata == nil {
-		l.Metadata = &LogMetadata{}
+		l.Metadata = &types.LogMetadata{}
 		metaFile := l.Root.MetaFile(l.ID)
 		if metaFile.Exists() {
 			// load metadata
@@ -171,7 +141,7 @@ func (l *Log) Open() error {
 	if err := l.index.Open(); err != nil {
 		return fmt.Errorf("failed to open Index: File=%s err=%s", l.index.File, err)
 	}
-	l.symbols = &logutil.Symbols{
+	l.symbols = &types.Symbols{
 		Writable: !l.ReadOnly,
 		KeepID:   true,
 	}
@@ -320,7 +290,7 @@ func (l *Log) Remove() error {
 
 // 指定した期間のRawFuncLogを返す。
 // この操作を実行中、他の操作はブロックされる。
-func (l *Log) Search(start, end time.Time, fn func(evt logutil.RawFuncLog) error) error {
+func (l *Log) Search(start, end time.Time, fn func(evt types.RawFuncLog) error) error {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
 
@@ -350,7 +320,7 @@ func (l *Log) Search(start, end time.Time, fn func(evt logutil.RawFuncLog) error
 
 // 関数呼び出しに関するログを先頭から全て読み込む。
 // この操作を実行中、他の操作はブロックされる
-func (l *Log) WalkFuncLog(fn func(evt logutil.FuncLog) error) error {
+func (l *Log) WalkFuncLog(fn func(evt types.FuncLog) error) error {
 	l.lock.RLock()
 	size := l.index.Len()
 	l.lock.RUnlock()
@@ -364,15 +334,15 @@ func (l *Log) WalkFuncLog(fn func(evt logutil.FuncLog) error) error {
 }
 
 // 指定したindexのファイルの内容を全てcallbackする
-func (l *Log) WalkFuncLogFile(i int64, fn func(evt logutil.FuncLog) error) error {
+func (l *Log) WalkFuncLogFile(i int64, fn func(evt types.FuncLog) error) error {
 	// SplitReadWriterのIndex()やWalk()は排他制御されているため、、
 	// ここでl.lock.RLock()をする必要がない。
 	return l.funcLog.Index(int(i)).Walk(
 		func() interface{} {
-			return &logutil.FuncLog{}
+			return &types.FuncLog{}
 		},
 		func(val interface{}) error {
-			data := val.(*logutil.FuncLog)
+			data := val.(*types.FuncLog)
 			return fn(*data)
 		},
 	)
@@ -380,7 +350,7 @@ func (l *Log) WalkFuncLogFile(i int64, fn func(evt logutil.FuncLog) error) error
 
 // 関数呼び出しのログを先頭からすべて読み込む。
 // この操作を実行中、他の操作はブロックされる。
-func (l *Log) WalkRawFuncLog(fn func(evt logutil.RawFuncLog) error) error {
+func (l *Log) WalkRawFuncLog(fn func(evt types.RawFuncLog) error) error {
 	l.lock.RLock()
 	size := l.index.Len()
 	l.lock.RUnlock()
@@ -394,15 +364,15 @@ func (l *Log) WalkRawFuncLog(fn func(evt logutil.RawFuncLog) error) error {
 }
 
 // 指定したindexのファイルの内容を全てcallbackする
-func (l *Log) WalkRawFuncLogFile(i int64, fn func(evt logutil.RawFuncLog) error) error {
+func (l *Log) WalkRawFuncLogFile(i int64, fn func(evt types.RawFuncLog) error) error {
 	// SplitReadWriterのIndex()やWalk()は排他制御されているため、、
 	// ここでl.lock.RLock()をする必要がない。
 	return l.rawFuncLog.Index(int(i)).Walk(
 		func() interface{} {
-			return &logutil.RawFuncLog{}
+			return &types.RawFuncLog{}
 		},
 		func(val interface{}) error {
-			data := val.(*logutil.RawFuncLog)
+			data := val.(*types.RawFuncLog)
 			return fn(*data)
 		},
 	)
@@ -410,13 +380,13 @@ func (l *Log) WalkRawFuncLogFile(i int64, fn func(evt logutil.RawFuncLog) error)
 
 // TODO: テストを書く
 // 指定したindexの範囲で活動していたgoroutineを全てcallbackする。
-func (l *Log) WalkGoroutine(i int64, fn func(g logutil.Goroutine) error) error {
+func (l *Log) WalkGoroutine(i int64, fn func(g types.Goroutine) error) error {
 	return l.goroutineLog.Index(int(i)).Walk(
 		func() interface{} {
-			return &logutil.Goroutine{}
+			return &types.Goroutine{}
 		},
 		func(val interface{}) error {
-			data := val.(*logutil.Goroutine)
+			data := val.(*types.Goroutine)
 			return fn(*data)
 		},
 	)
@@ -436,7 +406,7 @@ func (l *Log) IndexLen() int64 {
 
 // FuncLogを追加する。
 // ファイルが閉じられていた場合、os.ErrClosedを返す。
-func (l *Log) AppendFuncLog(funcLog *logutil.FuncLog) error {
+func (l *Log) AppendFuncLog(funcLog *types.FuncLog) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 	if l.closed {
@@ -449,7 +419,7 @@ func (l *Log) AppendFuncLog(funcLog *logutil.FuncLog) error {
 // RawFuncLogを追加する。
 // ファイルサイズが上限に達していた場合、ファイルを分割する。
 // ファイルが閉じられていた場合、os.ErrClosedを返す。
-func (l *Log) AppendRawFuncLog(raw *logutil.RawFuncLog) error {
+func (l *Log) AppendRawFuncLog(raw *types.RawFuncLog) error {
 	if l.closed {
 		return os.ErrClosed
 	}
@@ -493,21 +463,20 @@ func (l *Log) AppendRawFuncLog(raw *logutil.RawFuncLog) error {
 	return nil
 }
 
-// todo: remove
-// Symbolsを書き込む。
-func (l *Log) AppendSymbolsDiff(diff *logutil.SymbolsData) error {
+// Symbolsにセットする
+func (l *Log) SetSymbolsData(data *types.SymbolsData) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 	if l.closed {
 		return os.ErrClosed
 	}
 
-	l.symbols.AddSymbolsDiff(diff)
+	l.symbols.SetSymbolsData(data)
 	return nil
 }
 
 // Goroutineのステータスを書き込む
-func (l *Log) AppendGoroutine(g *logutil.Goroutine) error {
+func (l *Log) AppendGoroutine(g *types.Goroutine) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 	if l.closed {
@@ -517,13 +486,13 @@ func (l *Log) AppendGoroutine(g *logutil.Goroutine) error {
 	return l.goroutineLog.Append(g)
 }
 
-func (l *Log) Symbols() *logutil.Symbols {
+func (l *Log) Symbols() *types.Symbols {
 	return l.symbols
 }
 
 // TODO: テストを書く
 // Metadataフィールドを更新して、Versionをインクリメントする。
-func (l *Log) UpdateMetadata(currentVer int, metadata *LogMetadata) error {
+func (l *Log) UpdateMetadata(currentVer int, metadata *types.LogMetadata) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 	if l.Version != currentVer {
@@ -619,10 +588,10 @@ func (l *Log) raiseBeforeRotateEvent() {
 }
 
 // ロックをかけた上で、JSONに変換する
-func (l *Log) LogInfo() LogInfo {
+func (l *Log) LogInfo() types.LogInfo {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
-	return LogInfo{
+	return types.LogInfo{
 		ID:          l.ID.Hex(),
 		Version:     l.Version,
 		Metadata:    *l.Metadata,
@@ -639,7 +608,7 @@ func (l *Log) timestampUpdateWorker() {
 
 	update := func() {
 		var needUpdate bool
-		var meta *LogMetadata
+		var meta *types.LogMetadata
 		var ver int
 		func() {
 			l.lock.RLock()
@@ -653,7 +622,7 @@ func (l *Log) timestampUpdateWorker() {
 				return
 			}
 			needUpdate = true
-			meta = &LogMetadata{}
+			meta = &types.LogMetadata{}
 			*meta = *l.Metadata
 			meta.Timestamp = ir.Timestamp.UnixTime()
 			ver = l.Version

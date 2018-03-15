@@ -7,8 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
-	"github.com/yuuki0xff/goapptrace/tracer/restapi"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 func sortLines(lines []Line) []Line {
@@ -61,40 +60,26 @@ func TestGraphVM_buildLines(t *testing.T) {
 			a.Equal(exp, act)
 		})
 	}
+	symbols := func(data types.SymbolsData) *types.Symbols {
+		s := &types.Symbols{}
+		s.Load(data)
+		return s
+	}
 
 	helper("simple",
 		GraphCache{
-			FcList: []funcCallWithFuncIDs{
+			Symbols: symbols(types.SymbolsData{}),
+			Records: []types.FuncLog{
 				{
-					FuncCall: restapi.FuncCall{
-						ID:        logutil.FuncLogID(1),
-						StartTime: 1,
-						EndTime:   2,
-						ParentID:  logutil.NotFoundParent,
-						Frames:    []logutil.FuncStatusID{1},
-						GID:       0,
-					},
-					funcs: []logutil.FuncID{1},
+					ID:        types.FuncLogID(1),
+					StartTime: 1,
+					EndTime:   2,
+					ParentID:  types.NotFoundParent,
+					Frames:    []uintptr{100},
+					GID:       0,
 				},
 			},
-			FsList: []restapi.FuncStatusInfo{
-				{
-					ID:   1,
-					Func: 1,
-					Line: 100,
-					PC:   1234,
-				},
-			},
-			FList: []restapi.FuncInfo{
-				{
-					ID:    1,
-					Name:  "main.main",
-					File:  "main.go",
-					Entry: 1000,
-				},
-			},
-			LogInfo: restapi.LogStatus{},
-			GMap: map[logutil.GID]restapi.Goroutine{
+			GMap: map[types.GID]types.Goroutine{
 				0: {
 					GID:       0,
 					StartTime: 1,
@@ -126,56 +111,25 @@ func TestGraphVM_buildLines(t *testing.T) {
 		})
 	helper("multi-goroutines",
 		GraphCache{
-			FcList: []funcCallWithFuncIDs{
+			Symbols: symbols(types.SymbolsData{}),
+			Records: []types.FuncLog{
 				{
-					FuncCall: restapi.FuncCall{
-						ID:        1,
-						StartTime: 1,
-						EndTime:   2,
-						ParentID:  logutil.NotFoundParent,
-						Frames:    []logutil.FuncStatusID{1},
-						GID:       1,
-					},
-					funcs: []logutil.FuncID{1},
+					ID:        1,
+					StartTime: 1,
+					EndTime:   2,
+					ParentID:  types.NotFoundParent,
+					Frames:    []uintptr{100},
+					GID:       1,
 				}, {
-					FuncCall: restapi.FuncCall{
-						ID:        2,
-						StartTime: 3,
-						EndTime:   4,
-						ParentID:  logutil.NotFoundParent,
-						Frames:    []logutil.FuncStatusID{2},
-						GID:       2,
-					},
-					funcs: []logutil.FuncID{2},
+					ID:        2,
+					StartTime: 3,
+					EndTime:   4,
+					ParentID:  types.NotFoundParent,
+					Frames:    []uintptr{200},
+					GID:       2,
 				},
 			},
-			FsList: []restapi.FuncStatusInfo{
-				{
-					ID:   1,
-					Func: 1,
-					Line: 10,
-					PC:   1234,
-				}, {
-					ID:   2,
-					Func: 2,
-					Line: 20,
-					PC:   2345,
-				},
-			},
-			FList: []restapi.FuncInfo{
-				{
-					ID:    1,
-					Name:  "main",
-					File:  "main.go",
-					Entry: 1000,
-				}, {
-					ID:    2,
-					Name:  "foo",
-					File:  "main.go",
-					Entry: 2000,
-				},
-			},
-			GMap: map[logutil.GID]restapi.Goroutine{
+			GMap: map[types.GID]types.Goroutine{
 				1: {
 					GID:       1,
 					StartTime: 1,
@@ -232,61 +186,25 @@ func TestGraphVM_buildLines(t *testing.T) {
 		})
 	helper("multi-calls",
 		GraphCache{
-			FcList: []funcCallWithFuncIDs{
+			Symbols: symbols(types.SymbolsData{}),
+			Records: []types.FuncLog{
 				{
-					FuncCall: restapi.FuncCall{
-						ID:        1,
-						StartTime: 1,
-						EndTime:   4,
-						ParentID:  logutil.NotFoundParent,
-						Frames:    []logutil.FuncStatusID{1},
-						GID:       1,
-					},
-					funcs: []logutil.FuncID{1},
+					ID:        1,
+					StartTime: 1,
+					EndTime:   4,
+					ParentID:  types.NotFoundParent,
+					Frames:    []uintptr{100},
+					GID:       1,
 				}, {
-					FuncCall: restapi.FuncCall{
-						ID:        2,
-						StartTime: 2,
-						EndTime:   3,
-						ParentID:  logutil.NotFoundParent,
-						Frames:    []logutil.FuncStatusID{2, 3},
-						GID:       1,
-					},
-					funcs: []logutil.FuncID{1, 2},
+					ID:        2,
+					StartTime: 2,
+					EndTime:   3,
+					ParentID:  types.NotFoundParent,
+					Frames:    []uintptr{110, 200},
+					GID:       1,
 				},
 			},
-			FsList: []restapi.FuncStatusInfo{
-				{
-					ID:   1,
-					Func: 1,
-					Line: 10,
-					PC:   1000,
-				}, {
-					ID:   2,
-					Func: 1,
-					Line: 11,
-					PC:   1100,
-				}, {
-					ID:   3,
-					Func: 2,
-					Line: 20,
-					PC:   2000,
-				},
-			},
-			FList: []restapi.FuncInfo{
-				{
-					ID:    1,
-					Name:  "main",
-					File:  "main.go",
-					Entry: 1000,
-				}, {
-					ID:    2,
-					Name:  "foo",
-					File:  "main.go",
-					Entry: 2000,
-				},
-			},
-			GMap: map[logutil.GID]restapi.Goroutine{
+			GMap: map[types.GID]types.Goroutine{
 				1: {
 					GID:       1,
 					StartTime: 1,
