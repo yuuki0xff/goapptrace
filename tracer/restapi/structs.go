@@ -20,7 +20,6 @@ type Logs struct {
 type LogStatus types.LogInfo
 type FuncCall = types.FuncLog
 type FuncInfo = types.GoFunc
-type GoLineInfo = types.GoLine
 
 type SortOrder string
 type SortKey string

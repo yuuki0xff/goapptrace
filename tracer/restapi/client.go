@@ -45,7 +45,7 @@ type apiCache struct {
 
 type logCache struct {
 	m  sync.RWMutex
-	fs map[uintptr]*GoLineInfo
+	fs map[uintptr]*types.GoLine
 	f  map[uintptr]*FuncInfo
 }
 
@@ -213,7 +213,7 @@ func (c ClientWithCtx) GoFunc(logID string, pc uintptr) (f FuncInfo, err error) 
 	}
 	return
 }
-func (c ClientWithCtx) GoLine(logID string, pc uintptr) (l GoLineInfo, err error) {
+func (c ClientWithCtx) GoLine(logID string, pc uintptr) (l types.GoLine, err error) {
 	if c.UseCache {
 		fscache := c.cache.Log(logID).GoLine(pc)
 		if fscache != nil {
@@ -344,7 +344,7 @@ func (c Client) validateGoFunc(pc uintptr, url string, f types.GoFunc) {
 }
 func (c Client) validateGoLine(pc uintptr, url string, l types.GoLine) {
 	if l.PC == 0 || l.PC > pc {
-		err := fmt.Errorf("validation error: GoLineInfo=%+v url=%s", l, url)
+		err := fmt.Errorf("validation error: GoLine=%+v url=%s", l, url)
 		log.Panic(errors.WithStack(err))
 	}
 }
@@ -373,7 +373,7 @@ func (c *apiCache) AddLog(logID string) *logCache {
 }
 
 func (c *logCache) init() {
-	c.fs = map[uintptr]*GoLineInfo{}
+	c.fs = map[uintptr]*types.GoLine{}
 	c.f = map[uintptr]*FuncInfo{}
 }
 
@@ -397,7 +397,7 @@ func (c *logCache) AddFunc(f FuncInfo) {
 	c.m.Unlock()
 }
 
-func (c *logCache) GoLine(pc uintptr) *GoLineInfo {
+func (c *logCache) GoLine(pc uintptr) *types.GoLine {
 	if c == nil {
 		return nil
 	}
@@ -407,10 +407,10 @@ func (c *logCache) GoLine(pc uintptr) *GoLineInfo {
 	return fs
 }
 
-func (c *logCache) AddGoLine(fs GoLineInfo) {
+func (c *logCache) AddGoLine(fs types.GoLine) {
 	c.m.Lock()
 	if _, ok := c.fs[fs.PC]; ok {
-		fsp := &GoLineInfo{}
+		fsp := &types.GoLine{}
 		*fsp = fs
 		c.fs[fs.PC] = fsp
 	}

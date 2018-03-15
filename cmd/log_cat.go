@@ -31,6 +31,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 // logCatCmd represents the cat command
@@ -82,7 +83,7 @@ func runLogCat(conf *config.Config, stderr io.Writer, logID string, logw LogWrit
 		}
 	}()
 
-	logw.SetGoLineInfoGetter(func(pc uintptr) restapi.GoLineInfo {
+	logw.SetGoLineGetter(func(pc uintptr) types.GoLine {
 		s, err := api.GoLine(logID, pc)
 		if err != nil {
 			log.Panic(err)
@@ -111,7 +112,7 @@ type LogWriter interface {
 	WriteHeader() error
 	Write(evt restapi.FuncCall) error
 	SetFuncInfoGetter(func(pc uintptr) restapi.FuncInfo)
-	SetGoLineInfoGetter(func(pc uintptr) restapi.GoLineInfo)
+	SetGoLineGetter(func(pc uintptr) types.GoLine)
 }
 
 func NewLogWriter(format string, out io.Writer) (LogWriter, error) {
@@ -150,13 +151,13 @@ func (w *JsonLogWriter) Write(evt restapi.FuncCall) error {
 
 func (w *JsonLogWriter) SetFuncInfoGetter(func(pc uintptr) restapi.FuncInfo) {
 }
-func (w *JsonLogWriter) SetGoLineInfoGetter(func(pc uintptr) restapi.GoLineInfo) {
+func (w *JsonLogWriter) SetGoLineGetter(func(pc uintptr) types.GoLine) {
 }
 
 type TextLogWriter struct {
 	output   io.Writer
 	funcInfo func(pc uintptr) restapi.FuncInfo
-	goLine   func(pc uintptr) restapi.GoLineInfo
+	goLine   func(pc uintptr) types.GoLine
 }
 
 func NewTextLogWriter(output io.Writer) *TextLogWriter {
@@ -198,7 +199,7 @@ func (w *TextLogWriter) Write(evt restapi.FuncCall) error {
 func (w *TextLogWriter) SetFuncInfoGetter(f func(pc uintptr) restapi.FuncInfo) {
 	w.funcInfo = f
 }
-func (w *TextLogWriter) SetGoLineInfoGetter(f func(pc uintptr) restapi.GoLineInfo) {
+func (w *TextLogWriter) SetGoLineGetter(f func(pc uintptr) types.GoLine) {
 	w.goLine = f
 }
 
