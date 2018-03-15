@@ -57,7 +57,7 @@ type GraphCache struct {
 	LogInfo restapi.LogStatus
 	Symbols *types.Symbols
 	Records []restapi.FuncCall
-	GMap    map[types.GID]restapi.Goroutine
+	GMap    map[types.GID]types.Goroutine
 
 	logID string
 }
@@ -108,7 +108,7 @@ func (c *GraphCache) Update(logID string, client restapi.ClientWithCtx) error {
 		if err != nil {
 			return err
 		}
-		gm := make(map[types.GID]restapi.Goroutine, 10000)
+		gm := make(map[types.GID]types.Goroutine, 10000)
 		for g := range ch {
 			gm[g.GID] = g
 		}

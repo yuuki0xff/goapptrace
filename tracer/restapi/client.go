@@ -237,7 +237,7 @@ func (c ClientWithCtx) GoLine(logID string, pc uintptr) (l GoLineInfo, err error
 	return
 }
 
-func (c ClientWithCtx) Goroutines(logID string) (gl chan Goroutine, err error) {
+func (c ClientWithCtx) Goroutines(logID string) (gl chan types.Goroutine, err error) {
 	var r *grequests.Response
 	url := c.url("/log", logID, "goroutines", "search")
 	ro := c.ro()
@@ -247,12 +247,12 @@ func (c ClientWithCtx) Goroutines(logID string) (gl chan Goroutine, err error) {
 	}
 
 	dec := json.NewDecoder(r)
-	ch := make(chan Goroutine, 1<<20)
+	ch := make(chan types.Goroutine, 1<<20)
 	go func() {
 		defer r.Close() // nolint: errcheck
 		defer close(ch)
 		for {
-			var g Goroutine
+			var g types.Goroutine
 			if err := dec.Decode(&g); err != nil {
 				if err == io.EOF {
 					return

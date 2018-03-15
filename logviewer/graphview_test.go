@@ -80,7 +80,7 @@ func TestGraphVM_buildLines(t *testing.T) {
 					GID:       0,
 				},
 			},
-			GMap: map[types.GID]restapi.Goroutine{
+			GMap: map[types.GID]types.Goroutine{
 				0: {
 					GID:       0,
 					StartTime: 1,
@@ -130,7 +130,7 @@ func TestGraphVM_buildLines(t *testing.T) {
 					GID:       2,
 				},
 			},
-			GMap: map[types.GID]restapi.Goroutine{
+			GMap: map[types.GID]types.Goroutine{
 				1: {
 					GID:       1,
 					StartTime: 1,
@@ -205,7 +205,7 @@ func TestGraphVM_buildLines(t *testing.T) {
 					GID:       1,
 				},
 			},
-			GMap: map[types.GID]restapi.Goroutine{
+			GMap: map[types.GID]types.Goroutine{
 				1: {
 					GID:       1,
 					StartTime: 1,

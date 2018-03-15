@@ -21,7 +21,6 @@ type LogStatus types.LogInfo
 type FuncCall = types.FuncLog
 type FuncInfo = types.GoFunc
 type GoLineInfo = types.GoLine
-type Goroutine = types.Goroutine
 
 type SortOrder string
 type SortKey string
