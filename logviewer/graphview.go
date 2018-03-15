@@ -54,7 +54,7 @@ func (s *GraphStateMutable) UpdateOffset(dx, dy int) {
 }
 
 type GraphCache struct {
-	LogInfo restapi.LogStatus
+	LogInfo types.LogInfo
 	Symbols *types.Symbols
 	Records []types.FuncLog
 	GMap    map[types.GID]types.Goroutine
@@ -66,7 +66,7 @@ func (c *GraphCache) Update(logID string, client restapi.ClientWithCtx) error {
 	c.logID = logID
 
 	var err error
-	c.LogInfo, err = client.LogStatus(c.logID)
+	c.LogInfo, err = client.LogInfo(c.logID)
 	if err != nil {
 		return err
 	}

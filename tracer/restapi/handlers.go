@@ -215,7 +215,7 @@ func (api APIv0) logs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, l := range logs {
-		res.Logs = append(res.Logs, LogStatus(l.LogInfo()))
+		res.Logs = append(res.Logs, l.LogInfo())
 	}
 
 	js, err := json.Marshal(res)

@@ -109,7 +109,7 @@ func (c ClientWithCtx) Servers() ([]ServerStatus, error) {
 }
 
 // Logs returns a list of log status.
-func (c ClientWithCtx) Logs() ([]LogStatus, error) {
+func (c ClientWithCtx) Logs() ([]types.LogInfo, error) {
 	var res Logs
 	url := c.url("/logs")
 	ro := c.ro()
@@ -127,24 +127,24 @@ func (c ClientWithCtx) RemoveLog(id string) error {
 	return c.delete(url, &ro)
 }
 
-// LogStatus returns latest log status
-func (c ClientWithCtx) LogStatus(id string) (res LogStatus, err error) {
+// LogInfo returns latest log status
+func (c ClientWithCtx) LogInfo(id string) (res types.LogInfo, err error) {
 	url := c.url("/log", id)
 	ro := c.ro()
 	err = c.getJSON(url, &ro, res)
 	return
 }
 
-// UpdateLogStatus updates the log status.
+// UpdateLogInfo updates the log status.
 // If update operation conflicts, it returns ErrConflict.
-func (c ClientWithCtx) UpdateLogStatus(id string, status LogStatus) (newStatus LogStatus, err error) {
+func (c ClientWithCtx) UpdateLogInfo(id string, old types.LogInfo) (new types.LogInfo, err error) {
 	url := c.url("/log", id)
 	ro := &grequests.RequestOptions{
 		Params: map[string]string{
-			"version": strconv.Itoa(status.Version),
+			"version": strconv.Itoa(old.Version),
 		},
 	}
-	err = c.putJSON(url, ro, &newStatus)
+	err = c.putJSON(url, ro, &new)
 	return
 }
 

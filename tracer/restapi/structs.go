@@ -13,11 +13,8 @@ type Servers struct {
 type ServerStatus config.LogServerConfig
 
 type Logs struct {
-	Logs []LogStatus `json:"logs"`
+	Logs []types.LogInfo `json:"logs"`
 }
-
-// TODO: aliasを削除する
-type LogStatus types.LogInfo
 
 type SortOrder string
 type SortKey string
