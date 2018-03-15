@@ -39,6 +39,8 @@ type File string
 
 // GoModules means a module in golang.
 type GoModule struct {
+	// Name は空になる場合がある。
+	// go1.10の時点での多くのプログラムは、GoModuleはプログラム内にただ一つであり、Nameフィールドは空である。
 	Name  string  `json:"name"`
 	MinPC uintptr `json:"min-pc"`
 	MaxPC uintptr `json:"max-pc"`
@@ -267,9 +269,6 @@ func (sd *SymbolsData) Validate() error {
 	return nil
 }
 func (m *GoModule) Validate() error {
-	if m.Name == "" {
-		return errors.New("m.Name is empty")
-	}
 	if m.MinPC == 0 {
 		return errors.New("m.MinPC is 0")
 	}
