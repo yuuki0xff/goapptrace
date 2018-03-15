@@ -89,6 +89,7 @@ func TestSymbols_GoLine(t *testing.T) {
 	a := assert.New(t)
 	s := Symbols{}
 	s.Load(SymbolsData{
+		Files: []string{"dummy.go"},
 		Mods: []GoModule{
 			{Name: "fmt", MinPC: 100, MaxPC: 199},
 			{Name: "main", MinPC: 300, MaxPC: 399},

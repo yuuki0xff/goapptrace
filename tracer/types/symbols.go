@@ -1,9 +1,13 @@
 package types
 
 import (
+	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/pkg/errors"
 )
 
 type SymbolsReadFn func() (SymbolsData, error)
@@ -62,6 +66,9 @@ func (s *Symbols) Init() {}
 // 指定した状態で初期化する。
 // Init()を呼び出す必要はない。
 func (s *Symbols) Load(data SymbolsData) {
+	if err := data.Validate(); err != nil {
+		log.Panic(errors.Wrap(err, "invalid SymbolsData"))
+	}
 	s.data = data
 }
 
@@ -210,4 +217,85 @@ func (s *Symbols) SetSymbolsData(data *SymbolsData) {
 	s.lock.Lock()
 	s.data = *data
 	s.lock.Unlock()
+}
+
+func (sd *SymbolsData) Validate() error {
+	for i, f := range sd.Files {
+		if f == "" {
+			return fmt.Errorf("sd.Files[%d] is empty", i)
+		}
+	}
+
+	var pc uintptr
+	for i, m := range sd.Mods {
+		err := m.Validate()
+		if err != nil {
+			return err
+		}
+		if m.MinPC <= pc || m.MaxPC <= pc {
+			return fmt.Errorf("sd.Mods is not sorted (i=%d)", i)
+		}
+		pc = m.MaxPC
+	}
+
+	pc = 0
+	for i, f := range sd.Funcs {
+		err := f.Validate()
+		if err != nil {
+			return err
+		}
+		if f.Entry <= pc {
+			return fmt.Errorf("sd.Funcs is not sorted (i=%d)", i)
+		}
+		pc = f.Entry
+	}
+
+	pc = 0
+	for i, l := range sd.Lines {
+		err := l.Validate()
+		if err != nil {
+			return err
+		}
+		if l.PC <= pc {
+			return fmt.Errorf("sd.Lines is not sorted (i=%d)", i)
+		}
+		if len(sd.Files) <= int(l.FileID) {
+			return fmt.Errorf("sd.Lines[%d].FileID is invalid", i)
+		}
+		pc = l.PC
+	}
+	return nil
+}
+func (m *GoModule) Validate() error {
+	if m.Name == "" {
+		return errors.New("m.Name is empty")
+	}
+	if m.MinPC == 0 {
+		return errors.New("m.MinPC is 0")
+	}
+	if m.MaxPC == 0 {
+		return errors.New("m.MaxPC is 0")
+	}
+	if m.MinPC >= m.MaxPC {
+		return errors.New("m.MinPC >= m.MaxPC")
+	}
+	return nil
+}
+func (f *GoFunc) Validate() error {
+	if f.Name == "" {
+		return errors.New("f.Name is empty")
+	}
+	if f.Entry == 0 {
+		return errors.New("f.Entry is 0")
+	}
+	return nil
+}
+func (l *GoLine) Validate() error {
+	if l.PC == 0 {
+		return errors.New("l.PC is 0")
+	}
+	if l.Line == 0 {
+		return errors.New("l.Line is 0")
+	}
+	return nil
 }
