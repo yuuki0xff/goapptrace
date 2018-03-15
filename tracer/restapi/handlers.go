@@ -307,7 +307,6 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 	var gid int64
-	var fid int64
 	//var mid int64
 	var minId int64
 	var maxId int64
@@ -321,11 +320,6 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 	gid, err = parseInt(q.Get("gid"), -1)
 	if err != nil {
 		http.Error(w, "invaid gid", http.StatusBadRequest)
-		return
-	}
-	fid, err = parseInt(q.Get("fid"), -1)
-	if err != nil {
-		http.Error(w, "invalid fid", http.StatusBadRequest)
 		return
 	}
 	minId, err = parseInt(q.Get("min-id"), -1)
@@ -439,9 +433,6 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 	// evtが除外されるべきレコードなら、trueを返す。
 	isFiltered := func(evt *types.FuncLog) bool {
 		if gid >= 0 && evt.GID != types.GID(gid) {
-			return true
-		}
-		if fid >= 0 && logobj.Symbols().FuncID(evt.Frames[0]) != types.FuncID(fid) {
 			return true
 		}
 		if minId >= 0 && evt.ID < types.FuncLogID(minId) {

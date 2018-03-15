@@ -520,10 +520,6 @@ paths:
           in: query
           description: Goroutine ID.
           type: integer
-        - name: fid
-          in: query
-          description: Function ID.
-          type: integer
         - name: mid
           in: query
           description: Module ID.
@@ -583,10 +579,6 @@ paths:
         - name: gid
           in: query
           description: Goroutine ID.
-          type: integer
-        - name: fid
-          in: query
-          description: Function ID.
           type: integer
         - name: mid
           in: query

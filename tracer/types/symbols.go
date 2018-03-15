@@ -171,14 +171,6 @@ notFound:
 	return GoLine{}, false
 }
 
-// GoLineIDからFuncIDを取得する。
-func (s *Symbols) FuncID(pc uintptr) FuncID {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-	// TODO: 不要になったメソッドなので、削除する。
-	panic("todo")
-}
-
 // GoLineIDから関数名を取得する。
 func (s *Symbols) FuncName(pc uintptr) string {
 	fn, ok := s.GoFunc(pc)
