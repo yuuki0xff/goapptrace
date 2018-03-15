@@ -163,7 +163,7 @@ func BenchmarkUnmarshalGoLine(b *testing.B) {
 	}
 	b.StopTimer()
 }
-func BenchmarkMarshalGoLineIDSlice(b *testing.B) {
+func BenchmarkMarshalUintptrSlice(b *testing.B) {
 	buf := make([]byte, DefaultMaxSmallPacketSize)
 	val := []uintptr{1, 2, 3, 4, 5, 6, 8, 9, 10}
 	b.ResetTimer()
@@ -172,14 +172,14 @@ func BenchmarkMarshalGoLineIDSlice(b *testing.B) {
 	}
 	b.StopTimer()
 }
-func BenchmarkUnmarshalGoLineIDSlice(b *testing.B) {
+func BenchmarkUnmarshalUintptrSlice(b *testing.B) {
 	buf := make([]byte, DefaultMaxSmallPacketSize)
 	n := marshalUintptrSlice(buf, []uintptr{1, 2, 3, 4, 5, 6, 8, 9, 10})
 	buf = buf[:n]
 
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		unmarshalGoLine(buf)
+		unmarshalUintptrSlice(buf)
 	}
 	b.StopTimer()
 }
