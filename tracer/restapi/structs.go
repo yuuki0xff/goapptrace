@@ -19,7 +19,6 @@ type Logs struct {
 // TODO: aliasを削除する
 type LogStatus types.LogInfo
 type FuncCall = types.FuncLog
-type FuncInfo = types.GoFunc
 
 type SortOrder string
 type SortKey string

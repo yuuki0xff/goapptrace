@@ -90,7 +90,7 @@ func runLogCat(conf *config.Config, stderr io.Writer, logID string, logw LogWrit
 		}
 		return s
 	})
-	logw.SetFuncInfoGetter(func(pc uintptr) restapi.FuncInfo {
+	logw.SetGoFuncGetter(func(pc uintptr) types.GoFunc {
 		f, err := api.GoFunc(logID, pc)
 		if err != nil {
 			log.Panic(err)
@@ -111,7 +111,7 @@ func runLogCat(conf *config.Config, stderr io.Writer, logID string, logw LogWrit
 type LogWriter interface {
 	WriteHeader() error
 	Write(evt restapi.FuncCall) error
-	SetFuncInfoGetter(func(pc uintptr) restapi.FuncInfo)
+	SetGoFuncGetter(func(pc uintptr) types.GoFunc)
 	SetGoLineGetter(func(pc uintptr) types.GoLine)
 }
 
@@ -149,14 +149,14 @@ func (w *JsonLogWriter) Write(evt restapi.FuncCall) error {
 	return w.encoder.Encode(evt)
 }
 
-func (w *JsonLogWriter) SetFuncInfoGetter(func(pc uintptr) restapi.FuncInfo) {
+func (w *JsonLogWriter) SetGoFuncGetter(func(pc uintptr) types.GoFunc) {
 }
 func (w *JsonLogWriter) SetGoLineGetter(func(pc uintptr) types.GoLine) {
 }
 
 type TextLogWriter struct {
 	output   io.Writer
-	funcInfo func(pc uintptr) restapi.FuncInfo
+	funcInfo func(pc uintptr) types.GoFunc
 	goLine   func(pc uintptr) types.GoLine
 }
 
@@ -196,7 +196,7 @@ func (w *TextLogWriter) Write(evt restapi.FuncCall) error {
 	)
 	return err
 }
-func (w *TextLogWriter) SetFuncInfoGetter(f func(pc uintptr) restapi.FuncInfo) {
+func (w *TextLogWriter) SetGoFuncGetter(f func(pc uintptr) types.GoFunc) {
 	w.funcInfo = f
 }
 func (w *TextLogWriter) SetGoLineGetter(f func(pc uintptr) types.GoLine) {

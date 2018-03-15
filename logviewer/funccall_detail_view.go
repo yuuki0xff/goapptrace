@@ -137,7 +137,7 @@ func (v *FuncCallDetailView) init() {
 		} else {
 			fcInfo := tui.NewVBox(
 				tui.NewLabel("Func Info:"),
-				v.newFuncInfoTable(),
+				v.newGoFuncTable(),
 			)
 
 			framesInfo := tui.NewVBox(
@@ -189,7 +189,7 @@ func (v *FuncCallDetailView) onSelectedFrame(framesTable *tui.Table) {
 	}
 	log.Panic("not implemented")
 }
-func (v *FuncCallDetailView) newFuncInfoTable() *headerTable {
+func (v *FuncCallDetailView) newGoFuncTable() *headerTable {
 	t := newHeaderTable(
 		tui.NewLabel("Name"),
 		tui.NewLabel("Value"),

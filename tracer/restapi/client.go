@@ -46,7 +46,7 @@ type apiCache struct {
 type logCache struct {
 	m  sync.RWMutex
 	fs map[uintptr]*types.GoLine
-	f  map[uintptr]*FuncInfo
+	f  map[uintptr]*types.GoFunc
 }
 
 // Init initialize the Goapptrace REST API client.
@@ -190,7 +190,7 @@ func (c ClientWithCtx) GoModule(logID string, pc uintptr) (m types.GoModule, err
 	// TODO: add to cache
 	return
 }
-func (c ClientWithCtx) GoFunc(logID string, pc uintptr) (f FuncInfo, err error) {
+func (c ClientWithCtx) GoFunc(logID string, pc uintptr) (f types.GoFunc, err error) {
 	if c.UseCache {
 		fcache := c.cache.Log(logID).Func(pc)
 		if fcache != nil {
@@ -338,7 +338,7 @@ func (c Client) validateGoModule(pc uintptr, url string, m types.GoModule) {
 }
 func (c Client) validateGoFunc(pc uintptr, url string, f types.GoFunc) {
 	if f.Entry == 0 || f.Entry > pc {
-		err := fmt.Errorf("validation error: FuncInfo=%+v url=%s", f, url)
+		err := fmt.Errorf("validation error: GoFunc=%+v url=%s", f, url)
 		log.Panic(errors.WithStack(err))
 	}
 }
@@ -374,10 +374,10 @@ func (c *apiCache) AddLog(logID string) *logCache {
 
 func (c *logCache) init() {
 	c.fs = map[uintptr]*types.GoLine{}
-	c.f = map[uintptr]*FuncInfo{}
+	c.f = map[uintptr]*types.GoFunc{}
 }
 
-func (c *logCache) Func(pc uintptr) *FuncInfo {
+func (c *logCache) Func(pc uintptr) *types.GoFunc {
 	if c == nil {
 		return nil
 	}
@@ -387,10 +387,10 @@ func (c *logCache) Func(pc uintptr) *FuncInfo {
 	return f
 }
 
-func (c *logCache) AddFunc(f FuncInfo) {
+func (c *logCache) AddFunc(f types.GoFunc) {
 	c.m.Lock()
 	if _, ok := c.f[f.Entry]; ok {
-		fp := &FuncInfo{}
+		fp := &types.GoFunc{}
 		*fp = f
 		c.f[f.Entry] = fp
 	}
