@@ -5,8 +5,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"math/rand"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/yuuki0xff/goapptrace/config"
@@ -21,6 +21,9 @@ const (
 	FuncEnd
 )
 
+// 最後に返したTxIDの値
+var lastTxID uint64
+
 type GID int64 // GID - Goroutine ID
 type TxID uint64
 type FuncLogID int
@@ -34,8 +37,7 @@ func (gid GID) String() string {
 }
 
 func NewTxID() TxID {
-	// TODO: randを使うのと、atomic.AddInt32を使うの、どちらが早いのか？
-	return TxID(rand.Int63())
+	return TxID(atomic.AddUint64(&lastTxID, 1))
 }
 
 func NewTime(t time.Time) Time {
