@@ -15,7 +15,6 @@ const (
 	defaultMaxRetry      = 50
 	defaultRetryInterval = 1 * time.Second
 	skips                = 3
-	maxStackSize         = 1024
 )
 
 var (
@@ -125,11 +124,10 @@ func gid() types.GID {
 }
 
 func sendLog(tag types.TagName, id types.TxID) {
-	logmsg := &types.RawFuncLog{}
+	logmsg := types.RawFuncLogPool.Get().(*types.RawFuncLog)
 	logmsg.Tag = tag
 	logmsg.Timestamp = types.NewTime(time.Now())
-	// TODO: goroutine localな変数に、logmsg.Framesで確保するバッファをキャッシュする
-	logmsg.Frames = make([]uintptr, maxStackSize)
+	// logmsg.Frames のバッファは既に確保されているため、それを再利用する。
 	logmsg.GID = gid()
 	logmsg.TxID = id
 
@@ -165,6 +163,7 @@ func sendLog(tag types.TagName, id types.TxID) {
 			log.Panicf("failed to sender.Send():err=%s sender=%+v ", err, sender)
 		}
 	}
+	types.RawFuncLogPool.Put(logmsg)
 }
 
 func Close() {

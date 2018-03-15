@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 	"github.com/yuuki0xff/xtcp"
 )
 
@@ -111,6 +112,7 @@ func BenchmarkRawFuncLogPacket_Unmarshal(b *testing.B) {
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
 		rp.Unmarshal(buf)
+		types.RawFuncLogPool.Put(rp.FuncLog)
 	}
 	b.StopTimer()
 }

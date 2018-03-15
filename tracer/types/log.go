@@ -1,5 +1,9 @@
 package types
 
+import "sync"
+
+const MaxStackSize = 1024
+
 // Goroutineの生存期間、およびそのGoroutine内で行われたアクションを保持する。
 // 実行終了後も、変更されることがある。
 type Goroutine struct {
@@ -35,4 +39,12 @@ type RawFuncLog struct {
 
 func (fl FuncLog) IsEnded() bool {
 	return fl.EndTime != NotEnded
+}
+
+var RawFuncLogPool = sync.Pool{
+	New: func() interface{} {
+		return &RawFuncLog{
+			Frames: make([]uintptr, MaxStackSize),
+		}
+	},
 }

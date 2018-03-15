@@ -349,7 +349,9 @@ func marshalRawFuncLog(buf []byte, r *types.RawFuncLog) int64 {
 	total += marshalTxID(buf[total:], r.TxID)
 	return total
 }
-func unmarshalRawFuncLog(buf []byte, fl *types.RawFuncLog, frames []uintptr) int64 {
+
+// fl.Frames には十分なサイズのバッファが容易されて無ければならない。
+func unmarshalRawFuncLog(buf []byte, fl *types.RawFuncLog) int64 {
 	var total int64
 	var n int64
 
@@ -359,7 +361,6 @@ func unmarshalRawFuncLog(buf []byte, fl *types.RawFuncLog, frames []uintptr) int
 	total += n
 	fl.Timestamp, n = unmarshalTime(buf[total:])
 	total += n
-	fl.Frames = frames
 	total += unmarshalUintptrSlice(buf[total:], &fl.Frames)
 	fl.GID, n = unmarshalGID(buf[total:])
 	total += n

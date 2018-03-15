@@ -197,10 +197,10 @@ func BenchmarkMarshalRawFuncLog(b *testing.B) {
 func BenchmarkUnmarshalRawFuncLog(b *testing.B) {
 	buf := rawFuncLogBytes
 	var fl types.RawFuncLog
-	slice := make([]uintptr, 100)
+	fl.Frames = make([]uintptr, 100)
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		unmarshalRawFuncLog(buf, &fl, slice)
+		unmarshalRawFuncLog(buf, &fl)
 	}
 	b.StopTimer()
 }
@@ -407,6 +407,7 @@ func TestUnmarshalRawFuncLog(t *testing.T) {
 	a := assert.New(t)
 
 	var fl types.RawFuncLog
-	unmarshalRawFuncLog(rawFuncLogBytes, &fl, make([]uintptr, 100))
+	fl.Frames = make([]uintptr, 100)
+	unmarshalRawFuncLog(rawFuncLogBytes, &fl)
 	a.Equal(rawFuncLog, &fl)
 }
