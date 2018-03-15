@@ -185,11 +185,7 @@ func (c ClientWithCtx) GoModule(logID string, pc uintptr) (m types.GoModule, err
 	err = c.getJSON(url, &ro, &m)
 
 	if err == nil {
-		// validation
-		if m.Name == "" || m.MinPC == 0 || m.MaxPC == 0 || pc < m.MinPC || m.MaxPC < pc {
-			err = fmt.Errorf("validation error: Module=%+v url=%s", m, url)
-			log.Panic(errors.WithStack(err))
-		}
+		c.validateGoModule(pc, url, m)
 	}
 	// TODO: add to cache
 	return
@@ -210,23 +206,19 @@ func (c ClientWithCtx) GoFunc(logID string, pc uintptr) (f FuncInfo, err error) 
 	err = c.getJSON(url, &ro, &f)
 
 	if err == nil {
-		// validation
-		if f.Entry == 0 || f.Entry > pc {
-			err = fmt.Errorf("validation error: FuncInfo=%+v url=%s", f, url)
-			log.Panic(errors.WithStack(err))
-		}
+		c.validateGoFunc(pc, url, f)
 	}
 	if err == nil && c.UseCache {
 		c.cache.AddLog(logID).AddFunc(f)
 	}
 	return
 }
-func (c ClientWithCtx) GoLine(logID string, pc uintptr) (fs GoLineInfo, err error) {
+func (c ClientWithCtx) GoLine(logID string, pc uintptr) (l GoLineInfo, err error) {
 	if c.UseCache {
 		fscache := c.cache.Log(logID).GoLine(pc)
 		if fscache != nil {
 			// fast path
-			fs = *fscache
+			l = *fscache
 			return
 		}
 	}
@@ -234,17 +226,13 @@ func (c ClientWithCtx) GoLine(logID string, pc uintptr) (fs GoLineInfo, err erro
 	// slow path
 	url := c.url("/log", logID, "symbol", "line", FormatUintptr(pc))
 	ro := c.ro()
-	err = c.getJSON(url, &ro, &fs)
+	err = c.getJSON(url, &ro, &l)
 
 	if err == nil {
-		// validation
-		if fs.PC == 0 || fs.PC > pc {
-			err = fmt.Errorf("validation error: GoLineInfo=%+v url=%s", fs, url)
-			log.Panic(errors.WithStack(err))
-		}
+		c.validateGoLine(pc, url, l)
 	}
 	if err == nil && c.UseCache {
-		c.cache.AddLog(logID).AddGoLine(fs)
+		c.cache.AddLog(logID).AddGoLine(l)
 	}
 	return
 }
@@ -341,6 +329,24 @@ func (c Client) putJSON(url string, ro *grequests.RequestOptions, data interface
 	}
 	defer r.Close() // nolint: errcheck
 	return errors.Wrapf(r.JSON(&data), "PUT %s returned invalid JSON", url)
+}
+func (c Client) validateGoModule(pc uintptr, url string, m types.GoModule) {
+	if m.Name == "" || m.MinPC == 0 || m.MaxPC == 0 || pc < m.MinPC || m.MaxPC < pc {
+		err := fmt.Errorf("validation error: Module=%+v url=%s", m, url)
+		log.Panic(errors.WithStack(err))
+	}
+}
+func (c Client) validateGoFunc(pc uintptr, url string, f types.GoFunc) {
+	if f.Entry == 0 || f.Entry > pc {
+		err := fmt.Errorf("validation error: FuncInfo=%+v url=%s", f, url)
+		log.Panic(errors.WithStack(err))
+	}
+}
+func (c Client) validateGoLine(pc uintptr, url string, l types.GoLine) {
+	if l.PC == 0 || l.PC > pc {
+		err := fmt.Errorf("validation error: GoLineInfo=%+v url=%s", l, url)
+		log.Panic(errors.WithStack(err))
+	}
 }
 
 func (c *apiCache) init() {
