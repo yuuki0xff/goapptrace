@@ -94,6 +94,7 @@ func init() {
 		if err := sender.SendLog(raw); err != nil {
 			log.Panic(err)
 		}
+		types.RawFuncLogPool.Put(raw)
 	}
 	initBuffer = nil
 	lock.Unlock()
@@ -162,8 +163,8 @@ func sendLog(tag types.TagName, id types.TxID) {
 		if err := sender.SendLog(logmsg); err != nil {
 			log.Panicf("failed to sender.Send():err=%s sender=%+v ", err, sender)
 		}
+		types.RawFuncLogPool.Put(logmsg)
 	}
-	types.RawFuncLogPool.Put(logmsg)
 }
 
 func Close() {
