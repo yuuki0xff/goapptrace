@@ -21,7 +21,7 @@ const (
 type LogRecordState struct {
 	State      LRState
 	Error      error
-	Records    []restapi.FuncCall
+	Records    []types.FuncLog
 	SelectedID types.FuncLogID
 	Symbols    *types.Symbols
 }
@@ -66,7 +66,7 @@ func (vm *LogRecordVM) View() View {
 	return vm.view
 }
 func (vm *LogRecordVM) fetch() (
-	records []restapi.FuncCall,
+	records []types.FuncLog,
 	symbols *types.Symbols,
 	err error,
 ) {
@@ -74,8 +74,8 @@ func (vm *LogRecordVM) fetch() (
 
 	// get records
 	eg.Go(func() error {
-		records = make([]restapi.FuncCall, 0, 10000)
-		ch, err := vm.Client.SearchFuncCalls(vm.LogID, restapi.SearchFuncCallParams{
+		records = make([]types.FuncLog, 0, 10000)
+		ch, err := vm.Client.SearchFuncLogs(vm.LogID, restapi.SearchFuncLogParams{
 			Limit:     fetchRecords,
 			SortKey:   restapi.SortByEndTime,
 			SortOrder: restapi.DescendingSortOrder,
@@ -106,7 +106,7 @@ func (vm *LogRecordVM) onUnselectedLog() {
 	// LogIDを指定しない状態に戻す。
 	vm.Root.SetState(UIState{})
 }
-func (vm *LogRecordVM) onActivatedRecord(record restapi.FuncCall) {
+func (vm *LogRecordVM) onActivatedRecord(record types.FuncLog) {
 	vm.Root.SetState(UIState{
 		LogID:    vm.LogID,
 		RecordID: record.ID,

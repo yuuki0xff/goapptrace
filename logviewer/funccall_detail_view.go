@@ -13,33 +13,33 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type FuncCallDetailState struct {
+type FuncLogDetailState struct {
 	State FCDState
 	Error error
 
-	Record restapi.FuncCall
+	Record types.FuncLog
 	Mods   []types.GoModule
 	Funcs  []types.GoFunc
 	Lines  []types.GoLine
 }
-type FuncCallDetailStateMutable FuncCallDetailState
-type FuncCallDetailVM struct {
+type FuncLogDetailStateMutable FuncLogDetailState
+type FuncLogDetailVM struct {
 	Root   Coordinator
 	Client restapi.ClientWithCtx
 	LogID  string
-	Record restapi.FuncCall
+	Record types.FuncLog
 
 	m     sync.Mutex
-	view  *FuncCallDetailView
-	state FuncCallDetailStateMutable
+	view  *FuncLogDetailView
+	state FuncLogDetailStateMutable
 
 	updateOnce sync.Once
 }
 
-func (vm *FuncCallDetailVM) UpdateInterval() time.Duration {
+func (vm *FuncLogDetailVM) UpdateInterval() time.Duration {
 	return 0
 }
-func (vm *FuncCallDetailVM) Update(ctx context.Context) {
+func (vm *FuncLogDetailVM) Update(ctx context.Context) {
 	vm.updateOnce.Do(func() {
 		length := len(vm.Record.Frames)
 		mods := make([]types.GoModule, length)
@@ -87,34 +87,34 @@ func (vm *FuncCallDetailVM) Update(ctx context.Context) {
 		vm.Root.NotifyVMUpdated()
 	})
 }
-func (vm *FuncCallDetailVM) View() View {
+func (vm *FuncLogDetailVM) View() View {
 	vm.m.Lock()
 	defer vm.m.Unlock()
 
 	if vm.view == nil {
-		vm.view = &FuncCallDetailView{
-			VM:                  vm,
-			FuncCallDetailState: FuncCallDetailState(vm.state),
+		vm.view = &FuncLogDetailView{
+			VM:                 vm,
+			FuncLogDetailState: FuncLogDetailState(vm.state),
 		}
 	}
 	return vm.view
 }
-func (vm *FuncCallDetailVM) onUnselectedRecord(logID string) {
+func (vm *FuncLogDetailVM) onUnselectedRecord(logID string) {
 	vm.Root.SetState(UIState{
 		LogID: logID,
 	})
 }
 
-type FuncCallDetailView struct {
-	VM *FuncCallDetailVM
-	FuncCallDetailState
+type FuncLogDetailView struct {
+	VM *FuncLogDetailVM
+	FuncLogDetailState
 
 	initOnce sync.Once
 	widget   tui.Widget
 	fc       tui.FocusChain
 }
 
-func (v *FuncCallDetailView) init() {
+func (v *FuncLogDetailView) init() {
 	switch v.State {
 	case FCDLoading:
 		space := tui.NewSpacer()
@@ -159,11 +159,11 @@ func (v *FuncCallDetailView) init() {
 		log.Panic("bug")
 	}
 }
-func (v *FuncCallDetailView) Widget() tui.Widget {
+func (v *FuncLogDetailView) Widget() tui.Widget {
 	v.initOnce.Do(v.init)
 	return v.widget
 }
-func (v *FuncCallDetailView) Keybindings() map[string]func() {
+func (v *FuncLogDetailView) Keybindings() map[string]func() {
 	v.initOnce.Do(v.init)
 	unselect := func() {
 		v.VM.onUnselectedRecord(v.VM.LogID)
@@ -173,23 +173,23 @@ func (v *FuncCallDetailView) Keybindings() map[string]func() {
 		"h":    unselect,
 	}
 }
-func (v *FuncCallDetailView) FocusChain() tui.FocusChain {
+func (v *FuncLogDetailView) FocusChain() tui.FocusChain {
 	v.initOnce.Do(v.init)
 	return v.fc
 }
-func (v *FuncCallDetailView) onSelectedFilter(funcInfoTable *tui.Table) {
+func (v *FuncLogDetailView) onSelectedFilter(funcInfoTable *tui.Table) {
 	if funcInfoTable.Selected() <= 0 {
 		return
 	}
 	log.Panic("not implemented")
 }
-func (v *FuncCallDetailView) onSelectedFrame(framesTable *tui.Table) {
+func (v *FuncLogDetailView) onSelectedFrame(framesTable *tui.Table) {
 	if framesTable.Selected() <= 0 {
 		return
 	}
 	log.Panic("not implemented")
 }
-func (v *FuncCallDetailView) newGoFuncTable() *headerTable {
+func (v *FuncLogDetailView) newGoFuncTable() *headerTable {
 	t := newHeaderTable(
 		tui.NewLabel("Name"),
 		tui.NewLabel("Value"),
@@ -202,7 +202,7 @@ func (v *FuncCallDetailView) newGoFuncTable() *headerTable {
 	)
 	return t
 }
-func (v *FuncCallDetailView) newFramesTable() *headerTable {
+func (v *FuncLogDetailView) newFramesTable() *headerTable {
 	t := newHeaderTable(
 		tui.NewLabel("Name"),
 		tui.NewLabel("Line"),
@@ -222,7 +222,7 @@ func (v *FuncCallDetailView) newFramesTable() *headerTable {
 	}
 	return t
 }
-func (v *FuncCallDetailView) newStatusBar(text string) *tui.StatusBar {
+func (v *FuncLogDetailView) newStatusBar(text string) *tui.StatusBar {
 	s := tui.NewStatusBar(LoadingText)
 	s.SetPermanentText("Function Call Detail")
 	s.SetText(text)

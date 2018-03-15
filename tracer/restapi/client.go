@@ -148,8 +148,8 @@ func (c ClientWithCtx) UpdateLogStatus(id string, status LogStatus) (newStatus L
 	return
 }
 
-// SearchFuncCalls filters the function call log records.
-func (c ClientWithCtx) SearchFuncCalls(id string, so SearchFuncCallParams) (chan FuncCall, error) {
+// SearchFuncLogs filters the function call log records.
+func (c ClientWithCtx) SearchFuncLogs(id string, so SearchFuncLogParams) (chan types.FuncLog, error) {
 	url := c.url("/log", id, "func-call", "search")
 	ro := c.ro()
 	ro.Params = so.ToParamMap()
@@ -159,12 +159,12 @@ func (c ClientWithCtx) SearchFuncCalls(id string, so SearchFuncCallParams) (chan
 	}
 
 	dec := json.NewDecoder(r)
-	ch := make(chan FuncCall, 1<<20)
+	ch := make(chan types.FuncLog, 1<<20)
 	go func() {
 		defer r.Close() // nolint: errcheck
 		defer close(ch)
 		for {
-			var fc FuncCall
+			var fc types.FuncLog
 			if err := dec.Decode(&fc); err != nil {
 				if err == io.EOF {
 					return

@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
@@ -70,7 +69,7 @@ func TestGraphVM_buildLines(t *testing.T) {
 	helper("simple",
 		GraphCache{
 			Symbols: symbols(types.SymbolsData{}),
-			Records: []restapi.FuncCall{
+			Records: []types.FuncLog{
 				{
 					ID:        types.FuncLogID(1),
 					StartTime: 1,
@@ -113,7 +112,7 @@ func TestGraphVM_buildLines(t *testing.T) {
 	helper("multi-goroutines",
 		GraphCache{
 			Symbols: symbols(types.SymbolsData{}),
-			Records: []restapi.FuncCall{
+			Records: []types.FuncLog{
 				{
 					ID:        1,
 					StartTime: 1,
@@ -188,7 +187,7 @@ func TestGraphVM_buildLines(t *testing.T) {
 	helper("multi-calls",
 		GraphCache{
 			Symbols: symbols(types.SymbolsData{}),
-			Records: []restapi.FuncCall{
+			Records: []types.FuncLog{
 				{
 					ID:        1,
 					StartTime: 1,

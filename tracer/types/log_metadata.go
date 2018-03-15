@@ -25,7 +25,7 @@ type LogMetadata struct {
 }
 
 type UIConfig struct {
-	FuncCalls  map[FuncLogID]UIItemConfig `json:"func-calls"`
+	FuncLogs   map[FuncLogID]UIItemConfig `json:"func-calls"`
 	Funcs      map[string]UIItemConfig    `json:"funcs"`
 	Goroutines map[GID]UIItemConfig       `json:"goroutines"`
 }

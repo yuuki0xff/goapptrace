@@ -18,12 +18,11 @@ type Logs struct {
 
 // TODO: aliasを削除する
 type LogStatus types.LogInfo
-type FuncCall = types.FuncLog
 
 type SortOrder string
 type SortKey string
 
-type SearchFuncCallParams struct {
+type SearchFuncLogParams struct {
 	Gid int64
 	Fid int64
 	//Mid          int64
@@ -37,7 +36,7 @@ type SearchFuncCallParams struct {
 }
 
 // ToParamMap converts this to url parameters map.
-func (s SearchFuncCallParams) ToParamMap() map[string]string {
+func (s SearchFuncLogParams) ToParamMap() map[string]string {
 	m := map[string]string{}
 	if s.Gid != 0 {
 		m["gid"] = strconv.Itoa(int(s.Gid))

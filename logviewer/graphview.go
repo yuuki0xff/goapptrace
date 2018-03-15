@@ -56,7 +56,7 @@ func (s *GraphStateMutable) UpdateOffset(dx, dy int) {
 type GraphCache struct {
 	LogInfo restapi.LogStatus
 	Symbols *types.Symbols
-	Records []restapi.FuncCall
+	Records []types.FuncLog
 	GMap    map[types.GID]types.Goroutine
 
 	logID string
@@ -83,7 +83,7 @@ func (c *GraphCache) Update(logID string, client restapi.ClientWithCtx) error {
 		return err
 	})
 	eg.Go(func() error {
-		ch, err := api.SearchFuncCalls(c.logID, restapi.SearchFuncCallParams{
+		ch, err := api.SearchFuncLogs(c.logID, restapi.SearchFuncLogParams{
 			//Limit:     fetchRecords,
 			SortKey:   restapi.SortByID,
 			SortOrder: restapi.DescendingSortOrder,
@@ -118,8 +118,8 @@ func (c *GraphCache) Update(logID string, client restapi.ClientWithCtx) error {
 	return eg.Wait()
 }
 
-// EndedFuncCallsは、時刻tの時点で実行が終了したFuncCallの数を返す。
-func (c *GraphCache) EndedFuncCalls(t types.Time) int {
+// EndedFuncLogsは、時刻tの時点で実行が終了したFuncLogの数を返す。
+func (c *GraphCache) EndedFuncLogs(t types.Time) int {
 	n := 0
 	for _, fc := range c.Records {
 		if fc.IsEnded() && fc.EndTime < t {
@@ -129,8 +129,8 @@ func (c *GraphCache) EndedFuncCalls(t types.Time) int {
 	return n
 }
 
-// RunningFuncCallsは、時刻tの時点で実行中のFuncCallの数を返す。
-func (c *GraphCache) RunningFuncCalls(t types.Time) int {
+// RunningFuncLogsは、時刻tの時点で実行中のFuncLogの数を返す。
+func (c *GraphCache) RunningFuncLogs(t types.Time) int {
 	n := 0
 	for _, fc := range c.Records {
 		if fc.StartTime < t {
@@ -226,7 +226,7 @@ func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
 
 		// 長さとX座標を決める
 		calcXPos := func(t types.Time) int {
-			return c.EndedFuncCalls(t)*2 + c.RunningFuncCalls(t)
+			return c.EndedFuncLogs(t)*2 + c.RunningFuncLogs(t)
 		}
 		for i, fc := range c.Records {
 			left := calcXPos(fc.StartTime)

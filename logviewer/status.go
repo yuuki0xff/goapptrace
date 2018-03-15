@@ -1,7 +1,6 @@
 package logviewer
 
 import (
-	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
@@ -9,7 +8,7 @@ import (
 type UIState struct {
 	LogID        string
 	RecordID     types.FuncLogID
-	Record       restapi.FuncCall
+	Record       types.FuncLog
 	UseGraphView bool
 }
 
@@ -19,7 +18,7 @@ type LLState int
 // LRState is status of LogRecordVM.
 type LRState int
 
-// FCDState is status of FuncCallDetailVM.
+// FCDState is status of FuncLogDetailVM.
 type FCDState int
 
 // GState is status of GraphVM

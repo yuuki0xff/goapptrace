@@ -68,7 +68,7 @@ func runLogCat(conf *config.Config, stderr io.Writer, logID string, logw LogWrit
 	ctx, cancel := context.WithCancel(context.Background())
 	api := apiNoctx.WithCtx(ctx)
 
-	ch, err := api.SearchFuncCalls(logID, restapi.SearchFuncCallParams{
+	ch, err := api.SearchFuncLogs(logID, restapi.SearchFuncLogParams{
 		SortKey:   restapi.SortByStartTime,
 		SortOrder: restapi.AscendingSortOrder,
 		//Limit:     1000,
@@ -110,7 +110,7 @@ func runLogCat(conf *config.Config, stderr io.Writer, logID string, logw LogWrit
 
 type LogWriter interface {
 	WriteHeader() error
-	Write(evt restapi.FuncCall) error
+	Write(evt types.FuncLog) error
 	SetGoFuncGetter(func(pc uintptr) types.GoFunc)
 	SetGoLineGetter(func(pc uintptr) types.GoLine)
 }
@@ -145,7 +145,7 @@ func NewJsonLogWriter(output io.Writer) *JsonLogWriter {
 func (w *JsonLogWriter) WriteHeader() error {
 	return nil
 }
-func (w *JsonLogWriter) Write(evt restapi.FuncCall) error {
+func (w *JsonLogWriter) Write(evt types.FuncLog) error {
 	return w.encoder.Encode(evt)
 }
 
@@ -169,7 +169,7 @@ func (w *TextLogWriter) WriteHeader() error {
 	_, err := fmt.Fprintln(w.output, "StartTime ExecTime [GID] Module.Func:Line")
 	return err
 }
-func (w *TextLogWriter) Write(evt restapi.FuncCall) error {
+func (w *TextLogWriter) Write(evt types.FuncLog) error {
 	currentFrame := evt.Frames[0]
 	fs := w.goLine(currentFrame)
 	funcName := w.funcInfo(currentFrame).Name // module.func
