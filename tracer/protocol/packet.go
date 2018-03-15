@@ -337,6 +337,7 @@ func (p *RawFuncLogPacket) Marshal(buf []byte) int64 {
 }
 func (p *RawFuncLogPacket) Unmarshal(buf []byte) int64 {
 	var n int64
-	p.FuncLog, n = unmarshalRawFuncLog(buf)
+	p.FuncLog = &types.RawFuncLog{}
+	n = unmarshalRawFuncLog(buf, p.FuncLog, make([]uintptr, 100))
 	return n
 }

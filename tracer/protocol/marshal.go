@@ -294,18 +294,19 @@ func marshalUintptrSlice(buf []byte, slice []uintptr) int64 {
 	}
 	return total
 }
-func unmarshalUintptrSlice(buf []byte) ([]uintptr, int64) {
+func unmarshalUintptrSlice(buf []byte, slicep *[]uintptr) int64 {
 	var total int64
 	length, n := unmarshalUint64(buf)
 	total += n
 
-	slice := make([]uintptr, length)
-	for i := range slice {
+	*slicep = (*slicep)[:length]
+	s := *slicep
+	for i := range s {
 		ptr, n := unmarshalUint64(buf[total:])
-		slice[i] = uintptr(ptr)
+		s[i] = uintptr(ptr)
 		total += n
 	}
-	return slice, total
+	return total
 }
 
 func marshalGID(buf []byte, gid types.GID) int64 {
@@ -348,22 +349,21 @@ func marshalRawFuncLog(buf []byte, r *types.RawFuncLog) int64 {
 	total += marshalTxID(buf[total:], r.TxID)
 	return total
 }
-func unmarshalRawFuncLog(buf []byte) (*types.RawFuncLog, int64) {
+func unmarshalRawFuncLog(buf []byte, fl *types.RawFuncLog, frames []uintptr) int64 {
 	var total int64
 	var n int64
 
-	fl := &types.RawFuncLog{}
 	fl.ID, n = unmarshalRawFuncLogID(buf)
 	total += n
 	fl.Tag, n = unmarshalTagName(buf[total:])
 	total += n
 	fl.Timestamp, n = unmarshalTime(buf[total:])
 	total += n
-	fl.Frames, n = unmarshalUintptrSlice(buf[total:])
-	total += n
+	fl.Frames = frames
+	total += unmarshalUintptrSlice(buf[total:], &fl.Frames)
 	fl.GID, n = unmarshalGID(buf[total:])
 	total += n
 	fl.TxID, n = unmarshalTxID(buf[total:])
 	total += n
-	return fl, total
+	return total
 }
