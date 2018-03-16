@@ -27,14 +27,15 @@ type FuncLog struct {
 
 type RawFuncLog struct {
 	// TODO: ID fieldに適切な値を書き込む
-	// TODO: ドキュメントを書く
-
 	ID        RawFuncLogID
-	Tag       TagName   `json:"tag"`
-	Timestamp Time      `json:"timestamp"`
-	Frames    []uintptr `json:"frames"` // Frames[0] is current frame, Frames[1] is the caller of Frame[0].
-	GID       GID       `json:"gid"`
-	TxID      TxID      `json:"txid"`
+	Tag       TagName `json:"tag"`
+	Timestamp Time    `json:"timestamp"`
+	// 関数呼び出し時のスタックトレース。
+	// Frames を外部で保持したい場合、新しいスライスを確保し、中身をコピーすること。
+	// RawFuncLog は再利用されるため、スライスのコピーを行うと意図しないタイミングで Frames の内容が破壊される可能性がある。
+	Frames []uintptr `json:"frames"` // Frames[0] is current frame, Frames[1] is the caller of Frame[0].
+	GID    GID       `json:"gid"`
+	TxID   TxID      `json:"txid"`
 }
 
 func (fl FuncLog) IsEnded() bool {

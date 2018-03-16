@@ -20,6 +20,7 @@ func (s *StateSimulator) Init() {
 }
 
 // 新しいRawFuncLogを受け取り、シミュレータの状態を更新する。
+// fl.Frames スライスの再利用をしてはいけない。
 func (s *StateSimulator) Next(fl types.RawFuncLog) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -35,12 +36,14 @@ func (s *StateSimulator) Next(fl types.RawFuncLog) {
 		id := s.nextID
 		s.nextID++
 
+		frames := make([]uintptr, len(fl.Frames))
+		copy(frames, fl.Frames)
 		s.funcLogs[id] = &types.FuncLog{
 			ID:        id,
 			StartTime: fl.Timestamp,
 			EndTime:   types.NotEnded,
 			ParentID:  parentID,
-			Frames:    fl.Frames,
+			Frames:    frames,
 			GID:       fl.GID,
 		}
 		s.txids[fl.TxID] = id

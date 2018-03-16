@@ -8,6 +8,10 @@ import (
 	"sync"
 )
 
+const (
+	DefaultMaxFileSize = 100 << 20 // 100 MiB
+)
+
 // ログの管理を行う。
 type Storage struct {
 	Root     DirLayout
@@ -91,9 +95,10 @@ func (s *Storage) Log(id LogID) (log *Log, ok bool) {
 // この関数を呼び出す前に、排他ロックをかける必要がある。
 func (s *Storage) log(id LogID, writable bool) (*Log, error) {
 	log := &Log{
-		ID:       id,
-		Root:     s.Root,
-		ReadOnly: !writable,
+		ID:          id,
+		Root:        s.Root,
+		MaxFileSize: DefaultMaxFileSize,
+		ReadOnly:    !writable,
 	}
 	if err := log.Open(); err != nil {
 		return nil, fmt.Errorf("failed to open of Log(%s): %s", id.Hex(), err.Error())

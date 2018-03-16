@@ -42,7 +42,7 @@ import (
 const (
 	// クライアントから受信したアイテムのバッファサイズ。
 	// 単位はメッセージの個数。
-	DefaultReceiveBufferSize = 1 << 16
+	DefaultReceiveBufferSize = 128
 )
 
 // serverRunCmd represents the run command
@@ -222,6 +222,7 @@ func getServerHandler(strg *storage.Storage, store *simulator.StateSimulatorStor
 					log.Panicln("failed to append RawFuncLog:", err.Error())
 				}
 				ss.Next(*obj)
+				types.RawFuncLogPool.Put(obj)
 			case *types.SymbolsData:
 				if err := logobj.SetSymbolsData(obj); err != nil {
 					log.Panicln("failed to append Symbols:", err.Error())
