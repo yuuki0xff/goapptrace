@@ -41,6 +41,18 @@ func (fl FuncLog) IsEnded() bool {
 	return fl.EndTime != NotEnded
 }
 
+// RawFuncLog オブジェクトが再利用できるように蓄えておく。
+// メモリ確保の回数が減るため、パフォーマンス向上が期待できる。
+//
+// 取得したオブジェクトの RawFuncLog.Frames スライスのキャパシティは types.MaxStackSize である。
+// RawFuncLogPool.Get() をしたら、 RawFuncLog.Frames の長さを拡張することを忘れずに。
+// RawFuncLogPool.Put() する場合、 RawFuncLog.Frames フィールドは nil にしてはならない。また、他のスライスを代入することもしてはいけない。
+//
+// Example:
+//   logmsg := types.RawFuncLogPool.Get().(*types.RawFuncLog)
+//   logmsg.Frames = logmsg.Frames[:cap(logmsg.Frames)
+//   // do something
+//   types.RawFuncLogPool.Put(logmsg)
 var RawFuncLogPool = sync.Pool{
 	New: func() interface{} {
 		return &RawFuncLog{

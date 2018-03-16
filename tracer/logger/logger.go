@@ -132,9 +132,9 @@ func sendLog(tag types.TagName, id types.TxID) {
 	logmsg.GID = gid()
 	logmsg.TxID = id
 
-	// メモリ確保のオーバーヘッドを削減するために、stack allocateされる固定長配列を使用する。
-	// MaxStackSizeを超えている場合、正しいログが取得できない。
-	pclen := runtime.Callers(skips, logmsg.Frames)
+	// types.MaxStackSize を超えている場合、正しいログが取得できない。
+	// スライスの長さが小さくされている可能性があるため、事前に限界まで拡張する。
+	pclen := runtime.Callers(skips, logmsg.Frames[:cap(logmsg.Frames)])
 	logmsg.Frames = logmsg.Frames[:pclen]
 
 	// TODO: インライン化やループ展開により、正しくないデータが帰ってくる可能性がある問題を修正する。
