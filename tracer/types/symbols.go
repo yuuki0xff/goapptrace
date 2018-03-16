@@ -207,12 +207,6 @@ func (s *Symbols) FileLine(pc uintptr) string {
 	return filename + ":" + linenumber
 }
 
-func (s *Symbols) SetSymbolsData(data *SymbolsData) {
-	s.lock.Lock()
-	s.data = *data
-	s.lock.Unlock()
-}
-
 func (sd *SymbolsData) Validate() error {
 	for i, f := range sd.Files {
 		if f == "" {

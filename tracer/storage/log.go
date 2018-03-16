@@ -471,7 +471,7 @@ func (l *Log) SetSymbolsData(data *types.SymbolsData) error {
 		return os.ErrClosed
 	}
 
-	l.symbols.SetSymbolsData(data)
+	l.symbols.Load(*data)
 	return nil
 }
 
