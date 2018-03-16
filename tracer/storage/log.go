@@ -143,7 +143,6 @@ func (l *Log) Open() error {
 	}
 	l.symbols = &types.Symbols{
 		Writable: !l.ReadOnly,
-		KeepID:   true,
 	}
 	l.symbols.Init()
 	if status == LogCreated {

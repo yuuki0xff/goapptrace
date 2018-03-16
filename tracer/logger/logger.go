@@ -23,7 +23,6 @@ var (
 	lock    = sync.Mutex{}
 	symbols = types.Symbols{
 		Writable: true,
-		KeepID:   false,
 	}
 	initBuffer []*types.RawFuncLog
 	sender     Sender

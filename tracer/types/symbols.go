@@ -15,9 +15,6 @@ type SymbolsWriteFn func(data SymbolsData) error
 
 type Symbols struct {
 	Writable bool
-	// KeepIDがtrueのとき、FuncIDおよびGoLineIDは、追加時に指定されたIDを使用する。
-	// KeepIDがfalseのとき、追加時に指定されたIDは無視し、新たなIDを付与する。
-	KeepID bool
 
 	lock sync.RWMutex
 	data SymbolsData
