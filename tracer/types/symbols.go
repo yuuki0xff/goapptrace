@@ -23,6 +23,8 @@ type Symbols struct {
 	data SymbolsData
 }
 
+// SymbolsData is an immutable symbol table that golang runtime has.
+// You MUST NOT modify any fields on SymbolsData except when creating a new object.
 type SymbolsData struct {
 	Files []string   `json:"files"`
 	Mods  []GoModule `json:"modules"`
@@ -76,14 +78,14 @@ func (s *Symbols) Load(data SymbolsData) {
 	s.lock.Unlock()
 }
 
-// 現在保持している全てのGoFuncとGoLineのsliceをコールバックする。
+// 現在保持している SymbolsData をコールバック関数に渡す。
 // fnの内部でファイルへの書き出しなどの処理を行うこと。
-// fnに渡された引数の参照先は、fn実行終了後は非同期的に変更される可能性がある。
-// fnの外部で使用する場合は、全てのオブジェクトをコピーすること。
+// 渡された SymbolsData は変更してはならない。
 func (s *Symbols) Save(fn SymbolsWriteFn) error {
 	s.lock.RLock()
-	defer s.lock.RUnlock()
-	return fn(s.data)
+	data := s.data
+	s.lock.RUnlock()
+	return fn(data)
 }
 
 // pcに対応するGoModuleを返す。
