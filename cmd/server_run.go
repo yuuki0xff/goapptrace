@@ -196,8 +196,13 @@ func getServerHandler(strg *storage.Storage, store *simulator.StateSimulatorStor
 
 		ss := store.New(logobj.ID)
 		defer store.Delete(logobj.ID)
-		writeCurrentState := func() {
+		// 現在の状態をファイルに書き出す。
+		// excludeRunning がtrueの場合、実行中のFuncLogは書き込まない。
+		writeCurrentState := func(excludeRunning bool) {
 			for _, fl := range ss.FuncLogs() {
+				if excludeRunning && !fl.IsEnded() {
+					continue
+				}
 				if err := logobj.AppendFuncLog(fl); err != nil {
 					log.Panicln("ERROR: failed to append FuncLog during rotating:", err.Error())
 				}
@@ -210,10 +215,12 @@ func getServerHandler(strg *storage.Storage, store *simulator.StateSimulatorStor
 			ss.Clear()
 		}
 		// ログを閉じる前に、現在のStateSimulatorの状態を保存する。
-		defer writeCurrentState()
+		defer writeCurrentState(false)
 		// このlogobjに対する書き込みを行うのは、worker()のみ。
 		// このイベント実行中に他から書き込まれることは考慮しなくてよい。
-		logobj.BeforeRotateEventHandler = writeCurrentState
+		logobj.BeforeRotateEventHandler = func() {
+			writeCurrentState(true)
+		}
 
 		for rawobj := range ch {
 			switch obj := rawobj.(type) {
