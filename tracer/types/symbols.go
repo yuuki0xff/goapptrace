@@ -71,7 +71,9 @@ func (s *Symbols) Load(data SymbolsData) {
 	if err := data.Validate(); err != nil {
 		log.Panic(errors.Wrap(err, "invalid SymbolsData"))
 	}
+	s.lock.Lock()
 	s.data = data
+	s.lock.Unlock()
 }
 
 // 現在保持している全てのGoFuncとGoLineのsliceをコールバックする。
