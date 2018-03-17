@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bufio"
 	"encoding/gob"
 	"io"
 )
@@ -9,7 +10,9 @@ import (
 type Encoder struct {
 	File File
 
-	a   io.WriteCloser // AppendOnly
+	a io.WriteCloser // AppendOnly
+	// 書き込みバッファを設けて、syscallのオーバーヘッドを削減する。
+	buf *bufio.Writer
 	enc *gob.Encoder
 }
 
@@ -23,7 +26,8 @@ type Decoder struct {
 
 func (e *Encoder) Open() (err error) {
 	e.a, err = e.File.OpenAppendOnly()
-	e.enc = gob.NewEncoder(e.a)
+	e.buf = bufio.NewWriter(e.a)
+	e.enc = gob.NewEncoder(e.buf)
 	return
 }
 
@@ -61,11 +65,24 @@ func (e *Encoder) Append(data interface{}) (err error) {
 	return e.enc.Encode(data)
 }
 
+func (e *Encoder) Buffered() int {
+	return e.buf.Buffered()
+}
+func (e *Encoder) Flush() error {
+	return e.buf.Flush()
+}
+
 func (e *Encoder) Close() (err error) {
 	if e.a != nil {
-		err = e.a.Close()
+		err = e.buf.Flush()
+		e.buf = nil
+		err2 := e.a.Close()
 		e.a = nil
 		e.enc = nil
+
+		if err == nil {
+			err = err2
+		}
 	}
 	return
 }

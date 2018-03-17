@@ -188,8 +188,7 @@ type ParallelReadWriter struct {
 	writable bool
 
 	// エンコーダ。
-	// writable==trueならキャッシュを保持している。
-	// writable==falseするタイミングで、closeすること。
+	// writable=falseになるタイミングで、closeすること。
 	enc Encoder
 }
 
@@ -233,7 +232,21 @@ func (rw *ParallelReadWriter) Walk(newPtr func() interface{}, callback func(inte
 		return os.ErrClosed
 	}
 
-	// キャッシュが利用できないので、ファイルから読み込む
+	for rw.writable && rw.enc.Buffered() > 0 {
+		// バッファに溜まった内容を全て書き出す
+		// Flush()を呼び出した後にある僅かなロックを開放している間に書き込まれる可能性があるため、
+		// バッファの内容が全て書き出されるまで再試行する。
+		rw.lock.RUnlock()
+		rw.lock.Lock()
+		err := rw.enc.Flush()
+		rw.lock.Unlock()
+		rw.lock.RLock()
+		if err != nil {
+			return err
+		}
+	}
+
+	// ファイルから読み出す
 	dec := Decoder{
 		File: rw.File,
 	}
@@ -280,4 +293,16 @@ func (rw *ParallelReadWriter) Close() error {
 	err := rw.setReadOnlyNoLock()
 	rw.closed = true
 	return err
+}
+
+func (rw *ParallelReadWriter) Size() (int64, error) {
+	rw.lock.RLock()
+	defer rw.lock.RUnlock()
+
+	size, err := rw.File.Size()
+	if err != nil {
+		return 0, err
+	}
+	size += int64(rw.enc.Buffered())
+	return size, nil
 }

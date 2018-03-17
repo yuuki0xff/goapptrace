@@ -521,7 +521,7 @@ func (l *Log) autoRotate() error {
 	if err != nil {
 		return err
 	}
-	size, err := last.File.Size()
+	size, err := last.Size()
 	if err != nil {
 		return err
 	}
