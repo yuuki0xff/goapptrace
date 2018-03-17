@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 
+	"github.com/yuuki0xff/goapptrace/tracer/encoding"
 	"github.com/yuuki0xff/goapptrace/tracer/types"
 	"github.com/yuuki0xff/xtcp"
 )
@@ -97,10 +98,10 @@ type DirectWritable interface {
 }
 
 func (p PacketType) Marshal(buf []byte) int64 {
-	return marshalUint8(buf, uint8(p))
+	return encoding.MarshalUint8(buf, uint8(p))
 }
 func (p *PacketType) Unmarshal(buf []byte) int64 {
-	val, n := unmarshalUint8(buf)
+	val, n := encoding.UnmarshalUint8(buf)
 	*p = PacketType(val)
 	return n
 }
@@ -186,29 +187,29 @@ func (p ClientHelloPacket) String() string { return "<ClientHelloPacket>" }
 func (p ServerHelloPacket) String() string { return "<ServerHelloPacket>" }
 
 func (p *ClientHelloPacket) Marshal(buf []byte) int64 {
-	total := marshalString(buf, p.AppName)
-	total += marshalString(buf[total:], p.ClientSecret)
-	total += marshalString(buf[total:], p.ProtocolVersion)
+	total := encoding.MarshalString(buf, p.AppName)
+	total += encoding.MarshalString(buf[total:], p.ClientSecret)
+	total += encoding.MarshalString(buf[total:], p.ProtocolVersion)
 	return total
 }
 func (p *ClientHelloPacket) Unmarshal(buf []byte) int64 {
 	var total int64
 	var n int64
 
-	p.AppName, n = unmarshalString(buf)
+	p.AppName, n = encoding.UnmarshalString(buf)
 	total += n
-	p.ClientSecret, n = unmarshalString(buf[total:])
+	p.ClientSecret, n = encoding.UnmarshalString(buf[total:])
 	total += n
-	p.ProtocolVersion, n = unmarshalString(buf[total:])
+	p.ProtocolVersion, n = encoding.UnmarshalString(buf[total:])
 	total += n
 	return total
 }
 func (p *ServerHelloPacket) Marshal(buf []byte) int64 {
-	return marshalString(buf, p.ProtocolVersion)
+	return encoding.MarshalString(buf, p.ProtocolVersion)
 }
 func (p *ServerHelloPacket) Unmarshal(buf []byte) int64 {
 	var n int64
-	p.ProtocolVersion, n = unmarshalString(buf)
+	p.ProtocolVersion, n = encoding.UnmarshalString(buf)
 	return n
 }
 
@@ -275,71 +276,53 @@ func (p *ShutdownPacket) Marshal(buf []byte) int64   { return 0 }
 func (p *ShutdownPacket) Unmarshal(buf []byte) int64 { return 0 }
 
 func (p *StartTraceCmdPacket) Marshal(buf []byte) int64 {
-	total := marshalUintptr(buf, p.FuncEntry)
-	total += marshalString(buf[total:], p.ModuleName)
+	total := encoding.MarshalUintptr(buf, p.FuncEntry)
+	total += encoding.MarshalString(buf[total:], p.ModuleName)
 	return total
 }
 func (p *StartTraceCmdPacket) Unmarshal(buf []byte) int64 {
 	var total int64
 	var n int64
-	p.FuncEntry, n = unmarshalUintptr(buf)
+	p.FuncEntry, n = encoding.UnmarshalUintptr(buf)
 	total += n
-	p.ModuleName, n = unmarshalString(buf[total:])
+	p.ModuleName, n = encoding.UnmarshalString(buf[total:])
 	total += n
 	return total
 }
 
 func (p *StopTraceCmdPacket) Marshal(buf []byte) int64 {
-	total := marshalUintptr(buf, p.FuncEntry)
-	total += marshalString(buf[total:], p.ModuleName)
+	total := encoding.MarshalUintptr(buf, p.FuncEntry)
+	total += encoding.MarshalString(buf[total:], p.ModuleName)
 	return total
 }
 func (p *StopTraceCmdPacket) Unmarshal(buf []byte) int64 {
 	var total int64
 	var n int64
-	p.FuncEntry, n = unmarshalUintptr(buf)
+	p.FuncEntry, n = encoding.UnmarshalUintptr(buf)
 	total += n
-	p.ModuleName, n = unmarshalString(buf)
+	p.ModuleName, n = encoding.UnmarshalString(buf)
 	total += n
 	return total
 }
 
 func (p *SymbolPacket) Marshal(buf []byte) int64 {
-	total := marshalStringSlice(buf, p.Files)
-	total += marshalGoModuleSlice(buf[total:], p.Mods)
-	total += marshalGoFuncSlice(buf[total:], p.Funcs)
-	total += marshalGoLineSlice(buf[total:], p.Lines)
-	return total
+	return encoding.MarshalSymbolsData(&p.SymbolsData, buf)
 }
 func (p *SymbolPacket) Unmarshal(buf []byte) int64 {
-	var total int64
-	var n int64
-	p.Files, n = unmarshalStringSlice(buf)
-	total += n
-	p.Mods, n = unmarshalGoModuleSlice(buf[total:])
-	total += n
-	p.Funcs, n = unmarshalGoFuncSlice(buf[total:])
-	total += n
-	p.Lines, n = unmarshalGoLineSlice(buf[total:])
-	total += n
-	return total
+	return encoding.UnmarshalSymbolsData(&p.SymbolsData, buf)
 }
 func (p *SymbolPacket) PacketSize() int64 {
-	total := sizeStringSlice(p.Files)
-	total += sizeGoModuleSlice(p.Mods)
-	total += sizeGoFuncSlice(p.Funcs)
-	total += sizeGoLineSlice(p.Lines)
-	return total
+	return encoding.SizeSymbolsData(&p.SymbolsData)
 }
 
 func (p *RawFuncLogPacket) Marshal(buf []byte) int64 {
-	return marshalRawFuncLog(buf, p.FuncLog)
+	return encoding.MarshalRawFuncLog(buf, p.FuncLog)
 }
 func (p *RawFuncLogPacket) Unmarshal(buf []byte) int64 {
 	var n int64
 	fl := types.RawFuncLogPool.Get().(*types.RawFuncLog)
 	fl.Frames = fl.Frames[:cap(fl.Frames)]
-	n = unmarshalRawFuncLog(buf, fl)
+	n = encoding.UnmarshalRawFuncLog(buf, fl)
 	p.FuncLog = fl
 	return n
 }

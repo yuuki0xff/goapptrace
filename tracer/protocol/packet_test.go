@@ -10,6 +10,21 @@ import (
 	"github.com/yuuki0xff/xtcp"
 )
 
+var (
+	rawFuncLogPacket = &RawFuncLogPacket{
+		FuncLog: &types.RawFuncLog{
+			ID:        types.RawFuncLogID(0x0a0000000000000a),
+			Tag:       types.FuncEnd,
+			Timestamp: types.Time(0x0b0000000000000b),
+			Frames: []uintptr{
+				1, 2, 3,
+			},
+			GID:  types.GID(0x0c0000000000000c),
+			TxID: types.TxID(0x0d0000000000000d),
+		},
+	}
+)
+
 // mock of xtcp.Protocol
 type fakeProto struct{}
 
@@ -80,9 +95,7 @@ func BenchmarkMergePacket_Merge(b *testing.B) {
 		Proto:      &Proto{},
 		BufferSize: DefaultSendBufMaxSize + 2048,
 	}
-	p := &RawFuncLogPacket{
-		FuncLog: rawFuncLog,
-	}
+	p := rawFuncLogPacket
 
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
@@ -94,9 +107,7 @@ func BenchmarkMergePacket_Merge(b *testing.B) {
 	b.StopTimer()
 }
 func BenchmarkRawFuncLogPacket_Marshal(b *testing.B) {
-	rp := RawFuncLogPacket{
-		FuncLog: rawFuncLog,
-	}
+	rp := *rawFuncLogPacket
 	buf := make([]byte, DefaultMaxSmallPacketSize)
 
 	b.ResetTimer()
@@ -107,7 +118,8 @@ func BenchmarkRawFuncLogPacket_Marshal(b *testing.B) {
 }
 func BenchmarkRawFuncLogPacket_Unmarshal(b *testing.B) {
 	var rp RawFuncLogPacket
-	buf := rawFuncLogBytes
+	buf := make([]byte, DefaultMaxSmallPacketSize)
+	buf = buf[:rawFuncLogPacket.Marshal(buf)]
 
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {

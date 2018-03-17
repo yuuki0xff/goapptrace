@@ -1,4 +1,4 @@
-package protocol
+package encoding
 
 import (
 	"bytes"
@@ -7,6 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
+
+const DefaultMaxSmallPacketSize = 1024
 
 var (
 	uint64Value1 = uint64(0x123456789abcdef0)
@@ -112,7 +114,7 @@ func BenchmarkMarshalString(b *testing.B) {
 	val := "test string"
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		marshalString(buf, val)
+		MarshalString(buf, val)
 	}
 	b.StopTimer()
 }
@@ -125,7 +127,7 @@ func BenchmarkUnmarshalString(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		unmarshalString(buf)
+		UnmarshalString(buf)
 	}
 	b.StopTimer()
 }
@@ -190,7 +192,7 @@ func BenchmarkMarshalRawFuncLog(b *testing.B) {
 	val := rawFuncLog
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		marshalRawFuncLog(buf, val)
+		MarshalRawFuncLog(buf, val)
 	}
 	b.StopTimer()
 }
@@ -200,7 +202,7 @@ func BenchmarkUnmarshalRawFuncLog(b *testing.B) {
 	fl.Frames = make([]uintptr, 100)
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		unmarshalRawFuncLog(buf, &fl)
+		UnmarshalRawFuncLog(buf, &fl)
 	}
 	b.StopTimer()
 }
@@ -252,7 +254,7 @@ func TestMarshalString(t *testing.T) {
 	a := assert.New(t)
 	test := func(msg, s string, blen, bstr []byte) {
 		buf := make([]byte, DefaultMaxSmallPacketSize)
-		n := marshalString(buf, s)
+		n := MarshalString(buf, s)
 		buf = buf[:n]
 		a.Equal(blen, buf[:8], msg+": length field")
 		a.Equal(bstr, buf[8:], msg+": string field")
@@ -271,7 +273,7 @@ func TestUnmarshalString(t *testing.T) {
 		var buf bytes.Buffer
 		buf.Write(blen)
 		buf.Write(bstr)
-		actual, _ := unmarshalString(buf.Bytes())
+		actual, _ := UnmarshalString(buf.Bytes())
 		a.Equal(expected, actual, msg)
 	}
 
@@ -399,7 +401,7 @@ func TestMarshalRawFuncLog(t *testing.T) {
 	buf := make([]byte, DefaultMaxSmallPacketSize)
 	a := assert.New(t)
 
-	n := marshalRawFuncLog(buf, rawFuncLog)
+	n := MarshalRawFuncLog(buf, rawFuncLog)
 	buf = buf[:n]
 	a.Equal(rawFuncLogBytes, buf)
 }
@@ -408,6 +410,6 @@ func TestUnmarshalRawFuncLog(t *testing.T) {
 
 	var fl types.RawFuncLog
 	fl.Frames = make([]uintptr, 100)
-	unmarshalRawFuncLog(rawFuncLogBytes, &fl)
+	UnmarshalRawFuncLog(rawFuncLogBytes, &fl)
 	a.Equal(rawFuncLog, &fl)
 }
