@@ -14,24 +14,47 @@ func ExampleStore() {
 
 	s := Store{
 		File:       File(f.Name()),
-		RecordSize: 10,
+		RecordSize: 20,
 		ReadOnly:   false,
 	}
 	s.Open()
 	defer s.Close()
 	s.Append(func(buf []byte) int {
-		return copy(buf, []byte("world"))
-	})
-	s.Append(func(buf []byte) int {
-		return copy(buf, []byte("hello"))
+		return copy(buf, []byte("hello world"))
 	})
 
-	s.Read(1, func(buf []byte) {
-		fmt.Print(string(buf[:5]))
-	})
 	s.Read(0, func(buf []byte) {
+		fmt.Print(string(buf[:11]))
+	})
+	// Output: hello world
+}
+func ExampleStore_Lock() {
+	f, _ := ioutil.TempFile("", "")
+	f.Close()
+	defer os.Remove(f.Name())
+
+	s := Store{
+		File:       File(f.Name()),
+		RecordSize: 10,
+		ReadOnly:   false,
+	}
+	s.Open()
+	defer s.Close()
+
+	s.Lock()
+	s.AppendNolock(func(buf []byte) int {
+		return copy(buf, []byte("world"))
+	})
+	s.AppendNolock(func(buf []byte) int {
+		return copy(buf, []byte("hello"))
+	})
+	s.ReadNolock(1, func(buf []byte) {
 		fmt.Print(string(buf[:5]))
 	})
+	s.ReadNolock(0, func(buf []byte) {
+		fmt.Print(string(buf[:5]))
+	})
+	s.Unlock()
 	// Output: helloworld
 }
 
