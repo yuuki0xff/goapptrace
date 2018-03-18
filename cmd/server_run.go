@@ -250,9 +250,12 @@ func getServerHandler(strg *storage.Storage, store *simulator.StateSimulatorStor
 				for {
 					switch obj := rawobj.(type) {
 					case *types.RawFuncLog:
-						if err := rawStore.SetNolock(obj); err != nil {
-							log.Panicln("failed to append RawFuncLog:", err.Error())
-						}
+						// NOTE: RawFuncLogが量がとても多いため、ストレージに書き込むと動作が遅くなってしまう。
+						//       そのため、ファイルに書き出すのは止めた。
+						//       コメントアウトすれば、デバッグするときに使えるかも?
+						//if err := rawStore.SetNolock(obj); err != nil {
+						//	log.Panicln("failed to append RawFuncLog:", err.Error())
+						//}
 						ss.Next(*obj)
 						types.RawFuncLogPool.Put(obj)
 					case *types.SymbolsData:
