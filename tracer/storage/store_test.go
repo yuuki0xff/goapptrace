@@ -19,8 +19,8 @@ func ExampleStore() {
 	}
 	s.Open()
 	defer s.Close()
-	s.Append(func(buf []byte) int {
-		return copy(buf, []byte("hello world"))
+	s.Append(func(buf []byte) int64 {
+		return int64(copy(buf, []byte("hello world")))
 	})
 
 	s.Read(0, func(buf []byte) {
@@ -42,11 +42,11 @@ func ExampleStore_Lock() {
 	defer s.Close()
 
 	s.Lock()
-	s.AppendNolock(func(buf []byte) int {
-		return copy(buf, []byte("world"))
+	s.AppendNolock(func(buf []byte) int64 {
+		return int64(copy(buf, []byte("world")))
 	})
-	s.AppendNolock(func(buf []byte) int {
-		return copy(buf, []byte("hello"))
+	s.AppendNolock(func(buf []byte) int64 {
+		return int64(copy(buf, []byte("hello")))
 	})
 	s.ReadNolock(1, func(buf []byte) {
 		fmt.Print(string(buf[:5]))
@@ -67,7 +67,7 @@ func BenchmarkStore_Append(b *testing.B) {
 	s.Open()
 	defer s.Close()
 	data := []byte("hello")
-	writer := func(buf []byte) int {
+	writer := func(buf []byte) int64 {
 		copy(buf, data)
 		return 10
 	}
@@ -87,7 +87,7 @@ func BenchmarkStore_AppendNolock(b *testing.B) {
 	s.Open()
 	defer s.Close()
 	data := []byte("hello")
-	writer := func(buf []byte) int {
+	writer := func(buf []byte) int64 {
 		copy(buf, data)
 		return 10
 	}

@@ -4,6 +4,65 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
+func MarshalGoroutine(buf []byte, g *types.Goroutine) int64 {
+	total := marshalGID(buf, g.GID)
+	total += marshalTime(buf[total:], g.StartTime)
+	total += marshalTime(buf[total:], g.EndTime)
+	return total
+}
+func UnmarshalGoroutine(buf []byte, g *types.Goroutine) int64 {
+	var total int64
+	var n int64
+
+	g.GID, n = unmarshalGID(buf)
+	total += n
+	g.StartTime, n = unmarshalTime(buf[total:])
+	total += n
+	g.EndTime, n = unmarshalTime(buf[total:])
+	total += n
+	return total
+}
+func SizeGoroutine() int64 {
+	var total int64
+	total += 8 * 3 // 8byteのフィールドが3個 (GID, StartTime, EndTime)
+	return total
+}
+
+func MarshalFuncLog(buf []byte, f *types.FuncLog) int64 {
+	total := marshalFuncLogID(buf, f.ID)
+	total += marshalTime(buf[total:], f.StartTime)
+	total += marshalTime(buf[total:], f.EndTime)
+	total += marshalFuncLogID(buf[total:], f.ParentID)
+	total += marshalUintptrSlice(buf[total:], f.Frames)
+	total += marshalGID(buf[total:], f.GID)
+	return total
+}
+
+// fl.Frames には十分なサイズのバッファが容易されて無ければならない。
+func UnmarshalFuncLog(buf []byte, f *types.FuncLog) int64 {
+	var total int64
+	var n int64
+
+	f.ID, n = unmarshalFuncLogID(buf)
+	total += n
+	f.StartTime, n = unmarshalTime(buf[total:])
+	total += n
+	f.EndTime, n = unmarshalTime(buf[total:])
+	total += n
+	f.ParentID, n = unmarshalFuncLogID(buf[total:])
+	total += n
+	total += unmarshalUintptrSlice(buf[total:], &f.Frames)
+	f.GID, n = unmarshalGID(buf[total:])
+	total += n
+	return total
+}
+func SizeFuncLog() int64 {
+	var total int64
+	total += 8 * 5                        // 8byteのフィールドが5個 (ID, StartTime, EndTime, ParentID, GID)
+	total += 8 * (1 + types.MaxStackSize) // スライスが1個 (Frames)
+	return total
+}
+
 func MarshalRawFuncLog(buf []byte, r *types.RawFuncLog) int64 {
 	total := marshalRawFuncLogID(buf, r.ID)
 	total += marshalTagName(buf[total:], r.Tag)
@@ -30,6 +89,13 @@ func UnmarshalRawFuncLog(buf []byte, r *types.RawFuncLog) int64 {
 	total += n
 	r.TxID, n = unmarshalTxID(buf[total:])
 	total += n
+	return total
+}
+func SizeRawFuncLog() int64 {
+	var total int64
+	total += 8 * 4                        // 8byteのフィールドが4個 (ID, Timestamp, GID, TxID)
+	total += 1                            // 1byteのフィールドが1個 (Tag)
+	total += 8 * (1 + types.MaxStackSize) // スライスが1個 (Frames)
 	return total
 }
 

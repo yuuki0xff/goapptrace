@@ -36,7 +36,7 @@ func (s *StateSimulator) Next(fl types.RawFuncLog) {
 		id := s.nextID
 		s.nextID++
 
-		frames := make([]uintptr, len(fl.Frames))
+		frames := types.FramesPool.Get().([]uintptr)
 		copy(frames, fl.Frames)
 		s.funcLogs[id] = &types.FuncLog{
 			ID:        id,
@@ -89,16 +89,26 @@ func (s *StateSimulator) Next(fl types.RawFuncLog) {
 
 // この期間に動作していた全ての関数についてのログを返す
 // 返されるログの順序は、不定である。
-func (s *StateSimulator) FuncLogs() []*types.FuncLog {
+// needCopy==trueのときは、返されるFuncLogオブジェクトは全てコピーされ、仕様後は FuncLogPool に戻すことが可能である。
+func (s *StateSimulator) FuncLogs(needCopy bool) []*types.FuncLog {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	funclogs := make([]*types.FuncLog, len(s.funcLogs))
 
 	var i int
 	for _, fl := range s.funcLogs {
-		if fl.EndTime == types.NotEnded {
+		if needCopy {
+			// 全てのフィールドをコピーする。
+			newfl := types.FuncLogPool.Get().(*types.FuncLog)
+			frames := newfl.Frames
+			*newfl = *fl
+			newfl.Frames = frames[:len(fl.Frames)]
+			copy(newfl.Frames, fl.Frames)
+			funclogs[i] = newfl
+		} else if fl.EndTime == types.NotEnded {
 			// flは更新される可能性があるため、コピーをしておく
-			newfl := &types.FuncLog{}
+			// なお、Framesはコピーされない。
+			newfl := types.FuncLogPool.Get().(*types.FuncLog)
 			*newfl = *fl
 			funclogs[i] = newfl
 		} else {

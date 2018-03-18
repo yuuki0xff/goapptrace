@@ -21,19 +21,26 @@ const (
 	FuncEnd
 )
 
+// 最後に返したRawFuncLogIDの値
+var lastRawFuncLogID = int64(-1)
+
 // 最後に返したTxIDの値
 var lastTxID uint64
 
 type GID int64 // GID - Goroutine ID
 type TxID uint64
-type FuncLogID int
-type RawFuncLogID int
+type FuncLogID int64
+type RawFuncLogID int64
 type Time int64
 type TagName uint8
 type LogID [16]byte
 
 func (gid GID) String() string {
 	return strconv.FormatInt(int64(gid), 10)
+}
+
+func NewRawFuncLogID() RawFuncLogID {
+	return RawFuncLogID(atomic.AddInt64(&lastRawFuncLogID, 1))
 }
 
 func NewTxID() TxID {

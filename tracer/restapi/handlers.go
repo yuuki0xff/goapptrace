@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"sort"
@@ -32,10 +33,6 @@ const (
 	SortByID        SortKey = "id"
 	SortByStartTime SortKey = "start-time"
 	SortByEndTime   SortKey = "end-time"
-)
-
-var (
-	errStopIterator = errors.New("stop iterator")
 )
 
 type RouterArgs struct {
@@ -66,7 +63,7 @@ type APIWorker struct {
 
 type FuncLogAPIWorker struct {
 	api  *APIWorker
-	inCh chan types.FuncLog
+	inCh chan *types.FuncLog
 	// 呼び出すと、readerとfilterが終了する。
 	stopReader func()
 	// readerとfilterに対するcontext。
@@ -390,44 +387,45 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 		log.Panic("bug")
 	}
 
-	indexLen := logobj.IndexLen()
-	minIdx := int64(0)     // inclusive
-	maxIdx := indexLen - 1 // inclusive
-
 	// narrow the search range by ID and Timestamp.
 	if minId >= 0 || maxId >= 0 || minTs >= 0 || maxTs >= 0 {
-		var total int64
-		var lowerTs types.Time // inclusive
-		err = logobj.WalkIndexRecord(func(i int64, ir storage.IndexRecord) error {
-			lowerID := total // exclusive if i != 0, else inclusive
-			total += ir.Records
-			upperID := total // inclusive
+		if minId < 0 {
+			minId = 0
+		}
+		if maxId < 0 {
+			maxId = math.MaxInt64
+		}
 
-			// TODO: 引数の法を、Time型に変更するほうがよい
-			upperTs := ir.Timestamp // inclusive
+		found := false
+		newMinId := int64(math.MaxInt64)
+		newMaxId := int64(math.MinInt64)
 
-			// by ID
-			if minIdx < i && lowerID < minId {
-				minIdx = i
-			}
-			if i < maxIdx && maxId <= upperID {
-				maxIdx = i
-			}
+		logobj.Index(func(index *storage.Index) {
+			for i := int64(0); i < index.Len(); i++ {
+				ir := index.Get(i)
+				if !ir.IsOverlapID(minId, maxId) || !ir.IsOverlapTime(minTs, maxTs) {
+					continue
+				}
 
-			// by Timestamp
-			if minIdx < i && lowerTs <= minTs {
-				minIdx = i
+				found = true
+				if ir.MinID < newMinId {
+					newMinId = ir.MinID
+				}
+				if newMaxId < ir.MaxID {
+					newMaxId = ir.MaxID
+				}
 			}
-			if i < maxIdx && maxTs <= upperTs {
-				maxIdx = i
-			}
-			lowerTs = upperTs
-			return nil
 		})
-		if err != nil {
-			api.serverError(w, err, "failed to WalkIndexRecord()")
+
+		if !found {
+			// 一致するレコードが存在しないため、このまま終了する
 			return
 		}
+		if newMinId < minId || maxId < newMaxId {
+			log.Panic(fmt.Errorf("assertion error: newMinId=%d < minId=%d || maxId=%d < newMaxId=%d", newMinId, minId, maxId, newMaxId))
+		}
+		minId = newMinId
+		maxId = newMaxId
 	}
 
 	// evtが除外されるべきレコードなら、trueを返す。
@@ -454,7 +452,7 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 
 	parentCtx := context.Background()
 	worker := api.worker(parentCtx, logobj)
-	fw := worker.readFuncLog(minIdx, maxIdx, indexLen)
+	fw := worker.readFuncLog(minId, maxId)
 	fw = fw.filterFuncLog(isFiltered)
 	fw = fw.sortAndLimit(sortFn, limit)
 	fw.sendTo(enc)
@@ -487,14 +485,20 @@ func (api APIv0) goroutineSearch(w http.ResponseWriter, r *http.Request) {
 	ch := make(chan types.Goroutine, 1<<20) // buffer size is 1M records
 	go func() {
 		defer close(ch)
-		err = logobj.WalkIndexRecord(func(i int64, ir storage.IndexRecord) error {
-			if (minTs == -1 || minTs <= ir.Timestamp) && (maxTs == -1 || ir.Timestamp <= maxTs) {
-				return logobj.WalkGoroutine(i, func(g types.Goroutine) error {
+		var err error
+		logobj.Goroutine(func(store *storage.GoroutineStore) {
+			n := store.Records()
+			for i := int64(0); i < n; i++ {
+				var g types.Goroutine
+				err = store.GetNolock(types.GID(i), &g)
+				if err != nil {
+					return
+				}
+
+				if (minTs == -1 || minTs <= g.StartTime) && (maxTs == -1 || g.EndTime <= maxTs) {
 					ch <- g
-					return nil
-				})
+				}
 			}
-			return nil
 		})
 		if err != nil {
 			api.Logger.Println(errors.Wrap(err, "failed to read GoroutineFile"))
@@ -633,8 +637,8 @@ func (api *APIv0) worker(parent context.Context, logobj *storage.Log) *APIWorker
 func (w *APIWorker) wait() error {
 	return w.group.Wait()
 }
-func (w *APIWorker) readFuncLog(minIdx, maxIdx, indexLen int64) *FuncLogAPIWorker {
-	ch := make(chan types.FuncLog, w.BufferSize)
+func (w *APIWorker) readFuncLog(minId, maxId int64) *FuncLogAPIWorker {
+	ch := make(chan *types.FuncLog, w.BufferSize)
 	newctx, cancel := context.WithCancel(w.ctx)
 	fw := &FuncLogAPIWorker{
 		api:        w,
@@ -646,40 +650,57 @@ func (w *APIWorker) readFuncLog(minIdx, maxIdx, indexLen int64) *FuncLogAPIWorke
 	}
 
 	w.group.Go(func() error {
-		log.Printf("readFuncLog: start")
-		log.Printf("readFuncLog: minIdx=%d maxIdx=%d indexLen=%d", minIdx, maxIdx, indexLen)
 		defer close(ch)
 		defer log.Print("readFuncLog: done")
-		for i := minIdx; i <= maxIdx; i++ {
-			log.Println("readFuncLog: read from file:", i)
-			err := w.Logobj.WalkFuncLogFile(i, func(evt types.FuncLog) error {
-				select {
-				case ch <- evt:
-				case <-fw.readCtx.Done():
-					return errStopIterator
-				}
-				return nil
-			})
-			if err != nil {
-				if err == errStopIterator {
-					return nil
-				}
-				w.Logger.Println(errors.Wrap(err, "failed to read FuncLogFile"))
-				return err
+		log.Println("readFuncLog: read from file")
+		var err error
+		w.Logobj.FuncLog(func(store *storage.FuncLogStore) {
+			n := store.Records()
+			if minId < 0 {
+				minId = 0
 			}
+			if maxId < 0 || n < maxId {
+				maxId = n
+			}
+			log.Printf("readFuncLog: start")
+			log.Printf("readFuncLog: minId=%d maxId=%d", minId, maxId)
+			for i := minId; i < maxId; i++ {
+				fl := types.FuncLogPool.Get().(*types.FuncLog)
+				err = store.GetNolock(types.FuncLogID(i), fl)
+				if fl.Frames == nil {
+					log.Panic("fl.Frames is nil", fl)
+				}
+				if err != nil {
+					return
+				}
+				select {
+				case ch <- fl:
+				case <-fw.readCtx.Done():
+					return
+				}
+			}
+		})
+		if err != nil {
+			w.Logger.Println(errors.Wrap(err, "failed to read FuncLogFile"))
+			return err
 		}
 
-		if maxIdx == indexLen-1 {
-			log.Println("readFuncLog: try to read from simulator")
-			ss := w.Api.SimulatorStore.Get(w.Logobj.ID)
-			if ss != nil {
-				log.Println("readFuncLog: read from simulator")
-				for _, evt := range ss.FuncLogs() {
-					select {
-					case ch <- *evt:
-					case <-fw.readCtx.Done():
-						return nil
-					}
+		log.Println("readFuncLog: try to read from simulator")
+		ss := w.Api.SimulatorStore.Get(w.Logobj.ID)
+		if ss != nil {
+			log.Println("readFuncLog: read from simulator")
+			for _, fl := range ss.FuncLogs(true) {
+				if fl.Frames == nil {
+					log.Panic("fl.Frames is nil", fl)
+				}
+				if fl.ID < types.FuncLogID(maxId) {
+					// 既に出力済みなのでスキップする
+					continue
+				}
+				select {
+				case ch <- fl:
+				case <-fw.readCtx.Done():
+					return nil
 				}
 			}
 		}
@@ -688,7 +709,7 @@ func (w *APIWorker) readFuncLog(minIdx, maxIdx, indexLen int64) *FuncLogAPIWorke
 	return fw
 }
 
-func (w *FuncLogAPIWorker) nextWorker(inCh chan types.FuncLog) *FuncLogAPIWorker {
+func (w *FuncLogAPIWorker) nextWorker(inCh chan *types.FuncLog) *FuncLogAPIWorker {
 	worker := &FuncLogAPIWorker{}
 	*worker = *w
 	worker.inCh = inCh
@@ -696,7 +717,7 @@ func (w *FuncLogAPIWorker) nextWorker(inCh chan types.FuncLog) *FuncLogAPIWorker
 }
 
 func (w *FuncLogAPIWorker) filterFuncLog(isFiltered func(evt *types.FuncLog) bool) *FuncLogAPIWorker {
-	ch := make(chan types.FuncLog, w.api.BufferSize)
+	ch := make(chan *types.FuncLog, w.api.BufferSize)
 	w.api.group.Go(func() error {
 		log.Print("filterFuncLog: start")
 		defer close(ch)
@@ -704,7 +725,7 @@ func (w *FuncLogAPIWorker) filterFuncLog(isFiltered func(evt *types.FuncLog) boo
 		for {
 			select {
 			case evt, ok := <-w.inCh:
-				if ok && !isFiltered(&evt) {
+				if ok && !isFiltered(evt) {
 					select {
 					case ch <- evt:
 					case <-w.readCtx.Done():
@@ -722,7 +743,7 @@ func (w *FuncLogAPIWorker) filterFuncLog(isFiltered func(evt *types.FuncLog) boo
 }
 
 func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *types.FuncLog) bool, limit int64) *FuncLogAPIWorker {
-	ch := make(chan types.FuncLog, w.api.BufferSize)
+	ch := make(chan *types.FuncLog, w.api.BufferSize)
 
 	if less == nil {
 		// sortしない
@@ -766,17 +787,17 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *types.FuncLog) bool, l
 		defer w.stopReader()
 		defer close(ch)
 		defer log.Print("sortAndLimit: done exec-time=", time.Since(start))
-		var items []types.FuncLog
+		var items []*types.FuncLog
 
 		// sort関数用の比較関数。
 		sortComparator := func(i, j int) bool {
-			return less(&items[i], &items[j])
+			return less(items[i], items[j])
 		}
 		// heap sortをするための比較関数。
 		// heap内の値がより小さくなるようにするために、heapの先頭は最も大きな値が来るようにする。
 		// そのため、比較関数のi, jを入れ替えている。
 		heapComparator := func(j, i int) bool {
-			return less(&items[i], &items[j])
+			return less(items[i], items[j])
 		}
 
 		if limit <= 0 {
@@ -810,7 +831,7 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *types.FuncLog) bool, l
 				LenFn:  func() int { return len(items) },
 				LessFn: heapComparator,
 				SwapFn: func(i, j int) { items[i], items[j] = items[j], items[i] },
-				PushFn: func(x interface{}) { items = append(items, x.(types.FuncLog)) },
+				PushFn: func(x interface{}) { items = append(items, x.(*types.FuncLog)) },
 				PopFn: func() interface{} {
 					n := len(items)
 					last := items[n-1]
@@ -840,7 +861,7 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *types.FuncLog) bool, l
 				select {
 				case evt, ok := <-w.inCh:
 					if ok {
-						if less(&evt, &items[0]) {
+						if less(evt, items[0]) {
 							// replace a largest item with smaller item.
 							items[0] = evt
 							heap.Fix(&h, 0)
@@ -871,6 +892,15 @@ func (w *FuncLogAPIWorker) sendTo(enc Encoder) {
 	w.api.group.Go(func() error {
 		log.Print("sendTo: start")
 		defer log.Print("sendTo: done")
+
+		defer func() {
+			// 途中で中断されたとき、チャンネルの中にいくつかのオブジェクトが滞留してしまう。
+			// それを破棄せずに、poolに戻す。
+			for evt := range w.inCh {
+				types.FuncLogPool.Put(evt)
+			}
+		}()
+
 		for {
 			select {
 			case evt, ok := <-w.inCh:
@@ -879,6 +909,7 @@ func (w *FuncLogAPIWorker) sendTo(enc Encoder) {
 						w.api.Logger.Println(errors.Wrap(err, "failed to json.Encoder.Encode()"))
 						return err
 					}
+					types.FuncLogPool.Put(evt)
 				} else {
 					return nil
 				}

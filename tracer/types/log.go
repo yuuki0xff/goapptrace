@@ -57,7 +57,21 @@ func (fl FuncLog) IsEnded() bool {
 var RawFuncLogPool = sync.Pool{
 	New: func() interface{} {
 		return &RawFuncLog{
-			Frames: make([]uintptr, MaxStackSize),
+			Frames: FramesPool.Get().([]uintptr),
 		}
+	},
+}
+
+var FuncLogPool = sync.Pool{
+	New: func() interface{} {
+		return &FuncLog{
+			Frames: FramesPool.Get().([]uintptr),
+		}
+	},
+}
+
+var FramesPool = sync.Pool{
+	New: func() interface{} {
+		return make([]uintptr, MaxStackSize)
 	},
 }

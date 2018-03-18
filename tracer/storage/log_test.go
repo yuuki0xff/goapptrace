@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"errors"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -48,13 +47,15 @@ func TestLog_withEmptyFile(t *testing.T) {
 		Metadata: &types.LogMetadata{},
 	}
 	a.NoError(l.Open())
-	a.NoError(err)
 	a.NoError(l.Close())
 
 	a.NotNil(l.Symbols())
-	a.NoError(l.WalkRawFuncLog(func(evt types.RawFuncLog) error {
-		return errors.New("should not contains any log record, but found a log record")
-	}), "Log.WalkRawFuncLog():")
+	var called bool
+	l.RawFuncLog(func(store *RawFuncLogStore) {
+		a.Equal(int64(0), store.Records(), "should not contains any log record, but found a log record")
+		called = true
+	})
+	a.True(called)
 	a.NoError(l.Close())
 }
 
@@ -71,18 +72,17 @@ func TestLog_AppendRawFuncLog(t *testing.T) {
 		Root:        dirlayout,
 		Metadata:    &types.LogMetadata{},
 		MaxFileSize: 1,
-		// 自動ローテーションを発生させるため
-		rotateInterval: 1,
 	}
 	a.NoError(l.Open())
-	a.NoError(l.AppendRawFuncLog(&types.RawFuncLog{}))
-	a.NoError(l.AppendRawFuncLog(&types.RawFuncLog{}))
+	l.RawFuncLog(func(store *RawFuncLogStore) {
+		a.NoError(store.SetNolock(&types.RawFuncLog{ID: 0}))
+		a.NoError(store.SetNolock(&types.RawFuncLog{ID: 1}))
+	})
 
 	var i int
-	a.NoError(l.WalkRawFuncLog(func(evt types.RawFuncLog) error {
-		i++
-		return nil
-	}), "Log.WalkRawFuncLog():")
+	l.RawFuncLog(func(store *RawFuncLogStore) {
+		i = int(store.Records())
+	})
 	a.Equal(2, i)
 
 	a.NoError(l.Close())
@@ -91,9 +91,6 @@ func TestLog_AppendRawFuncLog(t *testing.T) {
 	//   xxxx.0.func.log
 	//   xxxx.0.rawfunc.log
 	//   xxxx.0.goroutine.log
-	//   xxxx.1.func.log
-	//   xxxx.1.rawfunc.log
-	//   xxxx.1.goroutine.log
 	//   xxxx.index
 	//   xxxx.symbol
 	files, err := ioutil.ReadDir(dirlayout.DataDir())
@@ -101,7 +98,7 @@ func TestLog_AppendRawFuncLog(t *testing.T) {
 	for i := range files {
 		t.Logf("files[%d] = %s", i, files[i].Name())
 	}
-	a.Len(files, 8)
+	a.Len(files, 5)
 }
 
 // Logで書き込みながら、Logで正しく読み込めるかテスト。
@@ -118,40 +115,34 @@ func TestLog_ReadDuringWriting(t *testing.T) {
 		Root:        dirlayout,
 		Metadata:    &types.LogMetadata{},
 		MaxFileSize: 1000,
-		// 自動ローテーションを発生させるため
-		rotateInterval: 10,
 	}
 	a.NoError(l.Open())
 
-	checkRecordCount := func(expect int64) error {
-		var actual int64
-		l.WalkRawFuncLog(func(evt types.RawFuncLog) error {
-			actual++
-			return nil
-		})
-		a.Equal(expect, actual)
-		return nil
-	}
+	l.RawFuncLog(func(store *RawFuncLogStore) {
+		for i := int64(0); i < 1000; i++ {
+			// レコード数が一致しているか
+			a.Equal(i, store.Records())
 
-	// ファイルのローテーションが2回発生するまでレコードを追加する。
-	// ローテーションをしてもRawFuncLogCacheが正しくクリアできるかテストする。
-	for i := int64(0); l.index.Len() < 3; i++ {
-		a.NoError(checkRecordCount(i))
-		// 書き込み先のファイルは圧縮されていた場合、同じデータが連続していると大幅に圧縮されてしまう。
-		// そのため、いつまで経ってもファイルのローテーションが発生しない可能性がある。
-		// このような問題を回避するために、乱数を使用して圧縮率を低くする。
-		a.NoError(l.AppendRawFuncLog(&types.RawFuncLog{
-			ID:   types.RawFuncLogID(i),
-			Tag:  types.TagName(rand.Uint32()),
-			GID:  types.GID(rand.Int()),
-			TxID: types.TxID(rand.Int()),
-		}), "Log.AppendRawFuncLog():")
+			// 新しいレコードを追加
+			a.NoError(store.SetNolock(&types.RawFuncLog{
+				ID:   types.RawFuncLogID(i),
+				Tag:  types.TagName(i),
+				GID:  types.GID(i),
+				TxID: types.TxID(i),
+			}), "Log.AppendRawFuncLog():")
 
-		// RawFuncLogが1つあたり0.1バイト未満で書き込まれるのは考えにくい。
-		// 十分な回数だけ試行しても終了しない場合、テスト失敗として扱う。
-		if i > l.MaxFileSize*30 {
-			t.Fatal("loop count limit reached")
+			// 書き込み済みのレコードが読み出せるか
+			var raw types.RawFuncLog
+			// 書き込み済みのレコードが読み出せるか
+			randIdx := rand.Int63n(i + 1)
+			a.NoError(store.GetNolock(types.RawFuncLogID(randIdx), &raw))
+			a.Equal(types.RawFuncLog{
+				ID:   types.RawFuncLogID(randIdx),
+				Tag:  types.TagName(randIdx),
+				GID:  types.GID(randIdx),
+				TxID: types.TxID(randIdx),
+			}, raw)
 		}
-	}
+	})
 	a.NoError(l.Close())
 }

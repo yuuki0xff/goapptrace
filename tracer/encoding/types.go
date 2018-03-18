@@ -60,6 +60,14 @@ func unmarshalTxID(buf []byte) (types.TxID, int64) {
 	return types.TxID(val), n
 }
 
+func marshalFuncLogID(buf []byte, id types.FuncLogID) int64 {
+	return marshalUint64(buf, uint64(id))
+}
+func unmarshalFuncLogID(buf []byte) (types.FuncLogID, int64) {
+	val, n := unmarshalUint64(buf)
+	return types.FuncLogID(val), n
+}
+
 func marshalRawFuncLogID(buf []byte, id types.RawFuncLogID) int64 {
 	return marshalUint64(buf, uint64(id))
 }

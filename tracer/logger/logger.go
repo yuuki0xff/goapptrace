@@ -125,6 +125,7 @@ func gid() types.GID {
 
 func sendLog(tag types.TagName, id types.TxID) {
 	logmsg := types.RawFuncLogPool.Get().(*types.RawFuncLog)
+	logmsg.ID = types.NewRawFuncLogID()
 	logmsg.Tag = tag
 	logmsg.Timestamp = types.NewTime(time.Now())
 	// logmsg.Frames のバッファは既に確保されているため、それを再利用する。
