@@ -2,7 +2,7 @@ package types
 
 import "sync"
 
-const MaxStackSize = 1024
+const MaxStackSize = 64
 
 // Goroutineの生存期間、およびそのGoroutine内で行われたアクションを保持する。
 // 実行終了後も、変更されることがある。
