@@ -51,7 +51,7 @@ func runTuiCmd(conf *config.Config, stdout, stderr io.Writer, targets []string) 
 		return err
 	}
 
-	t := logviewer.Controller{
+	t := logviewer.UICoordinator{
 		Config: conf,
 		Api:    api,
 		LogID:  logID,

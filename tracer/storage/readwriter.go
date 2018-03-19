@@ -8,7 +8,7 @@ import (
 
 var (
 	ErrFileNamePatternIsNull = errors.New("FileNamePattern should not null, but null")
-	ErrFileisReadOnly        = errors.New("cannot write to read-only file")
+	ErrFileIsReadOnly        = errors.New("cannot write to read-only file")
 )
 
 // 分割されたファイルに対して、読み書きを平行して行える。
@@ -45,7 +45,6 @@ func (srw *SplitReadWriter) Open() error {
 		}
 		rw := &ParallelReadWriter{
 			File:     f,
-			UseCache: false,
 			ReadOnly: true,
 		}
 		srw.files = append(srw.files, rw)
@@ -67,7 +66,6 @@ func (srw *SplitReadWriter) Open() error {
 		// 書き込み先となる、空のファイルを作っておく
 		rw := &ParallelReadWriter{
 			File:     srw.FileNamePattern(len(srw.files)),
-			UseCache: false,
 			ReadOnly: srw.ReadOnly,
 		}
 		srw.files = append(srw.files, rw)
@@ -79,7 +77,7 @@ func (srw *SplitReadWriter) Open() error {
 // 最後のファイルに対して追記する。
 func (srw *SplitReadWriter) Append(data interface{}) error {
 	if srw.ReadOnly {
-		return ErrFileisReadOnly
+		return ErrFileIsReadOnly
 	}
 	f, err := srw.LastFile()
 	if err != nil {
@@ -115,7 +113,7 @@ func (srw *SplitReadWriter) Rotate() error {
 // lockは呼び出し元が書けること。
 func (srw *SplitReadWriter) rotateNoLock() error {
 	if srw.ReadOnly {
-		return ErrFileisReadOnly
+		return ErrFileIsReadOnly
 	}
 	if srw.closed {
 		return os.ErrClosed
@@ -128,7 +126,6 @@ func (srw *SplitReadWriter) rotateNoLock() error {
 	}
 	rw := &ParallelReadWriter{
 		File:     srw.FileNamePattern(len(srw.files)),
-		UseCache: false,
 		ReadOnly: srw.ReadOnly,
 	}
 	srw.files = append(srw.files, rw)
@@ -181,11 +178,7 @@ func (srw *SplitReadWriter) LastFile() (*ParallelReadWriter, error) {
 // Encoder/Decoder likeなメソッドを備える。
 type ParallelReadWriter struct {
 	// 読み書きする対象のファイル
-	File File
-	// TODO: UseCacheを実装する。
-	// オンメモリキャッシュを使用する場合は、true
-	// なお、書き込み可能な場合、この値に関わらず常にキャッシュされる。
-	UseCache bool
+	File     File
 	ReadOnly bool
 
 	lock sync.RWMutex
@@ -193,12 +186,9 @@ type ParallelReadWriter struct {
 	closed bool
 	// 書き込み可能ならtrue
 	writable bool
-	// ファイルの内容をキャッシュする。
-	cache []interface{}
 
 	// エンコーダ。
-	// writable==trueならキャッシュを保持している。
-	// writable==falseするタイミングで、closeすること。
+	// writable=falseになるタイミングで、closeすること。
 	enc Encoder
 }
 
@@ -210,11 +200,9 @@ func (rw *ParallelReadWriter) Open() error {
 	rw.closed = false
 	if rw.ReadOnly {
 		rw.writable = false
-		rw.cache = nil
 		return nil
 	} else {
 		rw.writable = true
-		rw.cache = make([]interface{}, 0, DefaultBufferSize)
 		// TODO: 追記モードで開いている。これ大丈夫か？
 		rw.enc.File = rw.File
 		return rw.enc.Open()
@@ -228,12 +216,11 @@ func (rw *ParallelReadWriter) Append(data interface{}) error {
 	if rw.closed {
 		return os.ErrClosed
 	}
-
-	if rw.writable {
-		rw.cache = append(rw.cache, data)
-		return rw.enc.Append(data)
+	if !rw.writable {
+		return ErrFileIsReadOnly
 	}
-	return os.ErrClosed
+
+	return rw.enc.Append(data)
 }
 
 // ファイルの先頭からデータを読み込む。
@@ -245,31 +232,34 @@ func (rw *ParallelReadWriter) Walk(newPtr func() interface{}, callback func(inte
 		return os.ErrClosed
 	}
 
-	if rw.cache != nil {
-		// キャッシュが利用できるので、キャッシュを返す
-		for _, data := range rw.cache {
-			if err := callback(data); err != nil {
-				return err
-			}
-		}
-		return nil
-	} else {
-		// キャッシュが利用できないので、ファイルから読み込む
-		dec := Decoder{
-			File: rw.File,
-		}
-		if err := dec.Open(); err != nil {
+	for rw.writable && rw.enc.Buffered() > 0 {
+		// バッファに溜まった内容を全て書き出す
+		// Flush()を呼び出した後にある僅かなロックを開放している間に書き込まれる可能性があるため、
+		// バッファの内容が全て書き出されるまで再試行する。
+		rw.lock.RUnlock()
+		rw.lock.Lock()
+		err := rw.enc.Flush()
+		rw.lock.Unlock()
+		rw.lock.RLock()
+		if err != nil {
 			return err
 		}
-		err1 := dec.Walk(newPtr, callback)
-		err2 := dec.Close()
-
-		if err1 != nil {
-			return err1
-		}
-		return err2
-
 	}
+
+	// ファイルから読み出す
+	dec := Decoder{
+		File: rw.File,
+	}
+	if err := dec.Open(); err != nil {
+		return err
+	}
+	err1 := dec.Walk(newPtr, callback)
+	err2 := dec.Close()
+
+	if err1 != nil {
+		return err1
+	}
+	return err2
 }
 
 // 読み込み専用にする。
@@ -286,11 +276,8 @@ func (rw *ParallelReadWriter) SetReadOnly() error {
 // 読み込み専用にする。
 // lockの獲得は呼び出し元が行うこと。
 func (rw *ParallelReadWriter) setReadOnlyNoLock() error {
+	rw.ReadOnly = true
 	rw.writable = false
-	if !rw.UseCache {
-		// キャッシュを破棄する。
-		rw.cache = nil
-	}
 	return rw.enc.Close()
 }
 
@@ -305,7 +292,17 @@ func (rw *ParallelReadWriter) Close() error {
 
 	err := rw.setReadOnlyNoLock()
 	rw.closed = true
-	// 無条件にキャッシュを破棄する
-	rw.cache = nil
 	return err
+}
+
+func (rw *ParallelReadWriter) Size() (int64, error) {
+	rw.lock.RLock()
+	defer rw.lock.RUnlock()
+
+	size, err := rw.File.Size()
+	if err != nil {
+		return 0, err
+	}
+	size += int64(rw.enc.Buffered())
+	return size, nil
 }

@@ -4,8 +4,7 @@ import (
 	"strconv"
 
 	"github.com/yuuki0xff/goapptrace/config"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
-	"github.com/yuuki0xff/goapptrace/tracer/storage"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 type Servers struct {
@@ -14,19 +13,13 @@ type Servers struct {
 type ServerStatus config.LogServerConfig
 
 type Logs struct {
-	Logs []LogStatus `json:"logs"`
+	Logs []types.LogInfo `json:"logs"`
 }
-type LogStatus storage.LogInfo
-
-type FuncCall = logutil.FuncLog
-type FuncInfo = logutil.FuncSymbol
-type FuncStatusInfo = logutil.FuncStatus
-type Goroutine = logutil.Goroutine
 
 type SortOrder string
 type SortKey string
 
-type SearchFuncCallParams struct {
+type SearchFuncLogParams struct {
 	Gid int64
 	Fid int64
 	//Mid          int64
@@ -40,7 +33,7 @@ type SearchFuncCallParams struct {
 }
 
 // ToParamMap converts this to url parameters map.
-func (s SearchFuncCallParams) ToParamMap() map[string]string {
+func (s SearchFuncLogParams) ToParamMap() map[string]string {
 	m := map[string]string{}
 	if s.Gid != 0 {
 		m["gid"] = strconv.Itoa(int(s.Gid))

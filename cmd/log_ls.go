@@ -21,6 +21,7 @@
 package cmd
 
 import (
+	"context"
 	"io"
 
 	"github.com/pkg/errors"
@@ -38,10 +39,11 @@ var logLsCmd = &cobra.Command{
 }
 
 func runLogLs(conf *config.Config, stdout io.Writer, stderr io.Writer, targets []string) error {
-	api, err := getAPIClient(conf)
+	apiNoctx, err := getAPIClient(conf)
 	if err != nil {
 		return err
 	}
+	api := apiNoctx.WithCtx(context.Background())
 	logs, err := api.Logs()
 	if err != nil {
 		return errors.Wrap(err, "failed to fetch the log list")

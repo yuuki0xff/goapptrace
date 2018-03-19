@@ -1,156 +1,181 @@
 package storage
 
 import (
+	"encoding/gob"
 	"errors"
-	"fmt"
+	"io"
+	"log"
+	"math"
 
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 const (
 	DefaultBufferSize = 1 << 16
-	UnknownRecords    = -1
 )
 
-// Indexは、分割されたRawFuncLogファイルの索引を提供する。
-// 範囲検索の効率化のために使用することを想定している。
+// FuncLog のインデックスを管理する。
 type Index struct {
 	File     File
 	ReadOnly bool
 
 	records []IndexRecord
-	enc     Encoder // readonlyならnil
 }
 
-// 1つのRawFuncLogファイルに関する情報。
 type IndexRecord struct {
-	// Timestamp of the last record.
-	Timestamp logutil.Time
-	// Number of records.
-	Records int64
-	// このFuncLogFileが書き込み中なら、true
-	writing bool
+	MinID int64
+	MaxID int64
+
+	MinStart types.Time
+	MaxStart types.Time
+	MinEnd   types.Time
+	MaxEnd   types.Time
 }
 
-// Indexファイルを開く。すべての操作を実行する前に、Openしなければならない。
 func (idx *Index) Open() error {
-	if idx.ReadOnly {
-		// 読み込み専用の場合、Encoderを初期化しなくてよい。
-		return nil
-	}
-	idx.enc = Encoder{File: idx.File}
-	return idx.enc.Open()
+	return nil
 }
 
-// Indexファイルの内容をメモリに読み込む。
-// 追記するだけならこの関数を呼ぶ必要はない。
-func (idx *Index) Load() error {
-	dec := Decoder{File: idx.File}
-	if err := dec.Open(); err != nil {
-		return err
-	}
-	defer dec.Close() // nolint: errcheck
+// on-memory cacheが存在しないとき、ファイルから読み込んでキャッシュする。
+// WriteOnly modeのときは、ファイルが存在しなくても失敗しない。
+func (idx *Index) mustLoad() {
+	if idx.records == nil {
+		if !idx.ReadOnly && !idx.File.Exists() {
+			idx.records = make([]IndexRecord, 0)
+			return
+		}
 
-	idx.records = make([]IndexRecord, 0, DefaultBufferSize)
-	return dec.Walk(
-		func() interface{} {
-			return &IndexRecord{}
-		},
-		func(val interface{}) error {
-			rec := val.(*IndexRecord)
-			idx.records = append(idx.records, *rec)
-			return nil
-		},
-	)
-}
-
-// 指定したIndexのIndexRecordを返す。
-func (idx Index) Get(i int64) IndexRecord {
-	return idx.records[i]
-}
-
-// Indexファイルへの追記を行う。
-func (idx *Index) Append(record IndexRecord) error {
-	if idx.ReadOnly {
-		return errors.New("cannot update read-only index")
-	}
-
-	if record.writing {
-		idx.records = append(idx.records, record)
-		return nil
-	}
-
-	err := idx.enc.Append(record)
-	if err == nil {
-		idx.records = append(idx.records, record)
-	}
-	return err
-}
-
-// 最後のIndexRecordを返す。
-func (idx *Index) Last() IndexRecord {
-	return idx.records[len(idx.records)-1]
-}
-
-// 最後のレコードを更新する。
-// 書き込み中フラグが立っているレコードに対しての更新のみ成功する。
-func (idx *Index) UpdateLast(record IndexRecord) error {
-	if idx.ReadOnly {
-		return errors.New("cannot update read-only index")
-	}
-
-	last := idx.records[len(idx.records)-1]
-	if last.writing && record.writing {
-		idx.records[len(idx.records)-1] = record
-		return nil
-	} else if last.writing && !record.writing {
-		// remove last record
-		idx.records = idx.records[:len(idx.records)-1]
-		// append to file
-		return idx.Append(record)
-	} else {
-		return fmt.Errorf("invalid state: last=%+v record=%+v", last, record)
-	}
-}
-
-func (idx *Index) Close() error {
-	if idx.ReadOnly {
-		// 読み込み専用なら何もする必要がない。
-		return nil
-	}
-
-	if idx.Len() > 0 {
-		last := idx.Last()
-		if last.writing {
-			// write last record to file.
-			last.writing = false
-			if err := idx.UpdateLast(last); err != nil {
-				return err
-			}
+		err := idx.Load()
+		if err != nil && err != io.EOF {
+			log.Panic(err)
 		}
 	}
-	return idx.enc.Close()
 }
 
-// Indexファイルに書き込まれているすべてのレコードに、先頭から順番にアクセスする。
-// fnが何らかのエラーを返した場合、ループを中断する。
-func (idx *Index) Walk(fn func(i int64, ir IndexRecord) error) error {
-	for i, rec := range idx.records {
-		err := fn(int64(i), rec)
+// ファイルから読み込む。
+// ファイルが存在しないときは、エラーを返す。
+func (idx *Index) Load() error {
+	r, err := idx.File.OpenReadOnly()
+	if err != nil {
+		return err
+	}
+	return gob.NewDecoder(r).Decode(&idx.records)
+}
+
+func (idx *Index) Save() error {
+	if idx.ReadOnly {
+		return ErrReadOnly
+	}
+	if idx.records == nil {
+		return nil
+	}
+
+	if idx.File.Exists() {
+		// ファイルが存在した場合は、先に削除してから書き込む。
+		err := idx.File.Remove()
 		if err != nil {
 			return err
 		}
 	}
+
+	w, err := idx.File.OpenWriteOnly()
+	if err != nil {
+		return err
+	}
+	return gob.NewEncoder(w).Encode(idx.records)
+}
+
+// 指定したIndexのIndexRecordを返す。
+func (idx Index) Get(i int64) IndexRecord {
+	idx.mustLoad()
+	return idx.records[i]
+}
+
+// 末尾に新しいレコードを追加する。
+func (idx *Index) Append(record IndexRecord) error {
+	if idx.ReadOnly {
+		return ErrReadOnly
+	}
+	idx.mustLoad()
+	idx.records = append(idx.records, record)
 	return nil
 }
 
-// Indexファイルに書き込まれているレコード数を返す。
-// この関数を呼び出す前に、Index.Load()を呼び出していなければならない。
-func (idx Index) Len() int64 {
+// 最後のIndexRecordを返す。
+func (idx *Index) Last() IndexRecord {
+	idx.mustLoad()
+	return idx.records[len(idx.records)-1]
+}
+
+// 最後のレコードを更新する。
+func (idx *Index) UpdateLast(record IndexRecord) error {
+	if idx.ReadOnly {
+		return errors.New("cannot update read-only index")
+	}
+	idx.mustLoad()
+
+	last := int64(len(idx.records) - 1)
+	idx.records[last] = record
+	return nil
+}
+
+func (idx *Index) Close() error {
+	if idx.ReadOnly || idx.records == nil {
+		idx.records = nil
+		return nil
+	}
+	err := idx.Save()
+	if err != nil {
+		return err
+	}
+	idx.records = nil
+	return nil
+}
+
+// IndexRecordの数を返す。
+func (idx *Index) Len() int64 {
+	idx.mustLoad()
 	return int64(len(idx.records))
 }
 
-// 書き込み中ならtrue
-func (ir IndexRecord) IsWriting() bool {
-	return ir.writing
+// 領域[start, end]に含まれるレコードのIDの範囲を返す。
+// 見つからなかった場合、(0,0)を返す。
+func (idx *Index) IDRangeByTime(start, end types.Time) (int64, int64) {
+	idx.mustLoad()
+	startId := int64(math.MaxInt64)
+	endId := int64(math.MinInt64)
+	found := false
+
+	for i := int64(0); i < idx.Len(); i++ {
+		ir := idx.Get(i)
+		if ir.IsOverlapTime(start, end) {
+			found = true
+			if ir.MinID < startId {
+				startId = ir.MinID
+			}
+			if endId < ir.MaxID {
+				endId = ir.MaxID
+			}
+		}
+	}
+
+	if found {
+		return startId, endId
+	}
+	return 0, 0
+}
+
+func (ir *IndexRecord) IsOverlapID(start, end int64) bool {
+	return isOverlap(ir.MinID, ir.MaxID, start, end)
+}
+func (ir *IndexRecord) IsOverlapTime(start, end types.Time) bool {
+	return isOverlap(int64(ir.MinStart), int64(ir.MaxEnd), int64(start), int64(end))
+}
+
+// 領域[startA, endA] と 領域[startB, endB] が重なっていたらtrueを返す。
+func isOverlap(startA, endA, startB, endB int64) bool {
+	return !isNotOverlop(startA, endA, startB, endB)
+}
+func isNotOverlop(startA, endA, startB, endB int64) bool {
+	return endA < startB || endB < startA
 }

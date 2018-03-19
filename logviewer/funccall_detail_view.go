@@ -4,148 +4,227 @@ import (
 	"context"
 	"log"
 	"strconv"
+	"sync"
+	"time"
 
+	"github.com/marcusolsson/tui-go"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
-	"github.com/yuuki0xff/tui-go"
-	"golang.org/x/sync/singleflight"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
+	"golang.org/x/sync/errgroup"
 )
 
-type FuncCallDetailView struct {
-	tui.Widget
+type FuncLogDetailState struct {
+	State FCDState
+	Error error
+
+	Record types.FuncLog
+	Mods   []types.GoModule
+	Funcs  []types.GoFunc
+	Lines  []types.GoLine
+}
+type FuncLogDetailStateMutable FuncLogDetailState
+type FuncLogDetailVM struct {
+	Root   Coordinator
+	Client restapi.ClientWithCtx
 	LogID  string
-	Record *restapi.FuncCall
-	Root   *Controller
+	Record types.FuncLog
 
-	running     uint32
-	updateGroup singleflight.Group
+	m     sync.Mutex
+	view  *FuncLogDetailView
+	state FuncLogDetailStateMutable
 
-	// focusChainに渡す値が常に同じになるようにしないと、クラッシュしてしまう問題を回避するため。
-	funcInfoWrap wrapWidget
-	framesWrap   wrapWidget
-
-	status *tui.StatusBar
-	fc     *tui.SimpleFocusChain
+	updateOnce sync.Once
 }
 
-func newFuncCallDetailView(logID string, record *restapi.FuncCall, root *Controller) *FuncCallDetailView {
-	v := &FuncCallDetailView{
-		LogID:  logID,
-		Record: record,
-		Root:   root,
-
-		status: tui.NewStatusBar(LoadingText),
-		fc:     &tui.SimpleFocusChain{},
-	}
-	v.status.SetPermanentText("Function Call Detail")
-	v.swapWidget(v.newWidgets())
-
-	v.fc.Set(&v.funcInfoWrap, &v.framesWrap)
-	v.Widget = tui.NewVBox(
-		&v.funcInfoWrap,
-		&v.framesWrap,
-		tui.NewSpacer(),
-		v.status,
-	)
-	return v
+func (vm *FuncLogDetailVM) UpdateInterval() time.Duration {
+	return 0
 }
+func (vm *FuncLogDetailVM) Update(ctx context.Context) {
+	vm.updateOnce.Do(func() {
+		length := len(vm.Record.Frames)
+		mods := make([]types.GoModule, length)
+		funcs := make([]types.GoFunc, length)
+		lines := make([]types.GoLine, length)
 
-func (v *FuncCallDetailView) Update() {
-	v.status.SetText(LoadingText)
+		var eg errgroup.Group
+		fetch := func(i int) {
+			pc := vm.Record.Frames[i]
+			eg.Go(func() (err error) {
+				mods[i], err = vm.Client.GoModule(vm.LogID, pc)
+				return
+			})
+			eg.Go(func() (err error) {
+				funcs[i], err = vm.Client.GoFunc(vm.LogID, pc)
+				return
+			})
+			eg.Go(func() (err error) {
+				lines[i], err = vm.Client.GoLine(vm.LogID, pc)
+				return
+			})
+		}
+		for i := range vm.Record.Frames {
+			fetch(i)
+		}
+		err := eg.Wait()
 
-	go v.updateGroup.Do("update", func() (interface{}, error) { // nolint: errcheck
-		var err error
-		funcInfoTable, framesTable := v.newWidgets()
+		vm.m.Lock()
+		vm.view = nil
+		vm.state.State = FCDWait
+		vm.state.Error = err
+		vm.state.Record = vm.Record
+		if err == nil {
+			// no error
+			vm.state.Mods = mods
+			vm.state.Funcs = funcs
+			vm.state.Lines = lines
+		} else {
+			vm.state.Mods = nil
+			vm.state.Funcs = nil
+			vm.state.Lines = nil
+		}
+		vm.m.Unlock()
 
-		defer func() {
-			if err != nil {
-				//v.wrap.SetWidget(newErrorMsg(err))
-				v.status.SetText(ErrorText)
-			} else {
-				//v.wrap.SetWidget(v.table)
-				v.status.SetText("")
-			}
-			v.swapWidget(funcInfoTable, framesTable)
-			v.Root.UI.Update(func() {})
-		}()
-
-		func() {
-			funcInfoTable.AppendRow(
-				tui.NewLabel("GID"),
-				tui.NewLabel(strconv.Itoa(int(v.Record.GID))),
-			)
-
-			for _, fsid := range v.Record.Frames {
-				var fs restapi.FuncStatusInfo
-				fs, err = v.Root.Api.FuncStatus(v.LogID, strconv.Itoa(int(fsid)))
-				if err != nil {
-					return
-				}
-				var fi restapi.FuncInfo
-				fi, err = v.Root.Api.Func(v.LogID, strconv.Itoa(int(fs.Func)))
-				if err != nil {
-					return
-				}
-
-				framesTable.AppendRow(
-					tui.NewLabel(fi.Name),
-					tui.NewLabel(strconv.Itoa(int(fs.Line))),
-					tui.NewLabel("("+strconv.Itoa(int(fs.PC))+")"),
-				)
-			}
-		}()
-		return nil, nil
+		vm.Root.NotifyVMUpdated()
 	})
 }
-func (v *FuncCallDetailView) SetKeybindings() {
-	gotoLogView := func() {
-		v.Root.setView(newShowLogView(v.LogID, v.Root))
-	}
+func (vm *FuncLogDetailVM) View() View {
+	vm.m.Lock()
+	defer vm.m.Unlock()
 
-	v.Root.UI.SetKeybinding("Left", gotoLogView)
-	v.Root.UI.SetKeybinding("h", gotoLogView)
+	if vm.view == nil {
+		vm.view = &FuncLogDetailView{
+			VM:                 vm,
+			FuncLogDetailState: FuncLogDetailState(vm.state),
+		}
+	}
+	return vm.view
 }
-func (v *FuncCallDetailView) FocusChain() tui.FocusChain {
+func (vm *FuncLogDetailVM) onUnselectedRecord(logID string) {
+	vm.Root.SetState(UIState{
+		LogID: logID,
+	})
+}
+
+type FuncLogDetailView struct {
+	VM *FuncLogDetailVM
+	FuncLogDetailState
+
+	initOnce sync.Once
+	widget   tui.Widget
+	fc       tui.FocusChain
+}
+
+func (v *FuncLogDetailView) init() {
+	switch v.State {
+	case FCDLoading:
+		space := tui.NewSpacer()
+		v.widget = tui.NewVBox(
+			space,
+			v.newStatusBar(LoadingText),
+		)
+		v.fc = newFocusChain(space)
+		return
+	case FCDWait:
+		if v.Error != nil {
+			errmsg := newErrorMsg(v.Error)
+			v.widget = tui.NewVBox(
+				errmsg,
+				tui.NewSpacer(),
+				v.newStatusBar(ErrorText),
+			)
+			v.fc = newFocusChain(errmsg)
+			return
+		} else {
+			fcInfo := tui.NewVBox(
+				tui.NewLabel("Func Info:"),
+				v.newGoFuncTable(),
+			)
+
+			framesInfo := tui.NewVBox(
+				tui.NewLabel("Call Stack:"),
+				v.newFramesTable(),
+			)
+
+			v.widget = tui.NewVBox(
+				fcInfo,
+				tui.NewLabel(""),
+				framesInfo,
+				tui.NewSpacer(),
+				v.newStatusBar(""),
+			)
+			v.fc = newFocusChain(fcInfo, framesInfo)
+			return
+		}
+	default:
+		log.Panic("bug")
+	}
+}
+func (v *FuncLogDetailView) Widget() tui.Widget {
+	v.initOnce.Do(v.init)
+	return v.widget
+}
+func (v *FuncLogDetailView) Keybindings() map[string]func() {
+	v.initOnce.Do(v.init)
+	unselect := func() {
+		v.VM.onUnselectedRecord(v.VM.LogID)
+	}
+	return map[string]func(){
+		"Left": unselect,
+		"h":    unselect,
+	}
+}
+func (v *FuncLogDetailView) FocusChain() tui.FocusChain {
+	v.initOnce.Do(v.init)
 	return v.fc
 }
-func (v *FuncCallDetailView) Start(ctx context.Context) {
-	startAutoUpdateWorker(&v.running, ctx, v.Update)
-}
-
-func (v *FuncCallDetailView) onSelectedFilter(funcInfoTable *tui.Table) {
+func (v *FuncLogDetailView) onSelectedFilter(funcInfoTable *tui.Table) {
 	if funcInfoTable.Selected() <= 0 {
 		return
 	}
 	log.Panic("not implemented")
 }
-func (v *FuncCallDetailView) onSelectedFrame(framesTable *tui.Table) {
+func (v *FuncLogDetailView) onSelectedFrame(framesTable *tui.Table) {
 	if framesTable.Selected() <= 0 {
 		return
 	}
 	log.Panic("not implemented")
 }
-
-// swapWidget swaps all widgets in the current view.
-func (v *FuncCallDetailView) swapWidget(funcInfoTable *headerTable, framesTable *headerTable) {
-	v.funcInfoWrap.SetWidget(funcInfoTable)
-	v.framesWrap.SetWidget(framesTable)
-}
-
-// newWidgets returns new widget objects
-func (v *FuncCallDetailView) newWidgets() (funcInfoTable *headerTable, framesTable *headerTable) {
-	funcInfoTable = newHeaderTable(
+func (v *FuncLogDetailView) newGoFuncTable() *headerTable {
+	t := newHeaderTable(
 		tui.NewLabel("Name"),
 		tui.NewLabel("Value"),
 	)
-	framesTable = newHeaderTable(
+	t.OnItemActivated(v.onSelectedFilter)
+
+	t.AppendRow(
+		tui.NewLabel("GID"),
+		tui.NewLabel(strconv.Itoa(int(v.Record.GID))),
+	)
+	return t
+}
+func (v *FuncLogDetailView) newFramesTable() *headerTable {
+	t := newHeaderTable(
 		tui.NewLabel("Name"),
 		tui.NewLabel("Line"),
 		tui.NewLabel("PC"),
 	)
+	t.OnItemActivated(v.onSelectedFrame)
+	t.SetColumnStretch(0, 10)
+	t.SetColumnStretch(1, 1)
+	t.SetColumnStretch(2, 3)
 
-	funcInfoTable.OnItemActivated(v.onSelectedFilter)
-	framesTable.OnItemActivated(v.onSelectedFrame)
-	framesTable.SetColumnStretch(0, 10)
-	framesTable.SetColumnStretch(1, 1)
-	framesTable.SetColumnStretch(2, 3)
-	return
+	for i := range v.Record.Frames {
+		t.AppendRow(
+			tui.NewLabel(v.Funcs[i].Name),
+			tui.NewLabel(strconv.FormatUint(uint64(v.Lines[i].Line), 10)),
+			tui.NewLabel("("+strconv.FormatUint(uint64(v.Record.Frames[i]), 10)+")"),
+		)
+	}
+	return t
+}
+func (v *FuncLogDetailView) newStatusBar(text string) *tui.StatusBar {
+	s := tui.NewStatusBar(LoadingText)
+	s.SetPermanentText("Function Call Detail")
+	s.SetText(text)
+	return s
 }

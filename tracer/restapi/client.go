@@ -1,25 +1,58 @@
 package restapi
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
+	"unsafe"
 
 	"github.com/levigross/grequests"
 	"github.com/pkg/errors"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
+)
+
+const (
+	UserAgent = "goapptrace-restapi-client"
 )
 
 var (
-	ErrConflict = errors.New("conflict")
+	msgUseCache = "<cache>"
+
+	ErrConflict         = errors.New("conflict")
+	ErrNotFoundGoModule = errors.New("not found GoModule")
+	ErrNotFoundGoFunc   = errors.New("not found GoFunc")
+	ErrNotFoundGoLine   = errors.New("not found GoLine")
 )
 
 // Client helps calling the Goapptrace REST API client.
 type Client struct {
 	BaseUrl string
 	s       *grequests.Session
+}
+
+type ClientWithCtx struct {
+	Client
+	UseCache bool
+
+	ctx   context.Context
+	cache apiCache
+}
+
+type apiCache struct {
+	m    sync.RWMutex
+	logs map[string]*logCache
+}
+
+type logCache struct {
+	// types.Symbols へのポインタ
+	s unsafe.Pointer
 }
 
 // Init initialize the Goapptrace REST API client.
@@ -33,138 +66,134 @@ func (c Client) url(relativeUrls ...string) string {
 	return c.BaseUrl + "/api/v0.1" + strings.Join(relativeUrls, "/")
 }
 
+// ro returns an initialized RequestOptions struct.
+func (c ClientWithCtx) ro() grequests.RequestOptions {
+	return grequests.RequestOptions{
+		UserAgent: UserAgent,
+		Context:   c.ctx,
+	}
+}
+
+// WithCtx returns a new ClientWithCtx object with specified context.
+//
+// this method MUST use value receiver.
+func (c Client) WithCtx(ctx context.Context) ClientWithCtx {
+	var cc ClientWithCtx
+	cc.Client = c
+	cc.UseCache = true
+	cc.ctx = ctx
+	cc.cache.init()
+	return cc
+}
+
+func (c *ClientWithCtx) Ctx() context.Context {
+	return c.ctx
+}
+
+// SyncSymbolsはサーバからシンボルテーブルをダウンロードし、キャッシュする。
+// キャッシュを作っておくことで、クライアント側のみでシンボル解決が出来るようになり、高速化が出来る。
+func (c *ClientWithCtx) SyncSymbols(logID string) error {
+	var data types.SymbolsData
+	url := c.url("/log", logID, "symbols")
+	ro := c.ro()
+	err := c.getJSON(url, &ro, &data)
+	if err != nil {
+		return err
+	}
+
+	s := &types.Symbols{}
+	s.Load(data)
+	c.cache.AddLog(logID).SetSymbols(s)
+	return nil
+}
+
+func (c *ClientWithCtx) Symbols(logID string) (s *types.Symbols, err error) {
+	s = c.cache.Log(logID).Symbols()
+	if s != nil {
+		return
+	}
+	err = c.SyncSymbols(logID)
+	if err != nil {
+		return
+	}
+	s = c.cache.Log(logID).Symbols()
+	return
+}
+
 // Servers returns Log server list.
-func (c Client) Servers() ([]ServerStatus, error) {
+func (c ClientWithCtx) Servers() ([]ServerStatus, error) {
 	var res Servers
-
-	r, err := c.s.Get(c.url("/servers"), nil)
+	url := c.url("/servers")
+	ro := c.ro()
+	err := c.getJSON(url, &ro, &res)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to GET /servers")
-	}
-	defer r.Close() // nolint: errcheck
-	if !r.Ok {
-		return nil, errors.Errorf("GET /servers returned unexpected status code: %d", r.StatusCode)
-	}
-
-	err = r.JSON(&res)
-	if err != nil {
-		return nil, errors.Wrap(err, "GET /servers returned invalid JSON")
+		return nil, err
 	}
 	return res.Servers, nil
 }
 
 // Logs returns a list of log status.
-func (c Client) Logs() ([]LogStatus, error) {
+func (c ClientWithCtx) Logs() ([]types.LogInfo, error) {
 	var res Logs
-
-	r, err := c.s.Get(c.url("/logs"), nil)
+	url := c.url("/logs")
+	ro := c.ro()
+	err := c.getJSON(url, &ro, &res)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to GET /logs")
-	}
-	defer r.Close() // nolint: errcheck
-	if r.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("GET /logs returned unexpected status code. expected 200, but %d", r.StatusCode)
-	}
-
-	err = r.JSON(&res)
-	if err != nil {
-		return nil, errors.Wrap(err, "GET /logs returned invalid JSON")
+		return nil, err
 	}
 	return res.Logs, nil
 }
 
 // RemoveLog removes the specified log
-func (c Client) RemoveLog(id string) error {
+func (c ClientWithCtx) RemoveLog(id string) error {
 	url := c.url("/log", id)
-	r, err := c.s.Delete(url, nil)
-	if err != nil {
-		return errors.Wrapf(err, "failed to DELETE %s", url)
-	}
-	defer r.Close() // nolint: errcheck
-	if r.StatusCode != http.StatusNoContent {
-		return errors.Errorf("DELETE %s returned unexpected status code. expected 200, but %d", url, r.StatusCode)
-	}
-	return nil
+	ro := c.ro()
+	return c.delete(url, &ro)
 }
 
-// LogStatus returns latest log status
-func (c Client) LogStatus(id string) (res LogStatus, err error) {
-	var r *grequests.Response
+// LogInfo returns latest log status
+func (c ClientWithCtx) LogInfo(id string) (res types.LogInfo, err error) {
 	url := c.url("/log", id)
-	r, err = c.s.Get(url, nil)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to GET %s", url)
-		return
-	}
-	defer r.Close() // nolint: errcheck
-	if r.StatusCode != http.StatusOK {
-		err = errors.Wrapf(err, "GET %s returned unexpected status code. expected 200, but %d", url, r.StatusCode)
-		return
-	}
-
-	err = r.JSON(&res)
-	if err != nil {
-		err = errors.Wrapf(err, "GET %s returned invalid JSON", url)
-		return
-	}
+	ro := c.ro()
+	err = c.getJSON(url, &ro, res)
 	return
 }
 
-// UpdateLogStatus updates the log status.
+// UpdateLogInfo updates the log status.
 // If update operation conflicts, it returns ErrConflict.
-func (c Client) UpdateLogStatus(id string, status LogStatus) (newStatus LogStatus, err error) {
-	var r *grequests.Response
+func (c ClientWithCtx) UpdateLogInfo(id string, old types.LogInfo) (new types.LogInfo, err error) {
 	url := c.url("/log", id)
-
-	r, err = c.s.Put(url, &grequests.RequestOptions{
+	ro := &grequests.RequestOptions{
 		Params: map[string]string{
-			"version": strconv.Itoa(status.Version),
+			"version": strconv.Itoa(old.Version),
 		},
-	})
-	if err != nil {
-		err = errors.Wrapf(err, "failed to PUT %s", url)
-		return
 	}
-	defer r.Close() // nolint: errcheck
-	switch r.StatusCode {
-	case http.StatusOK:
-		err = r.JSON(&newStatus)
-		return
-	case http.StatusConflict:
-		err = ErrConflict
-		return
-	default:
-		err = errors.Wrapf(err, "PUT %s returned unexpected status code. expected 200 or 409, but %d", url, r.StatusCode)
-		return
-	}
+	err = c.putJSON(url, ro, &new)
+	return
 }
 
-// SearchFuncCalls filters the function call log records.
-func (c Client) SearchFuncCalls(id string, so SearchFuncCallParams) (chan FuncCall, error) {
+// SearchFuncLogs filters the function call log records.
+func (c ClientWithCtx) SearchFuncLogs(id string, so SearchFuncLogParams) (chan types.FuncLog, error) {
 	url := c.url("/log", id, "func-call", "search")
-
-	r, err := c.s.Get(url, &grequests.RequestOptions{
-		Params: so.ToParamMap(),
-	})
+	ro := c.ro()
+	ro.Params = so.ToParamMap()
+	r, err := c.get(url, &ro)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to GET %s", url)
-	}
-	if r.StatusCode != http.StatusOK {
-		r.Close() // nolint: errcheck
-		return nil, errors.Wrapf(err, "GET %s returned unexpected status code. expected 200, but %d", url, r.StatusCode)
+		return nil, err
 	}
 
 	dec := json.NewDecoder(r)
-	ch := make(chan FuncCall, 1<<20)
+	ch := make(chan types.FuncLog, 1<<20)
 	go func() {
 		defer r.Close() // nolint: errcheck
 		defer close(ch)
 		for {
-			var fc FuncCall
+			var fc types.FuncLog
 			if err := dec.Decode(&fc); err != nil {
 				if err == io.EOF {
 					return
 				}
+				// TODO: ここで発生したエラーを、クライアント側に通知する
 				log.Println(err)
 				return
 			}
@@ -173,64 +202,107 @@ func (c Client) SearchFuncCalls(id string, so SearchFuncCallParams) (chan FuncCa
 	}()
 	return ch, nil
 }
-func (c Client) Func(logID, funcID string) (f FuncInfo, err error) {
-	var r *grequests.Response
-	url := c.url("/log", logID, "symbol", "func", funcID)
-
-	r, err = c.s.Get(url, nil)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to GET %s", url)
+func (c ClientWithCtx) GoModule(logID string, pc uintptr) (m types.GoModule, err error) {
+	if c.UseCache {
+		// fast path
+		var s *types.Symbols
+		var ok bool
+		s, err = c.Symbols(logID)
+		if err != nil {
+			return
+		}
+		m, ok = s.GoModule(pc)
+		if !ok {
+			err = ErrNotFoundGoModule
+			return
+		}
+		c.validateGoModule(pc, msgUseCache, m)
 		return
 	}
-	defer r.Close() // nolint: errcheck
-	if r.StatusCode != http.StatusOK {
-		err = errors.Wrapf(err, "GET %s returned unexpected status code. expected 200, but %d", url, r.StatusCode)
-		return
-	}
 
-	err = r.JSON(&f)
+	// slow path
+	url := c.url("/log", logID, "symbol", "module", FormatUintptr(pc))
+	ro := c.ro()
+	err = c.getJSON(url, &ro, &m)
+
+	if err == nil {
+		c.validateGoModule(pc, url, m)
+	}
 	return
 }
-func (c Client) FuncStatus(logID, funcStatusID string) (f FuncStatusInfo, err error) {
-	var r *grequests.Response
-	url := c.url("/log", logID, "symbol", "func-status", funcStatusID)
-
-	r, err = c.s.Get(url, nil)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to GET %s", url)
+func (c ClientWithCtx) GoFunc(logID string, pc uintptr) (f types.GoFunc, err error) {
+	if c.UseCache {
+		// fast path
+		var s *types.Symbols
+		var ok bool
+		s, err = c.Symbols(logID)
+		if err != nil {
+			return
+		}
+		f, ok = s.GoFunc(pc)
+		if !ok {
+			err = ErrNotFoundGoFunc
+			return
+		}
+		c.validateGoFunc(pc, msgUseCache, f)
 		return
 	}
-	defer r.Close() // nolint: errcheck
-	if r.StatusCode != http.StatusOK {
-		err = errors.Wrapf(err, "GET %s returned unexpected status code. expected 200, but %d", url, r.StatusCode)
-		return
-	}
 
-	err = r.JSON(&f)
+	// slow path
+	url := c.url("/log", logID, "symbol", "func", FormatUintptr(pc))
+	ro := c.ro()
+	err = c.getJSON(url, &ro, &f)
+
+	if err == nil {
+		c.validateGoFunc(pc, url, f)
+	}
 	return
 }
-func (c Client) Goroutines(logID string) (gl chan Goroutine, err error) {
-	var r *grequests.Response
-	url := c.url("/log", logID, "symbol", "goroutines", "search")
-
-	r, err = c.s.Get(url, nil)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to GET %s", url)
+func (c ClientWithCtx) GoLine(logID string, pc uintptr) (l types.GoLine, err error) {
+	if c.UseCache {
+		// fast path
+		var s *types.Symbols
+		var ok bool
+		s, err = c.Symbols(logID)
+		if err != nil {
+			return
+		}
+		l, ok = s.GoLine(pc)
+		if !ok {
+			err = ErrNotFoundGoLine
+			return
+		}
+		c.validateGoLine(pc, msgUseCache, l)
 		return
 	}
-	defer r.Close() // nolint: errcheck
-	if r.StatusCode != http.StatusOK {
-		err = errors.Wrapf(err, "GET %s returned unexpected status code. expected 200, but %s", url, r.StatusCode)
+
+	// slow path
+	url := c.url("/log", logID, "symbol", "line", FormatUintptr(pc))
+	ro := c.ro()
+	err = c.getJSON(url, &ro, &l)
+
+	if err == nil {
+		c.validateGoLine(pc, url, l)
+	}
+	return
+}
+
+func (c ClientWithCtx) Goroutines(logID string) (gl chan types.Goroutine, err error) {
+	var r *grequests.Response
+	url := c.url("/log", logID, "goroutines", "search")
+	ro := c.ro()
+	r, err = c.get(url, &ro)
+	if err != nil {
 		return
 	}
 
 	dec := json.NewDecoder(r)
-	ch := make(chan Goroutine, 1<<20)
+	ch := make(chan types.Goroutine, 1<<20)
 	go func() {
 		defer r.Close() // nolint: errcheck
 		defer close(ch)
 		for {
-			var g Goroutine
+			var g types.Goroutine
 			if err := dec.Decode(&g); err != nil {
 				if err == io.EOF {
 					return
@@ -242,4 +314,160 @@ func (c Client) Goroutines(logID string) (gl chan Goroutine, err error) {
 		}
 	}()
 	return ch, nil
+}
+
+func (c Client) get(url string, ro *grequests.RequestOptions) (*grequests.Response, error) {
+	r, err := wrapResp(c.s.Get(url, ro))
+	if err != nil {
+		return nil, err
+	}
+	switch r.StatusCode {
+	case http.StatusOK:
+		return r, nil
+	default:
+		return nil, errUnexpStatus(r, []int{
+			http.StatusOK,
+		})
+	}
+}
+func (c Client) getJSON(url string, ro *grequests.RequestOptions, data interface{}) (err error) {
+	var r *grequests.Response
+	r, err = c.get(url, ro)
+	if err != nil {
+		return
+	}
+	defer r.Close() // nolint: errcheck
+	err = errors.Wrapf(r.JSON(&data), "GET %s returned invalid JSON", url)
+	return
+}
+func (c Client) delete(url string, ro *grequests.RequestOptions) error {
+	r, err := wrapResp(c.s.Delete(url, ro))
+	if err != nil {
+		return err
+	}
+	switch r.StatusCode {
+	case http.StatusNoContent:
+		return r.Close()
+	default:
+		defer r.Close() // nolint: errcheck
+		return errUnexpStatus(r, []int{
+			http.StatusNoContent,
+		})
+	}
+}
+func (c Client) put(url string, ro *grequests.RequestOptions) (*grequests.Response, error) {
+	r, err := wrapResp(c.s.Put(url, ro))
+	if err != nil {
+		return nil, err
+	}
+
+	switch r.StatusCode {
+	case http.StatusOK:
+		return r, nil
+	case http.StatusConflict:
+		r.Close() // nolint: errcheck
+		return nil, ErrConflict
+	default:
+		r.Close() // nolint: errcheck
+		return nil, errors.Wrapf(err, "PUT %s returned unexpected status code. expected 200 or 409, but %d", url, r.StatusCode)
+	}
+}
+func (c Client) putJSON(url string, ro *grequests.RequestOptions, data interface{}) error {
+	r, err := c.put(url, ro)
+	if err != nil {
+		return err
+	}
+	defer r.Close() // nolint: errcheck
+	return errors.Wrapf(r.JSON(&data), "PUT %s returned invalid JSON", url)
+}
+func (c Client) validateGoModule(pc uintptr, url string, m types.GoModule) {
+	if m.Name == "" || m.MinPC == 0 || m.MaxPC == 0 || pc < m.MinPC || m.MaxPC < pc {
+		err := fmt.Errorf("validation error: Module=%+v url=%s", m, url)
+		log.Panic(errors.WithStack(err))
+	}
+}
+func (c Client) validateGoFunc(pc uintptr, url string, f types.GoFunc) {
+	if f.Entry == 0 || f.Entry > pc {
+		err := fmt.Errorf("validation error: GoFunc=%+v url=%s", f, url)
+		log.Panic(errors.WithStack(err))
+	}
+}
+func (c Client) validateGoLine(pc uintptr, url string, l types.GoLine) {
+	if l.PC == 0 || l.PC > pc {
+		err := fmt.Errorf("validation error: GoLine=%+v url=%s", l, url)
+		log.Panic(errors.WithStack(err))
+	}
+}
+
+func (c *apiCache) init() {
+	c.logs = map[string]*logCache{}
+}
+
+func (c *apiCache) Log(logID string) *logCache {
+	c.m.RLock()
+	l := c.logs[logID]
+	c.m.RUnlock()
+	return l
+}
+
+func (c *apiCache) AddLog(logID string) *logCache {
+	c.m.Lock()
+	l := c.logs[logID]
+	if l == nil {
+		l = &logCache{}
+		l.init()
+		c.logs[logID] = l
+	}
+	c.m.Unlock()
+	return l
+}
+
+func (c *logCache) init() {}
+
+func (c *logCache) SetSymbols(s *types.Symbols) {
+	atomic.StorePointer(&c.s, unsafe.Pointer(s)) // nolint: gas
+}
+
+func (c *logCache) Symbols() *types.Symbols {
+	if c == nil {
+		return nil
+	}
+	sp := atomic.LoadPointer(&c.s)
+	return (*types.Symbols)(sp)
+}
+
+func (c *logCache) GoModule(pc uintptr) (m types.GoModule, ok bool) {
+	s := c.Symbols()
+	if s == nil {
+		return
+	}
+	m, ok = s.GoModule(pc)
+	return
+}
+
+func (c *logCache) GoFunc(pc uintptr) (f types.GoFunc, ok bool) {
+	s := c.Symbols()
+	if s == nil {
+		return
+	}
+	f, ok = s.GoFunc(pc)
+	return
+}
+
+func (c *logCache) GoLine(pc uintptr) (l types.GoLine, ok bool) {
+	s := c.Symbols()
+	if s == nil {
+		return
+	}
+	l, ok = s.GoLine(pc)
+	return
+}
+
+func FormatUintptr(ptr uintptr) string {
+	return strconv.FormatUint(uint64(ptr), 10)
+}
+
+func ParseUintptr(s string) (uintptr, error) {
+	ptr, err := strconv.ParseUint(s, 10, 64)
+	return uintptr(ptr), err
 }

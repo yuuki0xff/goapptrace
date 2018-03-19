@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 
 	"github.com/yuuki0xff/goapptrace/info"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 // FileSender writes Symbols and FuncLog to log file.
@@ -36,12 +36,20 @@ func (f *FileSender) Close() error {
 	return err
 }
 
-// write Symbols and RawFuncLog to the log file.
-func (f *FileSender) Send(diff *logutil.SymbolsDiff, funclog *logutil.RawFuncLog) error {
+// write Symbols to the log file.
+func (f *FileSender) SendSymbols(data *types.SymbolsData) error {
 	if f.w == nil {
 		return ClosedError
 	}
-	return f.w.Write(diff, funclog)
+	return f.w.Write(data, nil)
+}
+
+// write RawFuncLog to the log file.
+func (f *FileSender) SendLog(raw *types.RawFuncLog) error {
+	if f.w == nil {
+		return ClosedError
+	}
+	return f.w.Write(nil, raw)
 }
 
 // returns absolute path of log file.

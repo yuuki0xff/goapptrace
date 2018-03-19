@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	set "github.com/deckarep/golang-set"
+	"github.com/stretchr/testify/assert"
 )
 
 func setupStorage() (storage *Storage, cleanup func()) {
@@ -28,23 +29,22 @@ func setupStorage() (storage *Storage, cleanup func()) {
 }
 
 func setupStorageDir(t *testing.T) (dir DirLayout, logIDSet set.Set, cleanup func()) {
+	a := assert.New(t)
 	var strg *Storage
 	strg, cleanup = setupStorage()
 	dir = strg.Root
 
-	must(t, strg.Init(), "Storage.Init():")
+	a.NoError(strg.Init())
 
 	logIDSet = set.NewSet()
 	for i := 0; i < 2; i++ {
 		logobj, err := strg.New()
-		must(t, err, "Storage.New():")
-		if logobj == nil {
-			t.Fatalf("Storage.New() should not return nil")
-		}
+		a.NoError(err)
+		a.NotNil(logobj)
 		logIDSet.Add(logobj.ID)
 	}
 
-	must(t, strg.Close(), "Storage.Cloes():")
+	a.NoError(strg.Close())
 	return
 }
 
@@ -57,41 +57,32 @@ func logIDSetFromLogs(logs []*Log) (logIDSet set.Set) {
 }
 
 func TestStorage(t *testing.T) {
+	a := assert.New(t)
 	strg, cleanup := setupStorage()
 	defer cleanup()
 
-	must(t, strg.Init(), "Storage.Init():")
+	a.NoError(strg.Init())
 
 	logs, err := strg.Logs()
-	must(t, err, "Storage.Logs():")
-	if len(logs) != 0 {
-		t.Fatalf("Storage.Logs() should return empty array, but %+v", logs)
-	}
+	a.NoError(err)
+	a.Len(logs, 0)
 
 	logobj, err := strg.New()
-	must(t, err, "Storage.New():")
-	if logobj == nil {
-		t.Fatalf("Storage.New() should not return nil")
-	}
+	a.NoError(err)
+	a.NotNil(logobj)
 
 	logs, err = strg.Logs()
-	must(t, err, "Storage.Logs():")
-	if len(logs) != 1 {
-		t.Fatalf("Storage.Logs() returns wrong result: I expected a log object, but %+v", logs)
-	}
+	a.NoError(err)
+	a.Len(logs, 1)
 
 	logobj2, ok := strg.Log(logobj.ID)
-	if !ok {
-		t.Fatalf("Storage.Log(): not found %s", logobj.ID.Hex())
-	}
-	if logobj != logobj2 {
-		t.Fatalf("Storage.Log(): returns different object: obj1=%+v obj2=%+v", logobj, logobj2)
-	}
-
-	must(t, strg.Close(), "Storage.Close():")
+	a.Truef(ok, "Storage.Log(): not found %s", logobj.ID.Hex())
+	a.Equal(logobj, logobj2)
+	a.NoError(strg.Close())
 }
 
 func TestStorage_Load(t *testing.T) {
+	a := assert.New(t)
 	// prepare directory
 	dir, logIDSet, cleanup := setupStorageDir(t)
 	defer cleanup()
@@ -100,15 +91,12 @@ func TestStorage_Load(t *testing.T) {
 		Root: dir,
 	}
 	// load logs from files
-	must(t, strg.Init(), "Storage.Init() should not return nil")
+	a.NoError(strg.Init())
 
 	newLogs, err := strg.Logs()
-	must(t, err, "Storage.Logs():")
+	a.NoError(err)
 	newLogIDSet := logIDSetFromLogs(newLogs)
 
-	if !logIDSet.Equal(newLogIDSet) {
-		t.Fatalf("Missmatch logs: expect %+v, but %+v", logIDSet, newLogIDSet)
-	}
-
-	must(t, strg.Close(), "Storage.Close():")
+	a.Truef(logIDSet.Equal(newLogIDSet), "Missmatch logs: expect %+v, but %+v", logIDSet, newLogIDSet)
+	a.NoError(strg.Close())
 }

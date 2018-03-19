@@ -2,9 +2,10 @@ package storage
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/yuuki0xff/goapptrace/tracer/util"
 )
 
 var (
@@ -23,109 +24,120 @@ type testStruct3 struct {
 	prvField int
 }
 
-// Create a temporary file, and returns File object.
-// You should remove a temporary file after used.
-func createTempFile() File {
-	file, err := ioutil.TempFile("", ".goapptrace_storage")
-	if err != nil {
-		panic(err)
-	}
-	return File(file.Name())
-}
-
-func must(t *testing.T, err error, msg string) {
-	if err != nil {
-		t.Fatal(msg, err)
-	}
-}
-
 func TestEncoderDecoder(t *testing.T) {
-	var enc Encoder
-	var dec Decoder
+	a := assert.New(t)
 
-	tmpfile := createTempFile()
-	defer func() {
-		must(t, os.Remove(string(tmpfile)), "os.Remove:")
-	}()
+	util.WithTempFile(func(tmpfile string) {
+		// test Encoder's
+		enc := Encoder{
+			File: File(tmpfile),
+		}
+		a.NoError(enc.Open())
+		a.NoError(enc.Append(testData1))
+		a.NoError(enc.Append(testData2))
+		a.NoError(enc.Append(testData3))
+		a.NoError(enc.Close())
 
-	// test Encoder's
-	enc = Encoder{
-		File: tmpfile,
-	}
-	must(t, enc.Open(), "enc.Open:")
-	must(t, enc.Append(testData1), "enc.Append 1:")
-	must(t, enc.Append(testData2), "enc.Append 2:")
-	must(t, enc.Append(testData3), "enc.Append 3:")
-	must(t, enc.Close(), "enc.Close():")
+		// test Decoder.Open()/Close()/Read() methods
+		var data1 testStruct1
+		var data2 testStruct2
+		var data3 testStruct3
+		dec := Decoder{
+			File: File(tmpfile),
+		}
+		a.NoError(dec.Open())
+		a.NoError(dec.Read(&data1))
+		a.Equal(testData1, data1)
 
-	// test Decoder.Open()/Close()/Read() methods
-	var data1 testStruct1
-	var data2 testStruct2
-	var data3 testStruct3
-	dec = Decoder{
-		File: tmpfile,
-	}
-	must(t, dec.Open(), "dec.Open:")
-	must(t, dec.Read(&data1), "dec.Read 1:")
-	if data1 != testData1 {
-		t.Fatalf("Miss match data: expect %+v, but got %+v", testData1, data1)
-	}
-	must(t, dec.Read(&data2), "dec.Read 2:")
-	if data2 != testData2 {
-		t.Fatalf("Miss match data: expect %+v, but got %+v", testData2, data2)
-	}
-	must(t, dec.Read(&data3), "dec.Read 3:")
-	if data3 != testData3Result {
-		t.Fatalf("Miss match data: expect %+v, but got %+v", testData3Result, data3)
-	}
-	must(t, dec.Close(), "dec.Close:")
+		a.NoError(dec.Read(&data2))
+		a.Equal(testData2, data2)
+
+		a.NoError(dec.Read(&data3))
+		a.Equal(testData3Result, data3)
+		a.NoError(dec.Close())
+	})
 }
 
 func TestDecoder_Walk(t *testing.T) {
-	var enc Encoder
-	var dec Decoder
+	a := assert.New(t)
 
-	tmpfile := createTempFile()
-	defer func() {
-		must(t, os.Remove(string(tmpfile)), "os.Remove:")
-	}()
+	util.WithTempFile(func(tmpfile string) {
+		// test Encoder's
+		enc := Encoder{
+			File: File(tmpfile),
+		}
+		a.NoError(enc.Open())
+		a.NoError(enc.Append(testStruct2{"data1"}))
+		a.NoError(enc.Append(testStruct2{"data2"}))
+		a.NoError(enc.Append(testStruct2{"data3"}))
+		a.NoError(enc.Close())
 
-	// test Encoder's
-	enc = Encoder{
-		File: tmpfile,
-	}
-	must(t, enc.Open(), "enc.Open:")
-	must(t, enc.Append(testStruct2{"data1"}), "enc.Append 1:")
-	must(t, enc.Append(testStruct2{"data2"}), "enc.Append 2:")
-	must(t, enc.Append(testStruct2{"data3"}), "enc.Append 3:")
-	must(t, enc.Close(), "enc.Close():")
+		dec := Decoder{
+			File: File(tmpfile),
+		}
+		i := 1
+		a.NoError(dec.Open())
+		a.NoError(dec.Walk(
+			func() interface{} {
+				return &testStruct2{}
+			},
+			func(data interface{}) error {
+				t.Log("received", data)
+				expectData := &testStruct2{fmt.Sprintf("data%d", i)}
+				a.Equal(expectData, data)
+				i++
+				return nil
+			},
+		))
+		a.Equal(3, i-1)
+		a.NoError(dec.Close())
+	})
+}
 
-	dec = Decoder{
-		File: tmpfile,
-	}
-	i := 1
-	must(t, dec.Open(), "dec.Open:")
-	must(t, dec.Walk(
-		func() interface{} {
-			return &testStruct2{}
-		},
-		func(data interface{}) error {
-			t.Log("received", data)
-			expectData := &testStruct2{fmt.Sprintf("data%d", i)}
-			decodedData, ok := data.(*testStruct2)
-			if !ok {
-				t.Fatalf("Miss match data type: expect %+v, but got %+v", expectData, decodedData)
+func BenchmarkEncoder_Append(b *testing.B) {
+	util.WithTempFile(func(tmpfile string) {
+		enc := Encoder{
+			File: File(tmpfile),
+		}
+		enc.Open()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			enc.Append(&testData3)
+		}
+		b.StopTimer()
+		enc.Close()
+	})
+}
+
+func BenchmarkDecoder_Read(b *testing.B) {
+	const records = 10000
+
+	util.WithTempFile(func(tmpfile string) {
+		enc := Encoder{
+			File: File(tmpfile),
+		}
+		enc.Open()
+		for i := 0; i < records; i++ {
+			enc.Append(testData1)
+		}
+		enc.Close()
+
+		dec := Decoder{
+			File: File(tmpfile),
+		}
+		var val testStruct3
+		b.ResetTimer()
+		for i := 0; i < b.N; {
+			dec.Open()
+			end := i + records
+			if end > b.N {
+				end = b.N
 			}
-			if *expectData != *decodedData {
-				t.Fatalf("Miss match data: expect %+v, but got %+v", expectData, decodedData)
+			for ; i < end; i++ {
+				dec.Read(&val)
 			}
-
-			i++
-			return nil
-		},
-	), "dec.Walk:")
-	if 3 != i-1 {
-		t.Fatalf("expect receive 3 data, but %d data", i-1)
-	}
-	must(t, dec.Close(), "dec.Close:")
+			dec.Close()
+		}
+		b.StopTimer()
+	})
 }

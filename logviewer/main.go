@@ -2,47 +2,153 @@ package logviewer
 
 import (
 	"context"
+	"log"
+	"net/http"
+	_ "net/http/pprof"
+	"sync"
 
+	"github.com/marcusolsson/tui-go"
 	"github.com/pkg/errors"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
-	"github.com/yuuki0xff/tui-go"
 )
 
-type View interface {
-	tui.Widget
-	// 画面を更新する
-	Update()
-	SetKeybindings()
-	FocusChain() tui.FocusChain
-	// Viewが表示状態になったときに呼び出される。
-	// 定期更新のためのworkerを起動することなどを想定。
-	// Viewが破棄された、もしくは非表示状態になったときは、ctxがキャンセルされる。
-	// 実行中はUIのレンダリングが止まるため、可能な限り実行時間が短い処理のみにすること。
-	// なお、別途Update()メソッドが呼び出されるため、Start()メソッドの中でUpdate()メソッドを呼ぶのは推薦しない。
-	Start(ctx context.Context)
-}
-
-type Controller struct {
+// UICoordinator implements of Coordinator.
+type UICoordinator struct {
 	Config *config.Config
 	Api    *restapi.Client
 	LogID  string
 	UI     tui.UI
 
-	view       View
-	viewCancel context.CancelFunc
+	m sync.Mutex
+
+	vm       ViewModel
+	vmCtx    context.Context
+	vmCancel context.CancelFunc
 
 	ctx    context.Context
 	cancel context.CancelFunc
 }
 
-func (v *Controller) Run() error {
+func (c *UICoordinator) Run() error {
 	var err error
 
-	v.UI, err = tui.New(tui.NewSpacer())
+	c.UI, err = tui.New(tui.NewSpacer())
 	if err != nil {
 		return errors.Wrap(err, "failed to initialize TUI")
 	}
+	c.UI.SetTheme(c.theme())
+
+	c.ctx, c.cancel = context.WithCancel(context.Background())
+	defer c.cancel()
+
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
+	go c.SetState(UIState{})
+	if err := c.UI.Run(); err != nil {
+		return errors.Wrap(err, "failed to initialize TUI")
+	}
+	return nil
+}
+func (c *UICoordinator) Quit() {
+	c.UI.Quit()
+}
+func (c *UICoordinator) SetState(s UIState) {
+	c.m.Lock()
+	defer c.m.Unlock()
+
+	if s.LogID == "" {
+		c.setVM(func(ctx context.Context) ViewModel {
+			return &LogListVM{
+				Root:   c,
+				Client: c.Api.WithCtx(ctx),
+			}
+		})
+		return
+	}
+
+	if s.RecordID != 0 {
+		c.setVM(func(ctx context.Context) ViewModel {
+			return &FuncLogDetailVM{
+				Root:   c,
+				Client: c.Api.WithCtx(ctx),
+				LogID:  s.LogID,
+				Record: s.Record,
+			}
+		})
+		return
+	}
+
+	if s.UseGraphView {
+		c.setVM(func(ctx context.Context) ViewModel {
+			return &GraphVM{
+				Root:   c,
+				Client: c.Api.WithCtx(ctx),
+				LogID:  s.LogID,
+			}
+		})
+		return
+	} else {
+		c.setVM(func(ctx context.Context) ViewModel {
+			return &LogRecordVM{
+				Root:   c,
+				Client: c.Api.WithCtx(ctx),
+				LogID:  s.LogID,
+			}
+		})
+		return
+	}
+}
+func (c *UICoordinator) NotifyVMUpdated() {
+	var view View
+
+	c.m.Lock()
+	defer c.m.Unlock()
+	if c.vm != nil {
+		view = c.vm.View()
+	}
+	c.setView(view)
+}
+func (c *UICoordinator) setView(view View) {
+	// setViewは、UI threadから呼び出される可能性が高い。
+	// UI thread上でc.UI.Update()を呼び出すとdead lockする問題を回避するために、
+	// 別のスレッドからアップデーするようにしている。
+	go c.UI.Update(func() {
+		c.UI.SetWidget(view.Widget())
+
+		// rebuild key bind settings.
+		c.UI.ClearKeybindings()
+		c.setKeybindings(view.Keybindings())
+
+		// update focus chain
+		c.UI.SetFocusChain(view.FocusChain())
+	})
+}
+func (c *UICoordinator) setKeybindings(bindings map[string]func()) {
+	c.UI.SetKeybinding("Q", c.Quit)
+	c.UI.SetKeybinding("Esc", c.Quit)
+
+	for key, fn := range bindings {
+		c.UI.SetKeybinding(key, fn)
+	}
+}
+func (c *UICoordinator) setVM(fn func(ctx context.Context) ViewModel) {
+	if c.vm != nil {
+		// stop old ViewModel.
+		c.vmCancel()
+	}
+
+	c.vmCtx, c.vmCancel = context.WithCancel(c.ctx)
+	c.vm = fn(c.vmCtx)
+	c.setView(c.vm.View())
+	go updateWorker(c.vmCtx, c.vm)
+	go c.vm.Update(c.vmCtx)
+}
+
+// theme returns default themes.
+func (c *UICoordinator) theme() *tui.Theme {
 	theme := tui.NewTheme()
 	theme.SetStyle("list.item.selected", tui.Style{Reverse: tui.DecorationOn})
 	theme.SetStyle("table.cell.selected", tui.Style{Reverse: tui.DecorationOn})
@@ -84,45 +190,5 @@ func (v *Controller) Run() error {
 		Bg:   tui.ColorGreen,
 		Bold: tui.DecorationOn,
 	})
-	v.UI.SetTheme(theme)
-
-	v.ctx, v.cancel = context.WithCancel(context.Background())
-	defer v.cancel()
-
-	view := newSelectLogView(v)
-	v.setView(view)
-
-	if err := v.UI.Run(); err != nil {
-		return errors.Wrap(err, "failed to initialize TUI")
-	}
-	return nil
-}
-func (v *Controller) Quit() {
-	v.UI.Quit()
-}
-func (v *Controller) setKeybindings() {
-	v.UI.SetKeybinding("Q", v.Quit)
-	v.UI.SetKeybinding("Esc", v.Quit)
-}
-func (v *Controller) setView(view View) {
-	if v.view != nil {
-		// stop old view.
-		v.viewCancel()
-	}
-
-	v.view = view
-	v.UI.SetWidget(v.view)
-
-	// rebuild key bind settings.
-	v.UI.ClearKeybindings()
-	v.setKeybindings()
-	v.view.SetKeybindings()
-
-	// update focus chain
-	v.UI.SetFocusChain(v.view.FocusChain())
-
-	var viewCtx context.Context
-	viewCtx, v.viewCancel = context.WithCancel(v.ctx)
-	v.view.Start(viewCtx)
-	go v.UI.Update(v.view.Update)
+	return theme
 }

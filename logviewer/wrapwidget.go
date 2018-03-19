@@ -4,11 +4,14 @@ import (
 	"image"
 	"log"
 
-	"github.com/yuuki0xff/tui-go"
+	"github.com/marcusolsson/tui-go"
 )
 
 // 表示対象のWidgetを切り替えることが可能なWidget。
-type wrapWidget struct {
+//
+// このwidgetは、現時点ではどこからの使用されていない。
+// いくつかのlinterがwarningを出してくる問題を回避するために、nolintをつけている。
+type wrapWidget struct { // nolint
 	Widget tui.Widget
 }
 

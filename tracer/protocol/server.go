@@ -2,12 +2,13 @@ package protocol
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 	"github.com/yuuki0xff/xtcp"
 )
 
@@ -27,8 +28,38 @@ type ServerHandler struct {
 
 	Error func(id ConnID, err error)
 
-	Symbols    func(id ConnID, diff *logutil.SymbolsDiff)
-	RawFuncLog func(id ConnID, funclog *logutil.RawFuncLog)
+	Symbols    func(id ConnID, diff *types.SymbolsData)
+	RawFuncLog func(id ConnID, funclog *types.RawFuncLog)
+}
+
+// SetDefault sets "fn" to all nil fields.
+func (sh ServerHandler) SetDefault(fn func(field string)) ServerHandler {
+	if sh.Connected == nil {
+		sh.Connected = func(id ConnID) {
+			fn("Connected")
+		}
+	}
+	if sh.Disconnected == nil {
+		sh.Disconnected = func(id ConnID) {
+			fn("Disconnected")
+		}
+	}
+	if sh.Error == nil {
+		sh.Error = func(id ConnID, err error) {
+			fn("Error")
+		}
+	}
+	if sh.Symbols == nil {
+		sh.Symbols = func(id ConnID, diff *types.SymbolsData) {
+			fn("Symbols")
+		}
+	}
+	if sh.RawFuncLog == nil {
+		sh.RawFuncLog = func(id ConnID, funclog *types.RawFuncLog) {
+			fn("RawFuncLog")
+		}
+	}
+	return sh
 }
 
 // トレース対象との通信を行うサーバ。
@@ -48,10 +79,10 @@ type Server struct {
 	Addr    string
 	Handler ServerHandler
 
-	AppName         string
-	Secret          string
-	MaxBufferedMsgs int
-	PingInterval    time.Duration
+	AppName      string
+	Secret       string
+	PingInterval time.Duration
+	BufferOpt    BufferOption
 
 	listener net.Listener
 	wg       sync.WaitGroup
@@ -74,21 +105,22 @@ type ServerConn struct {
 	ID           ConnID
 	Handler      *ServerHandler
 	isNegotiated bool
+	sendHandler  func(conn *xtcp.Conn, packet xtcp.Packet)
+	stopHandler  func(conn *xtcp.Conn, mode xtcp.StopMode)
 }
 
 func (s *Server) init() error {
 	s.initOnce.Do(func() {
-		if s.MaxBufferedMsgs <= 0 {
-			s.MaxBufferedMsgs = DefaultMaxBufferedMsgs
-		}
 		if s.PingInterval == time.Duration(0) {
 			s.PingInterval = DefaultPingInterval
 		}
+		s.BufferOpt.SetDefault()
 		s.connIDMap = map[*xtcp.Conn]ConnID{}
 		s.connMap = map[ConnID]*ServerConn{}
 
 		prt := &Proto{}
 		s.opt = xtcp.NewOpts(s, prt)
+		s.BufferOpt.Xtcp.Set(s.opt)
 		s.xtcpsrv = xtcp.NewServer(s.opt)
 	})
 	return nil
@@ -170,22 +202,19 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 			// check client header.
 			pkt, ok := p.(*ClientHelloPacket)
 			if !ok {
-				conn.Stop(xtcp.StopImmediately)
+				s.stop(conn, xtcp.StopImmediately)
 				return
 			}
 			if !isCompatibleVersion(pkt.ProtocolVersion) {
 				// 対応していないバージョンなら、切断する。
-				conn.Stop(xtcp.StopImmediately)
+				s.stop(conn, xtcp.StopImmediately)
 				return
 			}
 
 			packet := &ServerHelloPacket{
 				ProtocolVersion: ProtocolVersion,
 			}
-			if err := conn.Send(packet); err != nil {
-				// TODO: try to reconnect
-				panic(err)
-			}
+			s.mustSend(conn, packet)
 			s.isNegotiated = true
 
 			if s.Handler.Connected != nil {
@@ -196,17 +225,17 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 			case *PingPacket:
 				// do nothing
 			case *ShutdownPacket:
-				conn.Stop(xtcp.StopImmediately)
+				s.stop(conn, xtcp.StopImmediately)
 				return
 			case *StartTraceCmdPacket:
-				conn.Stop(xtcp.StopImmediately)
+				s.stop(conn, xtcp.StopImmediately)
 				return
 			case *StopTraceCmdPacket:
-				conn.Stop(xtcp.StopImmediately)
+				s.stop(conn, xtcp.StopImmediately)
 				return
 			case *SymbolPacket:
 				if s.Handler.Symbols != nil {
-					s.Handler.Symbols(s.ID, &pkt.SymbolsDiff)
+					s.Handler.Symbols(s.ID, &pkt.SymbolsData)
 				}
 			case *RawFuncLogPacket:
 				if s.Handler.RawFuncLog != nil {
@@ -220,6 +249,30 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 		if s.Handler.Disconnected != nil {
 			s.Handler.Disconnected(s.ID)
 		}
+	}
+}
+func (s *ServerConn) mustSend(conn *xtcp.Conn, p xtcp.Packet) {
+	if s.sendHandler == nil {
+		if err := conn.Send(p); err != nil {
+			// TODO: reconnect and retry the conn.Send().
+			log.Panic(err)
+		}
+	} else {
+		// call the mock method.
+		s.sendHandler(conn, p)
+	}
+}
+
+func (s *ServerConn) stop(conn *xtcp.Conn, mode xtcp.StopMode) {
+	if s.stopHandler == nil {
+		conn.Stop(mode)
+	} else {
+		// call the mock method.
+		s.stopHandler(conn, mode)
+		// "xtcp.EventClosed" event occurs after calling the conn.Stop().
+		// But the event is not occur when calling s.stopHandler().
+		// So we occurs the event here.
+		s.OnEvent(xtcp.EventClosed, conn, nil)
 	}
 }
 

@@ -15,20 +15,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/termie/go-shutil"
+	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/tracer/srceditor"
-)
-
-const (
-	runtimePatch = `
-package runtime
-
-// GoID returns the Goroutine ID.
-//go:nosplit
-func GoID() int64 {
-	gp := getg()
-	return gp.goid
-}
-`
 )
 
 var (
@@ -53,8 +41,10 @@ type RepoBuilder struct {
 	IgnoreFiles   map[string]bool
 	IgnoreStdPkgs bool
 
-	Editor     srceditor.CodeEditor
-	OutputFile string
+	// settings of the tracer/logger package。
+	LoggerFlags LoggerFlags
+
+	Editor srceditor.CodeEditor
 }
 
 func (b *RepoBuilder) EditAll(targets []string) error {
@@ -121,7 +111,7 @@ func (b *RepoBuilder) EditFiles(gofiles []string) error {
 		if err != nil {
 			return err
 		}
-		if err := os.MkdirAll(mainpkg, os.ModePerm); err != nil {
+		if err = os.MkdirAll(mainpkg, os.ModePerm); err != nil {
 			return err
 		}
 
@@ -164,16 +154,7 @@ func (b *RepoBuilder) EditFiles(gofiles []string) error {
 		}
 	}
 
-	// runtimeにパッチを当てる
-	runtimeDir := path.Join(b.Goroot, "src", "runtime")
-	patchFileName := path.Join(runtimeDir, "goapptrace.go")
-	if err := os.MkdirAll(runtimeDir, 0777); err != nil {
-		return err
-	}
-	if err := ioutil.WriteFile(patchFileName, []byte(runtimePatch), 0666); err != nil {
-		return err
-	}
-	return nil
+	return b.applyPatches()
 }
 
 // 指定されたパッケージとその依存に、トレース用コードを追加する。
@@ -203,7 +184,8 @@ func (b *RepoBuilder) EditPackages(pkgs []string) error {
 			return err
 		}
 	}
-	return nil
+
+	return b.applyPatches()
 }
 
 // 指定したパッケージにトレース用コードを追加する。
@@ -225,7 +207,9 @@ func (b *RepoBuilder) editPackage(pkg *build.Package) error {
 
 		if b.IgnoreFiles[srcfile] {
 			log.Printf("copying %s => %s", srcfile, destfile)
-			shutil.CopyFile(srcfile, destfile, false)
+			if err := shutil.CopyFile(srcfile, destfile, false); err != nil {
+				return err
+			}
 			continue
 		}
 
@@ -251,6 +235,48 @@ func (b *RepoBuilder) MainPkgDir(gofile string) (string, error) {
 		}
 	}
 	return path.Join(b.Gopath, "mainpkg"), nil
+}
+
+func (b *RepoBuilder) mkdir(dir string) error {
+	return os.MkdirAll(dir, config.DefaultDirPerm)
+}
+func (b *RepoBuilder) writeFile(filename string, data []byte) error {
+	return ioutil.WriteFile(filename, data, config.DefaultFilePerm)
+}
+func (b *RepoBuilder) applyPatches() error {
+	// edit the tracer/logger package by LoggerFlags.
+	loggerDir := path.Join(b.Gopath, "src", "github.com", "yuuki0xff", "goapptrace", "tracer", "logger")
+	files, err := ioutil.ReadDir(loggerDir)
+	if err != nil {
+		return err
+	}
+	for _, f := range files {
+		fullpath := path.Join(loggerDir, f.Name())
+		cnt, err := ioutil.ReadFile(fullpath)
+		if err != nil {
+			return err
+		}
+
+		newCnt := b.LoggerFlags.EditContent(string(cnt))
+
+		err = ioutil.WriteFile(fullpath, []byte(newCnt), f.Mode())
+		if err != nil {
+			return err
+		}
+	}
+
+	if b.LoggerFlags.UseNonStandardRuntime {
+		// apply a patch to the runtime package.
+		runtimeDir := path.Join(b.Goroot, "src", "runtime")
+		patchFileName := path.Join(runtimeDir, "goapptrace.go")
+		if err := b.mkdir(runtimeDir); err != nil {
+			return err
+		}
+		if err := b.writeFile(patchFileName, []byte(runtimePatch)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // 全てのファイルが".go"で終わるファイルなら、trueを返す

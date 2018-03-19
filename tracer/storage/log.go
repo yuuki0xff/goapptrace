@@ -10,13 +10,13 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	"github.com/yuuki0xff/goapptrace/tracer/encoding"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
-type LogID = logutil.LogID
+type LogID = types.LogID
 
 const (
-	defaultRotateInterval         = 100000
 	defaultMetadataUpdateInterval = 1 * time.Second
 )
 
@@ -34,7 +34,7 @@ type Log struct {
 	// メタデータを更新するたびにインクリメントされる値
 	Version  int
 	Root     DirLayout
-	Metadata *LogMetadata
+	Metadata *types.LogMetadata
 	// 書き込み先ファイルが変更される直前に呼び出される。
 	// このイベント実行中はロックが外れるため、他のスレッドから随時書き込まれる可能性がある。
 	BeforeRotateEventHandler func()
@@ -51,54 +51,13 @@ type Log struct {
 	// フィアルがcloseされていたらtrue。
 	// trueなら全ての操作を受け付けてはならない。
 	closed bool
-	// rotate()を実行中ならtrue。
-	// rotate()内部で発生するBeforeRotate eventの実行中は、ロックを外さなければならない。
-	// そのイベント実行中に、並行してrotate()が実行されないように排他制御するためのフラグ。
-	rotating bool
-	// autoRotate()の呼び出しを連続してスキップした回数。
-	// この変数は、AppendRawFuncLog()を呼び出すたびにincrementされる。
-	// 値がrotateIntervalより大きくなったときは、値が0に戻り、autoRotate()が実行される。
-	autorotateSkips int
-	// autoRotate()を呼び出す間隔。詳細はautorotateSkipsのドキュメントを参照すること。
-	rotateInterval int
 
-	index         *Index
-	symbols       *logutil.Symbols
-	symbolsWriter *SymbolsWriter // readonlyならnil
+	index   *Index
+	symbols *types.Symbols
 
-	funcLog      SplitReadWriter
-	rawFuncLog   SplitReadWriter
-	goroutineLog SplitReadWriter
-}
-
-// Logオブジェクトをmarshalするときに使用する。
-// Logとは異なる点は、APIのレスポンスに必要なフィールドしか持っていないこと、および
-// フィールドの値が更新されないため、ロックセずにフィールドの値にアクセスできることである。
-// APIのレスポンスとして使用することを想定している。
-type LogInfo struct {
-	ID          string      `json:"log-id"`
-	Version     int         `json:"version"`
-	Metadata    LogMetadata `json:"metadata"`
-	MaxFileSize int64       `json:"max-file-size"`
-	ReadOnly    bool        `json:"read-only"`
-}
-type LogMetadata struct {
-	// Timestamp of the last record
-	Timestamp time.Time `json:"timestamp"`
-
-	// The configuration of user interface
-	UI UIConfig `json:"ui"`
-}
-
-type UIConfig struct {
-	FuncCalls  map[logutil.FuncLogID]UIItemConfig `json:"func-calls"`
-	Funcs      map[logutil.FuncID]UIItemConfig    `json:"funcs"`
-	Goroutines map[logutil.GID]UIItemConfig       `json:"goroutines"`
-}
-type UIItemConfig struct {
-	Pinned  bool   `json:"pinned"`
-	Masked  bool   `json:"masked"`
-	Comment string `json:"comment"`
+	funcLog      FuncLogStore
+	rawFuncLog   RawFuncLogStore
+	goroutineLog GoroutineStore
 }
 
 type LogStatus uint8
@@ -131,7 +90,7 @@ func (l *Log) Open() error {
 
 	// initialize Metadata
 	if l.Metadata == nil {
-		l.Metadata = &LogMetadata{}
+		l.Metadata = &types.LogMetadata{}
 		metaFile := l.Root.MetaFile(l.ID)
 		if metaFile.Exists() {
 			// load metadata
@@ -162,9 +121,6 @@ func (l *Log) Open() error {
 	// initialize fields
 	l.ctx, l.cancel = context.WithCancel(context.Background())
 	l.closed = false
-	if l.rotateInterval == 0 {
-		l.rotateInterval = defaultRotateInterval
-	}
 	l.index = &Index{
 		File:     l.Root.IndexFile(l.ID),
 		ReadOnly: l.ReadOnly,
@@ -172,19 +128,10 @@ func (l *Log) Open() error {
 	if err := l.index.Open(); err != nil {
 		return fmt.Errorf("failed to open Index: File=%s err=%s", l.index.File, err)
 	}
-	l.symbols = &logutil.Symbols{
+	l.symbols = &types.Symbols{
 		Writable: !l.ReadOnly,
-		KeepID:   true,
 	}
 	l.symbols.Init()
-	if !l.ReadOnly {
-		l.symbolsWriter = &SymbolsWriter{
-			File: l.Root.SymbolFile(l.ID),
-		}
-		if err := l.symbolsWriter.Open(); err != nil {
-			return fmt.Errorf("failed to open SymbolsWriter: File=%s err=%s", l.symbolsWriter.File, err)
-		}
-	}
 	if status == LogCreated {
 		// load Index
 		if err := l.index.Load(); err != nil {
@@ -192,39 +139,32 @@ func (l *Log) Open() error {
 		}
 
 		// load Symbols
-		symbolsReader := &SymbolsReader{
-			File:    l.Root.SymbolFile(l.ID),
-			Symbols: l.symbols,
-		}
-		if err := symbolsReader.Open(); err != nil {
-			return fmt.Errorf("failed to load Symbols: File=%s err=%s", symbolsReader.File, err)
-		}
-		if err := symbolsReader.Load(); err != nil {
-			return fmt.Errorf("failed to load Symbols: File=%s err=%s", symbolsReader.File, err)
-		}
-		if err := symbolsReader.Close(); err != nil {
-			return fmt.Errorf("failed to close Symbols: File=%s err=%s", symbolsReader.File, err)
+		if err := l.symbolsStore().Read(l.symbols); err != nil {
+			return errors.Wrap(err, "failed to load symbols")
 		}
 	}
 
 	// open log files
-	l.funcLog = SplitReadWriter{
-		FileNamePattern: func(index int) File {
-			return l.Root.FuncLogFile(l.ID, int64(index))
+	l.funcLog = FuncLogStore{
+		Store: Store{
+			File:       l.Root.FuncLogFile(l.ID, 0),
+			RecordSize: int(encoding.SizeFuncLog()),
+			ReadOnly:   l.ReadOnly,
 		},
-		ReadOnly: l.ReadOnly,
 	}
-	l.rawFuncLog = SplitReadWriter{
-		FileNamePattern: func(index int) File {
-			return l.Root.RawFuncLogFile(l.ID, int64(index))
+	l.rawFuncLog = RawFuncLogStore{
+		Store: Store{
+			File:       l.Root.RawFuncLogFile(l.ID, 0),
+			RecordSize: int(encoding.SizeRawFuncLog()),
+			ReadOnly:   l.ReadOnly,
 		},
-		ReadOnly: l.ReadOnly,
 	}
-	l.goroutineLog = SplitReadWriter{
-		FileNamePattern: func(index int) File {
-			return l.Root.GoroutineLogFile(l.ID, int64(index))
+	l.goroutineLog = GoroutineStore{
+		Store: Store{
+			File:       l.Root.GoroutineLogFile(l.ID, 0),
+			RecordSize: 128, // TODO: レコードサイズを決める
+			ReadOnly:   l.ReadOnly,
 		},
-		ReadOnly: l.ReadOnly,
 	}
 
 	if err := l.funcLog.Open(); err != nil {
@@ -238,7 +178,7 @@ func (l *Log) Open() error {
 	}
 
 	if !l.ReadOnly {
-		// 買い込み可能なので、定期的にMetadataのタイムスタンプを更新する必要がある。。
+		// 書き込み可能なので、定期的にMetadataのタイムスタンプを更新する必要がある。。
 		l.wg.Add(1)
 		go l.timestampUpdateWorker()
 	}
@@ -262,7 +202,7 @@ func (l *Log) Close() error {
 	// 書き込み可能ならClose()する。
 	// 読み込み専用のときは、l.symbolsWriter==nilなのでClose()しない。
 	if !l.ReadOnly {
-		if err := l.symbolsWriter.Close(); err != nil {
+		if err := l.symbolsStore().Write(l.symbols); err != nil {
 			return err
 		}
 	}
@@ -337,214 +277,82 @@ func (l *Log) Remove() error {
 	return nil
 }
 
-// 指定した期間のRawFuncLogを返す。
+// 指定した期間のFuncLogを返す。
 // この操作を実行中、他の操作はブロックされる。
-func (l *Log) Search(start, end time.Time, fn func(evt logutil.RawFuncLog) error) error {
+func (l *Log) SearchFuncLog(start, end types.Time, fn func(fl types.FuncLog) error) error {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
 
-	var startIdx int64
-	var endIdx int64
+	startIdx, endIdx := l.index.IDRangeByTime(start, end)
+	if endIdx == 0 {
+		endIdx = l.funcLog.Records()
+	}
 
-	if err := l.index.Walk(func(i int64, ir IndexRecord) error {
-		if start.Before(ir.Timestamp.UnixTime()) {
-			startIdx = i - 1
-		} else if end.Before(ir.Timestamp.UnixTime()) {
-			endIdx = i - 1
-			return StopIteration
-		}
-		return nil
-	}); err != nil {
-		// ignore StopIteration error
-		if err != StopIteration {
+	l.funcLog.Lock()
+	defer l.funcLog.Unlock()
+	for i := startIdx; i < endIdx; i++ {
+		var fl types.FuncLog
+		err := l.funcLog.Get(types.FuncLogID(i), &fl)
+		if err != nil {
 			return err
 		}
-	}
-
-	for i := startIdx; i <= endIdx; i++ {
-		return l.WalkRawFuncLogFile(i, fn)
-	}
-	return nil
-}
-
-// 関数呼び出しに関するログを先頭から全て読み込む。
-// この操作を実行中、他の操作はブロックされる
-func (l *Log) WalkFuncLog(fn func(evt logutil.FuncLog) error) error {
-	l.lock.RLock()
-	size := l.index.Len()
-	l.lock.RUnlock()
-
-	for i := int64(0); i < size; i++ {
-		if err := l.WalkFuncLogFile(i, fn); err != nil {
+		err = fn(fl)
+		if err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// 指定したindexのファイルの内容を全てcallbackする
-func (l *Log) WalkFuncLogFile(i int64, fn func(evt logutil.FuncLog) error) error {
-	// SplitReadWriterのIndex()やWalk()は排他制御されているため、、
-	// ここでl.lock.RLock()をする必要がない。
-	return l.funcLog.Index(int(i)).Walk(
-		func() interface{} {
-			return &logutil.FuncLog{}
-		},
-		func(val interface{}) error {
-			data := val.(*logutil.FuncLog)
-			return fn(*data)
-		},
-	)
+func (l *Log) FuncLog(fn func(store *FuncLogStore)) {
+	l.funcLog.Lock()
+	defer l.funcLog.Unlock()
+	fn(&l.funcLog)
 }
 
-// 関数呼び出しのログを先頭からすべて読み込む。
-// この操作を実行中、他の操作はブロックされる。
-func (l *Log) WalkRawFuncLog(fn func(evt logutil.RawFuncLog) error) error {
-	l.lock.RLock()
-	size := l.index.Len()
-	l.lock.RUnlock()
-
-	for i := int64(0); i < size; i++ {
-		if err := l.WalkRawFuncLogFile(i, fn); err != nil {
-			return err
-		}
-	}
-	return nil
+func (l *Log) RawFuncLog(fn func(store *RawFuncLogStore)) {
+	l.rawFuncLog.Lock()
+	defer l.rawFuncLog.Unlock()
+	fn(&l.rawFuncLog)
 }
 
-// 指定したindexのファイルの内容を全てcallbackする
-func (l *Log) WalkRawFuncLogFile(i int64, fn func(evt logutil.RawFuncLog) error) error {
-	// SplitReadWriterのIndex()やWalk()は排他制御されているため、、
-	// ここでl.lock.RLock()をする必要がない。
-	return l.rawFuncLog.Index(int(i)).Walk(
-		func() interface{} {
-			return &logutil.RawFuncLog{}
-		},
-		func(val interface{}) error {
-			data := val.(*logutil.RawFuncLog)
-			return fn(*data)
-		},
-	)
+func (l *Log) Goroutine(fn func(store *GoroutineStore)) {
+	l.goroutineLog.Lock()
+	defer l.goroutineLog.Unlock()
+	fn(&l.goroutineLog)
 }
 
-// TODO: テストを書く
-// 指定したindexの範囲で活動していたgoroutineを全てcallbackする。
-func (l *Log) WalkGoroutine(i int64, fn func(g logutil.Goroutine) error) error {
-	return l.goroutineLog.Index(int(i)).Walk(
-		func() interface{} {
-			return &logutil.Goroutine{}
-		},
-		func(val interface{}) error {
-			data := val.(*logutil.Goroutine)
-			return fn(*data)
-		},
-	)
-}
-
-// IndexRecordの内容を全てcallbackする。
-func (l *Log) WalkIndexRecord(fn func(i int64, ir IndexRecord) error) error {
+func (l *Log) Index(fn func(index *Index)) {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
-	return l.index.Walk(fn)
+	fn(l.index)
 }
+
 func (l *Log) IndexLen() int64 {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
 	return l.index.Len()
 }
 
-// FuncLogを追加する。
-// ファイルが閉じられていた場合、os.ErrClosedを返す。
-func (l *Log) AppendFuncLog(funcLog *logutil.FuncLog) error {
+// Symbolsにセットする
+func (l *Log) SetSymbolsData(data *types.SymbolsData) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 	if l.closed {
 		return os.ErrClosed
 	}
 
-	return l.funcLog.Append(funcLog)
-}
-
-// RawFuncLogを追加する。
-// ファイルサイズが上限に達していた場合、ファイルを分割する。
-// ファイルが閉じられていた場合、os.ErrClosedを返す。
-func (l *Log) AppendRawFuncLog(raw *logutil.RawFuncLog) error {
-	if l.closed {
-		return os.ErrClosed
-	}
-
-	// AppendRawFuncLog()を高速化するために、autoRotate()の実行回数を減らす。
-	l.autorotateSkips++
-	if l.autorotateSkips > l.rotateInterval {
-		// *SLOW PATH*
-		l.autorotateSkips = 0
-
-		// ファイルの自動ローテーションするか否かをチェックするためにファイルサイズを参照する。
-		// そのファイルサイズの参照が意外と重たい。。。
-		if err := l.autoRotate(); err != nil {
-			return err
-		}
-	}
-
-	l.lock.Lock()
-	defer l.lock.Unlock()
-	if err := l.rawFuncLog.Append(raw); err != nil {
-		return err
-	}
-
-	// update IndexRecord
-	if l.index.Len() > 0 {
-		last := l.index.Last()
-		last.Records++
-		last.Timestamp = raw.Timestamp
-		if err := l.index.UpdateLast(last); err != nil {
-			return err
-		}
-	} else {
-		if err := l.index.Append(IndexRecord{
-			Timestamp: raw.Timestamp,
-			Records:   1,
-			writing:   true,
-		}); err != nil {
-			return err
-		}
-	}
+	l.symbols.Load(*data)
 	return nil
 }
 
-// Symbolsを書き込む。
-func (l *Log) AppendSymbolsDiff(diff *logutil.SymbolsDiff) error {
-	l.lock.Lock()
-	defer l.lock.Unlock()
-	if l.closed {
-		return os.ErrClosed
-	}
-
-	if err := l.symbolsWriter.Append(diff); err != nil {
-		return err
-	}
-	l.symbols.AddSymbolsDiff(diff)
-	return nil
-}
-
-// Goroutineのステータスを書き込む
-func (l *Log) AppendGoroutine(g *logutil.Goroutine) error {
-	l.lock.Lock()
-	defer l.lock.Unlock()
-	if l.closed {
-		return os.ErrClosed
-	}
-
-	return l.goroutineLog.Append(g)
-}
-
-func (l *Log) Symbols() *logutil.Symbols {
+func (l *Log) Symbols() *types.Symbols {
 	return l.symbols
 }
 
 // TODO: テストを書く
 // Metadataフィールドを更新して、Versionをインクリメントする。
-func (l *Log) UpdateMetadata(currentVer int, metadata *LogMetadata) error {
+func (l *Log) UpdateMetadata(currentVer int, metadata *types.LogMetadata) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 	if l.Version != currentVer {
@@ -555,95 +363,11 @@ func (l *Log) UpdateMetadata(currentVer int, metadata *LogMetadata) error {
 	return nil
 }
 
-// RawFuncLogファイルサイズがMaxFileSizeよりも大きい場合、ファイルのローテーションを行う。。
-// 呼び出し元でロックを取得していてはいけない。
-func (l *Log) autoRotate() error {
-	l.lock.RLock()
-	unlockOnce := sync.Once{}
-	unlock := func() {
-		unlockOnce.Do(l.lock.RUnlock)
-	}
-	defer unlock()
-
-	if l.rawFuncLog.SplitCount() == 0 {
-		// まだファイルが存在しないので、rotateの必要なし
-		return nil
-	}
-
-	last, err := l.rawFuncLog.LastFile()
-	if err != nil {
-		return err
-	}
-	size, err := last.File.Size()
-	if err != nil {
-		return err
-	}
-	if l.MaxFileSize != 0 && size > l.MaxFileSize {
-		// l.rotate()を呼び出す前に、ロックを解除しなければならない。
-		unlock()
-		return l.rotate()
-	}
-	return nil
-}
-
-// 書き込み先ファイルのローテーションを行う。
-// 並行して実行しているrotate()が存在することを検出した場合、ローテーションが中断される。
-// 実行中には、BeforeRotateイベントが発生する。
-// 呼び出し元でロックを取得していてはいけない。
-func (l *Log) rotate() error {
-	l.lock.Lock()
-	if l.rotating {
-		// 他のgoroutineでrotate()が実行中だったため、ローテーションをしない。
-		l.lock.Unlock()
-		return nil
-	}
-	l.rotating = true
-	l.lock.Unlock()
-
-	l.raiseBeforeRotateEvent()
-
-	l.lock.Lock()
-	defer l.lock.Unlock()
-	// Unlockする前にrotatingフラグを元に戻す。
-	defer func() {
-		l.rotating = false
-	}()
-
-	if err := l.funcLog.Rotate(); err != nil {
-		return err
-	}
-	if err := l.rawFuncLog.Rotate(); err != nil {
-		return err
-	}
-	if err := l.goroutineLog.Rotate(); err != nil {
-		return err
-	}
-
-	if l.index.Len() > 0 {
-		last := l.index.Last()
-		last.writing = false
-		if err := l.index.UpdateLast(last); err != nil {
-			return err
-		}
-	}
-
-	return l.index.Append(IndexRecord{
-		writing: true,
-	})
-}
-
-// BeforeRotateEventHandlerを呼び出す。
-func (l *Log) raiseBeforeRotateEvent() {
-	if l.BeforeRotateEventHandler != nil {
-		l.BeforeRotateEventHandler()
-	}
-}
-
 // ロックをかけた上で、JSONに変換する
-func (l *Log) LogInfo() LogInfo {
+func (l *Log) LogInfo() types.LogInfo {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
-	return LogInfo{
+	return types.LogInfo{
 		ID:          l.ID.Hex(),
 		Version:     l.Version,
 		Metadata:    *l.Metadata,
@@ -660,7 +384,7 @@ func (l *Log) timestampUpdateWorker() {
 
 	update := func() {
 		var needUpdate bool
-		var meta *LogMetadata
+		var meta *types.LogMetadata
 		var ver int
 		func() {
 			l.lock.RLock()
@@ -670,13 +394,13 @@ func (l *Log) timestampUpdateWorker() {
 				return
 			}
 			ir := l.index.Last()
-			if ir.Timestamp.UnixTime() == l.Metadata.Timestamp {
+			if ir.MaxEnd.UnixTime() == l.Metadata.Timestamp {
 				return
 			}
 			needUpdate = true
-			meta = &LogMetadata{}
+			meta = &types.LogMetadata{}
 			*meta = *l.Metadata
-			meta.Timestamp = ir.Timestamp.UnixTime()
+			meta.Timestamp = ir.MaxEnd.UnixTime()
 			ver = l.Version
 		}()
 		if needUpdate {
@@ -694,5 +418,12 @@ func (l *Log) timestampUpdateWorker() {
 		case <-ticker.C:
 			update()
 		}
+	}
+}
+
+func (l *Log) symbolsStore() SymbolsStore {
+	return SymbolsStore{
+		File:     l.Root.SymbolFile(l.ID),
+		ReadOnly: l.ReadOnly,
 	}
 }

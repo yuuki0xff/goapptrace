@@ -28,20 +28,22 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/httpserver"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/protocol"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
+	"github.com/yuuki0xff/goapptrace/tracer/simulator"
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 const (
 	// クライアントから受信したアイテムのバッファサイズ。
 	// 単位はメッセージの個数。
-	DefaultReceiveBufferSize = 1 << 16
+	DefaultReceiveBufferSize = 128
 )
 
 // serverRunCmd represents the run command
@@ -87,7 +89,7 @@ func runServerRun(conf *config.Config, stdout io.Writer, stderr io.Writer, apiAd
 		logAddr = config.DefaultLogServerAddr
 	}
 
-	simulatorStore := logutil.StateSimulatorStore{}
+	simulatorStore := simulator.StateSimulatorStore{}
 
 	// start API Server
 	apiSrv := httpserver.NewHttpServer(apiAddr, restapi.NewRouter(restapi.RouterArgs{
@@ -171,7 +173,7 @@ func init() {
 	serverRunCmd.Flags().StringP("listen-log", "P", "", "Address and port for Log Server")
 }
 
-func getServerHandler(strg *storage.Storage, store *logutil.StateSimulatorStore) protocol.ServerHandler {
+func getServerHandler(strg *storage.Storage, store *simulator.StateSimulatorStore) protocol.ServerHandler {
 	// workerとの通信用。
 	// close()されたら、workerは終了するべき。
 	chMap := make(map[protocol.ConnID]chan interface{})
@@ -195,39 +197,81 @@ func getServerHandler(strg *storage.Storage, store *logutil.StateSimulatorStore)
 
 		ss := store.New(logobj.ID)
 		defer store.Delete(logobj.ID)
-		writeCurrentState := func() {
-			for _, fl := range ss.FuncLogs() {
-				if err := logobj.AppendFuncLog(fl); err != nil {
-					log.Panicln("ERROR: failed to append FuncLog during rotating:", err.Error())
+		// 現在の状態をファイルに書き出す。
+		// excludeRunning がtrueの場合、実行中のFuncLogは書き込まない。
+		writeCurrentState := func(excludeRunning bool) {
+			logobj.FuncLog(func(store *storage.FuncLogStore) {
+				for _, fl := range ss.FuncLogs(false) {
+					if excludeRunning && !fl.IsEnded() {
+						continue
+					}
+					err := store.SetNolock(fl)
+					if err != nil {
+						log.Panicln("ERROR: failed to append FuncLog during rotating:", err.Error())
+					}
 				}
-			}
-			for _, g := range ss.Goroutines() {
-				if err := logobj.AppendGoroutine(g); err != nil {
-					log.Panicln("ERROR: failed to append Goroutine during rotating:", err.Error())
+			})
+			logobj.Goroutine(func(store *storage.GoroutineStore) {
+				for _, g := range ss.Goroutines() {
+					err := store.SetNolock(g)
+					if err != nil {
+						log.Panicln("ERROR: failed to append Goroutine during rotating:", err.Error())
+					}
 				}
-			}
+			})
 			ss.Clear()
 		}
 		// ログを閉じる前に、現在のStateSimulatorの状態を保存する。
-		defer writeCurrentState()
-		// このlogobjに対する書き込みを行うのは、worker()のみ。
-		// このイベント実行中に他から書き込まれることは考慮しなくてよい。
-		logobj.BeforeRotateEventHandler = writeCurrentState
+		defer writeCurrentState(false)
+
+		// 定期的に状態を書き出す
+		var wa sync.WaitGroup
+		tick := time.NewTicker(1 * time.Second)
+		wa.Add(1)
+		go func() {
+			wa.Done()
+			for range tick.C {
+				writeCurrentState(false)
+			}
+		}()
+		defer wa.Wait()
+		defer tick.Stop()
 
 		for rawobj := range ch {
-			switch obj := rawobj.(type) {
-			case *logutil.RawFuncLog:
-				if err := logobj.AppendRawFuncLog(obj); err != nil {
-					log.Panicln("failed to append RawFuncLog:", err.Error())
+			// lock獲得のオーバーヘッドを削減するため、チャンネルに次のitemがある場合は
+			// lockを開放せずに連続して処理する。
+			logobj.RawFuncLog(func(rawStore *storage.RawFuncLogStore) {
+				defer func() {
+					err = rawStore.FlushNolock()
+					if err != nil {
+						log.Panicln(err)
+					}
+				}()
+				for {
+					switch obj := rawobj.(type) {
+					case *types.RawFuncLog:
+						// NOTE: RawFuncLogが量がとても多いため、ストレージに書き込むと動作が遅くなってしまう。
+						//       そのため、ファイルに書き出すのは止めた。
+						//       コメントアウトすれば、デバッグするときに使えるかも?
+						//if err := rawStore.SetNolock(obj); err != nil {
+						//	log.Panicln("failed to append RawFuncLog:", err.Error())
+						//}
+						ss.Next(*obj)
+						types.RawFuncLogPool.Put(obj)
+					case *types.SymbolsData:
+						if err := logobj.SetSymbolsData(obj); err != nil {
+							log.Panicln("failed to append Symbols:", err.Error())
+						}
+					default:
+						log.Panicf("unsupported type: %+v", rawobj)
+					}
+
+					if len(ch) == 0 {
+						break
+					}
+					rawobj = <-ch
 				}
-				ss.Next(*obj)
-			case *logutil.SymbolsDiff:
-				if err := logobj.AppendSymbolsDiff(obj); err != nil {
-					log.Panicln("failed to append Symbols:", err.Error())
-				}
-			default:
-				log.Panicf("unsupported type: %+v", rawobj)
-			}
+			})
 		}
 	}
 
@@ -253,12 +297,12 @@ func getServerHandler(strg *storage.Storage, store *logutil.StateSimulatorStore)
 		Error: func(id protocol.ConnID, err error) {
 			log.Printf("ERROR: Server: connID=%d err=%s", id, err.Error())
 		},
-		Symbols: func(id protocol.ConnID, s *logutil.SymbolsDiff) {
+		Symbols: func(id protocol.ConnID, s *types.SymbolsData) {
 			chMapLock.RLock()
 			chMap[id] <- s
 			chMapLock.RUnlock()
 		},
-		RawFuncLog: func(id protocol.ConnID, f *logutil.RawFuncLog) {
+		RawFuncLog: func(id protocol.ConnID, f *types.RawFuncLog) {
 			chMapLock.RLock()
 			chMap[id] <- f
 			chMapLock.RUnlock()

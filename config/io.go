@@ -10,7 +10,11 @@ import (
 )
 
 const (
-	ConfigFilePerm = os.ModePerm ^ 0111
+	// goapptraceによって作成されたディレクトリとファイルの、デフォルトのパーミッション
+	DefaultDirPerm  = 0700
+	DefaultFilePerm = 0600
+
+	ConfigFilePerm = 0666
 )
 
 // Directory Layout

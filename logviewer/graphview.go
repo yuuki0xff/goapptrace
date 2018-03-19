@@ -5,138 +5,85 @@ import (
 	"fmt"
 	"image"
 	"log"
-	"net/http"
-	_ "net/http/pprof"
 	"sort"
-	"strconv"
 	"sync"
+	"time"
 
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
+	"github.com/marcusolsson/tui-go"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
-	"github.com/yuuki0xff/goapptrace/tracer/storage"
-	"github.com/yuuki0xff/tui-go"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 	"golang.org/x/sync/errgroup"
-	"golang.org/x/sync/singleflight"
 	"golang.org/x/tools/container/intsets"
 )
 
-type GraphView struct {
-	tui.Widget
-	LogID string
-	Root  *Controller
-
-	running     uint32
-	updateGroup singleflight.Group
-
-	status *tui.StatusBar
-	graph  *GraphWidget
-	fc     tui.FocusChain
-
-	// X軸方向のスクロール量
-	offsetX int
-	// Y軸方向のスクロール量
-	offsetY int
-
-	// FuncCallのリスト。
-	// スクロールのたびに更新すると重たいので、キャッシュする。
-	fcList []funcCallWithFuncIDs
-	// 表示領域を確保しておくべきgoroutineの集合。
-	gidSet    map[logutil.GID]bool
-	logStatus restapi.LogStatus
-	// Goroutineの状態の一覧
-	gMap map[logutil.GID]restapi.Goroutine
-
-	// 現在選択されている状態のFuncCallイベントのID
-	selectedFLID logutil.FuncLogID
-}
-
-func newGraphView(logID string, root *Controller) *GraphView {
-	v := &GraphView{
-		LogID:  logID,
-		Root:   root,
-		status: tui.NewStatusBar(LoadingText),
-		graph:  newGraphWidget(),
+var (
+	defaultScrollSpeed = image.Point{
+		X: 10,
+		Y: 10,
 	}
-	v.status.SetPermanentText("Function Call History")
+)
 
-	fc := &tui.SimpleFocusChain{}
-	fc.Set(v)
-	v.fc = fc
-	v.Widget = tui.NewVBox(
-		v.graph,
-		v.status,
-	)
-	return v
+type GraphState struct {
+	State    GState
+	Error    error
+	Lines    []Line
+	Selected types.FuncLogID
+
+	ScrollMode ScrollMode
+	// X軸方向のスクロール量
+	OffsetX int
+	// Y軸方向のスクロール量
+	OffsetY int
+
+	ScrollSpeed image.Point
+}
+type GraphStateMutable struct {
+	GraphState
 }
 
-func (v *GraphView) Update() {
-	v.status.SetText(LoadingText)
+func (s *GraphStateMutable) UpdateOffset(dx, dy int) {
+	s.OffsetX += dx
+	s.OffsetY += dy
 
-	go v.updateGroup.Do("update", func() (interface{}, error) { // nolint: errcheck
-		var err error
-		v.Root.UI.Update(func() {
-			if err != nil {
-				//v.wrap.SetWidget(newErrorMsg(err))
-				v.status.SetText(ErrorText)
-			} else {
-				//v.wrap.SetWidget(v.table)
-				v.status.SetText(fmt.Sprintf("%dx%d", v.offsetX, v.offsetY))
-			}
-			lines := v.buildLines(v.graph.Size(), v.selectedFLID, &v.logStatus.Metadata.UI)
-			v.graph.SetLines(lines)
-		})
-		return nil, nil
-	})
+	if s.OffsetX > 0 {
+		s.OffsetX = 0
+	}
+	if s.OffsetY > 0 {
+		s.OffsetY = 0
+	}
 }
 
-// fcListおよびgidSetを更新する。
-func (v *GraphView) updateCache() error {
-	// TODO: ctxに対応する
-	_, err, _ := v.updateGroup.Do("updateCache", func() (_ interface{}, err error) {
-		var fcList []funcCallWithFuncIDs
-		var gidSet map[logutil.GID]bool
-		var conf restapi.LogStatus
-		var gm map[logutil.GID]restapi.Goroutine
+type GraphCache struct {
+	LogInfo types.LogInfo
+	Symbols *types.Symbols
+	Records []types.FuncLog
+	GMap    map[types.GID]types.Goroutine
 
-		var eg errgroup.Group
-		eg.Go(func() error {
-			var err error
-			fcList, gidSet, conf, err = v.getFCLogs()
-			return err
-		})
-		eg.Go(func() error {
-			var err error
-			gm, err = v.getGoroutines()
-			return err
-		})
-		if err := eg.Wait(); err != nil {
-			return nil, err
-		}
-
-		// TODO: 不要な再描画を省く
-		// 排他制御を簡素化するためにUI.Update()を使用している。
-		// なぜなら、UIのレンダリングはシングルスレッドで行われるため。
-		v.Root.UI.Update(func() {
-			v.fcList = fcList
-			v.gidSet = gidSet
-			v.logStatus = conf
-			v.gMap = gm
-		})
-		// キャッシュを更新したので、画面に反映
-		v.Update()
-		return nil, nil
-	})
-	return err
+	logID string
 }
 
-// getFCLogs returns latest function call logs.
-func (v *GraphView) getFCLogs() ([]funcCallWithFuncIDs, map[logutil.GID]bool, restapi.LogStatus, error) {
-	ch2 := make(chan funcCallWithFuncIDs, 10000)
-	var conf restapi.LogStatus
+func (c *GraphCache) Update(logID string, client restapi.ClientWithCtx) error {
+	c.logID = logID
 
-	var eg errgroup.Group
+	var err error
+	c.LogInfo, err = client.LogInfo(c.logID)
+	if err != nil {
+		return err
+	}
+
+	eg, ctx := errgroup.WithContext(client.Ctx())
+	api := client.WithCtx(ctx)
 	eg.Go(func() error {
-		ch, err := v.Root.Api.SearchFuncCalls(v.LogID, restapi.SearchFuncCallParams{
+		var err error
+		return err
+	})
+	eg.Go(func() error {
+		var err error
+		c.Symbols, err = api.Symbols(c.logID)
+		return err
+	})
+	eg.Go(func() error {
+		ch, err := api.SearchFuncLogs(c.logID, restapi.SearchFuncLogParams{
 			//Limit:     fetchRecords,
 			SortKey:   restapi.SortByID,
 			SortOrder: restapi.DescendingSortOrder,
@@ -144,204 +91,172 @@ func (v *GraphView) getFCLogs() ([]funcCallWithFuncIDs, map[logutil.GID]bool, re
 		if err != nil {
 			return err
 		}
-
-		go func() {
-			defer close(ch2)
-			// TODO: 内部でAPI呼び出しを伴う遅い関数。必要に応じて並列度を上げる。
-			v.withFuncIDs(ch, ch2)
+		defer func() {
+			for range ch {
+			}
 		}()
+		for fc := range ch {
+			if c.LogInfo.Metadata.UI.IsMasked(fc) {
+				continue
+			}
+			c.Records = append(c.Records, fc)
+		}
 		return nil
 	})
 	eg.Go(func() error {
-		var err error
-		conf, err = v.Root.Api.LogStatus(v.LogID)
+		ch, err := api.Goroutines(c.logID)
 		if err != nil {
 			return err
 		}
+		gm := make(map[types.GID]types.Goroutine, 10000)
+		for g := range ch {
+			gm[g.GID] = g
+		}
+		c.GMap = gm
 		return nil
 	})
-
-	if err := eg.Wait(); err != nil {
-		return nil, nil, restapi.LogStatus{}, err
-	}
-
-	// 関数呼び出しのログの一覧
-	fcList := make([]funcCallWithFuncIDs, 0, 10000)
-	// 存在するGIDの集合
-	gidSet := make(map[logutil.GID]bool, 1000)
-	for item := range ch2 {
-		// マスクされているイベントを削除する
-		if item.isMasked(&conf.Metadata.UI) {
-			continue
-		}
-
-		fcList = append(fcList, item)
-		gidSet[item.GID] = true
-	}
-	return fcList, gidSet, conf, nil
+	return eg.Wait()
 }
 
-func (v *GraphView) getGoroutines() (map[logutil.GID]restapi.Goroutine, error) {
-	// TODO
-	ch, err := v.Root.Api.Goroutines(v.LogID)
-	if err != nil {
-		return nil, err
-	}
-	gm := make(map[logutil.GID]restapi.Goroutine, 10000)
-	for g := range ch {
-		gm[g.GID] = g
-	}
-	return gm, nil
-}
-
-func (v *GraphView) scrollSpeed() image.Point {
-	speed := v.Size()
-	// 一回のスクロールで、画面の5分の1くらいスクロールされる。
-	speed.X /= 5
-	speed.Y /= 5
-	return speed
-}
-
-func (v *GraphView) SetKeybindings() {
-	// TODO: スクロール処理を高速化する。
-	//       現在は、サーバからのログ取得からレンダリングまでの全ての工程をスクロールのたびに行っている。
-	//       描画済みの線のオフセットを変更するだけにすれば、軽量化出来るはず。
-	gotoLogView := func() {
-		v.Root.setView(newShowLogView(v.LogID, v.Root))
-	}
-	up := func() {
-		v.offsetY += v.scrollSpeed().Y
-		if v.offsetY > 0 {
-			v.offsetY = 0
-		}
-		go v.Update()
-	}
-	right := func() {
-		v.offsetX -= v.scrollSpeed().X
-		if v.offsetX < 0 {
-			v.offsetX = 0
-		}
-		go v.Update()
-	}
-	down := func() {
-		v.offsetY -= v.scrollSpeed().Y
-		go v.Update()
-	}
-	left := func() {
-		v.offsetX += v.scrollSpeed().X
-		go v.Update()
-	}
-
-	v.Root.UI.SetKeybinding("d", gotoLogView)
-	v.Root.UI.SetKeybinding("k", up)
-	v.Root.UI.SetKeybinding("Up", up)
-	v.Root.UI.SetKeybinding("l", right)
-	v.Root.UI.SetKeybinding("Right", right)
-	v.Root.UI.SetKeybinding("j", down)
-	v.Root.UI.SetKeybinding("Down", down)
-	v.Root.UI.SetKeybinding("h", left)
-	v.Root.UI.SetKeybinding("Left", left)
-}
-func (v *GraphView) FocusChain() tui.FocusChain {
-	return v.fc
-}
-func (v *GraphView) Start(ctx context.Context) {
-	update := func() {
-		if err := v.updateCache(); err != nil {
-			log.Println(err)
+// EndedFuncLogsは、時刻tの時点で実行が終了したFuncLogの数を返す。
+func (c *GraphCache) EndedFuncLogs(t types.Time) int {
+	n := 0
+	for _, fc := range c.Records {
+		if fc.IsEnded() && fc.EndTime < t {
+			n++
 		}
 	}
-	go update()
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
-	startAutoUpdateWorker(&v.running, ctx, update)
+	return n
+}
+
+// RunningFuncLogsは、時刻tの時点で実行中のFuncLogの数を返す。
+func (c *GraphCache) RunningFuncLogs(t types.Time) int {
+	n := 0
+	for _, fc := range c.Records {
+		if fc.StartTime < t {
+			if !fc.IsEnded() || fc.EndTime >= t {
+				n++
+			}
+		}
+	}
+	return n
+}
+
+type GraphVM struct {
+	Root   Coordinator
+	Client restapi.ClientWithCtx
+	LogID  string
+
+	m     sync.Mutex
+	view  *GraphView
+	state GraphStateMutable
+	cache GraphCache
+}
+
+func (vm *GraphVM) UpdateInterval() time.Duration {
+	return 0
+}
+func (vm *GraphVM) Update(ctx context.Context) {
+	var cache GraphCache
+	var lines []Line
+
+	err := cache.Update(vm.LogID, vm.Client)
+	if err == nil {
+		lines = vm.buildLines(&cache)
+	}
+
+	vm.m.Lock()
+	vm.view = nil
+	vm.state.State = GWait
+	vm.state.Error = err
+	vm.state.Lines = lines
+	vm.cache = cache
+	vm.m.Unlock()
+
+	vm.Root.NotifyVMUpdated()
+}
+func (vm *GraphVM) View() View {
+	vm.m.Lock()
+	defer vm.m.Unlock()
+
+	if vm.view == nil {
+		vm.view = &GraphView{
+			VM:         vm,
+			GraphState: vm.state.GraphState,
+		}
+	}
+	return vm.view
 }
 
 // buildLinesは、graphを構成する線分を構築して返す。
-func (v *GraphView) buildLines(size image.Point, selectedFuncCall logutil.FuncLogID, config *storage.UIConfig) (lines []Line) {
-	fcList := v.fcList
-	gidSet := v.gidSet
+func (vm *GraphVM) buildLines(c *GraphCache) (lines []Line) {
+	vm.m.Lock()
+	selected := vm.state.Selected
+	vm.m.Unlock()
 
 	// TODO: 活動していないgoroutineも表示する。goroutineが生きているのか、死んでいるのかを把握できない。
 
 	// goroutineごとの、最も最初に活動のあった時刻に相当するX座標。
 	// 関数呼び出し間のギャップ、つまりgoroutineが何も活動していない？と思われる区間を埋めるための線を描画するために使用する。
-	firstXSet := make(map[logutil.GID]int, len(gidSet))
-	lastXSet := make(map[logutil.GID]int, len(gidSet))
+	firstXSet := make(map[types.GID]int, len(c.GMap))
+	lastXSet := make(map[types.GID]int, len(c.GMap))
 
 	var wg sync.WaitGroup
 	wg.Add(2)
 
 	// 長さとX座標を決める
-	fcLen := make([]int, len(fcList))
-	fcX := make([]int, len(fcList))
+	fcLen := make([]int, len(c.Records))
+	fcX := make([]int, len(c.Records))
 	go func() {
 		defer wg.Done()
-		// 関数の実行終了時刻が遅い順(EndTimeの値が大きい順)にソートする。
-		sort.Slice(fcList, func(i, j int) bool {
-			return fcList[i].EndTime > fcList[j].EndTime
+		// 関数の実行開始時刻が早い順(StartTimeの値が小さい順)にソートする。
+		sort.Slice(c.Records, func(i, j int) bool {
+			return c.Records[i].StartTime > c.Records[j].StartTime
 		})
 
-		// FuncLogの子要素の一覧
-		childMap := make(map[logutil.FuncLogID][]int, len(fcList))
-		for i, item := range fcList {
-			if item.ParentID == logutil.NotFoundParent {
-				continue
+		maxTime := types.Time(0)
+		for _, fc := range c.Records {
+			if maxTime < fc.StartTime {
+				maxTime = fc.StartTime
 			}
-			childMap[item.ParentID] = append(childMap[item.ParentID], i)
-		}
-
-		// 長さを決める。
-		// 長さは、実行中に生じたログの数+2。
-		var length func(fc funcCallWithFuncIDs) int
-		length = func(fc funcCallWithFuncIDs) int {
-			childs, ok := childMap[fc.ID]
-			if !ok {
-				// 両端に終端記号を表示するため、長さは2にする。
-				return 2
-			}
-			total := 0
-			for _, idx := range childs {
-				if fcLen[idx] == 0 {
-					fcLen[idx] = length(fcList[idx])
-				}
-				total += fcLen[idx]
-			}
-			// 子要素の長さに、この要素の両端に終端記号を表示するための長さ(2)を足す。
-			return total + 2
-		}
-		for i := range fcList {
-			//log.Printf("fcList[%d]: %+v", i, fcList[i])
-			if fcLen[i] == 0 {
-				fcLen[i] = length(fcList[i])
+			if maxTime < fc.EndTime {
+				maxTime = fc.EndTime
 			}
 		}
 
-		// X座標を決める。
-		// 最新のログは右側になるようにする。
-		left := size.X
-		for i := range fcList {
-			fcX[i] = left - fcLen[i] + v.offsetX
-			left--
+		// 長さとX座標を決める
+		calcXPos := func(t types.Time) int {
+			return c.EndedFuncLogs(t)*2 + c.RunningFuncLogs(t)
+		}
+		for i, fc := range c.Records {
+			left := calcXPos(fc.StartTime)
+			right := calcXPos(fc.EndTime)
+			if !fc.IsEnded() {
+				right = calcXPos(maxTime)
+			}
+			if left >= right {
+				log.Panicf("bug: left=%d < right=%d: fc=%+v", left, right, fc)
+			}
+			fcX[i] = left
+			fcLen[i] = right - left + 1
 		}
 
 		// 関数呼び出しのギャップを埋める線のX座標を計算する。
-		for gid, g := range v.gMap {
+		for gid, g := range c.GMap {
 			// firstXSetには、fcXのgoroutineごとの最小値を設定する。
 			// lastXSetには、fcXのgoroutineごとの最大値を設定する。
 			first := intsets.MaxInt
-			last := intsets.MaxInt
+			last := intsets.MinInt
 			exists := false
 
-			for i, f := range fcList {
-				if f.GID != gid {
+			for i, fc := range c.Records {
+				if fc.GID != gid {
 					continue
 				}
 				exists = true
 				if first > fcX[i] {
 					first = fcX[i]
-					if g.StartTime < f.StartTime {
+					if g.StartTime < fc.StartTime {
 						// goroutineは、関数fより少し早く開始された。
 						// 開始位置を1つ前にする。
 						first--
@@ -350,7 +265,7 @@ func (v *GraphView) buildLines(size image.Point, selectedFuncCall logutil.FuncLo
 				x := fcX[i] + fcLen[i]
 				if last < x {
 					last = x
-					if f.EndTime < g.EndTime {
+					if fc.EndTime < g.EndTime {
 						// goroutineは、関数fより少し遅く終了した。
 						// 開始位置を1つ後ろにする。
 						last++
@@ -366,12 +281,12 @@ func (v *GraphView) buildLines(size image.Point, selectedFuncCall logutil.FuncLo
 	}()
 
 	// Y座標を決める
-	gidY := make(map[logutil.GID]int, len(gidSet))
+	gidY := make(map[types.GID]int, len(c.GMap))
 	go func() {
 		defer wg.Done()
 		// 描画対象のGoroutine IDの小さい順にソートする。
-		gidList := make([]logutil.GID, 0, len(gidSet))
-		for gid := range gidSet {
+		gidList := make([]types.GID, 0, len(c.GMap))
+		for gid := range c.GMap {
 			gidList = append(gidList, gid)
 		}
 		sort.Slice(gidList, func(i, j int) bool {
@@ -381,18 +296,18 @@ func (v *GraphView) buildLines(size image.Point, selectedFuncCall logutil.FuncLo
 		// GoroutineごとのY座標を決定する
 		for idx, gid := range gidList {
 			//log.Printf("GID=%d idx=%d", gid, idx)
-			gidY[gid] = idx + v.offsetY
+			gidY[gid] = idx
 		}
 	}()
 
-	lines = make([]Line, 0, len(fcList)+len(gidSet))
+	lines = make([]Line, 0, len(c.Records)+len(c.GMap))
 	wg.Wait()
 
 	// 関数呼び出し間のギャップを埋めるための線を追加。
 	for gid := range gidY {
 		length := lastXSet[gid] - firstXSet[gid]
 		if length < 0 {
-			log.Panic("negative length", lastXSet[gid], firstXSet[gid])
+			log.Panicf("negative length: length = %d - %d = %d", lastXSet[gid], firstXSet[gid], length)
 		}
 		line := Line{
 			Start: image.Point{
@@ -408,20 +323,10 @@ func (v *GraphView) buildLines(size image.Point, selectedFuncCall logutil.FuncLo
 		lines = append(lines, line)
 	}
 
-	for i, fc := range fcList {
-		if gidY[fc.GID] < 0 || gidY[fc.GID] >= size.Y {
-			// 描画するのは水平線であるため、描画領域外の上下にある線は、絶対に描画されることはない。
-			// そのため、無視する。
-			continue
-		}
-		if fcX[i] >= size.X {
-			// 描画領域外の右側にある線は描画されることはないため、無視する。
-			continue
-		}
-		if fcX[i]+fcLen[i] < 0 {
-			// 線の右端が描画領域の左側に達しない場合、この線は描画されることはないため、無視する。
-			continue
-		}
+	for i := len(c.Records) - 1; i >= 0; i-- {
+		// c.Recordsを逆順にループする。
+		// 呼び出し元が呼び出し先のlineを上書きして見えなくしてしまうから。
+		fc := c.Records[i]
 
 		// スタイル名の決定をする。
 		styleName := "line."
@@ -430,9 +335,9 @@ func (v *GraphView) buildLines(size image.Point, selectedFuncCall logutil.FuncLo
 		} else {
 			styleName += "running"
 		}
-		if fc.ID == selectedFuncCall {
+		if fc.ID == selected {
 			styleName += ".selected"
-		} else if fc.isPinned(config) {
+		} else if c.LogInfo.Metadata.UI.IsPinned(fc) {
 			styleName += ".marked"
 		}
 
@@ -448,63 +353,153 @@ func (v *GraphView) buildLines(size image.Point, selectedFuncCall logutil.FuncLo
 			EndDeco:   LineTerminationNormal,
 			StyleName: styleName,
 		}
-		//log.Printf("lines[%d]: %+v", len(lines), line)
 		lines = append(lines, line)
 	}
 	return lines
 }
+func (vm *GraphVM) onGoback() {
+	vm.Root.SetState(UIState{
+		LogID: vm.LogID,
+	})
+}
+func (vm *GraphVM) onChangedOffset(dx, dy int) {
+	vm.m.Lock()
+	vm.view = nil
+	vm.state.UpdateOffset(dx, dy)
+	vm.m.Unlock()
 
-// frames2funcs converts logutil.FuncStatusID to logutil.FuncID.
-func (v *GraphView) frames2funcs(frames []logutil.FuncStatusID) (funcs []logutil.FuncID) {
-	for _, id := range frames {
-		fs, err := v.Root.Api.FuncStatus(v.LogID, strconv.Itoa(int(id)))
-		if err != nil {
-			log.Panic(err)
-		}
-		funcs = append(funcs, fs.Func)
-	}
-	return
+	vm.Root.NotifyVMUpdated()
+}
+func (vm *GraphVM) onChangedScrollMode(mode ScrollMode) {
+	vm.m.Lock()
+	vm.view = nil
+	vm.state.ScrollMode = mode
+	vm.m.Unlock()
+
+	vm.Root.NotifyVMUpdated()
 }
 
-// withFuncIDsはFuncCallのIDsを
-func (v *GraphView) withFuncIDs(in chan restapi.FuncCall, out chan funcCallWithFuncIDs) {
-	for fc := range in {
-		funcs := v.frames2funcs(fc.Frames)
-		out <- funcCallWithFuncIDs{
-			FuncCall: fc,
-			funcs:    funcs,
-		}
-	}
+type GraphView struct {
+	VM *GraphVM
+	GraphState
+
+	initOnce sync.Once
+	widget   tui.Widget
+	fc       tui.FocusChain
+
+	graph       *GraphWidget
+	graphScroll *ScrollWidget
 }
 
-type funcCallWithFuncIDs struct {
-	restapi.FuncCall
-	// 各フレームに対応するlogutil.FuncIDのリスト。
-	// FuncStatusIDから変換するオーバーヘッドが大きいため、ここにキャッシュしておく。
-	// TODO: FuncStatusID -> FuncIDをする共有キャッシュを作る
-	funcs []logutil.FuncID
+func (v *GraphView) init() {
+	switch v.State {
+	case GLoading:
+		space := tui.NewSpacer()
+		v.widget = tui.NewVBox(
+			space,
+			v.newStatusBar(LoadingText),
+		)
+		v.fc = newFocusChain(space)
+		return
+	case GWait:
+		if v.Error != nil {
+			errmsg := newErrorMsg(v.Error)
+			v.widget = tui.NewVBox(
+				errmsg,
+				tui.NewSpacer(),
+				v.newStatusBar(ErrorText),
+			)
+			v.fc = newFocusChain(errmsg)
+			return
+		} else {
+			var offsetMsg string
+
+			v.graph = newGraphWidget()
+			v.graph.SetLines(v.Lines)
+			v.graphScroll = &ScrollWidget{
+				ScrollableWidget: v.graph,
+			}
+
+			v.graphScroll.Scroll(v.OffsetX, v.OffsetY)
+			switch v.ScrollMode {
+			case ManualScrollMode:
+				offsetMsg = fmt.Sprintf("%dx%d", v.OffsetX, v.OffsetY)
+			case AutoScrollMode:
+				v.graphScroll.AutoScroll(true, false)
+			}
+
+			v.widget = tui.NewVBox(
+				v.graphScroll,
+				v.newStatusBar(offsetMsg),
+			)
+			v.fc = newFocusChain(v.graph)
+			return
+		}
+	default:
+		log.Panic("bug")
+	}
+}
+func (v *GraphView) Widget() tui.Widget {
+	v.initOnce.Do(v.init)
+	return v.widget
+}
+func (v *GraphView) Keybindings() map[string]func() {
+	v.initOnce.Do(v.init)
+	goback := func() {
+		v.VM.onGoback()
+	}
+	up := func() {
+		// AutoScrollModeのときでも、上下スクロールは可能にする。
+		// そのため、このイベント発生時にはManualScrollModeに切り替えない。
+		v.VM.onChangedOffset(0, v.scrollSpeed().Y)
+	}
+	right := func() {
+		v.VM.onChangedScrollMode(ManualScrollMode)
+		v.VM.onChangedOffset(-v.scrollSpeed().X, 0)
+	}
+	down := func() {
+		// AutoScrollModeのときでも、上下スクロールは可能にする。
+		// そのため、このイベント発生時にはManualScrollModeに切り替えない。
+		v.VM.onChangedOffset(0, -v.scrollSpeed().Y)
+	}
+	left := func() {
+		v.VM.onChangedScrollMode(ManualScrollMode)
+		v.VM.onChangedOffset(v.scrollSpeed().X, 0)
+	}
+	autoScroll := func() {
+		v.VM.onChangedScrollMode(AutoScrollMode)
+	}
+
+	return map[string]func(){
+		"d":     goback,
+		"k":     up,
+		"Up":    up,
+		"l":     right,
+		"Right": right,
+		"j":     down,
+		"Down":  down,
+		"h":     left,
+		"Left":  left,
+		// TODO: 原因を探る
+		// WORKAROUND: tui-goが、shift+fをハンドリングできないみたい
+		//"Shift+f":     autoScroll,
+		"f": autoScroll,
+	}
+}
+func (v *GraphView) FocusChain() tui.FocusChain {
+	v.initOnce.Do(v.init)
+	return v.fc
 }
 
-func (f *funcCallWithFuncIDs) isMasked(config *storage.UIConfig) (masked bool) {
-	for _, fid := range f.funcs {
-		if f, ok := config.Funcs[fid]; ok {
-			masked = masked || f.Masked
-		}
+func (v *GraphView) scrollSpeed() image.Point {
+	if v.ScrollSpeed.Eq(image.ZP) {
+		return defaultScrollSpeed
 	}
-	if g, ok := config.Goroutines[f.GID]; ok {
-		masked = masked || g.Masked
-	}
-	return
+	return v.ScrollSpeed
 }
-
-func (f *funcCallWithFuncIDs) isPinned(config *storage.UIConfig) (pinned bool) {
-	for _, fid := range f.funcs {
-		if f, ok := config.Funcs[fid]; ok {
-			pinned = pinned || f.Pinned
-		}
-	}
-	if g, ok := config.Goroutines[f.GID]; ok {
-		pinned = pinned || g.Pinned
-	}
-	return
+func (v *GraphView) newStatusBar(text string) *tui.StatusBar {
+	s := tui.NewStatusBar(LoadingText)
+	s.SetPermanentText("Function Call History")
+	s.SetText(text)
+	return s
 }

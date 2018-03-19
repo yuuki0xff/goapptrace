@@ -74,6 +74,7 @@ func (nl *NodeList) Format() ([]byte, error) {
 			buf.Write(node.Src)
 			pos = node.Pos
 		case *DeleteNode:
+			buf.Write(nl.srcByRange2(pos, node.Pos))
 			pos = node.End
 		default:
 			panic(fmt.Sprintf("Unreachable: %+v", node))

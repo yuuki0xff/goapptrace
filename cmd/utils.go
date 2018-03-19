@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/exec"
@@ -144,7 +145,7 @@ func prepareRepo(tmpdir string, targets []string, conf *config.Config) (*builder
 	gopath := path.Join(tmpdir, "gopath")
 
 	ignoreFiles := map[string]bool{}
-	conf.Targets.Walk(nil, func(t *config.Target) error {
+	if err := conf.Targets.Walk(nil, func(t *config.Target) error {
 		for _, f := range t.Files {
 			if trace, ok := t.Trace[f]; ok {
 				if !trace.IsTracing {
@@ -153,7 +154,9 @@ func prepareRepo(tmpdir string, targets []string, conf *config.Config) (*builder
 			}
 		}
 		return nil
-	})
+	}); err != nil {
+		return nil, err
+	}
 
 	b := &builder.RepoBuilder{
 		OrigGopath: os.Getenv("GOPATH"),
@@ -164,6 +167,9 @@ func prepareRepo(tmpdir string, targets []string, conf *config.Config) (*builder
 		},
 		IgnoreFiles:   ignoreFiles,
 		IgnoreStdPkgs: true,
+		LoggerFlags: builder.LoggerFlags{
+			UseNonStandardRuntime: true,
+		},
 	}
 	if err := b.Init(); err != nil {
 		return nil, err
@@ -177,10 +183,12 @@ func prepareRepo(tmpdir string, targets []string, conf *config.Config) (*builder
 }
 
 func getLogServer(conf *config.Config) (srv restapi.ServerStatus, err error) {
-	api, err := getAPIClient(conf)
+	apiNoctx, err := getAPIClient(conf)
 	if err != nil {
 		return
 	}
+	// TODO: ctxを外部から渡す。
+	api := apiNoctx.WithCtx(context.Background())
 	srvs, err := api.Servers()
 	if err != nil {
 		return

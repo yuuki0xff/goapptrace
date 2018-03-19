@@ -1,11 +1,74 @@
-package logutil
+package types
 
 import (
 	"bytes"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strconv"
+	"sync/atomic"
+	"time"
+
+	"github.com/yuuki0xff/goapptrace/config"
 )
+
+const (
+	NotEnded       = Time(-1)
+	NotFoundParent = FuncLogID(-1)
+)
+const (
+	FuncStart TagName = iota
+	FuncEnd
+)
+
+// 最後に返したRawFuncLogIDの値
+var lastRawFuncLogID = int64(-1)
+
+// 最後に返したTxIDの値
+var lastTxID uint64
+
+type GID int64 // GID - Goroutine ID
+type TxID uint64
+type FuncLogID int64
+type RawFuncLogID int64
+type Time int64
+type TagName uint8
+type LogID [16]byte
+
+func (gid GID) String() string {
+	return strconv.FormatInt(int64(gid), 10)
+}
+
+func NewRawFuncLogID() RawFuncLogID {
+	return RawFuncLogID(atomic.AddInt64(&lastRawFuncLogID, 1))
+}
+
+func NewTxID() TxID {
+	return TxID(atomic.AddUint64(&lastTxID, 1))
+}
+
+func NewTime(t time.Time) Time {
+	return Time(t.UnixNano())
+}
+func (t Time) String() string {
+	return t.UnixTime().Format(config.TimestampFormat)
+}
+func (t Time) NumberString() string {
+	return strconv.FormatInt(int64(t), 10)
+}
+func (t Time) UnixTime() time.Time {
+	sec := int64(t) / 1e9
+	nanosec := int64(t) % 1e9
+	return time.Unix(sec, nanosec)
+}
+func (t Time) MarshalJSON() ([]byte, error) {
+	return marshalInt64(int64(t))
+}
+func (t *Time) UnmarshalJSON(data []byte) error {
+	val, err := unmarshalInt64(data)
+	*t = Time(val)
+	return err
+}
 
 // LogIDを16進数表現で返す。
 func (id LogID) Hex() string {

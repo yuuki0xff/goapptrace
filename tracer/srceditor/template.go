@@ -61,7 +61,7 @@ func newTemplate(data TemplateData) *Template {
 		defer {{.ImportName}}.FuncEnd({{.VariablePrefix}}_txid)
 	`)
 	// os.Exit()の呼び出しを行う直前の行に挿入される。
-	t.add("close", "{{.ImportName}}.Close()\n")
+	t.add("closeAndExit", "{{.ImportName}}.CloseAndExit")
 	return &t
 }
 

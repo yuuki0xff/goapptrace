@@ -21,6 +21,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -29,8 +30,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
-	"github.com/yuuki0xff/goapptrace/tracer/logutil"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 // logCatCmd represents the cat command
@@ -59,12 +60,15 @@ var logCatCmd = &cobra.Command{
 }
 
 func runLogCat(conf *config.Config, stderr io.Writer, logID string, logw LogWriter) error {
-	api, err := getAPIClient(conf)
+	// TODO: timeoutに対応させる
+	apiNoctx, err := getAPIClient(conf)
 	if err != nil {
 		return err
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+	api := apiNoctx.WithCtx(ctx)
 
-	ch, err := api.SearchFuncCalls(logID, restapi.SearchFuncCallParams{
+	ch, err := api.SearchFuncLogs(logID, restapi.SearchFuncLogParams{
 		SortKey:   restapi.SortByStartTime,
 		SortOrder: restapi.AscendingSortOrder,
 		//Limit:     1000,
@@ -73,20 +77,21 @@ func runLogCat(conf *config.Config, stderr io.Writer, logID string, logw LogWrit
 		return err
 	}
 	defer func() {
+		cancel()
 		// consume all items.
 		for range ch {
 		}
 	}()
 
-	logw.SetFuncStatusInfoGetter(func(id logutil.FuncStatusID) restapi.FuncStatusInfo {
-		s, err := api.FuncStatus(logID, strconv.Itoa(int(id)))
+	logw.SetGoLineGetter(func(pc uintptr) types.GoLine {
+		s, err := api.GoLine(logID, pc)
 		if err != nil {
 			log.Panic(err)
 		}
 		return s
 	})
-	logw.SetFuncInfoGetter(func(id logutil.FuncID) restapi.FuncInfo {
-		f, err := api.Func(logID, strconv.Itoa(int(id)))
+	logw.SetGoFuncGetter(func(pc uintptr) types.GoFunc {
+		f, err := api.GoFunc(logID, pc)
 		if err != nil {
 			log.Panic(err)
 		}
@@ -105,9 +110,9 @@ func runLogCat(conf *config.Config, stderr io.Writer, logID string, logw LogWrit
 
 type LogWriter interface {
 	WriteHeader() error
-	Write(evt restapi.FuncCall) error
-	SetFuncInfoGetter(func(id logutil.FuncID) restapi.FuncInfo)
-	SetFuncStatusInfoGetter(func(id logutil.FuncStatusID) restapi.FuncStatusInfo)
+	Write(evt types.FuncLog) error
+	SetGoFuncGetter(func(pc uintptr) types.GoFunc)
+	SetGoLineGetter(func(pc uintptr) types.GoLine)
 }
 
 func NewLogWriter(format string, out io.Writer) (LogWriter, error) {
@@ -140,19 +145,19 @@ func NewJsonLogWriter(output io.Writer) *JsonLogWriter {
 func (w *JsonLogWriter) WriteHeader() error {
 	return nil
 }
-func (w *JsonLogWriter) Write(evt restapi.FuncCall) error {
+func (w *JsonLogWriter) Write(evt types.FuncLog) error {
 	return w.encoder.Encode(evt)
 }
 
-func (w *JsonLogWriter) SetFuncInfoGetter(func(id logutil.FuncID) restapi.FuncInfo) {
+func (w *JsonLogWriter) SetGoFuncGetter(func(pc uintptr) types.GoFunc) {
 }
-func (w *JsonLogWriter) SetFuncStatusInfoGetter(func(id logutil.FuncStatusID) restapi.FuncStatusInfo) {
+func (w *JsonLogWriter) SetGoLineGetter(func(pc uintptr) types.GoLine) {
 }
 
 type TextLogWriter struct {
-	output     io.Writer
-	funcInfo   func(id logutil.FuncID) restapi.FuncInfo
-	funcStatus func(id logutil.FuncStatusID) restapi.FuncStatusInfo
+	output   io.Writer
+	funcInfo func(pc uintptr) types.GoFunc
+	goLine   func(pc uintptr) types.GoLine
 }
 
 func NewTextLogWriter(output io.Writer) *TextLogWriter {
@@ -164,16 +169,25 @@ func (w *TextLogWriter) WriteHeader() error {
 	_, err := fmt.Fprintln(w.output, "StartTime ExecTime [GID] Module.Func:Line")
 	return err
 }
-func (w *TextLogWriter) Write(evt restapi.FuncCall) error {
+func (w *TextLogWriter) Write(evt types.FuncLog) error {
 	currentFrame := evt.Frames[0]
-	fs := w.funcStatus(currentFrame)
-	funcName := w.funcInfo(fs.Func).Name // module.func
+	fs := w.goLine(currentFrame)
+	funcName := w.funcInfo(currentFrame).Name // module.func
 	line := fs.Line
-	execTime := evt.EndTime - evt.StartTime
+
+	// 実行が終了していない場合、実行時間は"*"と表示する
+	execTime := "*"
+	if evt.IsEnded() {
+		if evt.EndTime-evt.StartTime < 0 {
+			// validation error
+			log.Panicf("negative execTime: evt=%+v", evt)
+		}
+		execTime = strconv.FormatInt(int64(evt.EndTime-evt.StartTime), 10)
+	}
 
 	_, err := fmt.Fprintf(
 		w.output,
-		"%s %d [%d] %s:%d\n",
+		"%s %s [%d] %s:%d\n",
 		evt.StartTime.UnixTime().Format(config.TimestampFormat),
 		execTime,
 		evt.GID,
@@ -182,11 +196,11 @@ func (w *TextLogWriter) Write(evt restapi.FuncCall) error {
 	)
 	return err
 }
-func (w *TextLogWriter) SetFuncInfoGetter(f func(id logutil.FuncID) restapi.FuncInfo) {
+func (w *TextLogWriter) SetGoFuncGetter(f func(pc uintptr) types.GoFunc) {
 	w.funcInfo = f
 }
-func (w *TextLogWriter) SetFuncStatusInfoGetter(f func(id logutil.FuncStatusID) restapi.FuncStatusInfo) {
-	w.funcStatus = f
+func (w *TextLogWriter) SetGoLineGetter(f func(pc uintptr) types.GoLine) {
+	w.goLine = f
 }
 
 func init() {
