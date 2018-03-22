@@ -19,6 +19,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/tracer/simulator"
+	"github.com/yuuki0xff/goapptrace/tracer/sql"
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
 	"github.com/yuuki0xff/goapptrace/tracer/types"
 	"golang.org/x/sync/errgroup"
@@ -303,59 +304,78 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	q := r.URL.Query()
-	var gid int64
-	var minId int64
-	var maxId int64
-	var minTs types.Time
-	var maxTs types.Time
-	var limit int64
-	var sortKey SortKey
-	var order SortOrder
+	var p SearchFuncLogParams
 	var err error
 
-	gid, err = parseInt(q.Get("gid"), -1)
+	p.Gid, err = parseInt(q.Get("gid"), -1)
 	if err != nil {
 		http.Error(w, "invaid gid", http.StatusBadRequest)
 		return
 	}
-	minId, err = parseInt(q.Get("min-id"), -1)
+	p.MinId, err = parseInt(q.Get("min-id"), -1)
 	if err != nil {
 		http.Error(w, "invalid min-id", http.StatusBadRequest)
 		return
 	}
-	maxId, err = parseInt(q.Get("max-id"), -1)
+	p.MaxId, err = parseInt(q.Get("max-id"), -1)
 	if err != nil {
 		http.Error(w, "invalid max-id", http.StatusBadRequest)
 		return
 	}
-	minTs, err = parseTimestamp(q.Get("min-timestamp"), -1)
+	p.MinTimestamp, err = parseTimestamp(q.Get("min-timestamp"), -1)
 	if err != nil {
 		http.Error(w, "invalid min-timestamp", http.StatusBadRequest)
 		return
 	}
-	maxTs, err = parseTimestamp(q.Get("max-timestamp"), -1)
+	p.MaxTimestamp, err = parseTimestamp(q.Get("max-timestamp"), -1)
 	if err != nil {
 		http.Error(w, "invalid max-timestamp", http.StatusBadRequest)
 		return
 	}
-	limit, err = parseInt(q.Get("limit"), -1)
+	p.Limit, err = parseInt(q.Get("limit"), -1)
 	if err != nil {
 		http.Error(w, "invalid limit", http.StatusBadRequest)
 		return
 	}
-	sortKey, err = parseSortKey(q.Get("sort"))
+	p.SortKey, err = parseSortKey(q.Get("sort"))
 	if err != nil {
 		http.Error(w, "invalid sort", http.StatusBadRequest)
 		return
 	}
-	order, err = parseOrder(q.Get("order"), AscendingSortOrder)
+	p.SortOrder, err = parseOrder(q.Get("order"), AscendingSortOrder)
 	if err != nil {
 		http.Error(w, "invalid order", http.StatusBadRequest)
 		return
 	}
+	p.Sql = q.Get("sql")
+	if p.Sql != "" {
+		exclusiveParams := []string{"gid", "min-id", "max-id", "min-timestamp", "max-timestamp", "limit", "sort", "order"}
+		for _, param := range exclusiveParams {
+			if q.Get(param) != "" {
+				msg := fmt.Sprintf("sql parameter and %s parameter are mutually exclusive", param)
+				http.Error(w, msg, http.StatusBadRequest)
+				return
+			}
+		}
 
+		api.funcCallSearchBySql(w, logobj, p.Sql)
+		return
+	}
+	api.funcCallSearchBySimpleParams(w, logobj, p)
+}
+func (api APIv0) funcCallSearchBySql(w http.ResponseWriter, logobj *storage.Log, sqlStmt string) {
+	sel, err := sql.ParseSelect(sqlStmt)
+	if err != nil {
+		http.Error(w, "invalid sql statement\n"+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// TODO: レスポンスを生成する
+	_ = sel
+}
+func (api APIv0) funcCallSearchBySimpleParams(w http.ResponseWriter, logobj *storage.Log, p SearchFuncLogParams) {
 	var sortFn func(f1, f2 *types.FuncLog) bool
-	switch sortKey {
+	switch p.SortKey {
 	case SortByID:
 		sortFn = func(f1, f2 *types.FuncLog) bool {
 			return f1.ID < f2.ID
@@ -373,7 +393,7 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 		log.Panic("bug")
 	}
 
-	switch order {
+	switch p.SortOrder {
 	case AscendingSortOrder:
 		// 何もしない
 	case DescendingSortOrder:
@@ -387,12 +407,12 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// narrow the search range by ID and Timestamp.
-	if minId >= 0 || maxId >= 0 || minTs >= 0 || maxTs >= 0 {
-		if minId < 0 {
-			minId = 0
+	if p.MinId >= 0 || p.MaxId >= 0 || p.MinTimestamp >= 0 || p.MaxTimestamp >= 0 {
+		if p.MinId < 0 {
+			p.MinId = 0
 		}
-		if maxId < 0 {
-			maxId = math.MaxInt64
+		if p.MaxId < 0 {
+			p.MaxId = math.MaxInt64
 		}
 
 		found := false
@@ -402,7 +422,7 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 		logobj.Index(func(index *storage.Index) {
 			for i := int64(0); i < index.Len(); i++ {
 				ir := index.Get(i)
-				if !ir.IsOverlapID(minId, maxId) || !ir.IsOverlapTime(minTs, maxTs) {
+				if !ir.IsOverlapID(p.MinId, p.MaxId) || !ir.IsOverlapTime(p.MinTimestamp, p.MaxTimestamp) {
 					continue
 				}
 
@@ -420,28 +440,28 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 			// 一致するレコードが存在しないため、このまま終了する
 			return
 		}
-		if newMinId < minId || maxId < newMaxId {
+		if newMinId < p.MinId || p.MaxId < newMaxId {
 			log.Panic(fmt.Errorf("assertion error: newMinId=%d < minId=%d || maxId=%d < newMaxId=%d", newMinId, minId, maxId, newMaxId))
 		}
-		minId = newMinId
-		maxId = newMaxId
+		p.MinId = newMinId
+		p.MaxId = newMaxId
 	}
 
 	// evtが除外されるべきレコードなら、trueを返す。
 	isFiltered := func(evt *types.FuncLog) bool {
-		if gid >= 0 && evt.GID != types.GID(gid) {
+		if p.Gid >= 0 && evt.GID != types.GID(p.Gid) {
 			return true
 		}
-		if minId >= 0 && evt.ID < types.FuncLogID(minId) {
+		if p.MinId >= 0 && evt.ID < types.FuncLogID(p.MinId) {
 			return true
 		}
-		if maxId >= 0 && types.FuncLogID(maxId) < evt.ID {
+		if p.MaxId >= 0 && types.FuncLogID(p.MaxId) < evt.ID {
 			return true
 		}
-		if minTs >= 0 && (evt.StartTime < minTs && evt.EndTime < minTs) {
+		if p.MinTimestamp >= 0 && (evt.StartTime < p.MinTimestamp && evt.EndTime < p.MinTimestamp) {
 			return true
 		}
-		if maxTs >= 0 && maxTs < evt.StartTime {
+		if p.MaxTimestamp >= 0 && p.MaxTimestamp < evt.StartTime {
 			return true
 		}
 		return false
@@ -451,12 +471,12 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 
 	parentCtx := context.Background()
 	worker := api.worker(parentCtx, logobj)
-	fw := worker.readFuncLog(minId, maxId)
+	fw := worker.readFuncLog(p.MinId, p.MaxId)
 	fw = fw.filterFuncLog(isFiltered)
-	fw = fw.sortAndLimit(sortFn, limit)
+	fw = fw.sortAndLimit(sortFn, p.Limit)
 	fw.sendTo(enc)
 
-	if err = worker.wait(); err != nil {
+	if err := worker.wait(); err != nil {
 		log.Println(errors.Wrap(err, "funcCallSearch:"))
 	}
 }
