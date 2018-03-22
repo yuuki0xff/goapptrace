@@ -194,7 +194,28 @@ func (s *Symbols) ModuleName(pc uintptr) string {
 	return moduleName
 }
 
-// FileLineは、pcに対応するファイル名と行数を文字列として返す。
+// File は、pcに対応するファイル名を文字列として返す。
+func (s *Symbols) File(pc uintptr) string {
+	filename := "?"
+	if line, ok := s.GoLine(pc); ok {
+		if int(line.FileID) <= len(s.data.Files) {
+			filename = s.data.Files[line.FileID]
+		}
+	}
+	return filename
+}
+
+// Line は、pcに対応するソースコード上の行番号を返す。
+// 行番号が不明の場合、-1を返す。
+func (s *Symbols) Line(pc uintptr) int64 {
+	linenumber := int64(-1)
+	if line, ok := s.GoLine(pc); ok {
+		linenumber = int64(line.Line)
+	}
+	return linenumber
+}
+
+// FileLineは、pcに対応するファイル名と行番号を文字列として返す。
 func (s *Symbols) FileLine(pc uintptr) string {
 	filename := "?"
 	linenumber := "?"
@@ -266,6 +287,28 @@ func (m *GoModule) Validate() error {
 		return errors.New("m.MinPC >= m.MaxPC")
 	}
 	return nil
+}
+
+// ShortName strips package path from GoFunc.Name
+func (f *GoFunc) ShortName() string {
+	// f.Name: example.com/foo/bar.funcname.innerfunc
+	// tmp1: bar.funcname.innerfunc
+	// tmp2: funcname.innerfunc
+	tmp1 := f.Name[    strings.LastIndexByte(f.Name, '/')+1:]
+	tmp2 := tmp1[strings.IndexByte(tmp1, '.')+1:]
+	return tmp2
+}
+
+// PackagePath strips function name from GoFunc.Name
+func (f *GoFunc) PackagePath() string {
+	// f.Name: example.com/foo/bar.funcname.innerfunc
+	// tmp1: bar.funcname.innerfunc
+	// tmp2: example.com/foo/bar
+	p1 := strings.LastIndexByte(f.Name, '/') + 1
+	tmp1 := f.Name[p1:]
+	p2 := strings.IndexByte(tmp1, '.')
+	tmp2 := f.Name[:p1+p2]
+	return tmp2
 }
 func (f *GoFunc) Validate() error {
 	if f.Name == "" {
