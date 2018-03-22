@@ -18,11 +18,11 @@ func (o *AndOp) Bool() bool {
 	r := o.Right.Bool()
 	return l && r
 }
-func (o *AndOp) BigInt() int64        { panic(errSqlCast("bool", "bigint")) }
-func (o *AndOp) String() string       { panic(errSqlCast("bool", "string")) }
-func (o *AndOp) Datetime() types.Time { panic(errSqlCast("bool", "datetime")) }
+func (o *AndOp) BigInt() int64        { panic(errSqlCast(BoolType, BigIntType)) }
+func (o *AndOp) String() string       { panic(errSqlCast(BoolType, StringType)) }
+func (o *AndOp) Datetime() types.Time { panic(errSqlCast(BoolType, DatetimeType)) }
 func (o *AndOp) Const() bool          { return o.Left.Const() && o.Right.Const() }
-func (o *AndOp) Type() string         { return "bool" }
+func (o *AndOp) Type() string         { return BoolType }
 func (o *AndOp) WithRow(row SqlRow) {
 	o.Left.WithRow(row)
 	o.Right.WithRow(row)
@@ -39,11 +39,11 @@ func (o *OrOp) Bool() bool {
 	r := o.Right.Bool()
 	return l || r
 }
-func (o *OrOp) BigInt() int64        { panic(errSqlCast("bool", "bigint")) }
-func (o *OrOp) String() string       { panic(errSqlCast("bool", "string")) }
-func (o *OrOp) Datetime() types.Time { panic(errSqlCast("bool", "datetime")) }
+func (o *OrOp) BigInt() int64        { panic(errSqlCast(BoolType, BigIntType)) }
+func (o *OrOp) String() string       { panic(errSqlCast(BoolType, StringType)) }
+func (o *OrOp) Datetime() types.Time { panic(errSqlCast(BoolType, DatetimeType)) }
 func (o *OrOp) Const() bool          { return o.Left.Const() && o.Right.Const() }
-func (o *OrOp) Type() string         { return "bool" }
+func (o *OrOp) Type() string         { return BoolType }
 func (o *OrOp) WithRow(row SqlRow) {
 	o.Left.WithRow(row)
 	o.Right.WithRow(row)
@@ -54,11 +54,11 @@ type NotOp struct {
 }
 
 func (o *NotOp) Bool() bool           { return !o.Expr.Bool() }
-func (o *NotOp) BigInt() int64        { panic(errSqlCast("bool", "bigint")) }
-func (o *NotOp) String() string       { panic(errSqlCast("bool", "string")) }
-func (o *NotOp) Datetime() types.Time { panic(errSqlCast("bool", "datetime")) }
+func (o *NotOp) BigInt() int64        { panic(errSqlCast(BoolType, BigIntType)) }
+func (o *NotOp) String() string       { panic(errSqlCast(BoolType, StringType)) }
+func (o *NotOp) Datetime() types.Time { panic(errSqlCast(BoolType, DatetimeType)) }
 func (o *NotOp) Const() bool          { return o.Expr.Const() }
-func (o *NotOp) Type() string         { return "bool" }
+func (o *NotOp) Type() string         { return BoolType }
 func (o *NotOp) WithRow(row SqlRow)   { o.Expr.WithRow(row) }
 
 type CompOp struct {
@@ -75,11 +75,11 @@ func (o *CompOp) Bool() bool {
 	}
 	return o.compare()
 }
-func (o *CompOp) BigInt() int64        { panic(errSqlCast("bool", "bigint")) }
-func (o *CompOp) String() string       { panic(errSqlCast("bool", "string")) }
-func (o *CompOp) Datetime() types.Time { panic(errSqlCast("bool", "datetime")) }
+func (o *CompOp) BigInt() int64        { panic(errSqlCast(BoolType, BigIntType)) }
+func (o *CompOp) String() string       { panic(errSqlCast(BoolType, StringType)) }
+func (o *CompOp) Datetime() types.Time { panic(errSqlCast(BoolType, DatetimeType)) }
 func (o *CompOp) Const() bool          { return o.Left.Const() && o.Right.Const() }
-func (o *CompOp) Type() string         { return "bool" }
+func (o *CompOp) Type() string         { return BoolType }
 func (o *CompOp) WithRow(row SqlRow) {
 	o.Left.WithRow(row)
 	o.Right.WithRow(row)
@@ -91,7 +91,7 @@ func (o *CompOp) compareFn() func() bool {
 		panic(fmt.Errorf("mismatch type: %s %s %s", t, o.Operator, t2))
 	}
 	switch t {
-	case "bool":
+	case BoolType:
 		switch o.Operator {
 		case sqlparser.EqualStr:
 			return func() bool {
@@ -108,7 +108,7 @@ func (o *CompOp) compareFn() func() bool {
 		default:
 			panic(fmt.Errorf("not supported operator: %s %s %s", t, o.Operator, t2))
 		}
-	case "bigint":
+	case BigIntType:
 		switch o.Operator {
 		case sqlparser.EqualStr:
 			return func() bool { return o.Left.BigInt() == o.Right.BigInt() }
@@ -127,7 +127,7 @@ func (o *CompOp) compareFn() func() bool {
 		default:
 			panic(fmt.Errorf("not supported operator: %s %s %s", t, o.Operator, t2))
 		}
-	case "string":
+	case StringType:
 		switch o.Operator {
 		case sqlparser.EqualStr:
 			return func() bool { return o.Left.String() == o.Right.String() }
@@ -164,11 +164,11 @@ func (r *RangeOp) Bool() bool {
 	to := r.To.BigInt()
 	return from <= val && val <= to
 }
-func (r *RangeOp) BigInt() int64        { panic(errSqlCast("bool", "bigint")) }
-func (r *RangeOp) String() string       { panic(errSqlCast("bool", "string")) }
-func (r *RangeOp) Datetime() types.Time { panic(errSqlCast("bool", "datetime")) }
+func (r *RangeOp) BigInt() int64        { panic(errSqlCast(BoolType, BigIntType)) }
+func (r *RangeOp) String() string       { panic(errSqlCast(BoolType, StringType)) }
+func (r *RangeOp) Datetime() types.Time { panic(errSqlCast(BoolType, DatetimeType)) }
 func (r *RangeOp) Const() bool          { return r.Left.Const() && r.From.Const() && r.To.Const() }
-func (r *RangeOp) Type() string         { return "bool" }
+func (r *RangeOp) Type() string         { return BoolType }
 func (r *RangeOp) WithRow(row SqlRow) {
 	r.Left.WithRow(row)
 	r.From.WithRow(row)

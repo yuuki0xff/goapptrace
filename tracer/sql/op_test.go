@@ -90,7 +90,7 @@ func TestAndOp_Const(t *testing.T) {
 func TestAndOp_Type(t *testing.T) {
 	a := assert.New(t)
 	and := AndOp{}
-	a.Equal("bool", and.Type())
+	a.Equal(BoolType, and.Type())
 }
 func TestAndOp_WithRow(t *testing.T) {
 	a := assert.New(t)
@@ -136,14 +136,14 @@ func TestCompOp_Bool(t *testing.T) {
 		a := assert.New(t)
 		comp := CompOp{
 			Operator: "=",
-			Left:     &SqlMock{TypeStr: "bool"},
-			Right:    &SqlMock{TypeStr: "string"},
+			Left:     &SqlMock{TypeStr: BoolType},
+			Right:    &SqlMock{TypeStr: StringType},
 		}
 		a.Panics(func() {
 			comp.Bool()
 		})
 	})
-	t.Run("bool", func(t *testing.T) {
+	t.Run(BoolType, func(t *testing.T) {
 		a := assert.New(t)
 		comp := CompOp{
 			Operator: "=",
@@ -161,7 +161,7 @@ func TestCompOp_Bool(t *testing.T) {
 			comp.Bool()
 		})
 	})
-	t.Run("bigint", func(t *testing.T) {
+	t.Run(BigIntType, func(t *testing.T) {
 		a := assert.New(t)
 		comp := CompOp{
 			Operator: ">",
@@ -179,7 +179,7 @@ func TestCompOp_Bool(t *testing.T) {
 			comp.Bool()
 		})
 	})
-	t.Run("string", func(t *testing.T) {
+	t.Run(StringType, func(t *testing.T) {
 		a := assert.New(t)
 		comp := CompOp{
 			Operator: "=",

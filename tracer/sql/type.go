@@ -6,6 +6,12 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
+const (
+	BoolType     = "bool"
+	BigIntType   = "bigint"
+	StringType   = "string"
+	DatetimeType = "datetime"
+)
 
 func errSqlCast(from, to string) error {
 	return fmt.Errorf("cast error: %s to %s", from, to)
@@ -31,41 +37,41 @@ type SqlAny interface {
 type SqlBool bool
 
 func (b SqlBool) Bool() bool           { return bool(b) }
-func (b SqlBool) BigInt() int64        { panic(errSqlCast("bool", "bigint")) }
-func (b SqlBool) String() string       { panic(errSqlCast("bool", "string")) }
-func (b SqlBool) Datetime() types.Time { panic(errSqlCast("bool", "datetime")) }
+func (b SqlBool) BigInt() int64        { panic(errSqlCast(BoolType, BigIntType)) }
+func (b SqlBool) String() string       { panic(errSqlCast(BoolType, StringType)) }
+func (b SqlBool) Datetime() types.Time { panic(errSqlCast(BoolType, DatetimeType)) }
 func (b SqlBool) Const() bool          { return true }
-func (b SqlBool) Type() string         { return "bool" }
+func (b SqlBool) Type() string         { return BoolType }
 func (b SqlBool) WithRow(row SqlRow)   {}
 
 type SqlBigInt int64
 
 func (b SqlBigInt) Bool() bool           { return int64(b) != 0 }
 func (b SqlBigInt) BigInt() int64        { return int64(b) }
-func (b SqlBigInt) String() string       { panic(errSqlCast("bigint", "string")) }
-func (b SqlBigInt) Datetime() types.Time { panic(errSqlCast("bigint", "datetime")) }
+func (b SqlBigInt) String() string       { panic(errSqlCast(BigIntType, StringType)) }
+func (b SqlBigInt) Datetime() types.Time { panic(errSqlCast(BigIntType, DatetimeType)) }
 func (b SqlBigInt) Const() bool          { return true }
-func (b SqlBigInt) Type() string         { return "bigint" }
+func (b SqlBigInt) Type() string         { return BigIntType }
 func (b SqlBigInt) WithRow(row SqlRow)   {}
 
 type SqlString string
 
-func (s SqlString) Bool() bool           { panic(errSqlCast("string", "bool")) }
-func (s SqlString) BigInt() int64        { panic(errSqlCast("string", "bigint")) }
+func (s SqlString) Bool() bool           { panic(errSqlCast(StringType, BoolType)) }
+func (s SqlString) BigInt() int64        { panic(errSqlCast(StringType, BigIntType)) }
 func (s SqlString) String() string       { return string(s) }
-func (s SqlString) Datetime() types.Time { panic(errSqlCast("string", "datetime")) }
+func (s SqlString) Datetime() types.Time { panic(errSqlCast(StringType, DatetimeType)) }
 func (s SqlString) Const() bool          { return true }
-func (s SqlString) Type() string         { return "string" }
+func (s SqlString) Type() string         { return StringType }
 func (s SqlString) WithRow(row SqlRow)   {}
 
 type SqlDatetime types.Time
 
-func (d SqlDatetime) Bool() bool           { panic(errSqlCast("datetime", "bool")) }
-func (d SqlDatetime) BigInt() int64        { panic(errSqlCast("datetime", "bigint")) }
-func (d SqlDatetime) String() string       { panic(errSqlCast("datetime", "string")) }
+func (d SqlDatetime) Bool() bool           { panic(errSqlCast(DatetimeType, BoolType)) }
+func (d SqlDatetime) BigInt() int64        { panic(errSqlCast(DatetimeType, BigIntType)) }
+func (d SqlDatetime) String() string       { panic(errSqlCast(DatetimeType, StringType)) }
 func (d SqlDatetime) Datetime() types.Time { return types.Time(d) }
 func (d SqlDatetime) Const() bool          { return true }
-func (d SqlDatetime) Type() string         { return "datetime" }
+func (d SqlDatetime) Type() string         { return DatetimeType }
 func (d SqlDatetime) WithRow(row SqlRow)   {}
 
 // テーブルの1つのフィールドを表す。

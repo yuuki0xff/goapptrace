@@ -23,7 +23,7 @@ func TestSqlBool_Const(t *testing.T) {
 }
 func TestSqlBool_Type(t *testing.T) {
 	a := assert.New(t)
-	a.Equal("bool", SqlBool(false).Type())
+	a.Equal(BoolType, SqlBool(false).Type())
 }
 func TestSqlBool_WithRow(t *testing.T) {
 	a := assert.New(t)
