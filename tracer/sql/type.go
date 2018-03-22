@@ -6,9 +6,6 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
-func panicSqlCast(from, to string) {
-	panic(errSqlCast(from, to))
-}
 
 func errSqlCast(from, to string) error {
 	return fmt.Errorf("cast error: %s to %s", from, to)
