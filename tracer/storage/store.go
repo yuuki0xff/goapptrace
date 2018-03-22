@@ -86,15 +86,12 @@ func (e *Store) Read(idx int64, decode DecodeFn) error {
 }
 func (e *Store) ReadNolock(idx int64, decode DecodeFn) (err error) {
 	pos := int64(e.RecordSize) * idx
-	//left, right := e.wb.BufferedRange()
-	//if !(pos+int64(e.RecordSize) <= left || right <= pos) {
 	// 読み出し対象がバッファリングされている。
 	// ファイルから読み出す前に書き込む必要がある。
 	err = e.wb.Flush()
 	if err != nil {
 		return
 	}
-	//}
 
 	if e.rpos != pos {
 		_, err = e.r.Seek(pos, io.SeekStart)
