@@ -29,6 +29,7 @@ type SearchFuncLogParams struct {
 	Limit        int64
 	SortKey      SortKey
 	SortOrder    SortOrder
+	Sql          string
 }
 
 // ToParamMap converts this to url parameters map.
@@ -63,6 +64,9 @@ func (s SearchFuncLogParams) ToParamMap() map[string]string {
 	}
 	if s.SortOrder != NoSortOrder {
 		m["order"] = string(s.SortOrder)
+	}
+	if s.Sql != "" {
+		m["sql"] = s.Sql
 	}
 	return m
 }

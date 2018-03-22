@@ -548,6 +548,10 @@ paths:
           in: query
           description: Sort order. This parameter takes only of “asc” (default) and “desc”.
           type: string
+        - name: sql
+          in: query
+          description: SELECT statement. This and other query parameters are mutually exclusive. It cannot be combined with any other query parameters.
+          type: string
       responses:
         '200':
           description: Returns function call log records.
@@ -592,6 +596,10 @@ paths:
           in: query
           description: Maximum of timestamp.
           type: integer
+        - name: sql
+          in: query
+          description: SELECT statement. This and other query parameters are mutually exclusive. It cannot be combined with any other query parameters.
+          type: string
       responses:
         '200':
           description: Returns log records forever.
