@@ -768,6 +768,8 @@ func (w *FuncLogAPIWorker) filterFuncLog(isFiltered func(fl *types.FuncLog) bool
 					case <-w.readCtx.Done():
 						return nil
 					}
+				} else {
+					types.FuncLogPool.Put(evt)
 				}
 			case <-w.readCtx.Done():
 				return nil
