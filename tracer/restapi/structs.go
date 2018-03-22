@@ -20,9 +20,8 @@ type SortOrder string
 type SortKey string
 
 type SearchFuncLogParams struct {
-	Gid int64
-	Fid int64
-	//Mid          int64
+	Gid          int64
+	Fid          int64
 	MinId        int64
 	MaxId        int64
 	MinTimestamp int64

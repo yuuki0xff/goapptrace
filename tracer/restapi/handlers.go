@@ -304,7 +304,6 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 	var gid int64
-	//var mid int64
 	var minId int64
 	var maxId int64
 	var minTs types.Time

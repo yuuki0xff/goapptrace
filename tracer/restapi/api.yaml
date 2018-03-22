@@ -520,10 +520,6 @@ paths:
           in: query
           description: Goroutine ID.
           type: integer
-        - name: mid
-          in: query
-          description: Module ID.
-          type: integer
         - name: min-id
           in: query
           description: Minimum of log ID.
@@ -579,10 +575,6 @@ paths:
         - name: gid
           in: query
           description: Goroutine ID.
-          type: integer
-        - name: mid
-          in: query
-          description: Module ID.
           type: integer
         - name: min-id
           in: query
