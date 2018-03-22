@@ -341,6 +341,9 @@ func (s *SelectParser) parseSelectExpr(expr sqlparser.SelectExpr) SqlAny {
 		panic("bug")
 	}
 }
+func (s *SelectParser) Where() SqlAny {
+	return s.where
+}
 
 // ParseSelect parses the SELECT statement.
 func ParseSelect(sql string) (*SelectParser, error) {

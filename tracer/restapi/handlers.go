@@ -343,8 +343,38 @@ func (api APIv0) funcCallSearchBySql(w http.ResponseWriter, logobj *storage.Log,
 		return
 	}
 
-	// TODO: レスポンスを生成する
-	_ = sel
+	var isFiltered func(fl *types.FuncLog) bool
+	where := sel.Where()
+	if where == nil {
+		// WHERE句が存在しないため、全てのレコードを返す
+		isFiltered = func(fl *types.FuncLog) bool {
+			return false
+		}
+	} else {
+		row := sql.SqlFuncLogRow{
+			Symbols: logobj.Symbols(),
+		}
+		where.WithRow(&row)
+		isFiltered = func(fl *types.FuncLog) bool {
+			// 処理対象の行を fl に変更
+			row.FuncLog = fl
+			// 除外するレコードはtrueを返すため、WHERE句の評価結果を反転させてから返す。
+			return !where.Bool()
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	enc := json.NewEncoder(w)
+
+	parentCtx := context.Background()
+	worker := api.worker(parentCtx, logobj)
+	fw := worker.readFuncLog(-1, -1)
+	fw = fw.filterFuncLog(isFiltered)
+	fw.sendTo(enc)
+
+	if err := worker.wait(); err != nil {
+		log.Println(errors.Wrap(err, "funcCallSearch:"))
+	}
 }
 func (api APIv0) funcCallSearchBySimpleParams(w http.ResponseWriter, logobj *storage.Log, p SearchFuncLogParams) {
 	var sortFn func(f1, f2 *types.FuncLog) bool
@@ -630,6 +660,9 @@ func (api *APIv0) worker(parent context.Context, logobj *storage.Log) *APIWorker
 func (w *APIWorker) wait() error {
 	return w.group.Wait()
 }
+
+// readFuncLog は指定された範囲のレコードを読み出し、後続のフィルタに送る。
+// minId, maxId に負の値が指定された場合、全レコードを後続のフィルタへ送る。
 func (w *APIWorker) readFuncLog(minId, maxId types.FuncLogID) *FuncLogAPIWorker {
 	ch := make(chan *types.FuncLog, w.BufferSize)
 	newctx, cancel := context.WithCancel(w.ctx)
@@ -709,7 +742,8 @@ func (w *FuncLogAPIWorker) nextWorker(inCh chan *types.FuncLog) *FuncLogAPIWorke
 	return worker
 }
 
-func (w *FuncLogAPIWorker) filterFuncLog(isFiltered func(evt *types.FuncLog) bool) *FuncLogAPIWorker {
+// filterFuncLog は、isFiltered()がtrueを返したレコードを除外する。
+func (w *FuncLogAPIWorker) filterFuncLog(isFiltered func(fl *types.FuncLog) bool) *FuncLogAPIWorker {
 	ch := make(chan *types.FuncLog, w.api.BufferSize)
 	w.api.group.Go(func() error {
 		log.Print("filterFuncLog: start")
