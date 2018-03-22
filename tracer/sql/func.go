@@ -76,7 +76,7 @@ type SqlFuncFrame struct {
 	// TODO: cacheを導入する
 }
 
-func (d SqlFuncFrame) Bool() bool {
+func (d *SqlFuncFrame) Bool() bool {
 	max := d.row.MaxOffset()
 	for i := 0; i < max; i++ {
 		d.row.SetOffset(i)
@@ -86,12 +86,12 @@ func (d SqlFuncFrame) Bool() bool {
 	}
 	return false
 }
-func (d SqlFuncFrame) BigInt() int64        { panic(errSqlCast(BoolType, BigIntType)) }
-func (d SqlFuncFrame) String() string       { panic(errSqlCast(BoolType, StringType)) }
-func (d SqlFuncFrame) Datetime() types.Time { panic(errSqlCast(BoolType, DatetimeType)) }
-func (d SqlFuncFrame) Const() bool          { return false }
-func (d SqlFuncFrame) Type() string         { return BoolType }
-func (d SqlFuncFrame) WithRow(row SqlRow) {
+func (d *SqlFuncFrame) BigInt() int64        { panic(errSqlCast(BoolType, BigIntType)) }
+func (d *SqlFuncFrame) String() string       { panic(errSqlCast(BoolType, StringType)) }
+func (d *SqlFuncFrame) Datetime() types.Time { panic(errSqlCast(BoolType, DatetimeType)) }
+func (d *SqlFuncFrame) Const() bool          { return false }
+func (d *SqlFuncFrame) Type() string         { return BoolType }
+func (d *SqlFuncFrame) WithRow(row SqlRow) {
 	d.row = row.(*SqlFuncLogRow)
 	d.Expr.WithRow(row)
 }
@@ -102,13 +102,13 @@ type SqlFuncCall struct {
 	// TODO: cacheを導入する
 }
 
-func (d SqlFuncCall) Bool() bool           { return d.Expr.Bool() }
-func (d SqlFuncCall) BigInt() int64        { panic(errSqlCast(BoolType, BigIntType)) }
-func (d SqlFuncCall) String() string       { panic(errSqlCast(BoolType, StringType)) }
-func (d SqlFuncCall) Datetime() types.Time { panic(errSqlCast(BoolType, DatetimeType)) }
-func (d SqlFuncCall) Const() bool          { return false }
-func (d SqlFuncCall) Type() string         { return BoolType }
-func (d SqlFuncCall) WithRow(row SqlRow) {
+func (d *SqlFuncCall) Bool() bool           { return d.Expr.Bool() }
+func (d *SqlFuncCall) BigInt() int64        { panic(errSqlCast(BoolType, BigIntType)) }
+func (d *SqlFuncCall) String() string       { panic(errSqlCast(BoolType, StringType)) }
+func (d *SqlFuncCall) Datetime() types.Time { panic(errSqlCast(BoolType, DatetimeType)) }
+func (d *SqlFuncCall) Const() bool          { return false }
+func (d *SqlFuncCall) Type() string         { return BoolType }
+func (d *SqlFuncCall) WithRow(row SqlRow) {
 	d.row = row.(*SqlFuncLogRow)
 	d.Expr.WithRow(row)
 }
@@ -117,13 +117,13 @@ type SqlFuncNow struct {
 	// TODO: cacheを導入する
 }
 
-func (d SqlFuncNow) Bool() bool           { panic(errSqlCast(DatetimeType, BoolType)) }
-func (d SqlFuncNow) BigInt() int64        { panic(errSqlCast(DatetimeType, BigIntType)) }
-func (d SqlFuncNow) String() string       { panic(errSqlCast(DatetimeType, StringType)) }
-func (d SqlFuncNow) Datetime() types.Time { return types.NewTime(time.Now()) }
-func (d SqlFuncNow) Const() bool          { return false }
-func (d SqlFuncNow) Type() string         { return DatetimeType }
-func (d SqlFuncNow) WithRow(row SqlRow)   {}
+func (d *SqlFuncNow) Bool() bool           { panic(errSqlCast(DatetimeType, BoolType)) }
+func (d *SqlFuncNow) BigInt() int64        { panic(errSqlCast(DatetimeType, BigIntType)) }
+func (d *SqlFuncNow) String() string       { panic(errSqlCast(DatetimeType, StringType)) }
+func (d *SqlFuncNow) Datetime() types.Time { return types.NewTime(time.Now()) }
+func (d *SqlFuncNow) Const() bool          { return false }
+func (d *SqlFuncNow) Type() string         { return DatetimeType }
+func (d *SqlFuncNow) WithRow(row SqlRow)   {}
 
 type SqlFuncAddTime struct {
 	Base SqlAny
@@ -131,13 +131,13 @@ type SqlFuncAddTime struct {
 	// TODO: cacheを導入する
 }
 
-func (d SqlFuncAddTime) Bool() bool           { panic(errSqlCast(DatetimeType, BoolType)) }
-func (d SqlFuncAddTime) BigInt() int64        { panic(errSqlCast(DatetimeType, BigIntType)) }
-func (d SqlFuncAddTime) String() string       { panic(errSqlCast(DatetimeType, StringType)) }
-func (d SqlFuncAddTime) Datetime() types.Time { return d.Base.Datetime() + d.Diff.Datetime() }
-func (d SqlFuncAddTime) Const() bool          { return false }
-func (d SqlFuncAddTime) Type() string         { return DatetimeType }
-func (d SqlFuncAddTime) WithRow(row SqlRow)   {}
+func (d *SqlFuncAddTime) Bool() bool           { panic(errSqlCast(DatetimeType, BoolType)) }
+func (d *SqlFuncAddTime) BigInt() int64        { panic(errSqlCast(DatetimeType, BigIntType)) }
+func (d *SqlFuncAddTime) String() string       { panic(errSqlCast(DatetimeType, StringType)) }
+func (d *SqlFuncAddTime) Datetime() types.Time { return d.Base.Datetime() + d.Diff.Datetime() }
+func (d *SqlFuncAddTime) Const() bool          { return false }
+func (d *SqlFuncAddTime) Type() string         { return DatetimeType }
+func (d *SqlFuncAddTime) WithRow(row SqlRow)   {}
 
 type SqlFuncSubTime struct {
 	Base SqlAny
@@ -145,10 +145,10 @@ type SqlFuncSubTime struct {
 	// TODO: cacheを導入する
 }
 
-func (d SqlFuncSubTime) Bool() bool           { panic(errSqlCast(DatetimeType, BoolType)) }
-func (d SqlFuncSubTime) BigInt() int64        { panic(errSqlCast(DatetimeType, BigIntType)) }
-func (d SqlFuncSubTime) String() string       { panic(errSqlCast(DatetimeType, StringType)) }
-func (d SqlFuncSubTime) Datetime() types.Time { return d.Base.Datetime() - d.Diff.Datetime() }
-func (d SqlFuncSubTime) Const() bool          { return false }
-func (d SqlFuncSubTime) Type() string         { return DatetimeType }
-func (d SqlFuncSubTime) WithRow(row SqlRow)   {}
+func (d *SqlFuncSubTime) Bool() bool           { panic(errSqlCast(DatetimeType, BoolType)) }
+func (d *SqlFuncSubTime) BigInt() int64        { panic(errSqlCast(DatetimeType, BigIntType)) }
+func (d *SqlFuncSubTime) String() string       { panic(errSqlCast(DatetimeType, StringType)) }
+func (d *SqlFuncSubTime) Datetime() types.Time { return d.Base.Datetime() - d.Diff.Datetime() }
+func (d *SqlFuncSubTime) Const() bool          { return false }
+func (d *SqlFuncSubTime) Type() string         { return DatetimeType }
+func (d *SqlFuncSubTime) WithRow(row SqlRow)   {}
