@@ -61,7 +61,6 @@ func (s SqlString) Const() bool          { return true }
 func (s SqlString) Type() string         { return "string" }
 func (s SqlString) WithRow(row SqlRow)   {}
 
-// TODO: timeをどのデータ型としても扱えない
 type SqlDatetime types.Time
 
 func (d SqlDatetime) Bool() bool           { panic(errSqlCast("datetime", "bool")) }
