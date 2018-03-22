@@ -294,7 +294,7 @@ func (f *GoFunc) ShortName() string {
 	// f.Name: example.com/foo/bar.funcname.innerfunc
 	// tmp1: bar.funcname.innerfunc
 	// tmp2: funcname.innerfunc
-	tmp1 := f.Name[    strings.LastIndexByte(f.Name, '/')+1:]
+	tmp1 := f.Name[strings.LastIndexByte(f.Name, '/')+1:]
 	tmp2 := tmp1[strings.IndexByte(tmp1, '.')+1:]
 	return tmp2
 }

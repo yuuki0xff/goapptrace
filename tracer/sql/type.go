@@ -2,6 +2,7 @@ package sql
 
 import (
 	"fmt"
+
 	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 

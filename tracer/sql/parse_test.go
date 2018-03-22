@@ -1,8 +1,9 @@
 package sql
 
 import (
-	"github.com/xwb1989/sqlparser"
 	"testing"
+
+	"github.com/xwb1989/sqlparser"
 )
 
 func TestSelectParser_Parse(t *testing.T) {

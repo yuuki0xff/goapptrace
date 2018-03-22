@@ -3,8 +3,9 @@ package sql
 import (
 	"errors"
 	"fmt"
-	"github.com/xwb1989/sqlparser"
 	"strconv"
+
+	"github.com/xwb1989/sqlparser"
 )
 
 var (

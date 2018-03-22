@@ -1,9 +1,10 @@
 package sql
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/yuuki0xff/goapptrace/tracer/types"
-	"testing"
 )
 
 type SqlMock struct {

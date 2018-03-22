@@ -1,8 +1,9 @@
 package sql
 
 import (
-	"github.com/yuuki0xff/goapptrace/tracer/types"
 	"time"
+
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 var funcs = []SqlFunc{
