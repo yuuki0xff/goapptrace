@@ -346,7 +346,7 @@ func (s *SelectParser) parseSelectExpr(expr sqlparser.SelectExpr) SqlAny {
 func ParseSelect(sql string) (*SelectParser, error) {
 	stmt, err := sqlparser.Parse(sql)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	switch stmt := stmt.(type) {
