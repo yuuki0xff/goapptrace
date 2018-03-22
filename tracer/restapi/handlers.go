@@ -22,6 +22,7 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/sql"
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
 	"github.com/yuuki0xff/goapptrace/tracer/types"
+	"github.com/yuuki0xff/goapptrace/tracer/util"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -354,7 +355,13 @@ func (api APIv0) funcCallSearchBySql(w http.ResponseWriter, logobj *storage.Log,
 		row := sql.SqlFuncLogRow{
 			Symbols: logobj.Symbols(),
 		}
-		where.WithRow(&row)
+		err = util.PanicHandler(func() {
+			where.WithRow(&row)
+		})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		isFiltered = func(fl *types.FuncLog) bool {
 			// 処理対象の行を fl に変更
 			row.FuncLog = fl
