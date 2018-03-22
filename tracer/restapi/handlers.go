@@ -317,7 +317,7 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 		q.Get("sql"),
 	)
 	if err != nil {
-		http.Error(w, "invaid "+invalidParamName, http.StatusBadRequest)
+		http.Error(w, "invalid "+invalidParamName, http.StatusBadRequest)
 		return
 	}
 
