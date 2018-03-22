@@ -512,10 +512,6 @@ paths:
           in: path
           required: true
           type: integer
-        - name: txid
-          in: query
-          description: Transaction ID.
-          type: string
         - name: gid
           in: query
           description: Goroutine ID.
@@ -572,10 +568,6 @@ paths:
           in: path
           required: true
           type: integer
-        - name: txid
-          in: query
-          description: Transaction ID.
-          type: string
         - name: gid
           in: query
           description: Goroutine ID.

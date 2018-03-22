@@ -21,7 +21,6 @@ type SortKey string
 
 type SearchFuncLogParams struct {
 	Gid          int64
-	Fid          int64
 	MinId        int64
 	MaxId        int64
 	MinTimestamp int64
@@ -38,12 +37,6 @@ func (s SearchFuncLogParams) ToParamMap() map[string]string {
 	if s.Gid != 0 {
 		m["gid"] = strconv.Itoa(int(s.Gid))
 	}
-	if s.Fid != 0 {
-		m["fid"] = strconv.Itoa(int(s.Fid))
-	}
-	//if s.Mid != 0 {
-	//	m["mid" = strconv.Itoa(int(s.Mid))
-	//}
 	if s.MinId != 0 {
 		m["min-id"] = strconv.Itoa(int(s.MinId))
 	}
