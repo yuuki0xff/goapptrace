@@ -752,14 +752,15 @@ func (w *FuncLogAPIWorker) filterFuncLog(isFiltered func(fl *types.FuncLog) bool
 		for {
 			select {
 			case evt, ok := <-w.inCh:
+				if !ok {
+					return nil
+				}
 				if ok && !isFiltered(evt) {
 					select {
 					case ch <- evt:
 					case <-w.readCtx.Done():
 						return nil
 					}
-				} else {
-					return nil
 				}
 			case <-w.readCtx.Done():
 				return nil
