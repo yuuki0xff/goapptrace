@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/xwb1989/sqlparser"
+	"github.com/yuuki0xff/goapptrace/tracer/util"
 )
 
 var (
@@ -103,15 +104,9 @@ func (s *SelectParser) Parse() error {
 	}
 
 	if s.Stmt.Where != nil {
-		func() {
-			defer func() {
-				ret := recover()
-				if ret != nil {
-					err = ret.(error)
-				}
-			}()
+		err = util.PanicHandler(func() {
 			s.where = s.parseWhere(s.Stmt.Where)
-		}()
+		})
 		if err != nil {
 			return err
 		}
