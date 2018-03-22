@@ -91,7 +91,7 @@ func (r *SqlFuncLogRow) SetOffset(offset int) {
 	r.offset = offset
 }
 func (r *SqlFuncLogRow) MaxOffset() int {
-	return r.offset
+	return len(r.FuncLog.Frames)
 }
 
 type SqlGoroutineRow types.Goroutine
