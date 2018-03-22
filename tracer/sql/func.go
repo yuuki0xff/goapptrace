@@ -9,7 +9,7 @@ import (
 var funcs = []SqlFunc{
 	{
 		Name:  "FRAME",
-		Table: "calls",
+		Table: "frames",
 		Parse: func(args ...SqlAny) SqlAny {
 			if len(args) < 1 {
 				panic("missing args")
