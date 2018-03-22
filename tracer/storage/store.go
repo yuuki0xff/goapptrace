@@ -1,13 +1,10 @@
 package storage
 
 import (
-	"io"
 	"log"
 	"os"
 	"sync"
 	"sync/atomic"
-
-	"github.com/yuuki0xff/goapptrace/tracer/util"
 )
 
 type EncodeFn func(buf []byte) int64
@@ -25,11 +22,7 @@ type Store struct {
 	m      sync.Mutex
 	closed bool
 
-	r    FileReader
-	rpos int64
-	// ファイルを読み込むバッファ
-	rbuf []byte
-
+	rb ReadBuffer
 	wb WriteBuffer
 	// File が保持しているレコード数
 	records int64
@@ -65,11 +58,19 @@ func (e *Store) Open() (err error) {
 		}
 	}
 
-	e.r, err = e.File.OpenReadOnly()
+	var r FileReader
+	r, err = e.File.OpenReadOnly()
 	if err != nil {
 		return
 	}
-	e.rbuf = make([]byte, e.RecordSize)
+	e.rb = ReadBuffer{
+		R:           r,
+		MaxReadSize: e.RecordSize,
+		BufferSize:  100 * e.RecordSize,
+	}
+	if e.rb.BufferSize < 1<<12 {
+		e.rb.BufferSize = 1 << 12 // 4KiB
+	}
 
 	var size int64
 	size, err = e.File.Size()
@@ -93,26 +94,13 @@ func (e *Store) ReadNolock(idx int64, decode DecodeFn) (err error) {
 		return
 	}
 
-	if e.rpos != pos {
-		_, err = e.r.Seek(pos, io.SeekStart)
-		if err != nil {
-			return
-		}
-		e.rpos = pos
-	}
-	var n int
-	n, err = e.r.Read(e.rbuf)
+	e.rb.Seek(pos)
+	buf, err := e.rb.Read(e.RecordSize)
 	if err != nil {
-		e.rpos = -1
-		return
+		return err
 	}
-	if n != e.RecordSize {
-		e.rpos = -1
-		log.Panic(util.ErrPartialRead)
-	}
-	e.rpos += int64(n)
 
-	decode(e.rbuf)
+	decode(buf)
 	return
 }
 
@@ -129,6 +117,8 @@ func (e *Store) WriteNolock(idx int64, encode EncodeFn) error {
 	if e.ReadOnly {
 		return ErrReadOnly
 	}
+	// ReadBufferとの同期が取れなくなってしまうため、キャッシュを捨てる。
+	e.rb.DropCache()
 
 	pos := int64(e.RecordSize) * idx
 	err := e.wb.Seek(pos)
@@ -178,11 +168,10 @@ func (e *Store) Close() (err error) {
 
 	e.closed = true
 
-	err = e.r.Close()
+	err = e.rb.R.Close()
 	if err != nil {
 		return
 	}
-	e.rbuf = nil
 
 	if !e.ReadOnly {
 		err = e.wb.Flush()
