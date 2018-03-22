@@ -38,6 +38,24 @@ type LogID [16]byte
 func (gid GID) String() string {
 	return strconv.FormatInt(int64(gid), 10)
 }
+func (gid *GID) FromString(s string) error {
+	i, err := strconv.ParseInt(s, 10, 64)
+	if err == nil {
+		*gid = GID(i)
+	}
+	return err
+}
+
+func (id FuncLogID) String() string {
+	return strconv.FormatInt(int64(id), 10)
+}
+func (id *FuncLogID) FromString(s string) error {
+	i, err := strconv.ParseInt(s, 10, 64)
+	if err == nil {
+		*id = FuncLogID(i)
+	}
+	return err
+}
 
 func NewRawFuncLogID() RawFuncLogID {
 	return RawFuncLogID(atomic.AddInt64(&lastRawFuncLogID, 1))
@@ -55,6 +73,13 @@ func (t Time) String() string {
 }
 func (t Time) NumberString() string {
 	return strconv.FormatInt(int64(t), 10)
+}
+func (t *Time) FromNumberString(s string) error {
+	i, err := strconv.ParseInt(s, 10, 64)
+	if err == nil {
+		*t = Time(i)
+	}
+	return err
 }
 func (t Time) UnixTime() time.Time {
 	sec := int64(t) / 1e9

@@ -305,49 +305,22 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 	var p SearchFuncLogParams
-	var err error
+	invalidParamName, err := p.FromString(
+		q.Get("gid"),
+		q.Get("min-id"),
+		q.Get("max-id"),
+		q.Get("min-timestamp"),
+		q.Get("max-timestamp"),
+		q.Get("limit"),
+		q.Get("sort"),
+		q.Get("order"),
+		q.Get("sql"),
+	)
+	if err != nil {
+		http.Error(w, "invaid "+invalidParamName, http.StatusBadRequest)
+		return
+	}
 
-	p.Gid, err = parseInt(q.Get("gid"), -1)
-	if err != nil {
-		http.Error(w, "invaid gid", http.StatusBadRequest)
-		return
-	}
-	p.MinId, err = parseInt(q.Get("min-id"), -1)
-	if err != nil {
-		http.Error(w, "invalid min-id", http.StatusBadRequest)
-		return
-	}
-	p.MaxId, err = parseInt(q.Get("max-id"), -1)
-	if err != nil {
-		http.Error(w, "invalid max-id", http.StatusBadRequest)
-		return
-	}
-	p.MinTimestamp, err = parseTimestamp(q.Get("min-timestamp"), -1)
-	if err != nil {
-		http.Error(w, "invalid min-timestamp", http.StatusBadRequest)
-		return
-	}
-	p.MaxTimestamp, err = parseTimestamp(q.Get("max-timestamp"), -1)
-	if err != nil {
-		http.Error(w, "invalid max-timestamp", http.StatusBadRequest)
-		return
-	}
-	p.Limit, err = parseInt(q.Get("limit"), -1)
-	if err != nil {
-		http.Error(w, "invalid limit", http.StatusBadRequest)
-		return
-	}
-	p.SortKey, err = parseSortKey(q.Get("sort"))
-	if err != nil {
-		http.Error(w, "invalid sort", http.StatusBadRequest)
-		return
-	}
-	p.SortOrder, err = parseOrder(q.Get("order"), AscendingSortOrder)
-	if err != nil {
-		http.Error(w, "invalid order", http.StatusBadRequest)
-		return
-	}
-	p.Sql = q.Get("sql")
 	if p.Sql != "" {
 		exclusiveParams := []string{"gid", "min-id", "max-id", "min-timestamp", "max-timestamp", "limit", "sort", "order"}
 		for _, param := range exclusiveParams {
@@ -359,9 +332,9 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 		}
 
 		api.funcCallSearchBySql(w, logobj, p.Sql)
-		return
+	} else {
+		api.funcCallSearchBySimpleParams(w, logobj, p)
 	}
-	api.funcCallSearchBySimpleParams(w, logobj, p)
 }
 func (api APIv0) funcCallSearchBySql(w http.ResponseWriter, logobj *storage.Log, sqlStmt string) {
 	sel, err := sql.ParseSelect(sqlStmt)
@@ -416,22 +389,22 @@ func (api APIv0) funcCallSearchBySimpleParams(w http.ResponseWriter, logobj *sto
 		}
 
 		found := false
-		newMinId := int64(math.MaxInt64)
-		newMaxId := int64(math.MinInt64)
+		newMinId := types.FuncLogID(math.MaxInt64)
+		newMaxId := types.FuncLogID(math.MinInt64)
 
 		logobj.Index(func(index *storage.Index) {
 			for i := int64(0); i < index.Len(); i++ {
 				ir := index.Get(i)
-				if !ir.IsOverlapID(p.MinId, p.MaxId) || !ir.IsOverlapTime(p.MinTimestamp, p.MaxTimestamp) {
+				if !ir.IsOverlapID(int64(p.MinId), int64(p.MaxId)) || !ir.IsOverlapTime(p.MinTimestamp, p.MaxTimestamp) {
 					continue
 				}
 
 				found = true
-				if ir.MinID < newMinId {
-					newMinId = ir.MinID
+				if types.FuncLogID(ir.MinID) < newMinId {
+					newMinId = types.FuncLogID(ir.MinID)
 				}
-				if newMaxId < ir.MaxID {
-					newMaxId = ir.MaxID
+				if newMaxId < types.FuncLogID(ir.MaxID) {
+					newMaxId = types.FuncLogID(ir.MaxID)
 				}
 			}
 		})
@@ -441,7 +414,7 @@ func (api APIv0) funcCallSearchBySimpleParams(w http.ResponseWriter, logobj *sto
 			return
 		}
 		if newMinId < p.MinId || p.MaxId < newMaxId {
-			log.Panic(fmt.Errorf("assertion error: newMinId=%d < minId=%d || maxId=%d < newMaxId=%d", newMinId, minId, maxId, newMaxId))
+			log.Panic(fmt.Errorf("assertion error: newMinId=%d < minId=%d || maxId=%d < newMaxId=%d", newMinId, p.MinId, p.MaxId, newMaxId))
 		}
 		p.MinId = newMinId
 		p.MaxId = newMaxId
@@ -449,13 +422,13 @@ func (api APIv0) funcCallSearchBySimpleParams(w http.ResponseWriter, logobj *sto
 
 	// evtが除外されるべきレコードなら、trueを返す。
 	isFiltered := func(evt *types.FuncLog) bool {
-		if p.Gid >= 0 && evt.GID != types.GID(p.Gid) {
+		if p.Gid >= 0 && evt.GID != p.Gid {
 			return true
 		}
-		if p.MinId >= 0 && evt.ID < types.FuncLogID(p.MinId) {
+		if p.MinId >= 0 && evt.ID < p.MinId {
 			return true
 		}
-		if p.MaxId >= 0 && types.FuncLogID(p.MaxId) < evt.ID {
+		if p.MaxId >= 0 && p.MaxId < evt.ID {
 			return true
 		}
 		if p.MinTimestamp >= 0 && (evt.StartTime < p.MinTimestamp && evt.EndTime < p.MinTimestamp) {
@@ -467,6 +440,7 @@ func (api APIv0) funcCallSearchBySimpleParams(w http.ResponseWriter, logobj *sto
 		return false
 	}
 
+	w.WriteHeader(http.StatusOK)
 	enc := json.NewEncoder(w)
 
 	parentCtx := context.Background()
@@ -656,7 +630,7 @@ func (api *APIv0) worker(parent context.Context, logobj *storage.Log) *APIWorker
 func (w *APIWorker) wait() error {
 	return w.group.Wait()
 }
-func (w *APIWorker) readFuncLog(minId, maxId int64) *FuncLogAPIWorker {
+func (w *APIWorker) readFuncLog(minId, maxId types.FuncLogID) *FuncLogAPIWorker {
 	ch := make(chan *types.FuncLog, w.BufferSize)
 	newctx, cancel := context.WithCancel(w.ctx)
 	fw := &FuncLogAPIWorker{
@@ -678,14 +652,14 @@ func (w *APIWorker) readFuncLog(minId, maxId int64) *FuncLogAPIWorker {
 			if minId < 0 {
 				minId = 0
 			}
-			if maxId < 0 || n < maxId {
-				maxId = n
+			if maxId < 0 || types.FuncLogID(n) < maxId {
+				maxId = types.FuncLogID(n)
 			}
 			log.Printf("readFuncLog: start")
 			log.Printf("readFuncLog: minId=%d maxId=%d", minId, maxId)
-			for i := minId; i < maxId; i++ {
+			for id := minId; id < maxId; id++ {
 				fl := types.FuncLogPool.Get().(*types.FuncLog)
-				err = store.GetNolock(types.FuncLogID(i), fl)
+				err = store.GetNolock(id, fl)
 				if fl.Frames == nil {
 					log.Panic("fl.Frames is nil", fl)
 				}
@@ -712,7 +686,7 @@ func (w *APIWorker) readFuncLog(minId, maxId int64) *FuncLogAPIWorker {
 				if fl.Frames == nil {
 					log.Panic("fl.Frames is nil", fl)
 				}
-				if fl.ID < types.FuncLogID(maxId) {
+				if fl.ID < maxId {
 					// 既に出力済みなのでスキップする
 					continue
 				}
@@ -946,17 +920,6 @@ func (h *GenericHeap) Swap(i, j int)      { h.SwapFn(i, j) }
 func (h *GenericHeap) Push(x interface{}) { h.PushFn(x) }
 func (h *GenericHeap) Pop() interface{}   { return h.PopFn() }
 
-func parseInt(value string, defaultValue int64) (int64, error) {
-	if value == "" {
-		return defaultValue, nil
-	}
-	intValue, err := strconv.Atoi(value)
-	if err != nil {
-		return 0, err
-	}
-	return int64(intValue), nil
-}
-
 func parseTimestamp(value string, defaultValue types.Time) (types.Time, error) {
 	if value == "" {
 		return defaultValue, nil
@@ -967,34 +930,6 @@ func parseTimestamp(value string, defaultValue types.Time) (types.Time, error) {
 		return 0, err
 	}
 	return ts, nil
-}
-
-func parseSortKey(key string) (SortKey, error) {
-	switch key {
-	case string(NoSortKey):
-		fallthrough
-	case string(SortByID):
-		fallthrough
-	case string(SortByStartTime):
-		fallthrough
-	case string(SortByEndTime):
-		return SortKey(key), nil
-	default:
-		return SortKey(""), fmt.Errorf("invalid sort key: %s", key)
-	}
-}
-
-func parseOrder(order string, defaultOrder SortOrder) (SortOrder, error) {
-	switch order {
-	case string(NoSortOrder):
-		return defaultOrder, nil
-	case string(AscendingSortOrder):
-		fallthrough
-	case string(DescendingSortOrder):
-		return SortOrder(order), nil
-	default:
-		return "", fmt.Errorf("invalid SortOrder: %s", order)
-	}
 }
 
 func parseUintptr(s string) (uintptr, error) {
