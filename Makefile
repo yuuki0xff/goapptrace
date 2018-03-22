@@ -26,6 +26,9 @@ build-debug:
 	# See https://gist.github.com/tetsuok/3025333
 	go build -gcflags '-N -l'
 
+install:
+	go install
+
 format:
 	goimports -w .
 	go fmt ./...
