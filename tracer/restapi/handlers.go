@@ -364,7 +364,7 @@ func (api APIv0) funcCallSearchBySql(w http.ResponseWriter, logobj *storage.Log,
 			return !where.Bool()
 		}
 	}
-	_, rows := sel.Limit()
+	offset, rows := sel.Limit()
 
 	w.WriteHeader(http.StatusOK)
 	enc := json.NewEncoder(w)
@@ -373,7 +373,7 @@ func (api APIv0) funcCallSearchBySql(w http.ResponseWriter, logobj *storage.Log,
 	worker := api.worker(parentCtx, logobj)
 	fw := worker.readFuncLog(-1, -1)
 	fw = fw.filterFuncLog(isFiltered)
-	fw = fw.sortAndLimit(nil, rows)
+	fw = fw.sortAndLimit(nil, offset, rows)
 	fw.sendTo(enc)
 
 	if err := worker.wait(); err != nil {
@@ -484,7 +484,7 @@ func (api APIv0) funcCallSearchBySimpleParams(w http.ResponseWriter, logobj *sto
 	worker := api.worker(parentCtx, logobj)
 	fw := worker.readFuncLog(p.MinId, p.MaxId)
 	fw = fw.filterFuncLog(isFiltered)
-	fw = fw.sortAndLimit(sortFn, p.Limit)
+	fw = fw.sortAndLimit(sortFn, 0, p.Limit)
 	fw.sendTo(enc)
 
 	if err := worker.wait(); err != nil {
@@ -783,32 +783,31 @@ func (w *FuncLogAPIWorker) filterFuncLog(isFiltered func(fl *types.FuncLog) bool
 	return w.nextWorker(ch)
 }
 
-func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *types.FuncLog) bool, limit int64) *FuncLogAPIWorker {
+func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *types.FuncLog) bool, offset, rows int64) *FuncLogAPIWorker {
 	ch := make(chan *types.FuncLog, w.api.BufferSize)
+	start := time.Now()
 
 	if less == nil {
 		// sortしない
-		if limit <= 0 {
+		if rows <= 0 {
 			// sortしない & limitしない。
 			// つまり何もしない。
 			return w
 		} else {
-			// 先頭からlimit個だけ取得して返す。
+			// 先頭からoffset個を破棄して、その後のlimit個を返す。
 			w.api.group.Go(func() error {
-				log.Print("limit: start")
+				log.Printf("limit: start offset=%d rows=%d", offset, rows)
 				defer w.stopReader()
 				defer close(ch)
-				defer log.Println("limit: done")
+				defer func() {
+					log.Printf("limit: done exec-time=%s", time.Since(start).String())
+				}()
 				var i int64
-				for {
+				for i < offset {
 					select {
-					case evt, ok := <-w.inCh:
+					case _, ok := <-w.inCh:
 						if ok {
-							ch <- evt
 							i++
-							if i >= limit {
-								return nil
-							}
 						} else {
 							return nil
 						}
@@ -816,18 +815,33 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *types.FuncLog) bool, l
 						return nil
 					}
 				}
-				// unreachable
+				i = 0
+				for i < rows {
+					select {
+					case evt, ok := <-w.inCh:
+						if ok {
+							ch <- evt
+							i++
+						} else {
+							return nil
+						}
+					case <-w.sortCtx.Done():
+						return nil
+					}
+				}
+				return nil
 			})
 			return w.nextWorker(ch)
 		}
 	}
 
 	w.api.group.Go(func() error {
-		start := time.Now()
-		log.Print("sortAndLimit: start")
+		log.Printf("sortAndLimit: start offset=%d rows=%d", offset, rows)
 		defer w.stopReader()
 		defer close(ch)
-		defer log.Print("sortAndLimit: done exec-time=", time.Since(start))
+		defer func() {
+			log.Printf("sortAndLimit: done exec-time=%s", time.Since(start).String())
+		}()
 		var items []*types.FuncLog
 
 		// sort関数用の比較関数。
@@ -841,7 +855,7 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *types.FuncLog) bool, l
 			return less(items[i], items[j])
 		}
 
-		if limit <= 0 {
+		if rows <= 0 {
 			// read all items from input.
 		ReadAllLoop:
 			for {
@@ -852,16 +866,6 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *types.FuncLog) bool, l
 					} else {
 						break ReadAllLoop
 					}
-				case <-w.sortCtx.Done():
-					return nil
-				}
-			}
-			// sort all items.
-			sort.Slice(items, sortComparator)
-			// send all items to next worker.
-			for i := range items {
-				select {
-				case ch <- items[i]:
 				case <-w.sortCtx.Done():
 					return nil
 				}
@@ -883,7 +887,7 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *types.FuncLog) bool, l
 
 			// fill the items slice from inCh.
 		FillItemsLoop:
-			for int64(len(items)) < limit {
+			for int64(len(items)) < offset+rows {
 				select {
 				case evt, ok := <-w.inCh:
 					if ok {
@@ -914,14 +918,22 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *types.FuncLog) bool, l
 					return nil
 				}
 			}
+		}
 
-			sort.Slice(items, sortComparator)
-			for i := range items {
-				select {
-				case ch <- items[i]:
-				case <-w.sortCtx.Done():
-					return nil
-				}
+		// sort all items.
+		sort.Slice(items, sortComparator)
+		// skip some items.
+		if int64(len(items)) <= offset {
+			items = nil
+		} else {
+			items = items[offset:]
+		}
+		// send all items to next worker.
+		for i := range items {
+			select {
+			case ch <- items[i]:
+			case <-w.sortCtx.Done():
+				return nil
 			}
 		}
 		return nil
