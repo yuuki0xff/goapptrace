@@ -364,6 +364,7 @@ func (api APIv0) funcCallSearchBySql(w http.ResponseWriter, logobj *storage.Log,
 			return !where.Bool()
 		}
 	}
+	_, rows := sel.Limit()
 
 	w.WriteHeader(http.StatusOK)
 	enc := json.NewEncoder(w)
@@ -372,6 +373,7 @@ func (api APIv0) funcCallSearchBySql(w http.ResponseWriter, logobj *storage.Log,
 	worker := api.worker(parentCtx, logobj)
 	fw := worker.readFuncLog(-1, -1)
 	fw = fw.filterFuncLog(isFiltered)
+	fw = fw.sortAndLimit(nil, rows)
 	fw.sendTo(enc)
 
 	if err := worker.wait(); err != nil {

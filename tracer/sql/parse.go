@@ -1,10 +1,10 @@
 package sql
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 
+	"github.com/pkg/errors"
 	"github.com/xwb1989/sqlparser"
 	"github.com/yuuki0xff/goapptrace/tracer/util"
 )
@@ -79,7 +79,9 @@ type SelectParser struct {
 	// フィールド名のリスト
 	fields []string
 
-	where SqlAny
+	where  SqlAny
+	offset int64
+	rows   int64
 }
 
 // parseSelect parses a "SELECT" statement.
@@ -122,7 +124,12 @@ func (s *SelectParser) Parse() error {
 		return ErrOrderBy
 	}
 	if s.Stmt.Limit != nil {
-		return ErrLimit
+		err = util.PanicHandler(func() {
+			s.offset, s.rows = s.parseLimit(s.Stmt.Limit)
+		})
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -336,8 +343,48 @@ func (s *SelectParser) parseSelectExpr(expr sqlparser.SelectExpr) SqlAny {
 		panic("bug")
 	}
 }
+func (s *SelectParser) parseLimit(limitObj *sqlparser.Limit) (offset, rows int64) {
+	if limitObj == nil {
+		return
+	}
+
+	var err error
+	switch o := limitObj.Offset.(type) {
+	case nil:
+	case *sqlparser.SQLVal:
+		if o.Type != sqlparser.IntVal {
+			panic(fmt.Errorf("\"%s\" type is not allowed in offset", string(o.Type)))
+		}
+		offset, err = strconv.ParseInt(string(o.Val), 10, 64)
+		if err != nil {
+			panic(errors.Wrap(err, "offset"))
+		}
+	default:
+		panic(fmt.Errorf("bug: limitObj.Offset=%T", o))
+	}
+
+	switch r := limitObj.Rowcount.(type) {
+	case *sqlparser.SQLVal:
+		if r.Type != sqlparser.IntVal {
+			panic(fmt.Errorf("\"%s\" type is not allowed in rowcount", string(r.Type)))
+		}
+		rows, err = strconv.ParseInt(string(r.Val), 10, 64)
+		if err != nil {
+			panic(errors.Wrap(err, "rowscount"))
+		}
+	default:
+		panic(fmt.Errorf("bug: limitObj.Rowcount=%T", r))
+	}
+	return
+}
 func (s *SelectParser) Where() SqlAny {
 	return s.where
+}
+func (s *SelectParser) Limit() (offset, rows int64) {
+	if s.Stmt.Limit == nil {
+		return 0, 0
+	}
+	return s.offset, s.rows
 }
 
 // ParseSelect parses the SELECT statement.
