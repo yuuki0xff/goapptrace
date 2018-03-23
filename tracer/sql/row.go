@@ -29,13 +29,13 @@ type OutputFormat int
 func (g SqlFieldGetter) Printer(format OutputFormat) SqlFieldPrinter {
 	var conv SqlFieldPrinter
 	strFastcopy := func(buf []byte, sp *string) int64 {
-		sh := (*reflect.StringHeader)(unsafe.Pointer(sp))
+		sh := (*reflect.StringHeader)(unsafe.Pointer(sp)) // nolint: gas
 		bh := reflect.SliceHeader{
 			Data: sh.Data,
 			Len:  sh.Len,
 			Cap:  sh.Len,
 		}
-		data := *(*[]byte)(unsafe.Pointer(&bh))
+		data := *(*[]byte)(unsafe.Pointer(&bh)) // nolint: gas
 		return int64(copy(buf, data))
 	}
 	return func(buf []byte) int64 {
