@@ -13,6 +13,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -127,7 +128,12 @@ func (api APIv0) SetHandlers(router *mux.Router) {
 			"timeout", "{timeout:[0-9]+}",
 		)
 
-	v01.HandleFunc("/log/{log-id}/func-call/search", api.funcCallSearch).Methods(http.MethodGet)
+	v01.HandleFunc("/log/{log-id}/func-call/search", func(w http.ResponseWriter, r *http.Request) {
+		api.funcCallSearch(w, r, "json")
+	}).Methods(http.MethodGet)
+	v01.HandleFunc("/log/{log-id}/func-call/search.csv", func(w http.ResponseWriter, r *http.Request) {
+		api.funcCallSearch(w, r, "csv")
+	}).Methods(http.MethodGet)
 	v01.HandleFunc("/log/{log-id}/func-call/stream", api.notImpl).Methods(http.MethodGet)
 	v01.HandleFunc("/log/{log-id}/goroutines/search", api.goroutineSearch).Methods(http.MethodGet)
 	v01.HandleFunc("/log/{log-id}/symbols", api.symbols).Methods(http.MethodGet)
@@ -298,7 +304,7 @@ func (api APIv0) log(w http.ResponseWriter, r *http.Request) {
 }
 
 // TODO: テストを書く
-func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
+func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request, format string) {
 	logobj, ok := api.getLog(w, r)
 	if !ok {
 		return
@@ -331,13 +337,12 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-
-		api.funcCallSearchBySql(w, logobj, p.Sql)
+		api.funcCallSearchBySql(w, logobj, p.Sql, format)
 	} else {
-		api.funcCallSearchBySimpleParams(w, logobj, p)
+		api.funcCallSearchBySimpleParams(w, logobj, p, format)
 	}
 }
-func (api APIv0) funcCallSearchBySql(w http.ResponseWriter, logobj *storage.Log, sqlStmt string) {
+func (api APIv0) funcCallSearchBySql(w http.ResponseWriter, logobj *storage.Log, sqlStmt string, format string) {
 	sel, err := sql.ParseSelect(sqlStmt)
 	if err != nil {
 		http.Error(w, "invalid sql statement\n"+err.Error(), http.StatusBadRequest)
@@ -366,21 +371,49 @@ func (api APIv0) funcCallSearchBySql(w http.ResponseWriter, logobj *storage.Log,
 	}
 	offset, rows := sel.Limit()
 
-	w.WriteHeader(http.StatusOK)
-	enc := json.NewEncoder(w)
+	var send func(fl *types.FuncLog) error
+	switch format {
+	case "json":
+		enc := json.NewEncoder(w)
+		send = func(fl *types.FuncLog) error {
+			return enc.Encode(fl)
+		}
+	case "csv":
+		// write a header
+		if _, err := w.Write([]byte(strings.Join(sel.Cols(), ",") + "\n")); err != nil {
+			log.Println(errors.Wrap(err, "write error"))
+			return
+		}
+		// build the send()
+		row := sql.SqlFuncLogRow{
+			Symbols: logobj.Symbols(),
+		}
+		printer := row.Fields(sel.TableCols()).Printer(sql.CsvFormat)
+		line := make([]byte, 64<<10) // 64KiB
+		send = func(fl *types.FuncLog) error {
+			row.FuncLog = fl
+			n := printer(line)
+			line[n] = '\n'
+			_, err := w.Write(line[:n+1])
+			return err
+		}
+	default:
+		http.Error(w, fmt.Sprintf("%s format is not supported", format), http.StatusBadRequest)
+		return
+	}
 
 	parentCtx := context.Background()
 	worker := api.worker(parentCtx, logobj)
 	fw := worker.readFuncLog(-1, -1)
 	fw = fw.filterFuncLog(isFiltered)
 	fw = fw.sortAndLimit(nil, offset, rows)
-	fw.sendTo(enc)
+	fw.sendTo(send)
 
 	if err := worker.wait(); err != nil {
 		log.Println(errors.Wrap(err, "funcCallSearch:"))
 	}
 }
-func (api APIv0) funcCallSearchBySimpleParams(w http.ResponseWriter, logobj *storage.Log, p SearchFuncLogParams) {
+func (api APIv0) funcCallSearchBySimpleParams(w http.ResponseWriter, logobj *storage.Log, p SearchFuncLogParams, format string) {
 	var sortFn func(f1, f2 *types.FuncLog) bool
 	switch p.SortKey {
 	case SortByID:
@@ -477,15 +510,24 @@ func (api APIv0) funcCallSearchBySimpleParams(w http.ResponseWriter, logobj *sto
 		}
 	}
 
-	w.WriteHeader(http.StatusOK)
-	enc := json.NewEncoder(w)
+	var send func(fl *types.FuncLog) error
+	switch format {
+	case "json":
+		enc := json.NewEncoder(w)
+		send = func(fl *types.FuncLog) error {
+			return enc.Encode(fl)
+		}
+	default:
+		http.Error(w, fmt.Sprintf("%s format is not supported", format), http.StatusBadRequest)
+		return
+	}
 
 	parentCtx := context.Background()
 	worker := api.worker(parentCtx, logobj)
 	fw := worker.readFuncLog(p.MinId, p.MaxId)
 	fw = fw.filterFuncLog(isFiltered)
 	fw = fw.sortAndLimit(sortFn, 0, p.Limit)
-	fw.sendTo(enc)
+	fw.sendTo(send)
 
 	if err := worker.wait(); err != nil {
 		log.Println(errors.Wrap(err, "funcCallSearch:"))
@@ -941,7 +983,7 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *types.FuncLog) bool, o
 	return w.nextWorker(ch)
 }
 
-func (w *FuncLogAPIWorker) sendTo(enc Encoder) {
+func (w *FuncLogAPIWorker) sendTo(send func(fl *types.FuncLog) error) {
 	w.api.group.Go(func() error {
 		log.Print("sendTo: start")
 		defer log.Print("sendTo: done")
@@ -958,8 +1000,8 @@ func (w *FuncLogAPIWorker) sendTo(enc Encoder) {
 			select {
 			case evt, ok := <-w.inCh:
 				if ok {
-					if err := enc.Encode(evt); err != nil {
-						w.api.Logger.Println(errors.Wrap(err, "failed to json.Encoder.Encode()"))
+					if err := send(evt); err != nil {
+						w.api.Logger.Println(errors.Wrap(err, "failed to send()"))
 						return err
 					}
 					types.FuncLogPool.Put(evt)

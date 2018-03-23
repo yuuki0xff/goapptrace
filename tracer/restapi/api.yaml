@@ -553,6 +553,55 @@ paths:
           description: Returns function call log records.
           schema:
             $ref: '#/definitions/func-call-jsonlines'
+  '/log/{log-id}/func-call/search.csv':
+    get:
+      description: Returns the function call log records by csv format.
+      produces:
+        - text/csv
+      parameters:
+        - name: log-id
+          in: path
+          required: true
+          type: integer
+        - name: gid
+          in: query
+          description: Goroutine ID.
+          type: integer
+        - name: min-id
+          in: query
+          description: Minimum of log ID.
+          type: integer
+        - name: max-id
+          in: query
+          description: Maximum of log ID.
+          type: integer
+        - name: min-timestamp
+          in: query
+          description: Minimum of timestamp.
+          type: integer
+        - name: max-timestamp
+          in: query
+          description: Maximum of timestamp.
+          type: integer
+        - name: limit
+          in: query
+          description: Maximum number of results. I recommend that specify parameters of "sort" and "order" in addition to "limit" parameter.
+          type: integer
+        - name: sort
+          in: query
+          description: Sort key. This parameter takes only "id" or "start-time" or "end-time".
+          type: string
+        - name: order
+          in: query
+          description: Sort order. This parameter takes only of “asc” (default) and “desc”.
+          type: string
+        - name: sql
+          in: query
+          description: SELECT statement. This and other query parameters are mutually exclusive. It cannot be combined with any other query parameters.
+          type: string
+      responses:
+        '200':
+          description: Returns function call log records.
   '/log/{log-id}/func-call/stream':
     get:
       description: >-

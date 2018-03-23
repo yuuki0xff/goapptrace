@@ -377,6 +377,17 @@ func (s *SelectParser) parseLimit(limitObj *sqlparser.Limit) (offset, rows int64
 	}
 	return
 }
+func (s *SelectParser) TableCols() (tables, cols []string) {
+	cols = s.Cols()
+	tables = make([]string, len(cols))
+	for i := range tables {
+		tables[i] = s.table.Name
+	}
+	return
+}
+func (s *SelectParser) Cols() []string {
+	return s.fields
+}
 func (s *SelectParser) Where() SqlAny {
 	return s.where
 }
