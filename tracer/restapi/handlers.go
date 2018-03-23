@@ -346,12 +346,7 @@ func (api APIv0) funcCallSearchBySql(w http.ResponseWriter, logobj *storage.Log,
 
 	var isFiltered func(fl *types.FuncLog) bool
 	where := sel.Where()
-	if where == nil {
-		// WHERE句が存在しないため、全てのレコードを返す
-		isFiltered = func(fl *types.FuncLog) bool {
-			return false
-		}
-	} else {
+	if where != nil {
 		row := sql.SqlFuncLogRow{
 			Symbols: logobj.Symbols(),
 		}
@@ -458,23 +453,26 @@ func (api APIv0) funcCallSearchBySimpleParams(w http.ResponseWriter, logobj *sto
 	}
 
 	// evtが除外されるべきレコードなら、trueを返す。
-	isFiltered := func(evt *types.FuncLog) bool {
-		if p.Gid >= 0 && evt.GID != p.Gid {
-			return true
+	var isFiltered func(evt *types.FuncLog) bool
+	if p.Gid >= 0 || p.MinId >= 0 || p.MaxId >= 0 || p.MinTimestamp >= 0 || p.MaxTimestamp >= 0 {
+		isFiltered = func(evt *types.FuncLog) bool {
+			if p.Gid >= 0 && evt.GID != p.Gid {
+				return true
+			}
+			if p.MinId >= 0 && evt.ID < p.MinId {
+				return true
+			}
+			if p.MaxId >= 0 && p.MaxId < evt.ID {
+				return true
+			}
+			if p.MinTimestamp >= 0 && (evt.StartTime < p.MinTimestamp && evt.EndTime < p.MinTimestamp) {
+				return true
+			}
+			if p.MaxTimestamp >= 0 && p.MaxTimestamp < evt.StartTime {
+				return true
+			}
+			return false
 		}
-		if p.MinId >= 0 && evt.ID < p.MinId {
-			return true
-		}
-		if p.MaxId >= 0 && p.MaxId < evt.ID {
-			return true
-		}
-		if p.MinTimestamp >= 0 && (evt.StartTime < p.MinTimestamp && evt.EndTime < p.MinTimestamp) {
-			return true
-		}
-		if p.MaxTimestamp >= 0 && p.MaxTimestamp < evt.StartTime {
-			return true
-		}
-		return false
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -751,6 +749,10 @@ func (w *FuncLogAPIWorker) nextWorker(inCh chan *types.FuncLog) *FuncLogAPIWorke
 
 // filterFuncLog は、isFiltered()がtrueを返したレコードを除外する。
 func (w *FuncLogAPIWorker) filterFuncLog(isFiltered func(fl *types.FuncLog) bool) *FuncLogAPIWorker {
+	if isFiltered == nil {
+		// フィルタ条件が指定されなかった場合、フィルタリングは一切行わず、全てのレコードを通す。
+		return w
+	}
 	ch := make(chan *types.FuncLog, w.api.BufferSize)
 	w.api.group.Go(func() error {
 		log.Print("filterFuncLog: start")
