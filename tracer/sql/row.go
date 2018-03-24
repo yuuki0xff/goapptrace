@@ -212,9 +212,11 @@ func (r *SqlFuncLogRow) MaxOffset() int {
 	return len(r.FuncLog.Frames)
 }
 
-type SqlGoroutineRow types.Goroutine
+type SqlGoroutineRow struct {
+	types.Goroutine
+}
 
-func (r *SqlGoroutineRow) Field(table, col string, offset int) SqlFieldGetter {
+func (r *SqlGoroutineRow) Field(table, col string) SqlFieldGetter {
 	switch table {
 	case "goroutines":
 		switch col {
@@ -233,6 +235,16 @@ func (r *SqlGoroutineRow) Field(table, col string, offset int) SqlFieldGetter {
 		panic(fmt.Errorf("invalid table: %s.%s column", table, col))
 	}
 }
+func (r *SqlGoroutineRow) Fields(tables, cols []string) SqlFieldGetters {
+	if len(tables) != len(cols) {
+		panic(fmt.Errorf("mismatch length: len(tables)=%d len(cols)=%d", len(tables), len(cols)))
+	}
+	gs := make(SqlFieldGetters, len(cols))
+	for i := range gs {
+		gs[i] = r.Field(tables[i], cols[i])
+	}
+	return gs
+}
 func (r *SqlGoroutineRow) SetOffset(offset int) { panic("not supported") }
 func (r *SqlGoroutineRow) MaxOffset() int       { panic("not supported") }
 
@@ -240,7 +252,7 @@ type SqlGoFuncRow struct {
 	GoFunc *types.GoFunc
 }
 
-func (r *SqlGoFuncRow) Field(table, col string, offset int) SqlFieldGetter {
+func (r *SqlGoFuncRow) Field(table, col string) SqlFieldGetter {
 	switch table {
 	case "funcs":
 		switch col {
@@ -263,10 +275,22 @@ func (r *SqlGoFuncRow) Field(table, col string, offset int) SqlFieldGetter {
 		panic(fmt.Errorf("invalid table: %s.%s column", table, col))
 	}
 }
+func (r *SqlGoFuncRow) Fields(tables, cols []string) SqlFieldGetters {
+	if len(tables) != len(cols) {
+		panic(fmt.Errorf("mismatch length: len(tables)=%d len(cols)=%d", len(tables), len(cols)))
+	}
+	gs := make(SqlFieldGetters, len(cols))
+	for i := range gs {
+		gs[i] = r.Field(tables[i], cols[i])
+	}
+	return gs
+}
 func (r *SqlGoFuncRow) SetOffset(offset int) { panic("not supported") }
 func (r *SqlGoFuncRow) MaxOffset() int       { panic("not supported") }
 
-type SqlGoModuleRow types.GoModule
+type SqlGoModuleRow struct {
+	*types.GoModule
+}
 
 func (r *SqlGoModuleRow) Field(table, col string) SqlFieldGetter {
 	switch table {
@@ -282,6 +306,16 @@ func (r *SqlGoModuleRow) Field(table, col string) SqlFieldGetter {
 	default:
 		panic(fmt.Errorf("invalid table: %s.%s column", table, col))
 	}
+}
+func (r *SqlGoModuleRow) Fields(tables, cols []string) SqlFieldGetters {
+	if len(tables) != len(cols) {
+		panic(fmt.Errorf("mismatch length: len(tables)=%d len(cols)=%d", len(tables), len(cols)))
+	}
+	gs := make(SqlFieldGetters, len(cols))
+	for i := range gs {
+		gs[i] = r.Field(tables[i], cols[i])
+	}
+	return gs
 }
 func (r *SqlGoModuleRow) SetOffset(offset int) { panic("not supported") }
 func (r *SqlGoModuleRow) MaxOffset() int       { panic("not supported") }

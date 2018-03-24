@@ -388,6 +388,9 @@ func (s *SelectParser) TableCols() (tables, cols []string) {
 func (s *SelectParser) Cols() []string {
 	return s.fields
 }
+func (s *SelectParser) From() string {
+	return s.table.Name
+}
 func (s *SelectParser) Where() SqlAny {
 	return s.where
 }

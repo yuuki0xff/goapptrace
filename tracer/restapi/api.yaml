@@ -502,6 +502,23 @@ paths:
             $ref: '#/definitions/log'
         '204':
           description: Notify for non-changed in timeout.
+  '/log/{log-id}/search.csv':
+    get:
+      description: Search logs by SQL and returns query results as SQL.
+      produces:
+        - text/csv
+      parameters:
+        - name: sql
+          in: path
+          description: A SQL statement. This parameter allows only the SELECT statement.
+          required: true
+          type: string
+          example: 'SELECT * FROM calls'
+      responses:
+        '200':
+          description: Success
+        '400':
+          description: Occurred an error during execute SQL query.
   '/log/{log-id}/func-call/search':
     get:
       description: Filters the function call log records.

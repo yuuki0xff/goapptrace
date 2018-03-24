@@ -1,6 +1,7 @@
 package restapi
 
 import (
+	"bytes"
 	"container/heap"
 	"context"
 	"encoding/json"
@@ -127,6 +128,7 @@ func (api APIv0) SetHandlers(router *mux.Router) {
 			"version", "{version:[0-9]+}",
 			"timeout", "{timeout:[0-9]+}",
 		)
+	v01.HandleFunc("/log/{log-id}/search.csv", api.search)
 
 	v01.HandleFunc("/log/{log-id}/func-call/search", func(w http.ResponseWriter, r *http.Request) {
 		api.funcCallSearch(w, r, "json")
@@ -300,6 +302,179 @@ func (api APIv0) log(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		api.write(w, js)
+	}
+}
+
+func (api APIv0) search(w http.ResponseWriter, r *http.Request) {
+	logobj, ok := api.getLog(w, r)
+	if !ok {
+		return
+	}
+
+	query := r.URL.Query().Get("sql")
+	if query == "" {
+		http.Error(w, "missing \"sql\" parameter", http.StatusBadRequest)
+		return
+	}
+
+	sel, err := sql.ParseSelect(query)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// prepare isFiltered() func.
+	var isFiltered func(fl *types.FuncLog) bool
+	where := sel.Where()
+	if where != nil {
+		row := sql.SqlFuncLogRow{
+			Symbols: logobj.Symbols(),
+		}
+		err = util.PanicHandler(func() {
+			where.WithRow(&row)
+		})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		isFiltered = func(fl *types.FuncLog) bool {
+			// 処理対象の行を fl に変更
+			row.FuncLog = fl
+			// 除外するレコードはtrueを返すため、WHERE句の評価結果を反転させてから返す。
+			return !where.Bool()
+		}
+	}
+	offset, rows := sel.Limit()
+
+	// write a header
+	if _, err := w.Write([]byte(strings.Join(sel.Cols(), ",") + "\n")); err != nil {
+		log.Println(errors.Wrap(err, "write error"))
+		return
+	}
+	switch sel.From() {
+	case "calls":
+		fallthrough
+	case "frames":
+		// build the send()
+		row := sql.SqlFuncLogRow{
+			Symbols: logobj.Symbols(),
+		}
+		printer := row.Fields(sel.TableCols()).Printer(sql.CsvFormat)
+		line := make([]byte, 64<<10) // 64KiB
+		send := func(fl *types.FuncLog) error {
+			row.FuncLog = fl
+			n := printer(line)
+			line[n] = '\n'
+			_, err := w.Write(line[:n+1])
+			return err
+		}
+
+		// execute an query.
+		parentCtx := context.Background()
+		worker := api.worker(parentCtx, logobj)
+		fw := worker.readFuncLog(-1, -1)
+		fw = fw.filterFuncLog(isFiltered)
+		fw = fw.sortAndLimit(nil, offset, rows)
+		fw.sendTo(send)
+
+		if err := worker.wait(); err != nil {
+			log.Println(errors.Wrap(err, "search"))
+		}
+	case "goroutines":
+		var output bytes.Buffer
+		var row sql.SqlGoroutineRow
+		printer := row.Fields(sel.TableCols()).Printer(sql.CsvFormat)
+		line := make([]byte, 64<<10) // 64KiB
+		send := func() {
+			n := printer(line)
+			line[n] = '\n'
+			output.Write(line[:n+1]) // nolint
+		}
+
+		logobj.Goroutine(func(store *storage.GoroutineStore) {
+			max := store.Records()
+			if rows > 0 && offset+rows < max {
+				max = offset + rows
+			}
+			for i := int64(offset); i < max; i++ {
+				err = store.GetNolock(types.GID(i), &row.Goroutine)
+				if err != nil {
+					return
+				}
+				send()
+			}
+		})
+		if err != nil {
+			api.serverError(w, err, "unexpected error during execute an query")
+			return
+		}
+
+		_, err = output.WriteTo(w)
+		if err != nil {
+			log.Println(errors.Wrap(err, "search"))
+		}
+	case "funcs":
+		var output bytes.Buffer
+		var row sql.SqlGoFuncRow
+		printer := row.Fields(sel.TableCols()).Printer(sql.CsvFormat)
+		line := make([]byte, 1<<20) // 1MiB
+		send := func() {
+			n := printer(line)
+			line[n] = '\n'
+			output.Write(line[:n+1]) // nolint
+		}
+
+		err = logobj.Symbols().Save(func(data types.SymbolsData) error {
+			max := int64(len(data.Funcs))
+			if rows > 0 && offset+rows < max {
+				max = offset + rows
+			}
+			for i := int64(offset); i < max; i++ {
+				row.GoFunc = &data.Funcs[i]
+				send()
+			}
+			return nil
+		})
+		if err != nil {
+			log.Println(errors.Wrap(err, "search"))
+		}
+
+		_, err = output.WriteTo(w)
+		if err != nil {
+			log.Println(errors.Wrap(err, "search"))
+		}
+	case "modules":
+		var output bytes.Buffer
+		var row sql.SqlGoModuleRow
+		printer := row.Fields(sel.TableCols()).Printer(sql.CsvFormat)
+		line := make([]byte, 64<<10) // 64KiB
+		send := func() {
+			n := printer(line)
+			line[n] = '\n'
+			output.Write(line[:n+1]) // nolint
+		}
+
+		err = logobj.Symbols().Save(func(data types.SymbolsData) error {
+			max := int64(len(data.Mods))
+			if rows > 0 && offset+rows < max {
+				max = offset + rows
+			}
+			for i := int64(offset); i < max; i++ {
+				row.GoModule = &data.Mods[i]
+				send()
+			}
+			return nil
+		})
+		if err != nil {
+			log.Println(errors.Wrap(err, "search"))
+		}
+
+		_, err = output.WriteTo(w)
+		if err != nil {
+			log.Println(errors.Wrap(err, "search"))
+		}
+	default:
+		log.Panicf("bug: tableName=%s", sel.From())
 	}
 }
 
