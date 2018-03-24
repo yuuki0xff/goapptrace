@@ -249,7 +249,8 @@ func (r *SqlGoroutineRow) SetOffset(offset int) { panic("not supported") }
 func (r *SqlGoroutineRow) MaxOffset() int       { panic("not supported") }
 
 type SqlGoFuncRow struct {
-	GoFunc *types.GoFunc
+	GoFunc  *types.GoFunc
+	Symbols *types.Symbols
 }
 
 func (r *SqlGoFuncRow) Field(table, col string) SqlFieldGetter {
@@ -267,6 +268,10 @@ func (r *SqlGoFuncRow) Field(table, col string) SqlFieldGetter {
 		case "package":
 			return func() SqlAny {
 				return SqlString(r.GoFunc.PackagePath())
+			}
+		case "path":
+			return func() SqlAny {
+				return SqlString(r.Symbols.FileLine(r.GoFunc.Entry))
 			}
 		default:
 			panic(fmt.Errorf("not found %s.%s column", table, col))

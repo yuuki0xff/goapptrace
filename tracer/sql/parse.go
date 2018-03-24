@@ -46,7 +46,7 @@ var (
 		}, {
 			Name: "funcs",
 			Fields: []string{
-				"name", "shortname", "package",
+				"name", "shortname", "package", "path",
 			},
 		}, {
 			Name: "modules",

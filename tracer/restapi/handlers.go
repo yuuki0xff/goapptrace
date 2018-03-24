@@ -415,7 +415,9 @@ func (api APIv0) search(w http.ResponseWriter, r *http.Request) {
 		}
 	case "funcs":
 		var output bytes.Buffer
-		var row sql.SqlGoFuncRow
+		row := sql.SqlGoFuncRow{
+			Symbols: logobj.Symbols(),
+		}
 		printer := row.Fields(sel.TableCols()).Printer(sql.CsvFormat)
 		line := make([]byte, 1<<20) // 1MiB
 		send := func() {
