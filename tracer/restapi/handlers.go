@@ -396,7 +396,7 @@ func (api APIv0) search(w http.ResponseWriter, r *http.Request) {
 			if rows > 0 && offset+rows < max {
 				max = offset + rows
 			}
-			for i := int64(offset); i < max; i++ {
+			for i := offset; i < max; i++ {
 				err = store.GetNolock(types.GID(i), &row.Goroutine)
 				if err != nil {
 					return
@@ -429,7 +429,7 @@ func (api APIv0) search(w http.ResponseWriter, r *http.Request) {
 			if rows > 0 && offset+rows < max {
 				max = offset + rows
 			}
-			for i := int64(offset); i < max; i++ {
+			for i := offset; i < max; i++ {
 				row.GoFunc = &data.Funcs[i]
 				send()
 			}
@@ -459,7 +459,7 @@ func (api APIv0) search(w http.ResponseWriter, r *http.Request) {
 			if rows > 0 && offset+rows < max {
 				max = offset + rows
 			}
-			for i := int64(offset); i < max; i++ {
+			for i := offset; i < max; i++ {
 				row.GoModule = &data.Mods[i]
 				send()
 			}
