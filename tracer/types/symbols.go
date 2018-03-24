@@ -294,8 +294,23 @@ func (f *GoFunc) ShortName() string {
 	// f.Name: example.com/foo/bar.funcname.innerfunc
 	// tmp1: bar.funcname.innerfunc
 	// tmp2: funcname.innerfunc
-	tmp1 := f.Name[strings.LastIndexByte(f.Name, '/')+1:]
-	tmp2 := tmp1[strings.IndexByte(tmp1, '.')+1:]
+	p1 := strings.LastIndexByte(f.Name, '/')
+	var tmp1 string
+	if p1 >= 0 {
+		tmp1 = f.Name[p1+1:]
+	} else {
+		// f.Name: bar.funcname.innerfunc
+		tmp1 = f.Name
+	}
+	p2 := strings.IndexByte(tmp1, '.')
+	var tmp2 string
+	if p2 >= 0 {
+		tmp2 = tmp1[+1:]
+	} else {
+		// tmp1: foo
+		// tmp2: foo
+		tmp2 = tmp1
+	}
 	return tmp2
 }
 
@@ -304,10 +319,24 @@ func (f *GoFunc) PackagePath() string {
 	// f.Name: example.com/foo/bar.funcname.innerfunc
 	// tmp1: bar.funcname.innerfunc
 	// tmp2: example.com/foo/bar
-	p1 := strings.LastIndexByte(f.Name, '/') + 1
-	tmp1 := f.Name[p1:]
+	p1 := strings.LastIndexByte(f.Name, '/')
+	var tmp1 string
+	if p1 >= 0 {
+		tmp1 = f.Name[p1+1:]
+	} else {
+		// f.Name: bar.funcname.innerfunc
+		// tmp1: bar.funcname.innerfunc
+		tmp1 = f.Name
+	}
 	p2 := strings.IndexByte(tmp1, '.')
-	tmp2 := f.Name[:p1+p2]
+	var tmp2 string
+	if p2 >= 0 {
+		tmp2 = f.Name[:p1+1+p2]
+	} else {
+		// tmp1: foo
+		// tmp2: bar
+		tmp2 = tmp1
+	}
 	return tmp2
 }
 func (f *GoFunc) Validate() error {
