@@ -305,7 +305,7 @@ func (f *GoFunc) ShortName() string {
 	p2 := strings.IndexByte(tmp1, '.')
 	var tmp2 string
 	if p2 >= 0 {
-		tmp2 = tmp1[+1:]
+		tmp2 = tmp1[p2+1:]
 	} else {
 		// tmp1: foo
 		// tmp2: foo
