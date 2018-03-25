@@ -39,6 +39,8 @@ const (
 	SortByEndTime   SortKey = "end-time"
 )
 
+var errStopIteration = errors.New("stop iteration")
+
 type RouterArgs struct {
 	Config         *config.Config
 	Storage        *storage.Storage
@@ -361,12 +363,30 @@ func (api APIv0) search(w http.ResponseWriter, r *http.Request) {
 		}
 		printer := row.Fields(sel.TableCols()).Printer(sql.CsvFormat)
 		line := make([]byte, 64<<10) // 64KiB
+		lineno := int64(0)
 		send := func(fl *types.FuncLog) error {
 			row.FuncLog = fl
-			n := printer(line)
-			line[n] = '\n'
-			_, err := w.Write(line[:n+1])
-			return err
+			for i := 0; i < len(fl.Frames); i++ {
+				if lineno < offset {
+					continue
+				}
+				if fl.Frames[i] == 0 {
+					// TODO: fl.Framesの長さがおかしい。本来はGetNolockの時点で縮められて無ければならないのだが・・・
+					break
+				}
+				if 0 < rows && rows <= lineno {
+					return errStopIteration
+				}
+				lineno++
+				row.SetOffset(i)
+				n := printer(line)
+				line[n] = '\n'
+				_, err := w.Write(line[:n+1])
+				if err != nil {
+					return err
+				}
+			}
+			return nil
 		}
 
 		// execute an query.
@@ -374,10 +394,9 @@ func (api APIv0) search(w http.ResponseWriter, r *http.Request) {
 		worker := api.worker(parentCtx, logobj)
 		fw := worker.readFuncLog(-1, -1)
 		fw = fw.filterFuncLog(isFiltered)
-		fw = fw.sortAndLimit(nil, offset, rows)
 		fw.sendTo(send)
 
-		if err := worker.wait(); err != nil {
+		if err := worker.wait(); err != nil && err != errStopIteration {
 			log.Println(errors.Wrap(err, "search"))
 		}
 	case "goroutines":
