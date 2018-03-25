@@ -27,7 +27,8 @@ import (
 
 // targetRemoveCmd represents the remove command
 var targetRemoveCmd = &cobra.Command{
-	Use:   "remove",
+	Use: "remove <name>...",
+	DisableFlagsInUseLine: true,
 	Short: "Remove tracing targets",
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
 		conf.WantSave()

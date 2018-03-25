@@ -29,7 +29,8 @@ import (
 
 // targetLsCmd represents the ls command
 var targetLsCmd = &cobra.Command{
-	Use:   "ls",
+	Use: "ls",
+	DisableFlagsInUseLine: true,
 	Short: "Show tracing targets",
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
 		return runTargetLs(conf, cmd.OutOrStdout())

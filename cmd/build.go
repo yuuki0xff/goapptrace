@@ -42,7 +42,8 @@ var buildFlags = mergeFlagNames(sharedFlagNames(), map[string]bool{
 
 // buildCmd represents the build command
 var buildCmd = &cobra.Command{
-	Use:   "build [-o output] [-i] [packages]",
+	Use: "build [-o output] [-i] <packages>",
+	DisableFlagsInUseLine: true,
 	Short: "compile packages and dependencies with goapptrace logger",
 	Long: `"goapptrace build" is a useful command like "go build".
 This command adds logging codes to specified files before build, and build them.

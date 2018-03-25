@@ -30,7 +30,8 @@ import (
 
 // serverLsCmd represents the ls command
 var serverLsCmd = &cobra.Command{
-	Use:   "ls",
+	Use: "ls",
+	DisableFlagsInUseLine: true,
 	Short: "Show log servers",
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
 		return runServerLs(conf, cmd.OutOrStdout())

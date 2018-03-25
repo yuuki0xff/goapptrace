@@ -32,7 +32,7 @@ import (
 
 // logQueryCmd represents the query command
 var logQueryCmd = &cobra.Command{
-	Use: "query [id] [SQL]",
+	Use: "query <id> <SQL>",
 	DisableFlagsInUseLine: true,
 	Short: "Execute a SELECT query",
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {

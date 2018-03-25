@@ -29,7 +29,7 @@ import (
 
 // targetSetRunCmd represents the setRun command
 var targetSetRunCmd = &cobra.Command{
-	Use:     "set-run [name] [cmd...]",
+	Use:     "set-run <name> <cmd>...",
 	Short:   "Set the custom execute command",
 	Example: targetCmdExample,
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {

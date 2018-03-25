@@ -42,7 +42,8 @@ var runFlags = mergeFlagNames(sharedFlagNames(), map[string]bool{
 
 // runCmd represents the run command
 var runCmd = &cobra.Command{
-	Use:   "run [build flags] [-exec xprog] -- gofiles...",
+	Use: "run [build flags] [-exec xprog] -- <gofiles>...",
+	DisableFlagsInUseLine: true,
 	Short: "compile and run Go program",
 	Long: `"goapptrace run" is a useful command like "go run".
 This command compiles specified files with logging codes, and execute them.

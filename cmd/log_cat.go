@@ -36,7 +36,8 @@ import (
 
 // logCatCmd represents the cat command
 var logCatCmd = &cobra.Command{
-	Use:   "cat",
+	Use: "cat <id>",
+	DisableFlagsInUseLine: true,
 	Short: "Show logs on console",
 	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
 		// get specify log object.
