@@ -1197,6 +1197,7 @@ func (w *FuncLogAPIWorker) sendTo(send func(fl *types.FuncLog) error) {
 			case evt, ok := <-w.inCh:
 				if ok {
 					if err := send(evt); err != nil {
+						w.stopReader()
 						w.api.Logger.Println(errors.Wrap(err, "failed to send()"))
 						return err
 					}
