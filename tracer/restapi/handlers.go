@@ -364,25 +364,37 @@ func (api APIv0) search(w http.ResponseWriter, r *http.Request) {
 		printer := row.Fields(sel.TableCols()).Printer(sql.CsvFormat)
 		line := make([]byte, 64<<10) // 64KiB
 		lineno := int64(0)
+
 		send := func(fl *types.FuncLog) error {
 			row.FuncLog = fl
-			for i := 0; i < len(fl.Frames); i++ {
-				if lineno < offset {
-					continue
-				}
-				if 0 < rows && rows <= lineno {
-					return errStopIteration
-				}
-				lineno++
-				row.SetOffset(i)
-				n := printer(line)
-				line[n] = '\n'
-				_, err := w.Write(line[:n+1])
-				if err != nil {
-					return err
-				}
+			if lineno < offset {
+				return nil
+			}
+			if 0 < rows && rows <= lineno {
+				return errStopIteration
+			}
+			lineno++
+			n := printer(line)
+			line[n] = '\n'
+			_, err := w.Write(line[:n+1])
+			if err != nil {
+				return err
 			}
 			return nil
+		}
+		if sel.From() == "frames" {
+			// framesの場合は SetOffset() に指定する値を変えながら繰り返し出力する。
+			oldSend := send
+			send = func(fl *types.FuncLog) error {
+				for i := 0; i < len(fl.Frames); i++ {
+					row.SetOffset(i)
+					err := oldSend(fl)
+					if err != nil {
+						return err
+					}
+				}
+				return nil
+			}
 		}
 
 		// execute an query.
