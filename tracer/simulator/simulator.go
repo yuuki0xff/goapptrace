@@ -37,6 +37,7 @@ func (s *StateSimulator) Next(fl types.RawFuncLog) {
 		s.nextID++
 
 		frames := types.FramesPool.Get().([]uintptr)
+		frames = frames[:len(fl.Frames)]
 		copy(frames, fl.Frames)
 		s.funcLogs[id] = &types.FuncLog{
 			ID:        id,

@@ -370,10 +370,6 @@ func (api APIv0) search(w http.ResponseWriter, r *http.Request) {
 				if lineno < offset {
 					continue
 				}
-				if fl.Frames[i] == 0 {
-					// TODO: fl.Framesの長さがおかしい。本来はGetNolockの時点で縮められて無ければならないのだが・・・
-					break
-				}
 				if 0 < rows && rows <= lineno {
 					return errStopIteration
 				}
