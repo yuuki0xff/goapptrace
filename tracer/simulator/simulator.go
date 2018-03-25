@@ -36,10 +36,10 @@ func (s *StateSimulator) Next(raw types.RawFuncLog) {
 		id := s.nextID
 		s.nextID++
 
-		frames := types.FramesPool.Get().([]uintptr)
-		frames = frames[:len(raw.Frames)]
+		fl := types.FuncLogPool.Get().(*types.FuncLog)
+		frames := fl.Frames[:len(raw.Frames)]
 		copy(frames, raw.Frames)
-		s.funcLogs[id] = &types.FuncLog{
+		*fl = types.FuncLog{
 			ID:        id,
 			StartTime: raw.Timestamp,
 			EndTime:   types.NotEnded,
@@ -47,6 +47,7 @@ func (s *StateSimulator) Next(raw types.RawFuncLog) {
 			Frames:    frames,
 			GID:       raw.GID,
 		}
+		s.funcLogs[id] = fl
 		s.txids[raw.TxID] = id
 		s.stacks[raw.GID] = id
 
@@ -148,6 +149,7 @@ func (s *StateSimulator) Clear() {
 			continue
 		}
 		delete(s.funcLogs, id)
+		types.FuncLogPool.Put(fl)
 	}
 }
 
