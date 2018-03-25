@@ -27,6 +27,7 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -197,9 +198,22 @@ func getServerHandler(strg *storage.Storage, store *simulator.StateSimulatorStor
 
 		ss := store.New(logobj.ID)
 		defer store.Delete(logobj.ID)
+
+		// 最後にファイルと同期してから受信した RawFuncLog の個数。
+		// flCount が flCountMax に達したら、ファイルに書き出す。
+		var flCount int64
+		const flCountMax = 1000000
+
 		// 現在の状態をファイルに書き出す。
 		// excludeRunning がtrueの場合、実行中のFuncLogは書き込まない。
+		// writing フラグがtrueの場合は、何もしない。
+		var writing int64
 		writeCurrentState := func(excludeRunning bool) {
+			if !atomic.CompareAndSwapInt64(&writing, 0, 1) {
+				// 他のgoroutineが書き込んでいるため、今回は書き込みを行わない
+				return
+			}
+			atomic.StoreInt64(&flCount, 0)
 			logobj.FuncLog(func(store *storage.FuncLogStore) {
 				for _, fl := range ss.FuncLogs(false) {
 					if excludeRunning && !fl.IsEnded() {
@@ -220,6 +234,10 @@ func getServerHandler(strg *storage.Storage, store *simulator.StateSimulatorStor
 				}
 			})
 			ss.Clear()
+			if !atomic.CompareAndSwapInt64(&writing, 1, 0) {
+				// writing フラグが立っていないのに書き込みを行ってしまった。
+				panic("bug")
+			}
 		}
 		// ログを閉じる前に、現在のStateSimulatorの状態を保存する。
 		defer writeCurrentState(false)
@@ -258,6 +276,12 @@ func getServerHandler(strg *storage.Storage, store *simulator.StateSimulatorStor
 						//}
 						ss.Next(*obj)
 						types.RawFuncLogPool.Put(obj)
+
+						if atomic.AddInt64(&flCount, 1) >= flCountMax {
+							// 多くの RawFuncLog をsimulatorに渡したため、大量のメモリを消費している。
+							// ファイルに書き出してメモリを開放させる。
+							writeCurrentState(false)
+						}
 					case *types.SymbolsData:
 						if err := logobj.SetSymbolsData(obj); err != nil {
 							log.Panicln("failed to append Symbols:", err.Error())
