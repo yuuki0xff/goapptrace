@@ -21,70 +21,70 @@ func (s *StateSimulator) Init() {
 
 // 新しいRawFuncLogを受け取り、シミュレータの状態を更新する。
 // fl.Frames スライスの再利用をしてはいけない。
-func (s *StateSimulator) Next(fl types.RawFuncLog) {
+func (s *StateSimulator) Next(raw types.RawFuncLog) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	_, isExistsGID := s.goroutines[fl.GID]
+	_, isExistsGID := s.goroutines[raw.GID]
 
-	switch fl.Tag {
+	switch raw.Tag {
 	case types.FuncStart:
 		parentID := types.NotFoundParent
 		if isExistsGID {
-			parentID = s.stacks[fl.GID]
+			parentID = s.stacks[raw.GID]
 		}
 
 		id := s.nextID
 		s.nextID++
 
 		frames := types.FramesPool.Get().([]uintptr)
-		frames = frames[:len(fl.Frames)]
-		copy(frames, fl.Frames)
+		frames = frames[:len(raw.Frames)]
+		copy(frames, raw.Frames)
 		s.funcLogs[id] = &types.FuncLog{
 			ID:        id,
-			StartTime: fl.Timestamp,
+			StartTime: raw.Timestamp,
 			EndTime:   types.NotEnded,
 			ParentID:  parentID,
 			Frames:    frames,
-			GID:       fl.GID,
+			GID:       raw.GID,
 		}
-		s.txids[fl.TxID] = id
-		s.stacks[fl.GID] = id
+		s.txids[raw.TxID] = id
+		s.stacks[raw.GID] = id
 
 		if !isExistsGID && parentID == types.FuncLogID(-1) {
 			// 新しいgoroutineを追加
-			s.goroutines[fl.GID] = &types.Goroutine{
-				GID:       fl.GID,
-				StartTime: fl.Timestamp,
+			s.goroutines[raw.GID] = &types.Goroutine{
+				GID:       raw.GID,
+				StartTime: raw.Timestamp,
 				EndTime:   types.NotEnded,
 			}
 		} else if isExistsGID && parentID == types.FuncLogID(-1) {
 			// 終了したと思っていたgoroutineが、実はまだ動いていた。
 			// 動作中に変更。
-			s.goroutines[fl.GID].EndTime = types.NotEnded
+			s.goroutines[raw.GID].EndTime = types.NotEnded
 		}
 	case types.FuncEnd:
 		if !isExistsGID {
-			log.Panicf("ERROR: not found goroutine: gid=%d", fl.GID)
+			log.Panicf("ERROR: not found goroutine: gid=%d", raw.GID)
 		}
 
-		id, ok := s.txids[fl.TxID]
+		id, ok := s.txids[raw.TxID]
 		if !ok {
-			log.Panicf("ERROR: not found FuncLog: txid=%d", fl.TxID)
+			log.Panicf("ERROR: not found FuncLog: txid=%d", raw.TxID)
 		}
 
 		parentID := s.funcLogs[id].ParentID
 
-		s.funcLogs[id].EndTime = fl.Timestamp
-		delete(s.txids, fl.TxID)
-		s.stacks[fl.GID] = parentID
+		s.funcLogs[id].EndTime = raw.Timestamp
+		delete(s.txids, raw.TxID)
+		s.stacks[raw.GID] = parentID
 
 		if parentID == types.FuncLogID(-1) {
 			// スタックが空になったので、goroutineが終了したと見なす。
 			// 終了時刻を更新。
-			s.goroutines[fl.GID].EndTime = fl.Timestamp
+			s.goroutines[raw.GID].EndTime = raw.Timestamp
 		}
 	default:
-		panic(fmt.Errorf("unsupported tag: %d", fl.Tag))
+		panic(fmt.Errorf("unsupported tag: %d", raw.Tag))
 	}
 }
 
