@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
@@ -84,6 +85,10 @@ type mergeSender struct {
 	// 構築中のmergePacket。
 	// アクセスする場合はlockを取ってからアクセスすること。
 	mergePkt *MergePacket
+
+	// RefreshWorker の ctx が中断されたら、0以外の値になる。
+	// この値が0以外のときにパケットを送信すると、panicする。
+	stopped int64
 }
 
 func (c *Client) Init() {
@@ -307,6 +312,9 @@ func (ms *mergeSender) Send(pkt xtcp.Packet) error {
 	return ms.sendNolock(pkt)
 }
 func (ms *mergeSender) sendNolock(pkt xtcp.Packet) error {
+	if atomic.LoadInt64(&ms.stopped) != 0 {
+		panic("ms.stopped != 0")
+	}
 	if ms.mergePkt == nil {
 		ms.mergePkt = ms.pool.Get().(*MergePacket)
 		ms.mergePkt.Reset()
@@ -324,6 +332,9 @@ func (ms *mergeSender) sendNolock(pkt xtcp.Packet) error {
 func (ms *mergeSender) SendLarge(largePkt xtcp.Packet) error {
 	ms.m.Lock()
 	defer ms.m.Unlock()
+	if atomic.LoadInt64(&ms.stopped) != 0 {
+		panic("ms.stopped != 0")
+	}
 	if err := ms.refreshNolock(); err != nil {
 		return err
 	}
@@ -343,6 +354,23 @@ func (ms *mergeSender) Refresh() error {
 	return ms.refreshNolock()
 }
 func (ms *mergeSender) refreshNolock() error {
+	if atomic.LoadInt64(&ms.stopped) != 0 {
+		panic("ms.stopped != 0")
+	}
+	pkt := ms.mergePkt
+	if pkt == nil || pkt.Len() == 0 {
+		return nil
+	}
+	ms.mergePkt = nil
+	return ms.Conn.Send(pkt)
+}
+
+// mergeSender を止めるときに呼び出す。
+// mergeSender.stopped フラグを立てて、これ以降はパケットの送信が出来ないように設定する。
+func (ms *mergeSender) refreshLast() error {
+	atomic.StoreInt64(&ms.stopped, 1)
+	ms.m.Lock()
+	defer ms.m.Unlock()
 	pkt := ms.mergePkt
 	if pkt == nil || pkt.Len() == 0 {
 		return nil
@@ -369,7 +397,7 @@ func (ms *mergeSender) RefreshWorker(wg *sync.WaitGroup, ctx context.Context) {
 			}
 		case <-ctx.Done():
 			ticker.Stop()
-			err := ms.Refresh()
+			err := ms.refreshLast()
 			if err != nil {
 				// TODO: imrpove error handling
 				log.Panicln(err)
