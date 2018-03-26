@@ -16,6 +16,8 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 )
 
+var errInvalidArgs = errors.New("invalid args")
+
 // sharedFlags are shared by the "build" and "run" commands.
 func sharedFlags() *pflag.FlagSet {
 	f := pflag.NewFlagSet("", pflag.ContinueOnError)

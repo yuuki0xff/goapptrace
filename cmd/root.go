@@ -46,11 +46,18 @@ var RootCmd = &cobra.Command{
 }
 
 func Execute() int {
-	if err := RootCmd.Execute(); err != nil {
-		log.Println(err)
+	err := RootCmd.Execute()
+	switch err {
+	case nil:
+		return 0
+	case errInvalidArgs:
+		// EX_USAGE 64
+		return 64
+	default:
+		// Unknown error
+		log.Panicln(err)
 		return 1
 	}
-	return 0
 }
 
 func init() {
