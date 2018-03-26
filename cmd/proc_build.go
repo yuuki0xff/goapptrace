@@ -49,7 +49,7 @@ func runProcBuild(opt *handlerOpt) error {
 
 		buildProc, err := target.Build.Run()
 		if err != nil {
-			opt.ErrLog.Println("ERROR: Failed to run a command (%+v): %s\n", buildProc.Args, err)
+			opt.ErrLog.Printf("ERROR: Failed to run a command (%+v): %s\n", buildProc.Args, err)
 			return errGeneral
 		}
 	}

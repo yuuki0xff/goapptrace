@@ -74,7 +74,7 @@ func runLogCatfunc(opt *handlerOpt) error {
 		//Limit:     1000,
 	})
 	if err != nil {
-		opt.ErrLog.Printf("ERROR: Received unexpected response:", err)
+		opt.ErrLog.Println("ERROR: Received unexpected response:", err)
 		return errGeneral
 	}
 	defer func() {
