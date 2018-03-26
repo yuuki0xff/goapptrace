@@ -236,7 +236,7 @@ func getServerHandler(strg *storage.Storage, store *simulator.StateSimulatorStor
 			}
 		}
 		// ログを閉じる前に、現在のStateSimulatorの状態を保存する。
-		defer writeCurrentState(true)
+		defer writeCurrentState(false)
 
 		// 定期的に状態を書き出す
 		var wa sync.WaitGroup
