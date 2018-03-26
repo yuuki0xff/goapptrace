@@ -194,7 +194,7 @@ func (c *ClientWithCtx) Search(id string, query string) (chan<- []string, *errgr
 		if err != nil {
 			return err
 		}
-		defer rr.Close()
+		defer rr.Close() // nolint
 
 		r := csv.NewReader(rr)
 		for {
