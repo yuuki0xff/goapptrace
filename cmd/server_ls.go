@@ -22,10 +22,8 @@ package cmd
 
 import (
 	"fmt"
-	"io"
 
 	"github.com/spf13/cobra"
-	"github.com/yuuki0xff/goapptrace/config"
 )
 
 // serverLsCmd represents the ls command
@@ -33,18 +31,18 @@ var serverLsCmd = &cobra.Command{
 	Use: "ls",
 	DisableFlagsInUseLine: true,
 	Short: "Show log servers",
-	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
-		return runServerLs(conf, cmd.OutOrStdout())
-	}),
+	RunE:  wrap(runServerLs),
 }
 
-func runServerLs(conf *config.Config, stdout io.Writer) error {
+func runServerLs(opt *handlerOpt) error {
+	stdout := opt.Stdout
+
 	fmt.Fprintln(stdout, "API Servers")
 	fmt.Fprintln(stdout, "================")
-	if len(conf.Servers.ApiServer) > 0 {
+	if len(opt.Conf.Servers.ApiServer) > 0 {
 		apiTbl := defaultTable(stdout)
 		apiTbl.SetHeader([]string{"ID", "Address"})
-		for id, s := range conf.Servers.ApiServer {
+		for id, s := range opt.Conf.Servers.ApiServer {
 			apiTbl.Append([]string{
 				fmt.Sprint(id),
 				s.Addr,
@@ -59,10 +57,10 @@ func runServerLs(conf *config.Config, stdout io.Writer) error {
 
 	fmt.Fprintln(stdout, "Log Servers")
 	fmt.Fprintln(stdout, "================")
-	if len(conf.Servers.LogServer) > 0 {
+	if len(opt.Conf.Servers.LogServer) > 0 {
 		logTbl := defaultTable(stdout)
 		logTbl.SetHeader([]string{"ID", "Address"})
-		for id, s := range conf.Servers.LogServer {
+		for id, s := range opt.Conf.Servers.LogServer {
 			logTbl.Append([]string{
 				fmt.Sprint(id),
 				s.Addr,

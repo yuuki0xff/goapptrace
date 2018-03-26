@@ -21,17 +21,13 @@
 package cmd
 
 import (
-	"fmt"
-	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"path"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/tracer/builder"
 )
 
@@ -49,30 +45,28 @@ var buildCmd = &cobra.Command{
 This command adds logging codes to specified files before build, and build them.
 Original source code is not change!
 Arguments are compatible with "go build". See "go build --help" to get more information about arguments.`,
-	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
-		fmt.Println("build called")
-		return runBuild(conf, cmd.Flags(), cmd.OutOrStdout(), cmd.OutOrStderr(), args)
-	}),
+	RunE: wrap(runBuild),
 }
 
-func runBuild(conf *config.Config, flags *pflag.FlagSet, stdout, stderr io.Writer, targets []string) error {
+func runBuild(opt *handlerOpt) error {
 	tmpdir, err := ioutil.TempDir("", ".goapptrace.build")
 	if err != nil {
 		return err
 	}
-	log.Println("tmpdir:", tmpdir)
-	//defer os.RemoveAll(tmpdir) // nolint: errcheck
+	defer os.RemoveAll(tmpdir) // nolint: errcheck
 
-	b, err := prepareRepo(tmpdir, targets, conf)
+	targets := opt.Args
+	b, err := prepareRepo(tmpdir, targets, opt.Conf)
 	if err != nil {
-		fmt.Fprintf(stderr, err.Error()+"\n")
-		log.Fatal("Fail")
+		opt.ErrLog.Println(err)
+		return errGeneral
 	}
 
 	var newTargets []string
 	isGofiles, err := builder.IsGofiles(targets)
 	if err != nil {
-		log.Fatal(err)
+		opt.ErrLog.Println(err)
+		return errGeneral
 	}
 	if isGofiles {
 		// ビルド対象のファイルパスを修正する。
@@ -90,9 +84,9 @@ func runBuild(conf *config.Config, flags *pflag.FlagSet, stdout, stderr io.Write
 	}
 
 	// ignore an error of "Subprocess launching with variable" because arguments are specified by the trusted user.
-	buildCmd := exec.Command("go", buildArgs(flags, newTargets)...) // nolint: gas
-	buildCmd.Stdout = stdout
-	buildCmd.Stderr = stderr
+	buildCmd := exec.Command("go", buildArgs(opt.Cmd.Flags(), newTargets)...) // nolint: gas
+	buildCmd.Stdout = opt.Stdout
+	buildCmd.Stderr = opt.Stderr
 	buildCmd.Env = append(os.Environ(), buildEnv(b.Goroot, b.Gopath)...)
 	return buildCmd.Run()
 }

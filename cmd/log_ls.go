@@ -21,35 +21,30 @@
 package cmd
 
 import (
-	"context"
-	"io"
-
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"github.com/yuuki0xff/goapptrace/config"
 )
 
 // logLsCmd represents the ls command
 var logLsCmd = &cobra.Command{
 	Use:   "ls",
 	Short: "Show available log names",
-	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
-		return runLogLs(conf, cmd.OutOrStdout(), cmd.OutOrStderr(), args)
-	}),
+	RunE:  wrap(runLogLs),
 }
 
-func runLogLs(conf *config.Config, stdout io.Writer, stderr io.Writer, targets []string) error {
-	apiNoctx, err := getAPIClient(conf)
+func runLogLs(opt *handlerOpt) error {
+	api, err := opt.Api(nil)
 	if err != nil {
-		return err
-	}
-	api := apiNoctx.WithCtx(context.Background())
-	logs, err := api.Logs()
-	if err != nil {
-		return errors.Wrap(err, "failed to fetch the log list")
+		opt.ErrLog.Println(err)
+		return errGeneral
 	}
 
-	tbl := defaultTable(stdout)
+	logs, err := api.Logs()
+	if err != nil {
+		opt.ErrLog.Println(err)
+		return errGeneral
+	}
+
+	tbl := defaultTable(opt.Stdout)
 	tbl.SetHeader([]string{
 		"ID", "Time",
 	})

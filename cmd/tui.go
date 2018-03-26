@@ -21,11 +21,7 @@
 package cmd
 
 import (
-	"fmt"
-	"io"
-
 	"github.com/spf13/cobra"
-	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/logviewer"
 )
 
@@ -33,30 +29,37 @@ import (
 var tuiCmd = &cobra.Command{
 	Use:   "tui",
 	Short: "launch LogViewer client",
-	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
-		return runTuiCmd(conf, cmd.OutOrStdout(), cmd.OutOrStderr(), args)
-	}),
+	RunE:  wrap(runTuiCmd),
 }
 
-func runTuiCmd(conf *config.Config, stdout, stderr io.Writer, targets []string) error {
+func runTuiCmd(opt *handlerOpt) error {
 	var logID string
+	targets := opt.Args
+
 	if len(targets) >= 2 {
-		fmt.Fprintln(stderr, "too many arguments. length of args should be less than 2")
+		opt.ErrLog.Println("Too many arguments. length of args should be less than 2")
+		return errInvalidArgs
 	} else if len(targets) == 1 {
 		logID = targets[0]
 	}
 
-	api, err := getAPIClient(conf)
+	api, err := opt.Api(nil)
 	if err != nil {
-		return err
+		opt.ErrLog.Println(err)
+		return errGeneral
 	}
 
 	t := logviewer.UICoordinator{
-		Config: conf,
-		Api:    api,
+		Config: opt.Conf,
+		Api:    &api.Client,
 		LogID:  logID,
 	}
-	return t.Run()
+	err = t.Run()
+	if err != nil {
+		opt.ErrLog.Println(err)
+		return errGeneral
+	}
+	return nil
 }
 
 func init() {

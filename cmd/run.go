@@ -21,8 +21,6 @@
 package cmd
 
 import (
-	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -32,7 +30,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 )
 
@@ -48,38 +45,35 @@ var runCmd = &cobra.Command{
 	Long: `"goapptrace run" is a useful command like "go run".
 This command compiles specified files with logging codes, and execute them.
 Arguments are compatible with "go run". See "go run --help" to get more information about arguments.`,
-	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
-		return runRun(conf, cmd.Flags(), os.Stdin, cmd.OutOrStdout(), cmd.OutOrStderr(), args)
-	}),
+	RunE: wrap(runRun),
 }
 
-func runRun(conf *config.Config, flags *pflag.FlagSet, stdin io.Reader, stdout, stderr io.Writer, targets []string) error {
-	//cmd := exec.Command("echo", buildArgs(flags, targets)...)
-	//cmd.Stdout = stdout
-	//cmd.Run()
-	//os.Exit(0)
-
-	srv, err := getLogServer(conf)
+func runRun(opt *handlerOpt) error {
+	srv, err := opt.LogServer()
 	if err != nil {
-		log.Panic(err)
+		opt.ErrLog.Println(err)
+		return errGeneral
 	}
 
+	targets := opt.Args
 	files, cmdArgs := separateGofilesAndArgs(targets)
 	if len(files) == 0 {
-		log.Panic("goapptrace run: no go files listed")
+		opt.ErrLog.Println("No go files listed")
+		return errGeneral
 	}
 
 	tmpdir, err := ioutil.TempDir("", ".goapptrace.run")
 	if err != nil {
-		return err
+		opt.ErrLog.Println(err)
+		return errGeneral
 	}
 	log.Println("tmpdir:", tmpdir)
 	//defer os.RemoveAll(tmpdir) // nolint: errcheck
 
-	b, err := prepareRepo(tmpdir, files, conf)
+	b, err := prepareRepo(tmpdir, files, opt.Conf)
 	if err != nil {
-		fmt.Fprintf(stderr, err.Error()+"\n")
-		log.Fatal("Fail")
+		opt.ErrLog.Println(err)
+		return errGeneral
 	}
 
 	// ビルド対象のファイルパスを修正する。
@@ -87,16 +81,17 @@ func runRun(conf *config.Config, flags *pflag.FlagSet, stdin io.Reader, stdout, 
 	for i := range files {
 		dir, err := b.MainPkgDir(files[i])
 		if err != nil {
-			return err
+			opt.ErrLog.Println(err)
+			return errGeneral
 		}
 		newFiles[i] = path.Join(dir, path.Base(files[i]))
 	}
 
 	// ignore an error of "Subprocess launching with variable" because arguments are specified by the trusted user.
-	runCmd := exec.Command("go", runArgs(flags, newFiles, cmdArgs)...) // nolint: gas
-	runCmd.Stdin = stdin
-	runCmd.Stdout = stdout
-	runCmd.Stderr = stderr
+	runCmd := exec.Command("go", runArgs(opt.Cmd.Flags(), newFiles, cmdArgs)...) // nolint: gas
+	runCmd.Stdin = opt.Stdin
+	runCmd.Stdout = opt.Stdout
+	runCmd.Stderr = opt.Stderr
 	// 実行用の環境変数を追加しなきゃ鳴らない
 	runCmd.Env = append(os.Environ(), runEnv(srv, b.Goroot, b.Gopath)...)
 	return runCmd.Run()

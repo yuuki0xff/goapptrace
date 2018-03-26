@@ -21,8 +21,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/config"
 )
@@ -31,27 +29,28 @@ import (
 var procBuildCmd = &cobra.Command{
 	Use:   "build",
 	Short: "Build with tracing codes",
-	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
-		conf.WantSave()
-		return runProcBuild(conf, args)
-	}),
+	RunE:  wrap(runProcBuild),
 }
 
-func runProcBuild(conf *config.Config, targets []string) error {
+func runProcBuild(opt *handlerOpt) error {
+	opt.Conf.WantSave()
 	// TODO: "build"コマンドとの違いを説明する
+	targets := opt.Args
 	if len(targets) == 0 {
-		targets = conf.Targets.Names()
+		targets = opt.Conf.Targets.Names()
 	}
 
 	for _, targetName := range targets {
-		target, err := conf.Targets.Get(config.TargetName(targetName))
+		target, err := opt.Conf.Targets.Get(config.TargetName(targetName))
 		if err != nil {
-			return err
+			opt.ErrLog.Println(err)
+			return errGeneral
 		}
 
 		buildProc, err := target.Build.Run()
 		if err != nil {
-			return fmt.Errorf("failed to run a command (%s): %s", buildProc.Args, err.Error())
+			opt.ErrLog.Println("ERROR: Failed to run a command (%+v): %s\n", buildProc.Args, err)
+			return errGeneral
 		}
 	}
 	return nil

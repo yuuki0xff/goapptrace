@@ -30,19 +30,19 @@ var targetRemoveCmd = &cobra.Command{
 	Use: "remove <name>...",
 	DisableFlagsInUseLine: true,
 	Short: "Remove tracing targets",
-	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
-		conf.WantSave()
-		return runTargetRemove(conf, args)
-	}),
+	RunE:  wrap(runTargetRemove),
 }
 
-func runTargetRemove(conf *config.Config, targets []string) error {
+func runTargetRemove(opt *handlerOpt) error {
+	targets := opt.Args
 	for _, t := range targets {
 		name := config.TargetName(t)
-		if err := conf.Targets.Delete(name); err != nil {
-			return err
+		if err := opt.Conf.Targets.Delete(name); err != nil {
+			opt.ErrLog.Println(err)
+			return errGeneral
 		}
 	}
+	opt.Conf.WantSave()
 	return nil
 }
 

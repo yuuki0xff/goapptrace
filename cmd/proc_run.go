@@ -21,9 +21,6 @@
 package cmd
 
 import (
-	"fmt"
-	"io"
-	"log"
 	"os"
 	"sync"
 	"time"
@@ -42,41 +39,41 @@ const (
 var procRunCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Start processes, and start tracing",
-	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
-		conf.WantSave()
-		return runProcRun(conf, cmd.OutOrStdout(), cmd.OutOrStderr(), args)
-	}),
+	RunE:  wrap(runProcRun),
 }
 
-func runProcRun(conf *config.Config, stdout, stderr io.Writer, targets []string) error {
+func runProcRun(opt *handlerOpt) error {
+	opt.Conf.WantSave()
+	targets := opt.Args
 	if len(targets) == 0 {
-		targets = conf.Targets.Names()
+		targets = opt.Conf.Targets.Names()
 	}
 
-	srv, err := getLogServer(conf)
+	srv, err := opt.LogServer()
 	if err != nil {
-		fmt.Fprintln(stderr, err.Error())
+		opt.ErrLog.Println(err)
+		return errGeneral
 	}
-
 	env := append(os.Environ(), procRunEnv(srv)...)
 
 	var lastErr error
 	wg := sync.WaitGroup{}
 	for _, targetName := range targets {
-		target, err := conf.Targets.Get(config.TargetName(targetName))
+		target, err := opt.Conf.Targets.Get(config.TargetName(targetName))
 		if err != nil {
-			return err
+			opt.ErrLog.Println(err)
+			return errGeneral
 		}
 		proc, err := target.Run.Start(env)
 		if err != nil {
-			return err
+			opt.ErrLog.Println(err)
+			return errGeneral
 		}
 		wg.Add(1)
 		go func() {
 			if err := proc.Wait(); err != nil {
-				wrapped := fmt.Errorf("failed run a command (%s): %s", proc.Args, err.Error())
-				lastErr = wrapped
-				log.Printf("WARN: %s", wrapped)
+				opt.ErrLog.Printf("WARN: Failed run a command (%+v): %s\n", proc.Args, err.Error())
+				return
 			}
 			wg.Done()
 		}()

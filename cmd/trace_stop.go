@@ -29,14 +29,12 @@ import (
 var traceStopCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "Stop tracing of running processes",
-	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
-		conf.WantSave()
-		return runTraceStop(conf, args)
-	}),
+	RunE:  wrap(runTraceStop),
 }
 
-func runTraceStop(conf *config.Config, targets []string) error {
-	return conf.Targets.Walk(targets, func(t *config.Target) error {
+func runTraceStop(opt *handlerOpt) error {
+	targets := opt.Args
+	err := opt.Conf.Targets.Walk(targets, func(t *config.Target) error {
 		return t.WalkTraces(nil, func(fname string, trace *config.Trace, created bool) error {
 			// TODO: stop tracing
 
@@ -44,6 +42,12 @@ func runTraceStop(conf *config.Config, targets []string) error {
 			return nil
 		})
 	})
+	if err != nil {
+		opt.ErrLog.Println(err)
+		return errGeneral
+	}
+	opt.Conf.WantSave()
+	return nil
 }
 
 func init() {

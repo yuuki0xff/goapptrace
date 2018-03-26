@@ -27,16 +27,16 @@ import (
 
 // traceOffCmd represents the off command
 var traceOffCmd = &cobra.Command{
-	Use:   "off",
+	Use: "off <name>...",
+	DisableFlagsInUseLine: true,
 	Short: "Remove tracing codes from targets",
-	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
-		conf.WantSave()
-		return runTraceOff(conf, args)
-	}),
+	RunE:  wrap(runTraceOff),
 }
 
-func runTraceOff(conf *config.Config, targets []string) error {
-	return conf.Targets.Walk(targets, func(t *config.Target) error {
+func runTraceOff(opt *handlerOpt) error {
+	targets := opt.Args
+	opt.Conf.WantSave()
+	return opt.Conf.Targets.Walk(targets, func(t *config.Target) error {
 		return t.WalkTraces(nil, func(fname string, trace *config.Trace, created bool) error {
 			// TODO: remove tracing code
 

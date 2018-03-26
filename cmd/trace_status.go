@@ -21,7 +21,6 @@
 package cmd
 
 import (
-	"io"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -32,20 +31,18 @@ import (
 var traceStatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show status of tracer",
-	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
-		return runTraceStatus(conf, cmd.OutOrStdout())
-	}),
+	RunE:  wrap(runTraceStatus),
 }
 
-func runTraceStatus(conf *config.Config, out io.Writer) error {
-	table := defaultTable(out)
+func runTraceStatus(opt *handlerOpt) error {
+	table := defaultTable(opt.Stdout)
 	table.SetHeader([]string{
 		"target",
 		"files/dirs",
 		"has tracing code",
 		"tracing",
 	})
-	if err := conf.Targets.Walk(nil, func(t *config.Target) error {
+	if err := opt.Conf.Targets.Walk(nil, func(t *config.Target) error {
 		return t.WalkTraces(nil, func(fname string, trace *config.Trace, created bool) error {
 			table.Append([]string{
 				string(t.Name),
@@ -56,7 +53,8 @@ func runTraceStatus(conf *config.Config, out io.Writer) error {
 			return nil
 		})
 	}); err != nil {
-		return err
+		opt.ErrLog.Println(err)
+		return errGeneral
 	}
 	table.Render()
 	return nil

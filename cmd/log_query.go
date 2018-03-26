@@ -21,13 +21,9 @@
 package cmd
 
 import (
-	"context"
-	"errors"
-	"fmt"
 	"io"
 
 	"github.com/spf13/cobra"
-	"github.com/yuuki0xff/goapptrace/config"
 )
 
 // logQueryCmd represents the query command
@@ -35,40 +31,40 @@ var logQueryCmd = &cobra.Command{
 	Use: "query <id> <SQL>",
 	DisableFlagsInUseLine: true,
 	Short: "Execute a SELECT query",
-	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
-		stderr := cmd.OutOrStderr()
-		if len(args) < 2 {
-			fmt.Fprintln(stderr, "ERROR: SQL statement is not specified.")
-			return errors.New("invalid args")
-		} else if len(args) > 2 {
-			fmt.Fprintln(stderr, "ERROR: Multiple SQL queries cannot be specified.")
-			return errors.New("invalid args")
-		}
-		id, query := args[0], args[1]
-		if err := runLogQuery(conf, cmd, id, query); err != nil {
-			fmt.Fprintln(stderr, "ERROR:", err.Error())
-			return err
-		}
-		return nil
-	}),
+	RunE:  wrap(runLogQuery),
 }
 
-func runLogQuery(conf *config.Config, cmd *cobra.Command, id, query string) error {
-	stdout := cmd.OutOrStdout()
-
-	apiNoctx, err := getAPIClient(conf)
-	if err != nil {
-		return err
+func runLogQuery(opt *handlerOpt) error {
+	if len(opt.Args) < 1 {
+		opt.ErrLog.Println("Log ID and SQL statement are not specified.")
+		return errInvalidArgs
+	} else if len(opt.Args) < 2 {
+		opt.ErrLog.Println("SQL statement is not specified.")
+		return errInvalidArgs
+	} else if len(opt.Args) > 2 {
+		opt.ErrLog.Println("Multiple SQL queries cannot be specified.")
+		return errInvalidArgs
 	}
-	api := apiNoctx.WithCtx(context.Background())
 
+	api, err := opt.Api(nil)
+	if err != nil {
+		opt.ErrLog.Println(err)
+		return errGeneral
+	}
+
+	id, query := opt.Args[0], opt.Args[1]
 	r, err := api.SearchRaw(id, query)
 	if err != nil {
-		return err
+		opt.ErrLog.Println(err)
+		return errGeneral
 	}
 	defer r.Close() // nolint
-	_, err = io.Copy(stdout, r)
-	return err
+	_, err = io.Copy(opt.Stdout, r)
+	if err != nil {
+		opt.ErrLog.Println(err)
+		return errIo
+	}
+	return nil
 }
 
 func init() {

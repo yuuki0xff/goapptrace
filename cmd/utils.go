@@ -18,16 +18,30 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 )
 
-var errInvalidArgs = errors.New("invalid args")
+// func(*handlerOpt) error が返すエラーの一覧
+var (
+	errGeneral     = errors.New("general error")
+	errInvalidArgs = errors.New("invalid args")
+	errIo          = errors.New("io error")
+)
+
+var (
+	errApiClient = errors.New("Failed to initialize API Client")
+)
 
 func Execute() int {
 	err := RootCmd.Execute()
 	switch err {
 	case nil:
 		return 0
+	case errGeneral:
+		return 1
 	case errInvalidArgs:
 		// EX_USAGE 64
 		return 64
+	case errIo:
+		// EX_IOERR 74
+		return 74
 	default:
 		// Unknown error
 		log.Panicln(err)
@@ -35,16 +49,64 @@ func Execute() int {
 	}
 }
 
-type CobraHandler func(cmd *cobra.Command, args []string) error
-type Handler func(conf *config.Config, cmd *cobra.Command, args []string) error
+type cobraHandler func(cmd *cobra.Command, args []string) error
+type handlerOpt struct {
+	Conf   *config.Config
+	Cmd    *cobra.Command
+	Args   []string
+	Stdin  io.Reader
+	Stdout io.Writer
+	Stderr io.Writer
+	ErrLog *log.Logger
+}
 
-func wrap(fn Handler) CobraHandler {
+// Api returns an API Client object.
+func (opt *handlerOpt) Api(ctx context.Context) (api restapi.ClientWithCtx, err error) {
+	var apiNoctx *restapi.Client
+	apiNoctx, err = getAPIClient(opt.Conf)
+	if err != nil {
+		err = errors.Wrap(err, errApiClient.Error())
+		return
+	}
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	api = apiNoctx.WithCtx(ctx)
+	return
+}
+
+// ApiWithCancel returns an API Client object with cancelable context.
+func (opt *handlerOpt) ApiWithCancel(ctx context.Context) (api restapi.ClientWithCtx, cancel func(), err error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctx, cancel = context.WithCancel(ctx)
+	api, err = opt.Api(ctx)
+	return
+}
+
+func (opt *handlerOpt) LogServer() (srv restapi.ServerStatus, err error) {
+	return getLogServer(opt.Conf)
+}
+
+func wrap(fn func(*handlerOpt) error) cobraHandler {
 	return func(cmd *cobra.Command, args []string) error {
 		c, err := getConfig()
 		if err != nil {
 			return err
 		}
-		if err := fn(c, cmd, args); err != nil {
+
+		ha := handlerOpt{
+			Conf:   c,
+			Cmd:    cmd,
+			Args:   args,
+			Stdin:  os.Stdin,
+			Stdout: cmd.OutOrStdout(),
+			Stderr: cmd.OutOrStderr(),
+			ErrLog: log.New(cmd.OutOrStderr(), "ERROR: ", 0),
+		}
+		if err := fn(&ha); err != nil {
 			return err
 		}
 		return c.SaveIfWant()
