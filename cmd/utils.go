@@ -69,18 +69,12 @@ func (opt *handlerOpt) Api(ctx context.Context) (api restapi.ClientWithCtx, err 
 		return
 	}
 
-	if ctx == nil {
-		ctx = context.Background()
-	}
 	api = apiNoctx.WithCtx(ctx)
 	return
 }
 
 // ApiWithCancel returns an API Client object with cancelable context.
 func (opt *handlerOpt) ApiWithCancel(ctx context.Context) (api restapi.ClientWithCtx, cancel func(), err error) {
-	if ctx == nil {
-		ctx = context.Background()
-	}
 	ctx, cancel = context.WithCancel(ctx)
 	api, err = opt.Api(ctx)
 	return

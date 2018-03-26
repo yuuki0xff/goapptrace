@@ -21,6 +21,8 @@
 package cmd
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/logviewer"
 )
@@ -43,7 +45,7 @@ func runTuiCmd(opt *handlerOpt) error {
 		logID = targets[0]
 	}
 
-	api, err := opt.Api(nil)
+	api, err := opt.Api(context.Background())
 	if err != nil {
 		opt.ErrLog.Println(err)
 		return errGeneral

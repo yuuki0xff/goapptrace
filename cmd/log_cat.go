@@ -21,6 +21,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -54,7 +55,7 @@ func runLogCatfunc(opt *handlerOpt) error {
 		opt.ErrLog.Println("Invalid format:", err)
 		return errInvalidArgs
 	}
-	api, cancel, err := opt.ApiWithCancel(nil)
+	api, cancel, err := opt.ApiWithCancel(context.Background())
 	if err != nil {
 		opt.ErrLog.Println(err)
 		return errInvalidArgs

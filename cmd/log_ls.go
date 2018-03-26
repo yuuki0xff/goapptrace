@@ -21,6 +21,8 @@
 package cmd
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +34,7 @@ var logLsCmd = &cobra.Command{
 }
 
 func runLogLs(opt *handlerOpt) error {
-	api, err := opt.Api(nil)
+	api, err := opt.Api(context.Background())
 	if err != nil {
 		opt.ErrLog.Println(err)
 		return errGeneral

@@ -21,6 +21,7 @@
 package cmd
 
 import (
+	"context"
 	"io"
 
 	"github.com/spf13/cobra"
@@ -46,7 +47,7 @@ func runLogQuery(opt *handlerOpt) error {
 		return errInvalidArgs
 	}
 
-	api, err := opt.Api(nil)
+	api, err := opt.Api(context.Background())
 	if err != nil {
 		opt.ErrLog.Println(err)
 		return errGeneral

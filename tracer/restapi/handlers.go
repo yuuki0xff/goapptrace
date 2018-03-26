@@ -377,10 +377,7 @@ func (api APIv0) search(w http.ResponseWriter, r *http.Request) {
 			n := printer(line)
 			line[n] = '\n'
 			_, err := w.Write(line[:n+1])
-			if err != nil {
-				return err
-			}
-			return nil
+			return err
 		}
 		if sel.From() == "frames" {
 			// framesの場合は SetOffset() に指定する値を変えながら繰り返し出力する。
