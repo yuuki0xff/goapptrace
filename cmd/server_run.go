@@ -243,7 +243,7 @@ func getServerHandler(strg *storage.Storage, store *simulator.StateSimulatorStor
 		tick := time.NewTicker(1 * time.Second)
 		wa.Add(1)
 		go func() {
-			wa.Done()
+			defer wa.Done()
 			for range tick.C {
 				writeCurrentState(false)
 			}
