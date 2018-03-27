@@ -26,6 +26,7 @@ import (
 	"strconv"
 
 	"github.com/spf13/cobra"
+	"github.com/yuuki0xff/goapptrace/tracer/encoding"
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
 	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
@@ -55,7 +56,7 @@ var dumpGoroutineCmd = &cobra.Command{
 		store := storage.GoroutineStore{
 			Store: storage.Store{
 				File:       storage.File(fpath),
-				RecordSize: 128, //int(encoding.SizeGoroutine()),
+				RecordSize: int(encoding.SizeGoroutine()),
 				ReadOnly:   true,
 			},
 		}
