@@ -171,6 +171,8 @@ func init() {
 }
 
 func getServerHandler(strg *storage.Storage, store *simulator.StateSimulatorStore) protocol.ServerHandler {
+	// TODO: コードを綺麗にする
+
 	// workerとの通信用。
 	// close()されたら、workerは終了するべき。
 	chMap := make(map[protocol.ConnID]chan interface{})
@@ -238,18 +240,19 @@ func getServerHandler(strg *storage.Storage, store *simulator.StateSimulatorStor
 		// ログを閉じる前に、現在のStateSimulatorの状態を保存する。
 		defer writeCurrentState(false)
 
-		// 定期的に状態を書き出す
 		var wa sync.WaitGroup
+		defer wa.Wait()
+
+		// StateSimulator の内容の書き出し要求を定期的に送信する。
 		tick := time.NewTicker(1 * time.Second)
+		defer tick.Stop()
 		wa.Add(1)
 		go func() {
 			defer wa.Done()
 			for range tick.C {
-				writeCurrentState(false)
+				ch <- ss
 			}
 		}()
-		defer wa.Wait()
-		defer tick.Stop()
 
 		for rawobj := range ch {
 			// lock獲得のオーバーヘッドを削減するため、チャンネルに次のitemがある場合は
@@ -282,6 +285,8 @@ func getServerHandler(strg *storage.Storage, store *simulator.StateSimulatorStor
 						if err := logobj.SetSymbolsData(obj); err != nil {
 							log.Panicln("failed to append Symbols:", err.Error())
 						}
+					case *simulator.StateSimulator:
+						writeCurrentState(false)
 					default:
 						log.Panicf("unsupported type: %+v", rawobj)
 					}
