@@ -240,21 +240,30 @@ func getServerHandler(strg *storage.Storage, store *simulator.StateSimulatorStor
 		// ログを閉じる前に、現在のStateSimulatorの状態を保存する。
 		defer writeCurrentState(false)
 
-		var wa sync.WaitGroup
-		defer wa.Wait()
-
 		// StateSimulator の内容の書き出し要求を定期的に送信する。
+		// chがcloseされたとき、タイミング次第でブロックされてしまう可能性がある。
+		// そのため、このgoroutineの終了を待機しない。
+		ssWriteReq := make(chan interface{})
 		tick := time.NewTicker(1 * time.Second)
 		defer tick.Stop()
-		wa.Add(1)
 		go func() {
-			defer wa.Done()
+			defer close(ssWriteReq)
 			for range tick.C {
-				ch <- ss
+				ssWriteReq <- ss
 			}
 		}()
 
-		for rawobj := range ch {
+		for {
+			var rawobj interface{}
+			var ok bool
+			select {
+			case rawobj, ok = <-ch:
+			case rawobj, ok = <-ssWriteReq:
+			}
+			if !ok {
+				break
+			}
+
 			// lock獲得のオーバーヘッドを削減するため、チャンネルに次のitemがある場合は
 			// lockを開放せずに連続して処理する。
 			logobj.RawFuncLog(func(rawStore *storage.RawFuncLogStore) {
