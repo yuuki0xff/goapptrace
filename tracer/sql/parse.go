@@ -15,6 +15,7 @@ var (
 	ErrJoin              = errors.New("JOIN is not supported")
 	ErrTableAlias        = errors.New("table alias is not supported")
 	ErrTableQualifier    = errors.New("table qualifier is not supported")
+	ErrDBQualifier       = errors.New("database name qualifier is not supported")
 	ErrSubquery          = errors.New("subquery is not supported")
 	ErrStar              = errors.New("\"*\" and other columns are exclusive")
 	ErrColumnAlias       = errors.New("column alias is not supported")
@@ -177,18 +178,18 @@ func (s *SelectParser) parseFrom(froms sqlparser.TableExprs) (string, error) {
 	switch from := froms[0].(type) {
 	case *sqlparser.AliasedTableExpr:
 		if from.As.String() != "" {
-			return "", ErrTableAlias
+			return "", ErrDBQualifier
 		}
-		switch tname := from.Expr.(type) {
+		switch table := from.Expr.(type) {
 		case sqlparser.TableName:
-			if tname.Qualifier.String() != "" {
-				return "", ErrTableQualifier
+			if table.Qualifier.String() != "" {
+				return "", ErrDBQualifier
 			}
-			return tname.Name.String(), nil
+			return table.Name.String(), nil
 		case *sqlparser.Subquery:
 			return "", ErrSubquery
 		default:
-			panic(fmt.Errorf("bug tname=%T", tname))
+			panic(fmt.Errorf("bug table=%T", table))
 		}
 	case *sqlparser.ParenTableExpr:
 		return "", ErrSubquery
@@ -206,8 +207,7 @@ func (s *SelectParser) parseCols(cols sqlparser.SelectExprs) error {
 		switch col := cols[i].(type) {
 		case *sqlparser.StarExpr:
 			if !col.TableName.Qualifier.IsEmpty() {
-				// TODO: errorを返す
-				return nil
+				return ErrDBQualifier
 			}
 
 			useAlias := true
