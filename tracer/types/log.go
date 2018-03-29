@@ -26,7 +26,6 @@ type FuncLog struct {
 }
 
 type RawFuncLog struct {
-	// TODO: ID fieldに適切な値を書き込む
 	ID        RawFuncLogID
 	Tag       TagName `json:"tag"`
 	Timestamp Time    `json:"timestamp"`
