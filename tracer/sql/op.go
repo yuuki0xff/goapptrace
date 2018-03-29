@@ -2,7 +2,10 @@ package sql
 
 import (
 	"fmt"
+	"regexp"
 
+	"github.com/co89757/glob4go"
+	"github.com/pkg/errors"
 	"github.com/xwb1989/sqlparser"
 	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
@@ -136,13 +139,20 @@ func (o *CompOp) compareFn() func() bool {
 		case sqlparser.NullSafeEqualStr:
 			return func() bool { return o.Left.String() == o.Right.String() }
 		case sqlparser.LikeStr:
-			panic("todo") // TODO
+			fallthrough
 		case sqlparser.NotLikeStr:
-			panic("todo") // TODO
+			pattern := sqlPattern2glob(o.Right.String())
+			ok := o.Operator == sqlparser.LikeStr
+			return func() bool { return ok == glob4go.Glob(pattern, []byte(o.Left.String()), false) }
 		case sqlparser.RegexpStr:
-			panic("todo") // TODO
+			fallthrough
 		case sqlparser.NotRegexpStr:
-			panic("todo") // TODO
+			reg, err := regexp.Compile(o.Right.String())
+			if err != nil {
+				panic(errors.Wrap(err, "invalid regular expression"))
+			}
+			ok := o.Operator == sqlparser.RegexpStr
+			return func() bool { return ok == reg.MatchString(o.Left.String()) }
 		default:
 			panic(fmt.Errorf("not supported operator: %s %s %s", t, o.Operator, t2))
 		}
@@ -173,4 +183,17 @@ func (r *RangeOp) WithRow(row SqlRow) {
 	r.Left.WithRow(row)
 	r.From.WithRow(row)
 	r.To.WithRow(row)
+}
+
+func sqlPattern2glob(s string) []byte {
+	pattern := []byte(s)
+	for i := range pattern {
+		switch pattern[i] {
+		case '%':
+			pattern[i] = '*'
+		case '_':
+			pattern[i] = '?'
+		}
+	}
+	return pattern
 }
