@@ -79,8 +79,8 @@ func (d SqlDatetime) WithRow(row SqlRow)   {}
 // テーブルの1つのフィールドを表す。
 // これの値を取得するときは、先にWithRow()で処理対象の行を指定すること。
 type SqlField struct {
-	Table, Col string
-	getter     SqlFieldGetter
+	Field  Field
+	getter SqlFieldGetter
 }
 
 func (f *SqlField) Bool() bool           { return f.getter().Bool() }
@@ -90,5 +90,5 @@ func (f *SqlField) Datetime() types.Time { return f.getter().Datetime() }
 func (f *SqlField) Const() bool          { return false }
 func (f *SqlField) Type() string         { return f.getter().Type() }
 func (f *SqlField) WithRow(row SqlRow) {
-	f.getter = row.Field(f.Table, f.Col)
+	f.getter = row.Field(f.Field)
 }

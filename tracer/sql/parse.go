@@ -38,6 +38,7 @@ var (
 			Fields: []string{
 				"id", "offset", "package", "func", "file", "line", "pc",
 			},
+			ImplictJoin: "calls",
 		}, {
 			Name: "goroutines",
 			Fields: []string{
@@ -60,6 +61,17 @@ var (
 type Table struct {
 	Name   string
 	Fields []string
+	// a table name that can be implicitly joined.
+	ImplictJoin string
+}
+
+func (t Table) HasField(name string) bool {
+	for i := range t.Fields {
+		if name == t.Fields[i] {
+			return true
+		}
+	}
+	return false
 }
 
 // findTableByName finds a table by table name.
@@ -72,12 +84,31 @@ func findTableByName(name string) (Table, bool) {
 	return Table{}, false
 }
 
+type Field struct {
+	// table name
+	Table string
+	// field name
+	Name string
+	// display name
+	AliasName string
+}
+
+func (f Field) LongName() string {
+	return f.Table + "." + f.Name
+}
+func (f Field) String() string {
+	if f.AliasName != "" {
+		return f.AliasName
+	}
+	return f.LongName()
+}
+
 type SelectParser struct {
 	Stmt *sqlparser.Select
 
 	table Table
 	// フィールド名のリスト
-	fields []string
+	fields []Field
 
 	where  SqlAny
 	offset int64
@@ -170,26 +201,57 @@ func (s *SelectParser) parseFrom(froms sqlparser.TableExprs) (string, error) {
 
 // parseSelectCols parses columns and sets the SelectParser.field field.
 func (s *SelectParser) parseCols(cols sqlparser.SelectExprs) error {
-	var fields []string
+	var fields []Field
 	for i := range cols {
 		switch col := cols[i].(type) {
 		case *sqlparser.StarExpr:
-			if len(cols) != 1 {
-				return ErrStar
+			if !col.TableName.Qualifier.IsEmpty() {
+				// TODO: errorを返す
+				return nil
 			}
-			// "*" のみが指定されているため、テーブルの全ての列を出力する。
-			s.fields = s.table.Fields
-			return nil
+
+			useAlias := true
+			t := s.table
+			tname := s.table.Name
+			if !col.TableName.Name.IsEmpty() {
+				useAlias = false
+				tname = col.TableName.Name.String()
+				var ok bool
+				t, ok = findTableByName(tname)
+				if !ok {
+					return fmt.Errorf("not found \"%s\" table", tname)
+				}
+			}
+			// "*" のみが指定されているため、テーブルの全ての列を追加。
+			for i := range t.Fields {
+				f := Field{
+					Table: tname,
+					Name:  t.Fields[i],
+				}
+				if useAlias {
+					// テーブル名を削る
+					f.AliasName = t.Fields[i]
+				}
+				fields = append(fields, f)
+			}
 		case *sqlparser.AliasedExpr:
 			if col.As.String() != "" {
 				return ErrColumnAlias
 			}
 			switch col := col.Expr.(type) {
 			case *sqlparser.ColName:
-				if !col.Qualifier.Name.IsEmpty() {
-					return ErrColumnQualifier
+				tname := col.Qualifier.Name.String()
+				if tname == "" {
+					tname = s.table.Name
 				}
-				fields = append(fields, col.Name.String())
+				f := Field{
+					Table: tname,
+					Name:  col.Name.String(),
+				}
+				if col.Qualifier.Name.IsEmpty() {
+					f.AliasName = col.Name.String()
+				}
+				fields = append(fields, f)
 			default:
 				return ErrColumnList
 			}
@@ -198,16 +260,18 @@ func (s *SelectParser) parseCols(cols sqlparser.SelectExprs) error {
 
 	// 全てのフィールドが存在するかチェック。
 	// 存在しないフィールドを指定したときは、エラーを返す。
-	for _, f1 := range fields {
+	for _, field := range fields {
 		var found bool
-		for _, f2 := range s.table.Fields {
-			if f1 == f2 {
-				found = true
-				break
+		if field.Table == s.table.Name {
+			found = s.table.HasField(field.Name)
+		} else if field.Table == s.table.ImplictJoin {
+			t, ok := findTableByName(field.Table)
+			if ok {
+				found = t.HasField(field.Name)
 			}
 		}
 		if !found {
-			return fmt.Errorf("not found \"%s\" column in %s table", f1, s.table.Name)
+			return fmt.Errorf("not found \"%s\" column", field.String())
 		}
 	}
 	s.fields = fields
@@ -284,8 +348,10 @@ func (s *SelectParser) parseWhereExpr(expr sqlparser.Expr) SqlAny {
 			table = expr.Qualifier.Name.String()
 		}
 		return &SqlField{
-			Table: table,
-			Col:   expr.Name.String(),
+			Field: Field{
+				Table: table,
+				Name:  expr.Name.String(),
+			},
 		}
 	case *sqlparser.IntervalExpr:
 		// TODO
@@ -377,16 +443,15 @@ func (s *SelectParser) parseLimit(limitObj *sqlparser.Limit) (offset, rows int64
 	}
 	return
 }
-func (s *SelectParser) TableCols() (tables, cols []string) {
-	cols = s.Cols()
-	tables = make([]string, len(cols))
-	for i := range tables {
-		tables[i] = s.table.Name
-	}
-	return
-}
-func (s *SelectParser) Cols() []string {
+func (s *SelectParser) Cols() []Field {
 	return s.fields
+}
+func (s *SelectParser) ColNames() []string {
+	names := make([]string, len(s.fields))
+	for i := range names {
+		names[i] = s.fields[i].String()
+	}
+	return names
 }
 func (s *SelectParser) From() string {
 	return s.table.Name

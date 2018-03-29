@@ -121,9 +121,9 @@ type SqlRow interface {
 	// 指定したフィールドを返す SqlFieldGetter を作成して返す。
 	// 指定したテーブルや列が存在しない場合はpanicする。
 	// 複数行を処理する場合は、パフォーマンス向上のために SqlFieldGetter を再利用するべき。
-	Field(table, col string) SqlFieldGetter
+	Field(field Field) SqlFieldGetter
 	// 指定したフィールドの SqlFieldGetter を全て返す。
-	Fields(tables, cols []string) SqlFieldGetters
+	Fields(fields []Field) SqlFieldGetters
 	// 対象となる types.FuncLog.Frames のインデックスを指定する。
 	SetOffset(offset int)
 	// 現時点での types.FuncLog.Frames の長さを返す。
@@ -137,7 +137,9 @@ type SqlFuncLogRow struct {
 	offset  int
 }
 
-func (r *SqlFuncLogRow) Field(table, col string) SqlFieldGetter {
+func (r *SqlFuncLogRow) Field(field Field) SqlFieldGetter {
+	table := field.Table
+	col := field.Name
 	switch table {
 	case "calls":
 		switch col {
@@ -195,13 +197,10 @@ func (r *SqlFuncLogRow) Field(table, col string) SqlFieldGetter {
 		panic(fmt.Errorf("invalid table: %s.%s column", table, col))
 	}
 }
-func (r *SqlFuncLogRow) Fields(tables, cols []string) SqlFieldGetters {
-	if len(tables) != len(cols) {
-		panic(fmt.Errorf("mismatch length: len(tables)=%d len(cols)=%d", len(tables), len(cols)))
-	}
-	gs := make(SqlFieldGetters, len(cols))
+func (r *SqlFuncLogRow) Fields(fields []Field) SqlFieldGetters {
+	gs := make(SqlFieldGetters, len(fields))
 	for i := range gs {
-		gs[i] = r.Field(tables[i], cols[i])
+		gs[i] = r.Field(fields[i])
 	}
 	return gs
 }
@@ -216,7 +215,9 @@ type SqlGoroutineRow struct {
 	types.Goroutine
 }
 
-func (r *SqlGoroutineRow) Field(table, col string) SqlFieldGetter {
+func (r *SqlGoroutineRow) Field(field Field) SqlFieldGetter {
+	table := field.Table
+	col := field.Name
 	switch table {
 	case "goroutines":
 		switch col {
@@ -235,13 +236,10 @@ func (r *SqlGoroutineRow) Field(table, col string) SqlFieldGetter {
 		panic(fmt.Errorf("invalid table: %s.%s column", table, col))
 	}
 }
-func (r *SqlGoroutineRow) Fields(tables, cols []string) SqlFieldGetters {
-	if len(tables) != len(cols) {
-		panic(fmt.Errorf("mismatch length: len(tables)=%d len(cols)=%d", len(tables), len(cols)))
-	}
-	gs := make(SqlFieldGetters, len(cols))
+func (r *SqlGoroutineRow) Fields(fields []Field) SqlFieldGetters {
+	gs := make(SqlFieldGetters, len(fields))
 	for i := range gs {
-		gs[i] = r.Field(tables[i], cols[i])
+		gs[i] = r.Field(fields[i])
 	}
 	return gs
 }
@@ -253,7 +251,9 @@ type SqlGoFuncRow struct {
 	Symbols *types.Symbols
 }
 
-func (r *SqlGoFuncRow) Field(table, col string) SqlFieldGetter {
+func (r *SqlGoFuncRow) Field(field Field) SqlFieldGetter {
+	table := field.Table
+	col := field.Name
 	switch table {
 	case "funcs":
 		switch col {
@@ -280,13 +280,10 @@ func (r *SqlGoFuncRow) Field(table, col string) SqlFieldGetter {
 		panic(fmt.Errorf("invalid table: %s.%s column", table, col))
 	}
 }
-func (r *SqlGoFuncRow) Fields(tables, cols []string) SqlFieldGetters {
-	if len(tables) != len(cols) {
-		panic(fmt.Errorf("mismatch length: len(tables)=%d len(cols)=%d", len(tables), len(cols)))
-	}
-	gs := make(SqlFieldGetters, len(cols))
+func (r *SqlGoFuncRow) Fields(fields []Field) SqlFieldGetters {
+	gs := make(SqlFieldGetters, len(fields))
 	for i := range gs {
-		gs[i] = r.Field(tables[i], cols[i])
+		gs[i] = r.Field(fields[i])
 	}
 	return gs
 }
@@ -297,7 +294,9 @@ type SqlGoModuleRow struct {
 	*types.GoModule
 }
 
-func (r *SqlGoModuleRow) Field(table, col string) SqlFieldGetter {
+func (r *SqlGoModuleRow) Field(field Field) SqlFieldGetter {
+	table := field.Table
+	col := field.Name
 	switch table {
 	case "modules":
 		switch col {
@@ -312,13 +311,10 @@ func (r *SqlGoModuleRow) Field(table, col string) SqlFieldGetter {
 		panic(fmt.Errorf("invalid table: %s.%s column", table, col))
 	}
 }
-func (r *SqlGoModuleRow) Fields(tables, cols []string) SqlFieldGetters {
-	if len(tables) != len(cols) {
-		panic(fmt.Errorf("mismatch length: len(tables)=%d len(cols)=%d", len(tables), len(cols)))
-	}
-	gs := make(SqlFieldGetters, len(cols))
+func (r *SqlGoModuleRow) Fields(fields []Field) SqlFieldGetters {
+	gs := make(SqlFieldGetters, len(fields))
 	for i := range gs {
-		gs[i] = r.Field(tables[i], cols[i])
+		gs[i] = r.Field(fields[i])
 	}
 	return gs
 }

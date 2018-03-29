@@ -32,5 +32,11 @@ func TestSelectParser_Parse(t *testing.T) {
 		t.Run("complexity", func(t *testing.T) {
 			do(t, "SELECT * FROM calls WHERE start_time > SUBTIME(NOW(), '10:0:0')")
 		})
+		t.Run("qualifier", func(t *testing.T) {
+			do(t, "SELECT calls.id, calls.* FROM calls")
+		})
+		t.Run("implicit-join", func(t *testing.T) {
+			do(t, "SELECT calls.*, frames.* FROM frames")
+		})
 	})
 }

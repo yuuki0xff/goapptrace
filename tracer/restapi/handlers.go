@@ -349,7 +349,7 @@ func (api APIv0) search(w http.ResponseWriter, r *http.Request) {
 	offset, rows := sel.Limit()
 
 	// write a header
-	if _, err := w.Write([]byte(strings.Join(sel.Cols(), ",") + "\n")); err != nil {
+	if _, err := w.Write([]byte(strings.Join(sel.ColNames(), ",") + "\n")); err != nil {
 		log.Println(errors.Wrap(err, "write error"))
 		return
 	}
@@ -361,7 +361,7 @@ func (api APIv0) search(w http.ResponseWriter, r *http.Request) {
 		row := sql.SqlFuncLogRow{
 			Symbols: logobj.Symbols(),
 		}
-		printer := row.Fields(sel.TableCols()).Printer(sql.CsvFormat)
+		printer := row.Fields(sel.Cols()).Printer(sql.CsvFormat)
 		line := make([]byte, 64<<10) // 64KiB
 		lineno := int64(0)
 
@@ -407,7 +407,7 @@ func (api APIv0) search(w http.ResponseWriter, r *http.Request) {
 	case "goroutines":
 		var output bytes.Buffer
 		var row sql.SqlGoroutineRow
-		printer := row.Fields(sel.TableCols()).Printer(sql.CsvFormat)
+		printer := row.Fields(sel.Cols()).Printer(sql.CsvFormat)
 		line := make([]byte, 64<<10) // 64KiB
 		send := func() {
 			n := printer(line)
@@ -442,7 +442,7 @@ func (api APIv0) search(w http.ResponseWriter, r *http.Request) {
 		row := sql.SqlGoFuncRow{
 			Symbols: logobj.Symbols(),
 		}
-		printer := row.Fields(sel.TableCols()).Printer(sql.CsvFormat)
+		printer := row.Fields(sel.Cols()).Printer(sql.CsvFormat)
 		line := make([]byte, 1<<20) // 1MiB
 		send := func() {
 			n := printer(line)
@@ -472,7 +472,7 @@ func (api APIv0) search(w http.ResponseWriter, r *http.Request) {
 	case "modules":
 		var output bytes.Buffer
 		var row sql.SqlGoModuleRow
-		printer := row.Fields(sel.TableCols()).Printer(sql.CsvFormat)
+		printer := row.Fields(sel.Cols()).Printer(sql.CsvFormat)
 		line := make([]byte, 64<<10) // 64KiB
 		send := func() {
 			n := printer(line)
@@ -581,7 +581,7 @@ func (api APIv0) funcCallSearchBySql(w http.ResponseWriter, logobj *storage.Log,
 		}
 	case "csv":
 		// write a header
-		if _, err := w.Write([]byte(strings.Join(sel.Cols(), ",") + "\n")); err != nil {
+		if _, err := w.Write([]byte(strings.Join(sel.ColNames(), ",") + "\n")); err != nil {
 			log.Println(errors.Wrap(err, "write error"))
 			return
 		}
@@ -589,7 +589,7 @@ func (api APIv0) funcCallSearchBySql(w http.ResponseWriter, logobj *storage.Log,
 		row := sql.SqlFuncLogRow{
 			Symbols: logobj.Symbols(),
 		}
-		printer := row.Fields(sel.TableCols()).Printer(sql.CsvFormat)
+		printer := row.Fields(sel.Cols()).Printer(sql.CsvFormat)
 		line := make([]byte, 64<<10) // 64KiB
 		send = func(fl *types.FuncLog) error {
 			row.FuncLog = fl
