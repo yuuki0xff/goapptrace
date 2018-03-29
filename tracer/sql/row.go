@@ -131,10 +131,12 @@ type SqlRow interface {
 }
 
 type SqlFuncLogRow struct {
-	// TODO: このポインタ、またはその先のデータを書き換えることで、 SqlFieldGetter が返す値を変更できる。
+	// 処理対象の FuncLog へのポインタ。
+	// このポインタ、またはその先のデータを書き換えることで、 SqlFieldGetter が返す値を変更できる。
 	FuncLog *types.FuncLog
 	Symbols *types.Symbols
-	offset  int
+	// 処理対象のframeを指定する。
+	offset int
 }
 
 func (r *SqlFuncLogRow) Field(field Field) SqlFieldGetter {
