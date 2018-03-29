@@ -67,46 +67,48 @@ func runLogCatfunc(opt *handlerOpt) error {
 		return errGeneral
 	}
 
-	// TODO: 読み込み中に発生したエラーのハンドリングを行う
-	ch, err := api.SearchFuncLogs(logID, restapi.SearchFuncLogParams{
+	ch, eg := api.SearchFuncLogs(logID, restapi.SearchFuncLogParams{
 		SortKey:   restapi.SortByStartTime,
 		SortOrder: restapi.AscendingSortOrder,
 		//Limit:     1000,
 	})
-	if err != nil {
-		opt.ErrLog.Println("ERROR: Received unexpected response:", err)
-		return errGeneral
-	}
-	defer func() {
-		cancel()
-		// consume all items.
-		for range ch {
-		}
-	}()
-
-	writer.SetGoLineGetter(func(pc uintptr) types.GoLine {
-		s, err := api.GoLine(logID, pc)
-		if err != nil {
-			opt.ErrLog.Panic(err)
-		}
-		return s
-	})
-	writer.SetGoFuncGetter(func(pc uintptr) types.GoFunc {
-		f, err := api.GoFunc(logID, pc)
-		if err != nil {
-			opt.ErrLog.Panic(err)
-		}
-		return f
-	})
-	if err := writer.WriteHeader(); err != nil {
-		opt.ErrLog.Println(err)
-		return errIo
-	}
-	for funcCall := range ch {
-		if err := writer.Write(funcCall); err != nil {
+	eg.Go(func() error {
+		defer cancel()
+		writer.SetGoLineGetter(func(pc uintptr) types.GoLine {
+			s, err := api.GoLine(logID, pc)
+			if err != nil {
+				cancel()
+				opt.ErrLog.Panic(err)
+			}
+			return s
+		})
+		writer.SetGoFuncGetter(func(pc uintptr) types.GoFunc {
+			f, err := api.GoFunc(logID, pc)
+			if err != nil {
+				cancel()
+				opt.ErrLog.Panic(err)
+			}
+			return f
+		})
+		if err := writer.WriteHeader(); err != nil {
 			opt.ErrLog.Println(err)
 			return errIo
 		}
+		for funcCall := range ch {
+			if err := writer.Write(funcCall); err != nil {
+				opt.ErrLog.Println(err)
+				return errIo
+			}
+		}
+		return nil
+	})
+	err = eg.Wait()
+	if err != nil {
+		if err == errIo {
+			return errIo
+		}
+		opt.ErrLog.Println("ERROR: Received unexpected response:", err)
+		return errGeneral
 	}
 	return nil
 }

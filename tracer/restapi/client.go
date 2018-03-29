@@ -216,34 +216,34 @@ func (c *ClientWithCtx) Search(id string, query string) (chan<- []string, *errgr
 }
 
 // SearchFuncLogs filters the function call log records.
-func (c ClientWithCtx) SearchFuncLogs(id string, so SearchFuncLogParams) (chan types.FuncLog, error) {
-	url := c.url("/log", id, "func-call", "search")
-	ro := c.ro()
-	ro.Params = so.ToParamMap()
-	r, err := c.get(url, &ro)
-	if err != nil {
-		return nil, err
-	}
+func (c ClientWithCtx) SearchFuncLogs(id string, so SearchFuncLogParams) (<-chan types.FuncLog, *errgroup.Group) {
+	ch := make(chan types.FuncLog, 1024)
+	eg := &errgroup.Group{}
 
-	dec := json.NewDecoder(r)
-	ch := make(chan types.FuncLog, 1<<20)
-	go func() {
-		defer r.Close() // nolint: errcheck
+	eg.Go(func() error {
 		defer close(ch)
+		url := c.url("/log", id, "func-call", "search")
+		ro := c.ro()
+		ro.Params = so.ToParamMap()
+		r, err := c.get(url, &ro)
+		if err != nil {
+			return err
+		}
+		defer r.Close() // nolint: errcheck
+
+		dec := json.NewDecoder(r)
 		for {
 			var fc types.FuncLog
 			if err := dec.Decode(&fc); err != nil {
 				if err == io.EOF {
-					return
+					return nil
 				}
-				// TODO: ここで発生したエラーを、クライアント側に通知する
-				log.Println(err)
-				return
+				return err
 			}
 			ch <- fc
 		}
-	}()
-	return ch, nil
+	})
+	return ch, eg
 }
 func (c ClientWithCtx) GoModule(logID string, pc uintptr) (m types.GoModule, err error) {
 	if c.UseCache {

@@ -83,25 +83,21 @@ func (c *GraphCache) Update(logID string, client restapi.ClientWithCtx) error {
 		return err
 	})
 	eg.Go(func() error {
-		ch, err := api.SearchFuncLogs(c.logID, restapi.SearchFuncLogParams{
+		ch, eg := api.SearchFuncLogs(c.logID, restapi.SearchFuncLogParams{
 			//Limit:     fetchRecords,
 			SortKey:   restapi.SortByID,
 			SortOrder: restapi.DescendingSortOrder,
 		})
-		if err != nil {
-			return err
-		}
-		defer func() {
-			for range ch {
+		eg.Go(func() error {
+			for fc := range ch {
+				if c.LogInfo.Metadata.UI.IsMasked(fc) {
+					continue
+				}
+				c.Records = append(c.Records, fc)
 			}
-		}()
-		for fc := range ch {
-			if c.LogInfo.Metadata.UI.IsMasked(fc) {
-				continue
-			}
-			c.Records = append(c.Records, fc)
-		}
-		return nil
+			return nil
+		})
+		return eg.Wait()
 	})
 	eg.Go(func() error {
 		ch, err := api.Goroutines(c.logID)
