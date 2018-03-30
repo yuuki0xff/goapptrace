@@ -25,9 +25,12 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"github.com/yuuki0xff/goapptrace/info"
 	"github.com/yuuki0xff/goapptrace/tracer/builder"
 )
 
@@ -87,12 +90,37 @@ func runBuild(opt *handlerOpt) error {
 	buildCmd := exec.Command("go", buildArgs(opt.Cmd.Flags(), newTargets)...) // nolint: gas
 	buildCmd.Stdout = opt.Stdout
 	buildCmd.Stderr = opt.Stderr
-	buildCmd.Env = append(os.Environ(), buildEnv(b.Goroot, b.Gopath)...)
+	buildCmd.Env = append(os.Environ(), buildEnv(b.Goroot, b.Gopath, newTargets)...)
 	return buildCmd.Run()
 }
 
-// "go build"コマンドの実行前にセットするべき環境変数を返す
-func buildEnv(goroot, gopath string) (env []string) {
+// "go build"コマンドの実行前にセットするべき環境変数を返す。
+// filesはmainパッケージのパス、またはmainパッケージのファイルのリスト。
+func buildEnv(goroot, gopath string, files []string) (env []string) {
+	if len(files) == 0 {
+		panic("files MUST NOT empty")
+	}
+	f := files[0]
+	var appName string
+	if strings.HasSuffix(f, ".go") {
+		idx := strings.LastIndex(f, "/")
+		if idx >= 0 {
+			appName = f[idx+1:]
+		} else {
+			appName = f
+		}
+		appName = strings.TrimSuffix(appName, ".go")
+	} else {
+		abspath, err := filepath.Abs(f)
+		if err != nil {
+			abspath = f
+		}
+		abspath2 := strings.TrimRight(abspath, "/")
+		arr := strings.Split(abspath2, "/")
+		appName = arr[len(arr)-1]
+	}
+
+	env = append(env, info.DEFAULT_APP_NAME_ENV+"="+appName)
 	env = append(env, "GOROOT="+goroot)
 	env = append(env, "GOPATH="+gopath)
 	return env

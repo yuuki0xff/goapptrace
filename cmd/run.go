@@ -93,7 +93,7 @@ func runRun(opt *handlerOpt) error {
 	runCmd.Stdout = opt.Stdout
 	runCmd.Stderr = opt.Stderr
 	// 実行用の環境変数を追加しなきゃ鳴らない
-	runCmd.Env = append(os.Environ(), runEnv(srv, b.Goroot, b.Gopath)...)
+	runCmd.Env = append(os.Environ(), runEnv(srv, b.Goroot, b.Gopath, files)...)
 	return runCmd.Run()
 }
 
@@ -107,8 +107,8 @@ func runArgs(flagset *pflag.FlagSet, files, cmdArgs []string) []string {
 }
 
 // "go run"コマンドの実行前にセットするべき環境変数を返す
-func runEnv(srv restapi.ServerStatus, goroot, gopath string) []string {
-	env := buildEnv(goroot, gopath)
+func runEnv(srv restapi.ServerStatus, goroot, gopath string, files []string) []string {
+	env := buildEnv(goroot, gopath, files)
 	env = append(env, procRunEnv(srv)...)
 	return env
 }
