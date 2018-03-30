@@ -41,7 +41,7 @@ var buildFlags = mergeFlagNames(sharedFlagNames(), map[string]bool{
 
 // buildCmd represents the build command
 var buildCmd = &cobra.Command{
-	Use: "build [-o output] [-i] <packages>",
+	Use: "build [-o output] [-i] <package>|<file>...",
 	DisableFlagsInUseLine: true,
 	Short: "compile packages and dependencies with goapptrace logger",
 	Long: `"goapptrace build" is a useful command like "go build".
@@ -59,6 +59,10 @@ func runBuild(opt *handlerOpt) error {
 	defer os.RemoveAll(tmpdir) // nolint: errcheck
 
 	targets := opt.Args
+	if len(targets) == 0 {
+		opt.ErrLog.Println("no packages or files given.")
+		return errInvalidArgs
+	}
 	b, err := prepareRepo(tmpdir, targets, opt.Conf)
 	if err != nil {
 		opt.ErrLog.Println(err)
