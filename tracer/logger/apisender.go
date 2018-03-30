@@ -41,7 +41,7 @@ func (s *LogServerSender) Open() error {
 			StopTrace:  func(args *protocol.StopTraceCmdPacket) {},
 		},
 		AppName: os.Getenv(info.DEFAULT_APP_NAME_ENV),
-		Secret:  "secret",
+		Secret:  "secret", // TODO
 	}
 	s.client.Init()
 	go func() {
