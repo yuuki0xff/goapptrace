@@ -45,42 +45,42 @@ func sizeFileID() int64 {
 }
 
 func marshalGID(buf []byte, gid types.GID) int64 {
-	return marshalUint64(buf, uint64(gid))
+	return MarshalUint64(buf, uint64(gid))
 }
 func unmarshalGID(buf []byte) (types.GID, int64) {
-	val, n := unmarshalUint64(buf)
+	val, n := UnmarshalUint64(buf)
 	return types.GID(val), n
 }
 
 func marshalTxID(buf []byte, id types.TxID) int64 {
-	return marshalUint64(buf, uint64(id))
+	return MarshalUint64(buf, uint64(id))
 }
 func unmarshalTxID(buf []byte) (types.TxID, int64) {
-	val, n := unmarshalUint64(buf)
+	val, n := UnmarshalUint64(buf)
 	return types.TxID(val), n
 }
 
 func marshalFuncLogID(buf []byte, id types.FuncLogID) int64 {
-	return marshalUint64(buf, uint64(id))
+	return MarshalUint64(buf, uint64(id))
 }
 func unmarshalFuncLogID(buf []byte) (types.FuncLogID, int64) {
-	val, n := unmarshalUint64(buf)
+	val, n := UnmarshalUint64(buf)
 	return types.FuncLogID(val), n
 }
 
 func marshalRawFuncLogID(buf []byte, id types.RawFuncLogID) int64 {
-	return marshalUint64(buf, uint64(id))
+	return MarshalUint64(buf, uint64(id))
 }
 func unmarshalRawFuncLogID(buf []byte) (types.RawFuncLogID, int64) {
-	val, n := unmarshalUint64(buf)
+	val, n := UnmarshalUint64(buf)
 	return types.RawFuncLogID(val), n
 }
 
 func marshalTime(buf []byte, time types.Time) int64 {
-	return marshalUint64(buf, uint64(time))
+	return MarshalUint64(buf, uint64(time))
 }
 func unmarshalTime(buf []byte) (types.Time, int64) {
-	val, n := unmarshalUint64(buf)
+	val, n := UnmarshalUint64(buf)
 	return types.Time(val), n
 }
 
