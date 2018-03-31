@@ -230,10 +230,14 @@ func TestServerConn_OnEvent_receivePingPacket(t *testing.T) {
 func TestServerConn_OnEvent_receiveShutdownPacket(t *testing.T) {
 	a := assert.New(t)
 	var disconnected bool
+	var errorOccurred bool
 	var stopped bool
 	handler := ServerHandler{
 		Disconnected: func(id ConnID) {
 			disconnected = true
+		},
+		Error: func(id ConnID, err error) {
+			errorOccurred = true
 		},
 	}.SetDefault(mustNotCall)
 	sct := serverConnTest{
@@ -254,5 +258,6 @@ func TestServerConn_OnEvent_receiveShutdownPacket(t *testing.T) {
 	}
 	sct.Run()
 	a.True(disconnected)
+	a.True(errorOccurred)
 	a.True(stopped)
 }
