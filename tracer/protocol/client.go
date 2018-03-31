@@ -32,6 +32,7 @@ type ClientHandler struct {
 
 	Error func(error)
 
+	Shutdown   func(*ShutdownPacket)
 	StartTrace func(*StartTraceCmdPacket)
 	StopTrace  func(*StopTraceCmdPacket)
 }
@@ -248,8 +249,13 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 			case *PingPacket:
 				// do nothing
 			case *ShutdownPacket:
-				// TODO: add handler
-				conn.Stop(xtcp.StopImmediately)
+				if c.Handler.Shutdown != nil {
+					c.Handler.Shutdown(pkt)
+				} else {
+					defer log.Fatal("killed by goapptrace")
+				}
+				c.cancel()
+				c.stop(xtcp.StopGracefullyAndWait)
 				return
 			case *StartTraceCmdPacket:
 				if c.Handler.StartTrace != nil {
