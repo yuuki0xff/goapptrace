@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -215,20 +214,23 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 			ProtocolVersion: ProtocolVersion,
 		}
 		if err := c.xtcpconn.Send(pkt); err != nil {
-			// TODO: try to reconnect
-			panic(err)
+			c.error(err)
+			c.stop(xtcp.StopImmediately)
+			return
 		}
 	case xtcp.EventRecv:
 		// if first time, a packet MUST BE ServerHelloPacket type.
 		if !c.isNegotiated {
 			pkt, ok := p.(*ServerHelloPacket)
 			if !ok {
-				c.xtcpconn.Stop(xtcp.StopImmediately)
+				c.error(fmt.Errorf("negotiation failed: server sends an unexpected packet: %#v", p))
+				c.stop(xtcp.StopImmediately)
 				return
 			}
 			if !isCompatibleVersion(pkt.ProtocolVersion) {
 				// 対応していないバージョンなら、切断する。
-				conn.Stop(xtcp.StopImmediately)
+				c.error(fmt.Errorf("negotiation failed: server version is not compatible"))
+				c.stop(xtcp.StopImmediately)
 				return
 			}
 
@@ -246,6 +248,7 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 			case *PingPacket:
 				// do nothing
 			case *ShutdownPacket:
+				// TODO: add handler
 				conn.Stop(xtcp.StopImmediately)
 				return
 			case *StartTraceCmdPacket:
@@ -261,7 +264,9 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 			case *RawFuncLogPacket:
 				conn.Stop(xtcp.StopImmediately)
 			default:
-				panic(fmt.Sprintf("BUG: Client: Client receives a invalid Packet: %+v %+v", pkt, reflect.TypeOf(pkt)))
+				c.error(fmt.Errorf("client receives an unexpected packet: %#v", pkt))
+				c.stop(xtcp.StopImmediately)
+				return
 			}
 		}
 	case xtcp.EventSend:
@@ -270,7 +275,6 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 			c.mergeSender.Put(p)
 		}
 	case xtcp.EventClosed:
-
 		// request worker shutdown
 		c.cancel()
 
@@ -288,6 +292,17 @@ func (c *Client) WaitNegotiation() {
 func (c *Client) negotiated() {
 	c.isNegotiated = true
 	close(c.negotiatedCh)
+}
+
+func (c *Client) error(err error) {
+	if c.Handler.Error != nil {
+		c.Handler.Error(err)
+	} else {
+		log.Println("ERROR:", err)
+	}
+}
+func (c *Client) stop(mode xtcp.StopMode) {
+	c.xtcpconn.Stop(mode)
 }
 
 func (ms *mergeSender) Init() {
