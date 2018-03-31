@@ -192,7 +192,7 @@ func (ce *CodeEditor) edit(fname string, src []byte) ([]byte, error) {
 				})
 				nl.Add(&InsertNode{
 					Pos: b.End(),
-					Src: ce.tmpl.render("closeAndExit", node),
+					Src: ce.tmpl.render("closeAndExit", nil),
 				})
 			}
 		}
