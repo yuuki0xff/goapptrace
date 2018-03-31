@@ -37,8 +37,12 @@ func (s *LogServerSender) Open() error {
 			Error: func(err error) {
 				fmt.Println("s.client ERROR:", err.Error())
 			},
-			StartTrace: func(args *protocol.StartTraceCmdPacket) {},
-			StopTrace:  func(args *protocol.StopTraceCmdPacket) {},
+			StartTrace: func(pkt *protocol.StartTraceCmdPacket) {
+				// TODO
+			},
+			StopTrace: func(args *protocol.StopTraceCmdPacket) {
+				// TODO
+			},
 		},
 		AppName: os.Getenv(info.DEFAULT_APP_NAME_ENV),
 		Secret:  "secret", // TODO
