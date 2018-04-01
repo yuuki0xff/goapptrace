@@ -25,7 +25,6 @@ import (
 	"os"
 	"os/signal"
 	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -253,20 +252,13 @@ func (m *ServerHandlerMaker) worker(ch chan interface{}, id protocol.ConnID) {
 	ss := m.SSStore.New(logobj.ID)
 	defer m.SSStore.Delete(logobj.ID)
 
+	// ログを閉じる前に、現在のStateSimulatorの状態を保存する。
+	defer m.writeSS(logobj, ss)
+
 	// 最後にファイルと同期してから受信した RawFuncLog の個数。
 	// flCount が flCountMax に達したら、ファイルに書き出す。
 	var flCount int64
 	const flCountMax = 1000000
-
-	// 現在の状態をファイルに書き出す。
-	// excludeRunning がtrueの場合、実行中のFuncLogは書き込まない。
-	// writing フラグがtrueの場合は、何もしない。
-	writeCurrentState := func(excludeRunning bool) {
-		m.writeSS(logobj, ss)
-		flCount = 0
-	}
-	// ログを閉じる前に、現在のStateSimulatorの状態を保存する。
-	defer writeCurrentState(false)
 
 	// StateSimulator の内容の書き出し要求を定期的に送信する。
 	// chがcloseされたとき、タイミング次第でブロックされてしまう可能性がある。
@@ -310,17 +302,20 @@ func (m *ServerHandlerMaker) worker(ch chan interface{}, id protocol.ConnID) {
 				ss.Next(*obj)
 				types.RawFuncLogPool.Put(obj)
 
-				if atomic.AddInt64(&flCount, 1) >= flCountMax {
+				flCount++
+				if flCount >= flCountMax {
 					// 多くの RawFuncLog をsimulatorに渡したため、大量のメモリを消費している。
 					// ファイルに書き出してメモリを開放させる。
-					writeCurrentState(false)
+					m.writeSS(logobj, ss)
+					flCount = 0
 				}
 			case *types.SymbolsData:
 				if err := logobj.SetSymbolsData(obj); err != nil {
 					log.Panicln("failed to append Symbols:", err.Error())
 				}
 			case *simulator.StateSimulator:
-				writeCurrentState(false)
+				m.writeSS(logobj, ss)
+				flCount = 0
 			default:
 				log.Panicf("unsupported type: %+v", rawobj)
 			}
