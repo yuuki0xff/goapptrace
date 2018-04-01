@@ -200,43 +200,37 @@ func (m *ServerHandlerMaker) init() {
 
 func (m *ServerHandlerMaker) ServerHandler() protocol.ServerHandler {
 	m.init()
-	// TODO: コードを綺麗にする
-	chMap := m.chMap
-	chMapLock := &m.lock
-
-	worker := m.worker
-
 	return protocol.ServerHandler{
 		Connected: func(id protocol.ConnID) {
 			log.Println("INFO: Server: connected")
 
 			ch := make(chan interface{}, DefaultReceiveBufferSize)
-			go worker(ch, id)
+			go m.worker(ch, id)
 
-			chMapLock.Lock()
-			chMap[id] = ch
-			chMapLock.Unlock()
+			m.lock.Lock()
+			m.chMap[id] = ch
+			m.lock.Unlock()
 		},
 		Disconnected: func(id protocol.ConnID) {
 			log.Println("INFO: Server: disconnected")
 
-			chMapLock.Lock()
-			close(chMap[id])
-			delete(chMap, id)
-			chMapLock.Unlock()
+			m.lock.Lock()
+			close(m.chMap[id])
+			delete(m.chMap, id)
+			m.lock.Unlock()
 		},
 		Error: func(id protocol.ConnID, err error) {
 			log.Printf("ERROR: Server: connID=%d err=%s", id, err.Error())
 		},
 		Symbols: func(id protocol.ConnID, s *types.SymbolsData) {
-			chMapLock.RLock()
-			chMap[id] <- s
-			chMapLock.RUnlock()
+			m.lock.RLock()
+			m.chMap[id] <- s
+			m.lock.RUnlock()
 		},
 		RawFuncLog: func(id protocol.ConnID, f *types.RawFuncLog) {
-			chMapLock.RLock()
-			chMap[id] <- f
-			chMapLock.RUnlock()
+			m.lock.RLock()
+			m.chMap[id] <- f
+			m.lock.RUnlock()
 		},
 	}
 }
