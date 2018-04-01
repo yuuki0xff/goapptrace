@@ -236,11 +236,7 @@ func (m *ServerHandlerMaker) ServerHandler() protocol.ServerHandler {
 }
 
 func (m *ServerHandlerMaker) worker(ch chan interface{}, id protocol.ConnID) {
-	// TODO: コードを綺麗にする
-	strg := m.Storage
-	store := m.SSStore
-
-	logobj, err := strg.New()
+	logobj, err := m.Storage.New()
 	if err != nil {
 		log.Panicf("ERROR: Server: failed to a create Log object: err=%s", err.Error())
 	}
@@ -254,8 +250,8 @@ func (m *ServerHandlerMaker) worker(ch chan interface{}, id protocol.ConnID) {
 		}
 	}()
 
-	ss := store.New(logobj.ID)
-	defer store.Delete(logobj.ID)
+	ss := m.SSStore.New(logobj.ID)
+	defer m.SSStore.Delete(logobj.ID)
 
 	// 最後にファイルと同期してから受信した RawFuncLog の個数。
 	// flCount が flCountMax に達したら、ファイルに書き出す。
