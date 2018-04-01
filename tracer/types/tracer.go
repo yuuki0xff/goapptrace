@@ -19,3 +19,11 @@ func (t TraceTarget) Copy(to *TraceTarget) {
 	copy(funcs, t.Funcs)
 	to.Funcs = funcs
 }
+func (t TraceTarget) ContainsFunc(name string) bool {
+	for _, f := range t.Funcs {
+		if f == name {
+			return true
+		}
+	}
+	return false
+}
