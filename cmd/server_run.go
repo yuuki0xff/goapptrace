@@ -203,11 +203,18 @@ func (m *ServerHandlerMaker) ServerHandler() protocol.ServerHandler {
 		Connected: func(id protocol.ConnID) {
 			log.Println("INFO: Server: connected")
 
+			t, err := m.Storage.TracersStore().Add()
+			if err != nil {
+				log.Printf("ERROR: Server(connID=%d): %s", id, err.Error())
+				return
+			}
+
 			ch := make(chan interface{}, DefaultReceiveBufferSize)
 			worker := &shmWorker{
 				ServerHandlerMaker: m,
 				Ch:                 ch,
 				ConnID:             id,
+				TracerID:           t.ID,
 			}
 			go worker.Run()
 
@@ -244,6 +251,7 @@ type shmWorker struct {
 	*ServerHandlerMaker
 	Ch       chan interface{}
 	ConnID   protocol.ConnID
+	TracerID int
 }
 
 func (m *shmWorker) Run() {

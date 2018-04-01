@@ -49,6 +49,19 @@ func (s *TracersStore) lookupById(id int) int {
 	}
 	return -1
 }
+func (s *TracersStore) Add() (*types.Tracer, error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	t := &types.Tracer{
+		ID: len(s.tracers),
+	}
+	s.tracers = append(s.tracers, t)
+	if err := s.save(); err != nil {
+		return nil, err
+	}
+	return t, nil
+}
 func (s *TracersStore) Get(id int) (*types.Tracer, error) {
 	s.m.RLock()
 	defer s.m.RUnlock()
