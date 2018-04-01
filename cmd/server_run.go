@@ -171,7 +171,22 @@ func init() {
 }
 
 func getServerHandler(strg *storage.Storage, store *simulator.StateSimulatorStore) protocol.ServerHandler {
+	m := &ServerHandlerMaker{
+		Storage: strg,
+		SSStore: store,
+	}
+	return m.ServerHandler()
+}
+
+type ServerHandlerMaker struct {
+	Storage *storage.Storage
+	SSStore *simulator.StateSimulatorStore
+}
+
+func (m *ServerHandlerMaker) ServerHandler() protocol.ServerHandler {
 	// TODO: コードを綺麗にする
+	strg := m.Storage
+	store := m.SSStore
 
 	// workerとの通信用。
 	// close()されたら、workerは終了するべき。
