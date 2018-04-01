@@ -309,6 +309,12 @@ func (m *ServerHandlerMaker) worker(ch chan interface{}, id protocol.ConnID) {
 		}
 	}()
 
+	// main loop。chan経由で送られてくる要求を処理する。
+	// chanがcloseされたら、このループから脱出してworkerを終了させる。
+	//
+	// 処理の優先度
+	//   ch         - 最優先
+	//   ssWriteReq - 優先度低。アイドル時のみ処理する
 	for {
 		var rawobj interface{}
 		var ok bool
