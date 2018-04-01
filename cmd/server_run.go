@@ -181,18 +181,30 @@ func getServerHandler(strg *storage.Storage, store *simulator.StateSimulatorStor
 type ServerHandlerMaker struct {
 	Storage *storage.Storage
 	SSStore *simulator.StateSimulatorStore
-}
 
-func (m *ServerHandlerMaker) ServerHandler() protocol.ServerHandler {
-	// TODO: コードを綺麗にする
-	strg := m.Storage
-	store := m.SSStore
+	initOnce sync.Once
+
+	// chanの追加、削除、close()するときはLock()を、chanへの送受信はRLock()をかける。
+	chMapLock sync.RWMutex
 
 	// workerとの通信用。
 	// close()されたら、workerは終了するべき。
-	chMap := make(map[protocol.ConnID]chan interface{})
-	// chanの追加、削除、close()するときはLock()を、chanへの送受信はRLock()をかける。
-	var chMapLock sync.RWMutex
+	chMap map[protocol.ConnID]chan interface{}
+}
+
+func (m *ServerHandlerMaker) init() {
+	m.initOnce.Do(func() {
+		m.chMap = make(map[protocol.ConnID]chan interface{})
+	})
+}
+
+func (m *ServerHandlerMaker) ServerHandler() protocol.ServerHandler {
+	m.init()
+	// TODO: コードを綺麗にする
+	strg := m.Storage
+	store := m.SSStore
+	chMap := m.chMap
+	chMapLock := &m.chMapLock
 
 	worker := func(ch chan interface{}, id protocol.ConnID) {
 		logobj, err := strg.New()
