@@ -839,3 +839,32 @@ paths:
             $ref: '#/definitions/server'
         '204':
           description: Notify for non-changed in timeout.
+  '/tracer/{tracer-id}/targets':
+    get:
+      description: Returns all available tracing targets.
+    put:
+      description: Enable tracing for all targets.
+    delete:
+      description: Disable tracing for all targets.
+    parameters:
+      - name: tracer-id
+        in: path
+        required: true
+        type: integer
+  '/tracer/{tracer-id}/target/func/{func}':
+    get:
+      description: Returns current tracing status (enable or disable).
+    put:
+      description: Enable tracing for the specified function.
+    delete:
+      description: Disable tracing for the specified function.
+    parameters:
+      - name: tracer-id
+        in: path
+        required: true
+        type: integer
+      - name: func
+        in: path
+        required: true
+        type: string
+
