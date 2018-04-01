@@ -204,7 +204,12 @@ func (m *ServerHandlerMaker) ServerHandler() protocol.ServerHandler {
 			log.Println("INFO: Server: connected")
 
 			ch := make(chan interface{}, DefaultReceiveBufferSize)
-			go m.worker(ch, id)
+			worker := &shmWorker{
+				ServerHandlerMaker: m,
+				Ch:                 ch,
+				ConnID:             id,
+			}
+			go worker.Run()
 
 			m.lock.Lock()
 			m.chMap[id] = ch
@@ -234,18 +239,25 @@ func (m *ServerHandlerMaker) ServerHandler() protocol.ServerHandler {
 	}
 }
 
-func (m *ServerHandlerMaker) worker(ch chan interface{}, id protocol.ConnID) {
+// shmWorker - ServerHandlerMaker worker
+type shmWorker struct {
+	*ServerHandlerMaker
+	Ch       chan interface{}
+	ConnID   protocol.ConnID
+}
+
+func (m *shmWorker) Run() {
 	logobj, err := m.Storage.New()
 	if err != nil {
 		log.Panicf("ERROR: Server: failed to a create Log object: err=%s", err.Error())
 	}
 	defer func() {
 		if err = logobj.Close(); err != nil {
-			log.Panicf("failed to close a Log(%s): connID=%d err=%s", logobj.ID, id, err.Error())
+			log.Panicf("failed to close a Log(%s): connID=%d err=%s", logobj.ID, m.ConnID, err.Error())
 		}
 		logobj.ReadOnly = true
 		if err = logobj.Open(); err != nil {
-			log.Panicf("failed to reopen a Log(%s): connID=%d err=%s", logobj.ID, id, err.Error())
+			log.Panicf("failed to reopen a Log(%s): connID=%d err=%s", logobj.ID, m.ConnID, err.Error())
 		}
 	}()
 
@@ -283,7 +295,7 @@ func (m *ServerHandlerMaker) worker(ch chan interface{}, id protocol.ConnID) {
 		var rawobj interface{}
 		var ok bool
 		select {
-		case rawobj, ok = <-ch:
+		case rawobj, ok = <-m.Ch:
 		case rawobj, ok = <-ssWriteReq:
 		}
 		if !ok {
@@ -320,10 +332,10 @@ func (m *ServerHandlerMaker) worker(ch chan interface{}, id protocol.ConnID) {
 				log.Panicf("unsupported type: %+v", rawobj)
 			}
 
-			if len(ch) == 0 {
+			if len(m.Ch) == 0 {
 				break
 			}
-			rawobj = <-ch
+			rawobj = <-m.Ch
 		}
 	}
 }
@@ -331,7 +343,7 @@ func (m *ServerHandlerMaker) worker(ch chan interface{}, id protocol.ConnID) {
 // writeSS は、 StateSimulator の内容をファイルへ書き出す。
 // 書き込みには時間がかかる可能性がある。
 // 書き込み済みのレコードはメモリ上から削除するのため、メモリ解放が行える。
-func (m *ServerHandlerMaker) writeSS(logobj *storage.Log, ss *simulator.StateSimulator) {
+func (m *shmWorker) writeSS(logobj *storage.Log, ss *simulator.StateSimulator) {
 	logobj.FuncLog(func(store *storage.FuncLogStore) {
 		for _, fl := range ss.FuncLogs(false) {
 			err := store.SetNolock(fl)
