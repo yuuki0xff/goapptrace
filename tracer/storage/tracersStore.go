@@ -75,6 +75,14 @@ func (s *TracersStore) Get(id int) (*types.Tracer, error) {
 	}
 	return s.tracers[idx], nil
 }
+func (s *TracersStore) GetAll() ([]*types.Tracer, error) {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	if err := s.init(); err != nil {
+		return nil, err
+	}
+	return s.tracers, nil
+}
 func (s *TracersStore) Update(id int, fn TracersStoreUpdateFn) error {
 	s.m.Lock()
 	defer s.m.Unlock()

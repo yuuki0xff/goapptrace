@@ -866,7 +866,15 @@ func (api APIv0) goLine(w http.ResponseWriter, r *http.Request) {
 	api.writeObj(w, l)
 }
 func (api APIv0) tracers(w http.ResponseWriter, r *http.Request) {
-	// TODO: これを実装する前に、どのトレーサが接続しているのか管理出来るようにする
+	tracers, err := api.Storage.TracersStore().GetAll()
+	if err != nil {
+		api.serverError(w, err, "unknown error")
+		return
+	}
+	if err := json.NewEncoder(w).Encode(tracers); err != nil {
+		api.Logger.Println("write error:", err)
+		return
+	}
 }
 func (api APIv0) tracer(w http.ResponseWriter, r *http.Request) {
 	// TODO: これを実装する前に、どのトレーサが接続しているのか管理出来るようにする
