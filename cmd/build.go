@@ -21,17 +21,16 @@
 package cmd
 
 import (
-	"fmt"
-	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"github.com/yuuki0xff/goapptrace/config"
+	"github.com/yuuki0xff/goapptrace/info"
 	"github.com/yuuki0xff/goapptrace/tracer/builder"
 )
 
@@ -42,36 +41,39 @@ var buildFlags = mergeFlagNames(sharedFlagNames(), map[string]bool{
 
 // buildCmd represents the build command
 var buildCmd = &cobra.Command{
-	Use:   "build [-o output] [-i] [packages]",
+	Use: "build [-o output] [-i] <package>|<file>...",
+	DisableFlagsInUseLine: true,
 	Short: "compile packages and dependencies with goapptrace logger",
 	Long: `"goapptrace build" is a useful command like "go build".
 This command adds logging codes to specified files before build, and build them.
 Original source code is not change!
 Arguments are compatible with "go build". See "go build --help" to get more information about arguments.`,
-	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
-		fmt.Println("build called")
-		return runBuild(conf, cmd.Flags(), cmd.OutOrStdout(), cmd.OutOrStderr(), args)
-	}),
+	RunE: wrap(runBuild),
 }
 
-func runBuild(conf *config.Config, flags *pflag.FlagSet, stdout, stderr io.Writer, targets []string) error {
+func runBuild(opt *handlerOpt) error {
 	tmpdir, err := ioutil.TempDir("", ".goapptrace.build")
 	if err != nil {
 		return err
 	}
-	log.Println("tmpdir:", tmpdir)
-	//defer os.RemoveAll(tmpdir) // nolint: errcheck
+	defer os.RemoveAll(tmpdir) // nolint: errcheck
 
-	b, err := prepareRepo(tmpdir, targets, conf)
+	targets := opt.Args
+	if len(targets) == 0 {
+		opt.ErrLog.Println("no packages or files given.")
+		return errInvalidArgs
+	}
+	b, err := prepareRepo(tmpdir, targets, opt.Conf)
 	if err != nil {
-		fmt.Fprintf(stderr, err.Error()+"\n")
-		log.Fatal("Fail")
+		opt.ErrLog.Println(err)
+		return errGeneral
 	}
 
 	var newTargets []string
 	isGofiles, err := builder.IsGofiles(targets)
 	if err != nil {
-		log.Fatal(err)
+		opt.ErrLog.Println(err)
+		return errGeneral
 	}
 	if isGofiles {
 		// ビルド対象のファイルパスを修正する。
@@ -89,15 +91,40 @@ func runBuild(conf *config.Config, flags *pflag.FlagSet, stdout, stderr io.Write
 	}
 
 	// ignore an error of "Subprocess launching with variable" because arguments are specified by the trusted user.
-	buildCmd := exec.Command("go", buildArgs(flags, newTargets)...) // nolint: gas
-	buildCmd.Stdout = stdout
-	buildCmd.Stderr = stderr
-	buildCmd.Env = append(os.Environ(), buildEnv(b.Goroot, b.Gopath)...)
+	buildCmd := exec.Command("go", buildArgs(opt.Cmd.Flags(), newTargets)...) // nolint: gas
+	buildCmd.Stdout = opt.Stdout
+	buildCmd.Stderr = opt.Stderr
+	buildCmd.Env = append(os.Environ(), buildEnv(b.Goroot, b.Gopath, newTargets)...)
 	return buildCmd.Run()
 }
 
-// "go build"コマンドの実行前にセットするべき環境変数を返す
-func buildEnv(goroot, gopath string) (env []string) {
+// "go build"コマンドの実行前にセットするべき環境変数を返す。
+// filesはmainパッケージのパス、またはmainパッケージのファイルのリスト。
+func buildEnv(goroot, gopath string, files []string) (env []string) {
+	if len(files) == 0 {
+		panic("files MUST NOT empty")
+	}
+	f := files[0]
+	var appName string
+	if strings.HasSuffix(f, ".go") {
+		idx := strings.LastIndex(f, "/")
+		if idx >= 0 {
+			appName = f[idx+1:]
+		} else {
+			appName = f
+		}
+		appName = strings.TrimSuffix(appName, ".go")
+	} else {
+		abspath, err := filepath.Abs(f)
+		if err != nil {
+			abspath = f
+		}
+		abspath2 := strings.TrimRight(abspath, "/")
+		arr := strings.Split(abspath2, "/")
+		appName = arr[len(arr)-1]
+	}
+
+	env = append(env, info.DEFAULT_APP_NAME_ENV+"="+appName)
 	env = append(env, "GOROOT="+goroot)
 	env = append(env, "GOPATH="+gopath)
 	return env

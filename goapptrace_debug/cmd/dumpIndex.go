@@ -1,4 +1,4 @@
-// Copyright © 2017 yuuki0xff <yuuki0xff@gmail.com>
+// Copyright © 2018 yuuki0xff <yuuki0xff@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -21,51 +21,77 @@
 package cmd
 
 import (
+	"fmt"
+	"log"
+	"strconv"
+
 	"github.com/spf13/cobra"
-	"github.com/yuuki0xff/goapptrace/config"
+	"github.com/yuuki0xff/goapptrace/tracer/storage"
 )
 
-// procBuildCmd represents the build command
-var procBuildCmd = &cobra.Command{
-	Use:   "build",
-	Short: "Build with tracing codes",
-	RunE:  wrap(runProcBuild),
-}
+// dumpIndexCmd represents the dumpIndex command
+var dumpIndexCmd = &cobra.Command{
+	Use: "index <file> <id>",
+	DisableFlagsInUseLine: true,
+	Short: "dump an index file",
+	Run: func(cmd *cobra.Command, args []string) {
+		errlog := log.New(cmd.OutOrStderr(), "ERROR: ", log.Lshortfile)
+		stdout := cmd.OutOrStdout()
 
-func runProcBuild(opt *handlerOpt) error {
-	opt.Conf.WantSave()
-	// TODO: "build"コマンドとの違いを説明する
-	targets := opt.Args
-	if len(targets) == 0 {
-		targets = opt.Conf.Targets.Names()
-	}
+		var fpath string
+		var strId string
 
-	for _, targetName := range targets {
-		target, err := opt.Conf.Targets.Get(config.TargetName(targetName))
-		if err != nil {
-			opt.ErrLog.Println(err)
-			return errGeneral
+		switch len(args) {
+		case 2:
+			strId = args[1]
+			fallthrough
+		case 1:
+			fpath = args[0]
+		default:
+			errlog.Fatalln("invalid args")
 		}
 
-		buildProc, err := target.Build.Run()
-		if err != nil {
-			opt.ErrLog.Printf("ERROR: Failed to run a command (%+v): %s\n", buildProc.Args, err)
-			return errGeneral
+		index := storage.Index{
+			File:     storage.File(fpath),
+			ReadOnly: true,
 		}
-	}
-	return nil
+		err := index.Open()
+		if err != nil {
+			errlog.Fatalln("Cannot open index file:", err)
+		}
+
+		err = index.Load()
+		if err != nil {
+			errlog.Fatalln("Cannot load from index file:", err)
+		}
+
+		if strId == "" {
+			fmt.Fprintln(stdout, "records:", index.Len())
+			for id := int64(0); id < index.Len(); id++ {
+				ir := index.Get(id)
+				fmt.Fprintf(stdout, "%d: %#v\n", id, ir)
+			}
+		} else {
+			id, err := strconv.ParseInt(strId, 10, 64)
+			if err != nil {
+				errlog.Fatalln("Invalid ID:")
+			}
+			ir := index.Get(id)
+			fmt.Fprintf(stdout, "%d: %#v\n", id, ir)
+		}
+	},
 }
 
 func init() {
-	procCmd.AddCommand(procBuildCmd)
+	dumpCmd.AddCommand(dumpIndexCmd)
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// procBuildCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// dumpIndexCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// procBuildCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// dumpIndexCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

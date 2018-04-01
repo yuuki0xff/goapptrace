@@ -2,6 +2,7 @@ package restapi
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,6 +17,7 @@ import (
 	"github.com/levigross/grequests"
 	"github.com/pkg/errors"
 	"github.com/yuuki0xff/goapptrace/tracer/types"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -71,6 +73,7 @@ func (c ClientWithCtx) ro() grequests.RequestOptions {
 	return grequests.RequestOptions{
 		UserAgent: UserAgent,
 		Context:   c.ctx,
+		Params:    map[string]string{},
 	}
 }
 
@@ -172,35 +175,75 @@ func (c ClientWithCtx) UpdateLogInfo(id string, old types.LogInfo) (new types.Lo
 	return
 }
 
-// SearchFuncLogs filters the function call log records.
-func (c ClientWithCtx) SearchFuncLogs(id string, so SearchFuncLogParams) (chan types.FuncLog, error) {
-	url := c.url("/log", id, "func-call", "search")
+// SearchRaw execute a SQL query and returns result by CSV format.
+func (c *ClientWithCtx) SearchRaw(id string, query string) (io.ReadCloser, error) {
+	url := c.url("/log", id, "search.csv")
 	ro := c.ro()
-	ro.Params = so.ToParamMap()
-	r, err := c.get(url, &ro)
-	if err != nil {
-		return nil, err
-	}
+	ro.Params["sql"] = query
+	return c.get(url, &ro)
+}
 
-	dec := json.NewDecoder(r)
-	ch := make(chan types.FuncLog, 1<<20)
-	go func() {
-		defer r.Close() // nolint: errcheck
+// Search executes a SQL statement.
+func (c *ClientWithCtx) Search(id string, query string) (chan<- []string, *errgroup.Group) {
+	ch := make(chan []string, 1024)
+	eg := &errgroup.Group{}
+
+	eg.Go(func() error {
 		defer close(ch)
+		rr, err := c.SearchRaw(id, query)
+		if err != nil {
+			return err
+		}
+		defer rr.Close() // nolint
+
+		r := csv.NewReader(rr)
+		for {
+			rec, err := r.Read()
+			if err != nil {
+				if err == io.EOF {
+					return nil
+				}
+				return err
+			}
+			select {
+			case ch <- rec:
+			case <-c.ctx.Done():
+				return c.ctx.Err()
+			}
+		}
+	})
+	return ch, eg
+}
+
+// SearchFuncLogs filters the function call log records.
+func (c ClientWithCtx) SearchFuncLogs(id string, so SearchFuncLogParams) (<-chan types.FuncLog, *errgroup.Group) {
+	ch := make(chan types.FuncLog, 1024)
+	eg := &errgroup.Group{}
+
+	eg.Go(func() error {
+		defer close(ch)
+		url := c.url("/log", id, "func-call", "search")
+		ro := c.ro()
+		ro.Params = so.ToParamMap()
+		r, err := c.get(url, &ro)
+		if err != nil {
+			return err
+		}
+		defer r.Close() // nolint: errcheck
+
+		dec := json.NewDecoder(r)
 		for {
 			var fc types.FuncLog
 			if err := dec.Decode(&fc); err != nil {
 				if err == io.EOF {
-					return
+					return nil
 				}
-				// TODO: ここで発生したエラーを、クライアント側に通知する
-				log.Println(err)
-				return
+				return err
 			}
 			ch <- fc
 		}
-	}()
-	return ch, nil
+	})
+	return ch, eg
 }
 func (c ClientWithCtx) GoModule(logID string, pc uintptr) (m types.GoModule, err error) {
 	if c.UseCache {

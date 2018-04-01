@@ -1,4 +1,6 @@
 # goapptrace
+_WARNING: This is a early alpha release, and the API and CLI will be changing._
+
 Goapptrace is a function call tracer for golang.
 
 ## Currently State

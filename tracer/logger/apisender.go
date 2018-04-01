@@ -40,8 +40,8 @@ func (s *LogServerSender) Open() error {
 			StartTrace: func(args *protocol.StartTraceCmdPacket) {},
 			StopTrace:  func(args *protocol.StopTraceCmdPacket) {},
 		},
-		AppName: "TODO", // TODO
-		Secret:  "secret",
+		AppName: os.Getenv(info.DEFAULT_APP_NAME_ENV),
+		Secret:  "secret", // TODO
 	}
 	s.client.Init()
 	go func() {

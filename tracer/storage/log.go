@@ -162,7 +162,7 @@ func (l *Log) Open() error {
 	l.goroutineLog = GoroutineStore{
 		Store: Store{
 			File:       l.Root.GoroutineLogFile(l.ID, 0),
-			RecordSize: 128, // TODO: レコードサイズを決める
+			RecordSize: int(encoding.SizeGoroutine()),
 			ReadOnly:   l.ReadOnly,
 		},
 	}

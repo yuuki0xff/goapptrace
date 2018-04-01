@@ -28,25 +28,25 @@ import (
 
 // traceOnCmd represents the on command
 var traceOnCmd = &cobra.Command{
-	Use:   "on",
+	Use:   "on <name>...",
 	Short: "Insert tracing codes into targets",
-	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
-		conf.WantSave()
-		exportedOnly, err := cmd.Flags().GetBool("exported")
-		if err != nil {
-			return err
-		}
-		prefix, err := cmd.Flags().GetString("prefix")
-		if err != nil {
-			return err
-		}
-
-		return runTraceOn(conf, exportedOnly, prefix, args)
-	}),
+	RunE:  wrap(runTraceOn),
 }
 
-func runTraceOn(conf *config.Config, exportedOnly bool, prefix string, targetNames []string) error {
-	return conf.Targets.Walk(targetNames, func(t *config.Target) error {
+func runTraceOn(opt *handlerOpt) error {
+	targets := opt.Args
+	exportedOnly, err := opt.Cmd.Flags().GetBool("exported")
+	if err != nil {
+		opt.ErrLog.Println(err)
+		return errInvalidArgs
+	}
+	prefix, err := opt.Cmd.Flags().GetString("prefix")
+	if err != nil {
+		opt.ErrLog.Println(err)
+		return errInvalidArgs
+	}
+
+	err = opt.Conf.Targets.Walk(targets, func(t *config.Target) error {
 		return t.WalkTraces(t.Files, func(fname string, trace *config.Trace, created bool) error {
 			files, err := srceditor.FindFiles(fname)
 			if err != nil {
@@ -72,6 +72,12 @@ func runTraceOn(conf *config.Config, exportedOnly bool, prefix string, targetNam
 			return nil
 		})
 	})
+	if err != nil {
+		opt.ErrLog.Println(err)
+		return errGeneral
+	}
+	opt.Conf.WantSave()
+	return nil
 }
 
 func init() {

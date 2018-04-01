@@ -177,7 +177,6 @@ func (f File) Size() (int64, error) {
 }
 
 // ReadOnlyモードで開く。
-// TODO: errorメッセージのformatがおかしい
 func (f File) OpenReadOnly() (FileReader, error) {
 	file, err := os.Open(string(f))
 	return file, errors.Wrapf(err, "cannot open %s for reading: %s", string(f))

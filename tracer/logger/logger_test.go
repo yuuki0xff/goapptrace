@@ -3,6 +3,7 @@ package logger
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -20,6 +21,16 @@ func init() {
 }
 
 var dummyTxid = types.NewTxID()
+
+func BenchmarkRuntimeCallers(b *testing.B) {
+	pcs := make([]uintptr, 100)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		runtime.Callers(0, pcs)
+	}
+	b.StopTimer()
+}
 
 func TestSetOutput_writeToFile_useDefaultPrefix(t *testing.T) {
 	a := assert.New(t)

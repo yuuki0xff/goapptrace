@@ -2,12 +2,14 @@ package cmd
 
 import (
 	"context"
+	"io"
 	"log"
 	"os"
 	"os/exec"
 	"path"
 	"strings"
 
+	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -15,6 +17,116 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/builder"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 )
+
+// func(*handlerOpt) error が返すエラーの一覧
+var (
+	errGeneral     = errors.New("general error")
+	errInvalidArgs = errors.New("invalid args")
+	errIo          = errors.New("io error")
+)
+
+var (
+	errApiClient = errors.New("Failed to initialize API Client")
+)
+
+func Execute() int {
+	err := RootCmd.Execute()
+	switch err {
+	case nil:
+		return 0
+	case errGeneral:
+		return 1
+	case errInvalidArgs:
+		// EX_USAGE 64
+		return 64
+	case errIo:
+		// EX_IOERR 74
+		return 74
+	default:
+		// Unknown error
+		log.Panicln(err)
+		return 1
+	}
+}
+
+type cobraHandler func(cmd *cobra.Command, args []string) error
+type handlerOpt struct {
+	Conf   *config.Config
+	Cmd    *cobra.Command
+	Args   []string
+	Stdin  io.Reader
+	Stdout io.Writer
+	Stderr io.Writer
+	ErrLog *log.Logger
+}
+
+// Api returns an API Client object.
+func (opt *handlerOpt) Api(ctx context.Context) (api restapi.ClientWithCtx, err error) {
+	var apiNoctx *restapi.Client
+	apiNoctx, err = getAPIClient(opt.Conf)
+	if err != nil {
+		err = errors.Wrap(err, errApiClient.Error())
+		return
+	}
+
+	api = apiNoctx.WithCtx(ctx)
+	return
+}
+
+// ApiWithCancel returns an API Client object with cancelable context.
+func (opt *handlerOpt) ApiWithCancel(ctx context.Context) (api restapi.ClientWithCtx, cancel func(), err error) {
+	ctx, cancel = context.WithCancel(ctx)
+	api, err = opt.Api(ctx)
+	return
+}
+
+func (opt *handlerOpt) LogServer() (srv restapi.ServerStatus, err error) {
+	return getLogServer(opt.Conf)
+}
+
+func wrap(fn func(*handlerOpt) error) cobraHandler {
+	return func(cmd *cobra.Command, args []string) error {
+		c, err := getConfig()
+		if err != nil {
+			return err
+		}
+
+		ha := handlerOpt{
+			Conf:   c,
+			Cmd:    cmd,
+			Args:   args,
+			Stdin:  os.Stdin,
+			Stdout: cmd.OutOrStdout(),
+			Stderr: cmd.OutOrStderr(),
+			ErrLog: log.New(cmd.OutOrStderr(), "ERROR: ", 0),
+		}
+		if err := fn(&ha); err != nil {
+			return err
+		}
+		return c.SaveIfWant()
+	}
+}
+
+func getConfig() (*config.Config, error) {
+	c := config.NewConfig(cfgDir)
+	err := c.Load()
+	if err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+func defaultTable(w io.Writer) *tablewriter.Table {
+	table := tablewriter.NewWriter(w)
+	table.SetBorder(false)
+	table.SetColumnSeparator(" ")
+	table.SetCenterSeparator(" ")
+	table.SetRowSeparator("-")
+	// デフォルトの行の幅は狭すぎるため、無駄な折り返しが生じる。
+	// これを回避するために、大きめの値を設定する。
+	table.SetColWidth(120)
+	return table
+}
 
 // sharedFlags are shared by the "build" and "run" commands.
 func sharedFlags() *pflag.FlagSet {

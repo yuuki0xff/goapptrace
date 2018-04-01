@@ -29,23 +29,30 @@ import (
 
 // targetSetRunCmd represents the setRun command
 var targetSetRunCmd = &cobra.Command{
-	Use:     "set-run [name] [cmd...]",
+	Use:     "set-run <name> <cmd>...",
 	Short:   "Set the custom execute command",
 	Example: targetCmdExample,
-	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
-		conf.WantSave()
-		useShell, err := cmd.Flags().GetBool("shell")
-		if err != nil {
-			return err
-		}
-		return runTargetSetRunCmd(conf, args[0], args[1:], useShell)
-	}),
+	RunE:    wrap(runTargetSetRunCmd),
 }
 
-func runTargetSetRunCmd(conf *config.Config, name string, cmds []string, useShell bool) error {
-	t, err := conf.Targets.Get(config.TargetName(name))
+func runTargetSetRunCmd(opt *handlerOpt) error {
+	if len(opt.Args) < 1 {
+		opt.ErrLog.Println("Invalid args. See \"target set-run --help\".")
+		return errInvalidArgs
+	}
+
+	name := opt.Args[0]
+	cmds := opt.Args[1:]
+	useShell, err := opt.Cmd.Flags().GetBool("shell")
 	if err != nil {
-		return err
+		opt.ErrLog.Println(err)
+		return errInvalidArgs
+	}
+
+	t, err := opt.Conf.Targets.Get(config.TargetName(name))
+	if err != nil {
+		opt.ErrLog.Println(err)
+		return errGeneral
 	}
 
 	if useShell {
@@ -53,6 +60,7 @@ func runTargetSetRunCmd(conf *config.Config, name string, cmds []string, useShel
 	} else {
 		t.Run.Args = cmds
 	}
+	opt.Conf.WantSave()
 	return nil
 }
 

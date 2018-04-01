@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"reflect"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
@@ -32,6 +32,7 @@ type ClientHandler struct {
 
 	Error func(error)
 
+	Shutdown   func(*ShutdownPacket)
 	StartTrace func(*StartTraceCmdPacket)
 	StopTrace  func(*StopTraceCmdPacket)
 }
@@ -84,6 +85,10 @@ type mergeSender struct {
 	// 構築中のmergePacket。
 	// アクセスする場合はlockを取ってからアクセスすること。
 	mergePkt *MergePacket
+
+	// RefreshWorker の ctx が中断されたら、0以外の値になる。
+	// この値が0以外のときにパケットを送信すると、panicする。
+	stopped int64
 }
 
 func (c *Client) Init() {
@@ -210,20 +215,23 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 			ProtocolVersion: ProtocolVersion,
 		}
 		if err := c.xtcpconn.Send(pkt); err != nil {
-			// TODO: try to reconnect
-			panic(err)
+			c.error(err)
+			c.stop(xtcp.StopImmediately)
+			return
 		}
 	case xtcp.EventRecv:
 		// if first time, a packet MUST BE ServerHelloPacket type.
 		if !c.isNegotiated {
 			pkt, ok := p.(*ServerHelloPacket)
 			if !ok {
-				c.xtcpconn.Stop(xtcp.StopImmediately)
+				c.error(fmt.Errorf("negotiation failed: server sends an unexpected packet: %#v", p))
+				c.stop(xtcp.StopImmediately)
 				return
 			}
 			if !isCompatibleVersion(pkt.ProtocolVersion) {
 				// 対応していないバージョンなら、切断する。
-				conn.Stop(xtcp.StopImmediately)
+				c.error(fmt.Errorf("negotiation failed: server version is not compatible"))
+				c.stop(xtcp.StopImmediately)
 				return
 			}
 
@@ -241,7 +249,13 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 			case *PingPacket:
 				// do nothing
 			case *ShutdownPacket:
-				conn.Stop(xtcp.StopImmediately)
+				if c.Handler.Shutdown != nil {
+					c.Handler.Shutdown(pkt)
+				} else {
+					defer log.Fatal("killed by goapptrace")
+				}
+				c.cancel()
+				c.stop(xtcp.StopGracefullyAndWait)
 				return
 			case *StartTraceCmdPacket:
 				if c.Handler.StartTrace != nil {
@@ -256,7 +270,9 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 			case *RawFuncLogPacket:
 				conn.Stop(xtcp.StopImmediately)
 			default:
-				panic(fmt.Sprintf("BUG: Client: Client receives a invalid Packet: %+v %+v", pkt, reflect.TypeOf(pkt)))
+				c.error(fmt.Errorf("client receives an unexpected packet: %#v", pkt))
+				c.stop(xtcp.StopImmediately)
+				return
 			}
 		}
 	case xtcp.EventSend:
@@ -265,7 +281,6 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 			c.mergeSender.Put(p)
 		}
 	case xtcp.EventClosed:
-
 		// request worker shutdown
 		c.cancel()
 
@@ -283,6 +298,17 @@ func (c *Client) WaitNegotiation() {
 func (c *Client) negotiated() {
 	c.isNegotiated = true
 	close(c.negotiatedCh)
+}
+
+func (c *Client) error(err error) {
+	if c.Handler.Error != nil {
+		c.Handler.Error(err)
+	} else {
+		log.Println("ERROR:", err)
+	}
+}
+func (c *Client) stop(mode xtcp.StopMode) {
+	c.xtcpconn.Stop(mode)
 }
 
 func (ms *mergeSender) Init() {
@@ -307,6 +333,9 @@ func (ms *mergeSender) Send(pkt xtcp.Packet) error {
 	return ms.sendNolock(pkt)
 }
 func (ms *mergeSender) sendNolock(pkt xtcp.Packet) error {
+	if atomic.LoadInt64(&ms.stopped) != 0 {
+		panic("ms.stopped != 0")
+	}
 	if ms.mergePkt == nil {
 		ms.mergePkt = ms.pool.Get().(*MergePacket)
 		ms.mergePkt.Reset()
@@ -324,6 +353,9 @@ func (ms *mergeSender) sendNolock(pkt xtcp.Packet) error {
 func (ms *mergeSender) SendLarge(largePkt xtcp.Packet) error {
 	ms.m.Lock()
 	defer ms.m.Unlock()
+	if atomic.LoadInt64(&ms.stopped) != 0 {
+		panic("ms.stopped != 0")
+	}
 	if err := ms.refreshNolock(); err != nil {
 		return err
 	}
@@ -343,6 +375,23 @@ func (ms *mergeSender) Refresh() error {
 	return ms.refreshNolock()
 }
 func (ms *mergeSender) refreshNolock() error {
+	if atomic.LoadInt64(&ms.stopped) != 0 {
+		panic("ms.stopped != 0")
+	}
+	pkt := ms.mergePkt
+	if pkt == nil || pkt.Len() == 0 {
+		return nil
+	}
+	ms.mergePkt = nil
+	return ms.Conn.Send(pkt)
+}
+
+// mergeSender を止めるときに呼び出す。
+// mergeSender.stopped フラグを立てて、これ以降はパケットの送信が出来ないように設定する。
+func (ms *mergeSender) refreshLast() error {
+	atomic.StoreInt64(&ms.stopped, 1)
+	ms.m.Lock()
+	defer ms.m.Unlock()
 	pkt := ms.mergePkt
 	if pkt == nil || pkt.Len() == 0 {
 		return nil
@@ -369,7 +418,7 @@ func (ms *mergeSender) RefreshWorker(wg *sync.WaitGroup, ctx context.Context) {
 			}
 		case <-ctx.Done():
 			ticker.Stop()
-			err := ms.Refresh()
+			err := ms.refreshLast()
 			if err != nil {
 				// TODO: imrpove error handling
 				log.Panicln(err)

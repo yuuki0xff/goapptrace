@@ -202,11 +202,13 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 			// check client header.
 			pkt, ok := p.(*ClientHelloPacket)
 			if !ok {
+				s.error(fmt.Errorf("negotiation failed: client sends an unexpected packet: %#v", p))
 				s.stop(conn, xtcp.StopImmediately)
 				return
 			}
 			if !isCompatibleVersion(pkt.ProtocolVersion) {
 				// 対応していないバージョンなら、切断する。
+				s.error(fmt.Errorf("negotiation failed: client version is not compatible"))
 				s.stop(conn, xtcp.StopImmediately)
 				return
 			}
@@ -214,9 +216,14 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 			packet := &ServerHelloPacket{
 				ProtocolVersion: ProtocolVersion,
 			}
-			s.mustSend(conn, packet)
-			s.isNegotiated = true
+			err := s.send(conn, packet)
+			if err != nil {
+				s.error(err)
+				s.stop(conn, xtcp.StopImmediately)
+				return
+			}
 
+			s.isNegotiated = true
 			if s.Handler.Connected != nil {
 				s.Handler.Connected(s.ID)
 			}
@@ -224,15 +231,6 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 			switch pkt := p.(type) {
 			case *PingPacket:
 				// do nothing
-			case *ShutdownPacket:
-				s.stop(conn, xtcp.StopImmediately)
-				return
-			case *StartTraceCmdPacket:
-				s.stop(conn, xtcp.StopImmediately)
-				return
-			case *StopTraceCmdPacket:
-				s.stop(conn, xtcp.StopImmediately)
-				return
 			case *SymbolPacket:
 				if s.Handler.Symbols != nil {
 					s.Handler.Symbols(s.ID, &pkt.SymbolsData)
@@ -242,6 +240,9 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 					s.Handler.RawFuncLog(s.ID, pkt.FuncLog)
 				}
 			default:
+				s.error(fmt.Errorf("server receives an unexpected packet: %#v", pkt))
+				s.stop(conn, xtcp.StopImmediately)
+				return
 			}
 		}
 	case xtcp.EventSend:
@@ -251,15 +252,13 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 		}
 	}
 }
-func (s *ServerConn) mustSend(conn *xtcp.Conn, p xtcp.Packet) {
+func (s *ServerConn) send(conn *xtcp.Conn, p xtcp.Packet) error {
 	if s.sendHandler == nil {
-		if err := conn.Send(p); err != nil {
-			// TODO: reconnect and retry the conn.Send().
-			log.Panic(err)
-		}
+		return conn.Send(p)
 	} else {
 		// call the mock method.
 		s.sendHandler(conn, p)
+		return nil
 	}
 }
 
@@ -273,6 +272,14 @@ func (s *ServerConn) stop(conn *xtcp.Conn, mode xtcp.StopMode) {
 		// But the event is not occur when calling s.stopHandler().
 		// So we occurs the event here.
 		s.OnEvent(xtcp.EventClosed, conn, nil)
+	}
+}
+
+func (s *ServerConn) error(err error) {
+	if s.Handler.Error != nil {
+		s.Handler.Error(s.ID, err)
+	} else {
+		log.Println("ERROR: ", err)
 	}
 }
 

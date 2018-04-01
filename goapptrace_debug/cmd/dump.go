@@ -1,4 +1,4 @@
-// Copyright © 2017 yuuki0xff <yuuki0xff@gmail.com>
+// Copyright © 2018 yuuki0xff <yuuki0xff@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -21,55 +21,24 @@
 package cmd
 
 import (
-	"context"
-
 	"github.com/spf13/cobra"
 )
 
-// logLsCmd represents the ls command
-var logLsCmd = &cobra.Command{
-	Use:   "ls",
-	Short: "Show available log names",
-	RunE:  wrap(runLogLs),
-}
-
-func runLogLs(opt *handlerOpt) error {
-	api, err := opt.Api(context.Background())
-	if err != nil {
-		opt.ErrLog.Println(err)
-		return errGeneral
-	}
-
-	logs, err := api.Logs()
-	if err != nil {
-		opt.ErrLog.Println(err)
-		return errGeneral
-	}
-
-	tbl := defaultTable(opt.Stdout)
-	tbl.SetHeader([]string{
-		"ID", "Time",
-	})
-	for i := range logs {
-		tbl.Append([]string{
-			logs[i].ID,
-			logs[i].Metadata.Timestamp.String(),
-		})
-	}
-	tbl.Render()
-	return nil
+// dumpCmd represents the dump command
+var dumpCmd = &cobra.Command{
+	Use: "dump",
 }
 
 func init() {
-	logCmd.AddCommand(logLsCmd)
+	RootCmd.AddCommand(dumpCmd)
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// logLsCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// dumpCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// logLsCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// dumpCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

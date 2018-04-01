@@ -502,6 +502,23 @@ paths:
             $ref: '#/definitions/log'
         '204':
           description: Notify for non-changed in timeout.
+  '/log/{log-id}/search.csv':
+    get:
+      description: Search logs by SQL and returns query results as SQL.
+      produces:
+        - text/csv
+      parameters:
+        - name: sql
+          in: path
+          description: A SQL statement. This parameter allows only the SELECT statement.
+          required: true
+          type: string
+          example: 'SELECT * FROM calls'
+      responses:
+        '200':
+          description: Success
+        '400':
+          description: Occurred an error during execute SQL query.
   '/log/{log-id}/func-call/search':
     get:
       description: Filters the function call log records.
@@ -512,17 +529,9 @@ paths:
           in: path
           required: true
           type: integer
-        - name: txid
-          in: query
-          description: Transaction ID.
-          type: string
         - name: gid
           in: query
           description: Goroutine ID.
-          type: integer
-        - name: mid
-          in: query
-          description: Module ID.
           type: integer
         - name: min-id
           in: query
@@ -552,37 +561,28 @@ paths:
           in: query
           description: Sort order. This parameter takes only of “asc” (default) and “desc”.
           type: string
+        - name: sql
+          in: query
+          description: SELECT statement. This and other query parameters are mutually exclusive. It cannot be combined with any other query parameters.
+          type: string
       responses:
         '200':
           description: Returns function call log records.
           schema:
             $ref: '#/definitions/func-call-jsonlines'
-  '/log/{log-id}/func-call/stream':
+  '/log/{log-id}/func-call/search.csv':
     get:
-      description: >-
-        ilters the function call log records. This API and search API are
-        basically the same. The difference point is behavior to new records
-        received after API call. Search API returns a response immediately, and
-        the response are not include new records. Stream API sending a response
-        little by little including new records.
+      description: Returns the function call log records by csv format.
       produces:
-        - application/x-jsonlines
+        - text/csv
       parameters:
         - name: log-id
           in: path
           required: true
           type: integer
-        - name: txid
-          in: query
-          description: Transaction ID.
-          type: string
         - name: gid
           in: query
           description: Goroutine ID.
-          type: integer
-        - name: mid
-          in: query
-          description: Module ID.
           type: integer
         - name: min-id
           in: query
@@ -600,6 +600,64 @@ paths:
           in: query
           description: Maximum of timestamp.
           type: integer
+        - name: limit
+          in: query
+          description: Maximum number of results. I recommend that specify parameters of "sort" and "order" in addition to "limit" parameter.
+          type: integer
+        - name: sort
+          in: query
+          description: Sort key. This parameter takes only "id" or "start-time" or "end-time".
+          type: string
+        - name: order
+          in: query
+          description: Sort order. This parameter takes only of “asc” (default) and “desc”.
+          type: string
+        - name: sql
+          in: query
+          description: SELECT statement. This and other query parameters are mutually exclusive. It cannot be combined with any other query parameters.
+          type: string
+      responses:
+        '200':
+          description: Returns function call log records.
+  '/log/{log-id}/func-call/stream':
+    get:
+      description: >-
+        ilters the function call log records. This API and search API are
+        basically the same. The difference point is behavior to new records
+        received after API call. Search API returns a response immediately, and
+        the response are not include new records. Stream API sending a response
+        little by little including new records.
+      produces:
+        - application/x-jsonlines
+      parameters:
+        - name: log-id
+          in: path
+          required: true
+          type: integer
+        - name: gid
+          in: query
+          description: Goroutine ID.
+          type: integer
+        - name: min-id
+          in: query
+          description: Minimum of log ID.
+          type: integer
+        - name: max-id
+          in: query
+          description: Maximum of log ID.
+          type: integer
+        - name: min-timestamp
+          in: query
+          description: Minimum of timestamp.
+          type: integer
+        - name: max-timestamp
+          in: query
+          description: Maximum of timestamp.
+          type: integer
+        - name: sql
+          in: query
+          description: SELECT statement. This and other query parameters are mutually exclusive. It cannot be combined with any other query parameters.
+          type: string
       responses:
         '200':
           description: Returns log records forever.

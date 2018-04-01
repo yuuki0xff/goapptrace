@@ -13,14 +13,17 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/tracer/simulator"
+	"github.com/yuuki0xff/goapptrace/tracer/sql"
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
 	"github.com/yuuki0xff/goapptrace/tracer/types"
+	"github.com/yuuki0xff/goapptrace/tracer/util"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -124,8 +127,14 @@ func (api APIv0) SetHandlers(router *mux.Router) {
 			"version", "{version:[0-9]+}",
 			"timeout", "{timeout:[0-9]+}",
 		)
+	v01.HandleFunc("/log/{log-id}/search.csv", api.search)
 
-	v01.HandleFunc("/log/{log-id}/func-call/search", api.funcCallSearch).Methods(http.MethodGet)
+	v01.HandleFunc("/log/{log-id}/func-call/search", func(w http.ResponseWriter, r *http.Request) {
+		api.funcCallSearch(w, r, "json")
+	}).Methods(http.MethodGet)
+	v01.HandleFunc("/log/{log-id}/func-call/search.csv", func(w http.ResponseWriter, r *http.Request) {
+		api.funcCallSearch(w, r, "csv")
+	}).Methods(http.MethodGet)
 	v01.HandleFunc("/log/{log-id}/func-call/stream", api.notImpl).Methods(http.MethodGet)
 	v01.HandleFunc("/log/{log-id}/goroutines/search", api.goroutineSearch).Methods(http.MethodGet)
 	v01.HandleFunc("/log/{log-id}/symbols", api.symbols).Methods(http.MethodGet)
@@ -295,68 +304,340 @@ func (api APIv0) log(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (api APIv0) search(w http.ResponseWriter, r *http.Request) {
+	logobj, ok := api.getLog(w, r)
+	if !ok {
+		return
+	}
+
+	query := r.URL.Query().Get("sql")
+	if query == "" {
+		http.Error(w, "missing \"sql\" parameter", http.StatusBadRequest)
+		return
+	}
+
+	sel, err := sql.ParseSelect(query)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	where := sel.Where()
+	if where == nil {
+		where = sql.SqlBool(true)
+	}
+	limitOffset, limitRows := sel.Limit()
+
+	// write a header
+	writeHeader := func() error {
+		_, err := w.Write([]byte(strings.Join(sel.ColNames(), ",") + "\n"))
+		return err
+	}
+
+	switch sel.From() {
+	case "calls":
+		fallthrough
+	case "frames":
+		// build the send()
+		row := sql.SqlFuncLogRow{
+			FuncLog: types.FuncLogPool.Get().(*types.FuncLog),
+			Symbols: logobj.Symbols(),
+		}
+		printer := row.Fields(sel.Cols()).Printer(sql.CsvFormat)
+		line := make([]byte, 64<<10) // 64KiB
+		id := int64(-1)
+		offset := -1
+
+		res := csvResponse{
+			SetUpRow: func() error {
+				return util.PanicHandler(func() {
+					where.WithRow(&row)
+				})
+			},
+			WriteHeader: writeHeader,
+			Read: func() (err error) {
+				logobj.FuncLog(func(store *storage.FuncLogStore) {
+					id++
+					if store.Records() <= id {
+						err = io.EOF
+						return
+					}
+					err = store.GetNolock(types.FuncLogID(id), row.FuncLog)
+				})
+				return
+			},
+			Where: where.Bool,
+			Send: func() error {
+				n := printer(line)
+				line[n] = '\n'
+				_, err := w.Write(line[:n+1])
+				return err
+			},
+			Offset: limitOffset,
+			Rows:   limitRows,
+		}
+		if sel.From() == "frames" {
+			res.Read = func() (err error) {
+				logobj.FuncLog(func(store *storage.FuncLogStore) {
+					if offset+1 < len(row.FuncLog.Frames) && offset >= 0 {
+						offset++
+					} else {
+						id++
+						offset = 0
+						if store.Records() <= id {
+							err = io.EOF
+							return
+						}
+						err = store.GetNolock(types.FuncLogID(id), row.FuncLog)
+					}
+					row.SetOffset(offset)
+				})
+				return
+			}
+		}
+		res.Run(w)
+	case "goroutines":
+		var row sql.SqlGoroutineRow
+		printer := row.Fields(sel.Cols()).Printer(sql.CsvFormat)
+		line := make([]byte, 64<<10) // 64KiB
+		gid := int64(0)
+
+		res := csvResponse{
+			SetUpRow: func() error {
+				return util.PanicHandler(func() {
+					where.WithRow(&row)
+				})
+			},
+			WriteHeader: writeHeader,
+			Read: func() (err error) {
+				logobj.Goroutine(func(store *storage.GoroutineStore) {
+					if store.Records() <= gid {
+						err = io.EOF
+						return
+					}
+					err = store.GetNolock(types.GID(gid), &row.Goroutine)
+					gid++
+				})
+				return
+			},
+			Where: where.Bool,
+			Send: func() error {
+				n := printer(line)
+				line[n] = '\n'
+				_, err := w.Write(line[:n+1])
+				return err
+			},
+			Offset: limitOffset,
+			Rows:   limitRows,
+		}
+		res.Run(w)
+	case "funcs":
+		row := sql.SqlGoFuncRow{
+			Symbols: logobj.Symbols(),
+		}
+		printer := row.Fields(sel.Cols()).Printer(sql.CsvFormat)
+		line := make([]byte, 1<<20) // 1MiB
+		var funcs []types.GoFunc
+		i := 0
+
+		err := logobj.Symbols().Save(func(data types.SymbolsData) error {
+			funcs = make([]types.GoFunc, len(data.Funcs))
+			copy(funcs, data.Funcs)
+			return nil
+		})
+		if err != nil {
+			api.serverError(w, err, "symbols save error")
+			return
+		}
+
+		res := csvResponse{
+			SetUpRow: func() error {
+				return util.PanicHandler(func() {
+					where.WithRow(&row)
+				})
+			},
+			WriteHeader: writeHeader,
+			Read: func() (err error) {
+				if len(funcs) <= i {
+					return io.EOF
+				}
+				row.GoFunc = &funcs[i]
+				i++
+				return
+			},
+			Where: where.Bool,
+			Send: func() error {
+				n := printer(line)
+				line[n] = '\n'
+				_, err := w.Write(line[:n+1])
+				return err
+			},
+			Offset: limitOffset,
+			Rows:   limitRows,
+		}
+		res.Run(w)
+	case "modules":
+		var row sql.SqlGoModuleRow
+		printer := row.Fields(sel.Cols()).Printer(sql.CsvFormat)
+		line := make([]byte, 64<<10) // 64KiB
+
+		var mods []types.GoModule
+		i := 0
+
+		err := logobj.Symbols().Save(func(data types.SymbolsData) error {
+			mods = make([]types.GoModule, len(data.Mods))
+			copy(mods, data.Mods)
+			return nil
+		})
+		if err != nil {
+			api.serverError(w, err, "symbols save error")
+			return
+		}
+
+		res := csvResponse{
+			SetUpRow: func() error {
+				return util.PanicHandler(func() {
+					where.WithRow(&row)
+				})
+			},
+			WriteHeader: writeHeader,
+			Read: func() (err error) {
+				if len(mods) <= i {
+					return io.EOF
+				}
+				row.GoModule = &mods[i]
+				i++
+				return
+			},
+			Where: where.Bool,
+			Send: func() error {
+				n := printer(line)
+				line[n] = '\n'
+				_, err := w.Write(line[:n+1])
+				return err
+			},
+			Offset: limitOffset,
+			Rows:   limitRows,
+		}
+		res.Run(w)
+	default:
+		log.Panicf("bug: tableName=%s", sel.From())
+	}
+}
+
 // TODO: テストを書く
-func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
+func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request, format string) {
 	logobj, ok := api.getLog(w, r)
 	if !ok {
 		return
 	}
 
 	q := r.URL.Query()
-	var gid int64
-	//var mid int64
-	var minId int64
-	var maxId int64
-	var minTs types.Time
-	var maxTs types.Time
-	var limit int64
-	var sortKey SortKey
-	var order SortOrder
-	var err error
-
-	gid, err = parseInt(q.Get("gid"), -1)
+	var p SearchFuncLogParams
+	invalidParamName, err := p.FromString(
+		q.Get("gid"),
+		q.Get("min-id"),
+		q.Get("max-id"),
+		q.Get("min-timestamp"),
+		q.Get("max-timestamp"),
+		q.Get("limit"),
+		q.Get("sort"),
+		q.Get("order"),
+		q.Get("sql"),
+	)
 	if err != nil {
-		http.Error(w, "invaid gid", http.StatusBadRequest)
-		return
-	}
-	minId, err = parseInt(q.Get("min-id"), -1)
-	if err != nil {
-		http.Error(w, "invalid min-id", http.StatusBadRequest)
-		return
-	}
-	maxId, err = parseInt(q.Get("max-id"), -1)
-	if err != nil {
-		http.Error(w, "invalid max-id", http.StatusBadRequest)
-		return
-	}
-	minTs, err = parseTimestamp(q.Get("min-timestamp"), -1)
-	if err != nil {
-		http.Error(w, "invalid min-timestamp", http.StatusBadRequest)
-		return
-	}
-	maxTs, err = parseTimestamp(q.Get("max-timestamp"), -1)
-	if err != nil {
-		http.Error(w, "invalid max-timestamp", http.StatusBadRequest)
-		return
-	}
-	limit, err = parseInt(q.Get("limit"), -1)
-	if err != nil {
-		http.Error(w, "invalid limit", http.StatusBadRequest)
-		return
-	}
-	sortKey, err = parseSortKey(q.Get("sort"))
-	if err != nil {
-		http.Error(w, "invalid sort", http.StatusBadRequest)
-		return
-	}
-	order, err = parseOrder(q.Get("order"), AscendingSortOrder)
-	if err != nil {
-		http.Error(w, "invalid order", http.StatusBadRequest)
+		http.Error(w, "invalid "+invalidParamName, http.StatusBadRequest)
 		return
 	}
 
+	if p.Sql != "" {
+		exclusiveParams := []string{"gid", "min-id", "max-id", "min-timestamp", "max-timestamp", "limit", "sort", "order"}
+		for _, param := range exclusiveParams {
+			if q.Get(param) != "" {
+				msg := fmt.Sprintf("sql parameter and %s parameter are mutually exclusive", param)
+				http.Error(w, msg, http.StatusBadRequest)
+				return
+			}
+		}
+		api.funcCallSearchBySql(w, logobj, p.Sql, format)
+	} else {
+		api.funcCallSearchBySimpleParams(w, logobj, p, format)
+	}
+}
+func (api APIv0) funcCallSearchBySql(w http.ResponseWriter, logobj *storage.Log, sqlStmt string, format string) {
+	sel, err := sql.ParseSelect(sqlStmt)
+	if err != nil {
+		http.Error(w, "invalid sql statement\n"+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var isFiltered func(fl *types.FuncLog) bool
+	where := sel.Where()
+	if where != nil {
+		row := sql.SqlFuncLogRow{
+			Symbols: logobj.Symbols(),
+		}
+		err = util.PanicHandler(func() {
+			where.WithRow(&row)
+		})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		isFiltered = func(fl *types.FuncLog) bool {
+			// 処理対象の行を fl に変更
+			row.FuncLog = fl
+			// 除外するレコードはtrueを返すため、WHERE句の評価結果を反転させてから返す。
+			return !where.Bool()
+		}
+	}
+	offset, rows := sel.Limit()
+
+	var send func(fl *types.FuncLog) error
+	switch format {
+	case "json":
+		enc := json.NewEncoder(w)
+		send = func(fl *types.FuncLog) error {
+			return enc.Encode(fl)
+		}
+	case "csv":
+		// write a header
+		if _, err := w.Write([]byte(strings.Join(sel.ColNames(), ",") + "\n")); err != nil {
+			log.Println(errors.Wrap(err, "write error"))
+			return
+		}
+		// build the send()
+		row := sql.SqlFuncLogRow{
+			Symbols: logobj.Symbols(),
+		}
+		printer := row.Fields(sel.Cols()).Printer(sql.CsvFormat)
+		line := make([]byte, 64<<10) // 64KiB
+		send = func(fl *types.FuncLog) error {
+			row.FuncLog = fl
+			n := printer(line)
+			line[n] = '\n'
+			_, err := w.Write(line[:n+1])
+			return err
+		}
+	default:
+		http.Error(w, fmt.Sprintf("%s format is not supported", format), http.StatusBadRequest)
+		return
+	}
+
+	parentCtx := context.Background()
+	worker := api.worker(parentCtx, logobj)
+	fw := worker.readFuncLog(-1, -1)
+	fw = fw.filterFuncLog(isFiltered)
+	fw = fw.sortAndLimit(nil, offset, rows)
+	fw.sendTo(send)
+
+	if err := worker.wait(); err != nil {
+		log.Println(errors.Wrap(err, "funcCallSearch:"))
+	}
+}
+func (api APIv0) funcCallSearchBySimpleParams(w http.ResponseWriter, logobj *storage.Log, p SearchFuncLogParams, format string) {
 	var sortFn func(f1, f2 *types.FuncLog) bool
-	switch sortKey {
+	switch p.SortKey {
 	case SortByID:
 		sortFn = func(f1, f2 *types.FuncLog) bool {
 			return f1.ID < f2.ID
@@ -374,7 +655,7 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 		log.Panic("bug")
 	}
 
-	switch order {
+	switch p.SortOrder {
 	case AscendingSortOrder:
 		// 何もしない
 	case DescendingSortOrder:
@@ -388,31 +669,31 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// narrow the search range by ID and Timestamp.
-	if minId >= 0 || maxId >= 0 || minTs >= 0 || maxTs >= 0 {
-		if minId < 0 {
-			minId = 0
+	if p.MinId >= 0 || p.MaxId >= 0 || p.MinTimestamp >= 0 || p.MaxTimestamp >= 0 {
+		if p.MinId < 0 {
+			p.MinId = 0
 		}
-		if maxId < 0 {
-			maxId = math.MaxInt64
+		if p.MaxId < 0 {
+			p.MaxId = math.MaxInt64
 		}
 
 		found := false
-		newMinId := int64(math.MaxInt64)
-		newMaxId := int64(math.MinInt64)
+		newMinId := types.FuncLogID(math.MaxInt64)
+		newMaxId := types.FuncLogID(math.MinInt64)
 
 		logobj.Index(func(index *storage.Index) {
 			for i := int64(0); i < index.Len(); i++ {
 				ir := index.Get(i)
-				if !ir.IsOverlapID(minId, maxId) || !ir.IsOverlapTime(minTs, maxTs) {
+				if !ir.IsOverlapID(int64(p.MinId), int64(p.MaxId)) || !ir.IsOverlapTime(p.MinTimestamp, p.MaxTimestamp) {
 					continue
 				}
 
 				found = true
-				if ir.MinID < newMinId {
-					newMinId = ir.MinID
+				if types.FuncLogID(ir.MinID) < newMinId {
+					newMinId = types.FuncLogID(ir.MinID)
 				}
-				if newMaxId < ir.MaxID {
-					newMaxId = ir.MaxID
+				if newMaxId < types.FuncLogID(ir.MaxID) {
+					newMaxId = types.FuncLogID(ir.MaxID)
 				}
 			}
 		})
@@ -421,43 +702,56 @@ func (api APIv0) funcCallSearch(w http.ResponseWriter, r *http.Request) {
 			// 一致するレコードが存在しないため、このまま終了する
 			return
 		}
-		if newMinId < minId || maxId < newMaxId {
-			log.Panic(fmt.Errorf("assertion error: newMinId=%d < minId=%d || maxId=%d < newMaxId=%d", newMinId, minId, maxId, newMaxId))
+		if newMinId < p.MinId || p.MaxId < newMaxId {
+			log.Panic(fmt.Errorf("assertion error: newMinId=%d < minId=%d || maxId=%d < newMaxId=%d", newMinId, p.MinId, p.MaxId, newMaxId))
 		}
-		minId = newMinId
-		maxId = newMaxId
+		p.MinId = newMinId
+		p.MaxId = newMaxId
 	}
 
 	// evtが除外されるべきレコードなら、trueを返す。
-	isFiltered := func(evt *types.FuncLog) bool {
-		if gid >= 0 && evt.GID != types.GID(gid) {
-			return true
+	var isFiltered func(evt *types.FuncLog) bool
+	if p.Gid >= 0 || p.MinId >= 0 || p.MaxId >= 0 || p.MinTimestamp >= 0 || p.MaxTimestamp >= 0 {
+		isFiltered = func(evt *types.FuncLog) bool {
+			if p.Gid >= 0 && evt.GID != p.Gid {
+				return true
+			}
+			if p.MinId >= 0 && evt.ID < p.MinId {
+				return true
+			}
+			if p.MaxId >= 0 && p.MaxId < evt.ID {
+				return true
+			}
+			if p.MinTimestamp >= 0 && (evt.StartTime < p.MinTimestamp && evt.EndTime < p.MinTimestamp) {
+				return true
+			}
+			if p.MaxTimestamp >= 0 && p.MaxTimestamp < evt.StartTime {
+				return true
+			}
+			return false
 		}
-		if minId >= 0 && evt.ID < types.FuncLogID(minId) {
-			return true
-		}
-		if maxId >= 0 && types.FuncLogID(maxId) < evt.ID {
-			return true
-		}
-		if minTs >= 0 && (evt.StartTime < minTs && evt.EndTime < minTs) {
-			return true
-		}
-		if maxTs >= 0 && maxTs < evt.StartTime {
-			return true
-		}
-		return false
 	}
 
-	enc := json.NewEncoder(w)
+	var send func(fl *types.FuncLog) error
+	switch format {
+	case "json":
+		enc := json.NewEncoder(w)
+		send = func(fl *types.FuncLog) error {
+			return enc.Encode(fl)
+		}
+	default:
+		http.Error(w, fmt.Sprintf("%s format is not supported", format), http.StatusBadRequest)
+		return
+	}
 
 	parentCtx := context.Background()
 	worker := api.worker(parentCtx, logobj)
-	fw := worker.readFuncLog(minId, maxId)
+	fw := worker.readFuncLog(p.MinId, p.MaxId)
 	fw = fw.filterFuncLog(isFiltered)
-	fw = fw.sortAndLimit(sortFn, limit)
-	fw.sendTo(enc)
+	fw = fw.sortAndLimit(sortFn, 0, p.Limit)
+	fw.sendTo(send)
 
-	if err = worker.wait(); err != nil {
+	if err := worker.wait(); err != nil {
 		log.Println(errors.Wrap(err, "funcCallSearch:"))
 	}
 }
@@ -637,7 +931,10 @@ func (api *APIv0) worker(parent context.Context, logobj *storage.Log) *APIWorker
 func (w *APIWorker) wait() error {
 	return w.group.Wait()
 }
-func (w *APIWorker) readFuncLog(minId, maxId int64) *FuncLogAPIWorker {
+
+// readFuncLog は指定された範囲のレコードを読み出し、後続のフィルタに送る。
+// minId, maxId に負の値が指定された場合、全レコードを後続のフィルタへ送る。
+func (w *APIWorker) readFuncLog(minId, maxId types.FuncLogID) *FuncLogAPIWorker {
 	ch := make(chan *types.FuncLog, w.BufferSize)
 	newctx, cancel := context.WithCancel(w.ctx)
 	fw := &FuncLogAPIWorker{
@@ -659,14 +956,14 @@ func (w *APIWorker) readFuncLog(minId, maxId int64) *FuncLogAPIWorker {
 			if minId < 0 {
 				minId = 0
 			}
-			if maxId < 0 || n < maxId {
-				maxId = n
+			if maxId < 0 || types.FuncLogID(n) < maxId {
+				maxId = types.FuncLogID(n)
 			}
 			log.Printf("readFuncLog: start")
 			log.Printf("readFuncLog: minId=%d maxId=%d", minId, maxId)
-			for i := minId; i < maxId; i++ {
+			for id := minId; id < maxId; id++ {
 				fl := types.FuncLogPool.Get().(*types.FuncLog)
-				err = store.GetNolock(types.FuncLogID(i), fl)
+				err = store.GetNolock(id, fl)
 				if fl.Frames == nil {
 					log.Panic("fl.Frames is nil", fl)
 				}
@@ -693,7 +990,7 @@ func (w *APIWorker) readFuncLog(minId, maxId int64) *FuncLogAPIWorker {
 				if fl.Frames == nil {
 					log.Panic("fl.Frames is nil", fl)
 				}
-				if fl.ID < types.FuncLogID(maxId) {
+				if fl.ID < maxId {
 					// 既に出力済みなのでスキップする
 					continue
 				}
@@ -716,7 +1013,12 @@ func (w *FuncLogAPIWorker) nextWorker(inCh chan *types.FuncLog) *FuncLogAPIWorke
 	return worker
 }
 
-func (w *FuncLogAPIWorker) filterFuncLog(isFiltered func(evt *types.FuncLog) bool) *FuncLogAPIWorker {
+// filterFuncLog は、isFiltered()がtrueを返したレコードを除外する。
+func (w *FuncLogAPIWorker) filterFuncLog(isFiltered func(fl *types.FuncLog) bool) *FuncLogAPIWorker {
+	if isFiltered == nil {
+		// フィルタ条件が指定されなかった場合、フィルタリングは一切行わず、全てのレコードを通す。
+		return w
+	}
 	ch := make(chan *types.FuncLog, w.api.BufferSize)
 	w.api.group.Go(func() error {
 		log.Print("filterFuncLog: start")
@@ -725,6 +1027,9 @@ func (w *FuncLogAPIWorker) filterFuncLog(isFiltered func(evt *types.FuncLog) boo
 		for {
 			select {
 			case evt, ok := <-w.inCh:
+				if !ok {
+					return nil
+				}
 				if ok && !isFiltered(evt) {
 					select {
 					case ch <- evt:
@@ -732,7 +1037,7 @@ func (w *FuncLogAPIWorker) filterFuncLog(isFiltered func(evt *types.FuncLog) boo
 						return nil
 					}
 				} else {
-					return nil
+					types.FuncLogPool.Put(evt)
 				}
 			case <-w.readCtx.Done():
 				return nil
@@ -742,32 +1047,31 @@ func (w *FuncLogAPIWorker) filterFuncLog(isFiltered func(evt *types.FuncLog) boo
 	return w.nextWorker(ch)
 }
 
-func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *types.FuncLog) bool, limit int64) *FuncLogAPIWorker {
+func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *types.FuncLog) bool, offset, rows int64) *FuncLogAPIWorker {
 	ch := make(chan *types.FuncLog, w.api.BufferSize)
+	start := time.Now()
 
 	if less == nil {
 		// sortしない
-		if limit <= 0 {
+		if rows <= 0 {
 			// sortしない & limitしない。
 			// つまり何もしない。
 			return w
 		} else {
-			// 先頭からlimit個だけ取得して返す。
+			// 先頭からoffset個を破棄して、その後のlimit個を返す。
 			w.api.group.Go(func() error {
-				log.Print("limit: start")
+				log.Printf("limit: start offset=%d rows=%d", offset, rows)
 				defer w.stopReader()
 				defer close(ch)
-				defer log.Println("limit: done")
+				defer func() {
+					log.Printf("limit: done exec-time=%s", time.Since(start).String())
+				}()
 				var i int64
-				for {
+				for i < offset {
 					select {
-					case evt, ok := <-w.inCh:
+					case _, ok := <-w.inCh:
 						if ok {
-							ch <- evt
 							i++
-							if i >= limit {
-								return nil
-							}
 						} else {
 							return nil
 						}
@@ -775,18 +1079,33 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *types.FuncLog) bool, l
 						return nil
 					}
 				}
-				// unreachable
+				i = 0
+				for i < rows {
+					select {
+					case evt, ok := <-w.inCh:
+						if ok {
+							ch <- evt
+							i++
+						} else {
+							return nil
+						}
+					case <-w.sortCtx.Done():
+						return nil
+					}
+				}
+				return nil
 			})
 			return w.nextWorker(ch)
 		}
 	}
 
 	w.api.group.Go(func() error {
-		start := time.Now()
-		log.Print("sortAndLimit: start")
+		log.Printf("sortAndLimit: start offset=%d rows=%d", offset, rows)
 		defer w.stopReader()
 		defer close(ch)
-		defer log.Print("sortAndLimit: done exec-time=", time.Since(start))
+		defer func() {
+			log.Printf("sortAndLimit: done exec-time=%s", time.Since(start).String())
+		}()
 		var items []*types.FuncLog
 
 		// sort関数用の比較関数。
@@ -800,7 +1119,7 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *types.FuncLog) bool, l
 			return less(items[i], items[j])
 		}
 
-		if limit <= 0 {
+		if rows <= 0 {
 			// read all items from input.
 		ReadAllLoop:
 			for {
@@ -811,16 +1130,6 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *types.FuncLog) bool, l
 					} else {
 						break ReadAllLoop
 					}
-				case <-w.sortCtx.Done():
-					return nil
-				}
-			}
-			// sort all items.
-			sort.Slice(items, sortComparator)
-			// send all items to next worker.
-			for i := range items {
-				select {
-				case ch <- items[i]:
 				case <-w.sortCtx.Done():
 					return nil
 				}
@@ -842,7 +1151,7 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *types.FuncLog) bool, l
 
 			// fill the items slice from inCh.
 		FillItemsLoop:
-			for int64(len(items)) < limit {
+			for int64(len(items)) < offset+rows {
 				select {
 				case evt, ok := <-w.inCh:
 					if ok {
@@ -873,14 +1182,22 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *types.FuncLog) bool, l
 					return nil
 				}
 			}
+		}
 
-			sort.Slice(items, sortComparator)
-			for i := range items {
-				select {
-				case ch <- items[i]:
-				case <-w.sortCtx.Done():
-					return nil
-				}
+		// sort all items.
+		sort.Slice(items, sortComparator)
+		// skip some items.
+		if int64(len(items)) <= offset {
+			items = nil
+		} else {
+			items = items[offset:]
+		}
+		// send all items to next worker.
+		for i := range items {
+			select {
+			case ch <- items[i]:
+			case <-w.sortCtx.Done():
+				return nil
 			}
 		}
 		return nil
@@ -888,7 +1205,7 @@ func (w *FuncLogAPIWorker) sortAndLimit(less func(f1, f2 *types.FuncLog) bool, l
 	return w.nextWorker(ch)
 }
 
-func (w *FuncLogAPIWorker) sendTo(enc Encoder) {
+func (w *FuncLogAPIWorker) sendTo(send func(fl *types.FuncLog) error) {
 	w.api.group.Go(func() error {
 		log.Print("sendTo: start")
 		defer log.Print("sendTo: done")
@@ -901,23 +1218,25 @@ func (w *FuncLogAPIWorker) sendTo(enc Encoder) {
 			}
 		}()
 
-		for {
-			select {
-			case evt, ok := <-w.inCh:
-				if ok {
-					if err := enc.Encode(evt); err != nil {
-						w.api.Logger.Println(errors.Wrap(err, "failed to json.Encoder.Encode()"))
-						return err
+		return util.PanicHandler(func() {
+			for {
+				select {
+				case evt, ok := <-w.inCh:
+					if ok {
+						if err := send(evt); err != nil {
+							w.stopReader()
+							w.api.Logger.Println(errors.Wrap(err, "failed to send()"))
+							panic(err)
+						}
+						types.FuncLogPool.Put(evt)
+					} else {
+						return
 					}
-					types.FuncLogPool.Put(evt)
-				} else {
-					return nil
+				case <-w.sendCtx.Done():
+					return
 				}
-			case <-w.sendCtx.Done():
-				return nil
 			}
-		}
-		// unreachable
+		})
 	})
 }
 
@@ -927,15 +1246,55 @@ func (h *GenericHeap) Swap(i, j int)      { h.SwapFn(i, j) }
 func (h *GenericHeap) Push(x interface{}) { h.PushFn(x) }
 func (h *GenericHeap) Pop() interface{}   { return h.PopFn() }
 
-func parseInt(value string, defaultValue int64) (int64, error) {
-	if value == "" {
-		return defaultValue, nil
-	}
-	intValue, err := strconv.Atoi(value)
+type csvResponse struct {
+	SetUpRow    func() error
+	WriteHeader func() error
+	Read        func() error
+	Where       func() bool
+	Send        func() error
+
+	Offset, Rows int64
+	lineno       int64
+}
+
+func (r *csvResponse) Run(w http.ResponseWriter) {
+	err := r.SetUpRow()
 	if err != nil {
-		return 0, err
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
-	return int64(intValue), nil
+	err = r.WriteHeader()
+	if err != nil {
+		log.Println(errors.Wrap(err, "write error"))
+		return
+	}
+	for {
+		err := r.Read()
+		if err != nil {
+			if err == io.EOF {
+				return
+			}
+			log.Println(errors.Wrap(err, "read error"))
+			return
+		}
+		if !r.Where() {
+			continue
+		}
+
+		r.lineno++
+		if r.lineno < r.Offset {
+			continue
+		}
+		if 0 < r.Rows && r.Offset+r.Rows <= r.lineno {
+			return
+		}
+
+		err = r.Send()
+		if err != nil {
+			log.Println(errors.Wrap(err, "write error"))
+			return
+		}
+	}
 }
 
 func parseTimestamp(value string, defaultValue types.Time) (types.Time, error) {
@@ -948,34 +1307,6 @@ func parseTimestamp(value string, defaultValue types.Time) (types.Time, error) {
 		return 0, err
 	}
 	return ts, nil
-}
-
-func parseSortKey(key string) (SortKey, error) {
-	switch key {
-	case string(NoSortKey):
-		fallthrough
-	case string(SortByID):
-		fallthrough
-	case string(SortByStartTime):
-		fallthrough
-	case string(SortByEndTime):
-		return SortKey(key), nil
-	default:
-		return SortKey(""), fmt.Errorf("invalid sort key: %s", key)
-	}
-}
-
-func parseOrder(order string, defaultOrder SortOrder) (SortOrder, error) {
-	switch order {
-	case string(NoSortOrder):
-		return defaultOrder, nil
-	case string(AscendingSortOrder):
-		fallthrough
-	case string(DescendingSortOrder):
-		return SortOrder(order), nil
-	default:
-		return "", fmt.Errorf("invalid SortOrder: %s", order)
-	}
 }
 
 func parseUintptr(s string) (uintptr, error) {

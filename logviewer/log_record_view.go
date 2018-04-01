@@ -10,7 +10,6 @@ import (
 	"github.com/marcusolsson/tui-go"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 	"github.com/yuuki0xff/goapptrace/tracer/types"
-	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -70,19 +69,13 @@ func (vm *LogRecordVM) fetch() (
 	symbols *types.Symbols,
 	err error,
 ) {
-	var eg errgroup.Group
-
-	// get records
+	records = make([]types.FuncLog, 0, 10000)
+	ch, eg := vm.Client.SearchFuncLogs(vm.LogID, restapi.SearchFuncLogParams{
+		Limit:     fetchRecords,
+		SortKey:   restapi.SortByEndTime,
+		SortOrder: restapi.DescendingSortOrder,
+	})
 	eg.Go(func() error {
-		records = make([]types.FuncLog, 0, 10000)
-		ch, err := vm.Client.SearchFuncLogs(vm.LogID, restapi.SearchFuncLogParams{
-			Limit:     fetchRecords,
-			SortKey:   restapi.SortByEndTime,
-			SortOrder: restapi.DescendingSortOrder,
-		})
-		if err != nil {
-			return err
-		}
 		for fc := range ch {
 			records = append(records, fc)
 		}
@@ -98,7 +91,6 @@ func (vm *LogRecordVM) fetch() (
 		symbols, err = vm.Client.Symbols(vm.LogID)
 		return err
 	})
-
 	err = eg.Wait()
 	return
 }

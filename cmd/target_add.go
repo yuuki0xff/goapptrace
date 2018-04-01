@@ -29,16 +29,22 @@ import (
 
 // targetAddCmd represents the add command
 var targetAddCmd = &cobra.Command{
-	Use:     "add [name] [path...]",
+	Use: "add <name> <path>...",
+	DisableFlagsInUseLine: true,
 	Short:   "Add to tracing targets",
 	Example: targetCmdExample,
-	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
-		conf.WantSave()
-		return runTargetAdd(conf, args[0], args[1:])
-	}),
+	RunE:    wrap(runTargetAdd),
 }
 
-func runTargetAdd(conf *config.Config, name string, paths []string) error {
+func runTargetAdd(opt *handlerOpt) error {
+	if len(opt.Args) < 2 {
+		opt.ErrLog.Println("Invalid args. See \"target add --help\".")
+		return errInvalidArgs
+	}
+
+	name := opt.Args[0]
+	paths := opt.Args[1:]
+
 	abspaths := make([]string, len(paths))
 	for i, p := range paths {
 		abspath, err := filepath.Abs(p)
@@ -48,7 +54,8 @@ func runTargetAdd(conf *config.Config, name string, paths []string) error {
 		abspaths[i] = abspath
 	}
 
-	return conf.Targets.Add(&config.Target{
+	opt.Conf.WantSave()
+	return opt.Conf.Targets.Add(&config.Target{
 		Name:  config.TargetName(name),
 		Files: abspaths,
 	})

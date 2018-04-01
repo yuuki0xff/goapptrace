@@ -36,74 +36,79 @@ import (
 
 // logCatCmd represents the cat command
 var logCatCmd = &cobra.Command{
-	Use:   "cat",
+	Use: "cat <id>",
+	DisableFlagsInUseLine: true,
 	Short: "Show logs on console",
-	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
-		// get specify log object.
-		if len(args) != 1 {
-			return fmt.Errorf("Should specify one args")
-		}
-		logID := args[0]
-
-		// initialize LogWriter with specify format.
-		format, err := cmd.Flags().GetString("format")
-		if err != nil {
-			return fmt.Errorf("Flag error: %s", err.Error())
-		}
-		writer, err := NewLogWriter(format, cmd.OutOrStdout())
-		if err != nil {
-			return fmt.Errorf("failed to initialize LogWriter(%s): %s", logID, err.Error())
-		}
-
-		return runLogCat(conf, cmd.OutOrStderr(), logID, writer)
-	}),
+	RunE:  wrap(runLogCatfunc),
 }
 
-func runLogCat(conf *config.Config, stderr io.Writer, logID string, logw LogWriter) error {
-	// TODO: timeoutに対応させる
-	apiNoctx, err := getAPIClient(conf)
-	if err != nil {
-		return err
+func runLogCatfunc(opt *handlerOpt) error {
+	// get specify log object.
+	if len(opt.Args) != 1 {
+		opt.ErrLog.Println("Should specify one args")
+		return errInvalidArgs
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	api := apiNoctx.WithCtx(ctx)
+	logID := opt.Args[0]
 
-	ch, err := api.SearchFuncLogs(logID, restapi.SearchFuncLogParams{
+	format, err := opt.Cmd.Flags().GetString("format")
+	if err != nil {
+		opt.ErrLog.Println("Invalid format:", err)
+		return errInvalidArgs
+	}
+	api, cancel, err := opt.ApiWithCancel(context.Background())
+	if err != nil {
+		opt.ErrLog.Println(err)
+		return errInvalidArgs
+	}
+
+	writer, err := NewLogWriter(format, opt.Stdout)
+	if err != nil {
+		opt.ErrLog.Printf("Failed to initialize LogWriter(%s): %s\n", logID, err)
+		return errGeneral
+	}
+
+	ch, eg := api.SearchFuncLogs(logID, restapi.SearchFuncLogParams{
 		SortKey:   restapi.SortByStartTime,
 		SortOrder: restapi.AscendingSortOrder,
 		//Limit:     1000,
 	})
+	eg.Go(func() error {
+		defer cancel()
+		writer.SetGoLineGetter(func(pc uintptr) types.GoLine {
+			s, err := api.GoLine(logID, pc)
+			if err != nil {
+				cancel()
+				opt.ErrLog.Panic(err)
+			}
+			return s
+		})
+		writer.SetGoFuncGetter(func(pc uintptr) types.GoFunc {
+			f, err := api.GoFunc(logID, pc)
+			if err != nil {
+				cancel()
+				opt.ErrLog.Panic(err)
+			}
+			return f
+		})
+		if err := writer.WriteHeader(); err != nil {
+			opt.ErrLog.Println(err)
+			return errIo
+		}
+		for funcCall := range ch {
+			if err := writer.Write(funcCall); err != nil {
+				opt.ErrLog.Println(err)
+				return errIo
+			}
+		}
+		return nil
+	})
+	err = eg.Wait()
 	if err != nil {
-		return err
-	}
-	defer func() {
-		cancel()
-		// consume all items.
-		for range ch {
+		if err == errIo {
+			return errIo
 		}
-	}()
-
-	logw.SetGoLineGetter(func(pc uintptr) types.GoLine {
-		s, err := api.GoLine(logID, pc)
-		if err != nil {
-			log.Panic(err)
-		}
-		return s
-	})
-	logw.SetGoFuncGetter(func(pc uintptr) types.GoFunc {
-		f, err := api.GoFunc(logID, pc)
-		if err != nil {
-			log.Panic(err)
-		}
-		return f
-	})
-	if err := logw.WriteHeader(); err != nil {
-		return err
-	}
-	for funcCall := range ch {
-		if err := logw.Write(funcCall); err != nil {
-			return err
-		}
+		opt.ErrLog.Println("ERROR: Received unexpected response:", err)
+		return errGeneral
 	}
 	return nil
 }

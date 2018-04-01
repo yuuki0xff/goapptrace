@@ -21,12 +21,11 @@
 package cmd
 
 import (
-	"fmt"
-	"io"
 	"log"
 	"os"
 	"os/signal"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -50,36 +49,32 @@ const (
 var serverRunCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Start log servers",
-	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
-		apiAddr, _ := cmd.Flags().GetString("listen-api")
-		logAddr, _ := cmd.Flags().GetString("listen-log")
-		return runServerRun(
-			conf, cmd.OutOrStdout(), cmd.OutOrStderr(),
-			apiAddr, logAddr,
-		)
-	}),
+	RunE:  wrap(runServerRun),
 }
 
-func runServerRun(conf *config.Config, stdout io.Writer, stderr io.Writer, apiAddr, logAddr string) error {
-	if len(conf.Servers.ApiServer) > 0 {
+func runServerRun(opt *handlerOpt) error {
+	apiAddr, _ := opt.Cmd.Flags().GetString("listen-api")
+	logAddr, _ := opt.Cmd.Flags().GetString("listen-log")
+
+	if len(opt.Conf.Servers.ApiServer) > 0 {
 		// API server SHOULD one instance.
-		fmt.Fprintln(stderr, "ERROR: API server is already running")
-		return nil
+		opt.ErrLog.Println("API server is already running")
+		return errGeneral
 	}
-	if len(conf.Servers.LogServer) > 0 {
+	if len(opt.Conf.Servers.LogServer) > 0 {
 		// Log server SHOULD one instance.
-		fmt.Fprintln(stderr, "ERROR: Log server is already running")
-		return nil
+		opt.ErrLog.Println("Log server is already running")
+		return errGeneral
 	}
 
 	strg := storage.Storage{
 		Root: storage.DirLayout{
-			Root: conf.LogsDir(),
+			Root: opt.Conf.LogsDir(),
 		},
 	}
 	if err := strg.Init(); err != nil {
-		fmt.Fprintln(stderr, "ERROR: failed to initialize the storage")
-		return err
+		opt.ErrLog.Println("Failed to initialize the storage:", err)
+		return errGeneral
 	}
 
 	if apiAddr == "" {
@@ -93,18 +88,18 @@ func runServerRun(conf *config.Config, stdout io.Writer, stderr io.Writer, apiAd
 
 	// start API Server
 	apiSrv := httpserver.NewHttpServer(apiAddr, restapi.NewRouter(restapi.RouterArgs{
-		Config:         conf,
+		Config:         opt.Conf,
 		Storage:        &strg,
 		SimulatorStore: &simulatorStore,
 	}))
 	if err := apiSrv.Start(); err != nil {
-		fmt.Fprintln(stderr, "ERROR: failed to start the API server:", err)
-		return err
+		opt.ErrLog.Println("Failed to start the API server:", err)
+		return errGeneral
 	}
 	defer func() {
 		apiSrv.Stop()
 		if err := apiSrv.Wait(); err != nil {
-			fmt.Fprintln(stderr, "ERROR: failed to stop the API server:", err)
+			opt.ErrLog.Println("Failed to stop the API server:", err)
 		}
 	}()
 
@@ -116,31 +111,32 @@ func runServerRun(conf *config.Config, stdout io.Writer, stderr io.Writer, apiAd
 		Secret:  "",     // TODO
 	}
 	if err := logSrv.Listen(); err != nil {
-		fmt.Fprintln(stderr, "ERROR: failed to start the Log server:", err)
-		return err
+		opt.ErrLog.Println("Failed to start the Log server:", err)
+		return errGeneral
 	}
 	go logSrv.Serve()
 	defer func() {
 		defer logSrv.Wait()
 		if err := logSrv.Close(); err != nil {
-			fmt.Fprintln(stderr, "ERROR: failed to stop the Log server:", err)
+			opt.ErrLog.Println("Failed to stop the Log server:", err)
 		}
 	}()
 
 	// add servers to config, and save
-	conf.Servers.ApiServer[1] = &config.ApiServerConfig{
+	opt.Conf.Servers.ApiServer[1] = &config.ApiServerConfig{
 		ServerID: 1,
 		Version:  1,
 		Addr:     apiSrv.Url(),
 	}
-	conf.Servers.LogServer[1] = &config.LogServerConfig{
+	opt.Conf.Servers.LogServer[1] = &config.LogServerConfig{
 		ServerID: 1,
 		Version:  1,
 		Addr:     logSrv.ActualAddr(),
 	}
-	conf.WantSave()
-	if err := conf.Save(); err != nil {
-		fmt.Fprintln(stderr, "ERROR: cannot write to the config file:", err)
+	opt.Conf.WantSave()
+	if err := opt.Conf.Save(); err != nil {
+		opt.ErrLog.Println("Cannot write to the config file:", err)
+		return errGeneral
 	}
 
 	// wait until a signal is received
@@ -149,10 +145,11 @@ func runServerRun(conf *config.Config, stdout io.Writer, stderr io.Writer, apiAd
 	<-sigCh
 
 	// remove servers from config
-	conf.Servers = *config.NewServers()
-	conf.WantSave()
-	if err := conf.Save(); err != nil {
-		fmt.Fprintln(stderr, "ERROR: cannot write to the config file:", err)
+	opt.Conf.Servers = *config.NewServers()
+	opt.Conf.WantSave()
+	if err := opt.Conf.Save(); err != nil {
+		opt.ErrLog.Println("Cannot write to the config file:", err)
+		return errGeneral
 	}
 	return nil
 }
@@ -174,6 +171,8 @@ func init() {
 }
 
 func getServerHandler(strg *storage.Storage, store *simulator.StateSimulatorStore) protocol.ServerHandler {
+	// TODO: コードを綺麗にする
+
 	// workerとの通信用。
 	// close()されたら、workerは終了するべき。
 	chMap := make(map[protocol.ConnID]chan interface{})
@@ -197,9 +196,22 @@ func getServerHandler(strg *storage.Storage, store *simulator.StateSimulatorStor
 
 		ss := store.New(logobj.ID)
 		defer store.Delete(logobj.ID)
+
+		// 最後にファイルと同期してから受信した RawFuncLog の個数。
+		// flCount が flCountMax に達したら、ファイルに書き出す。
+		var flCount int64
+		const flCountMax = 1000000
+
 		// 現在の状態をファイルに書き出す。
 		// excludeRunning がtrueの場合、実行中のFuncLogは書き込まない。
+		// writing フラグがtrueの場合は、何もしない。
+		var writing int64
 		writeCurrentState := func(excludeRunning bool) {
+			if !atomic.CompareAndSwapInt64(&writing, 0, 1) {
+				// 他のgoroutineが書き込んでいるため、今回は書き込みを行わない
+				return
+			}
+			atomic.StoreInt64(&flCount, 0)
 			logobj.FuncLog(func(store *storage.FuncLogStore) {
 				for _, fl := range ss.FuncLogs(false) {
 					if excludeRunning && !fl.IsEnded() {
@@ -220,24 +232,38 @@ func getServerHandler(strg *storage.Storage, store *simulator.StateSimulatorStor
 				}
 			})
 			ss.Clear()
+			if !atomic.CompareAndSwapInt64(&writing, 1, 0) {
+				// writing フラグが立っていないのに書き込みを行ってしまった。
+				panic("bug")
+			}
 		}
 		// ログを閉じる前に、現在のStateSimulatorの状態を保存する。
 		defer writeCurrentState(false)
 
-		// 定期的に状態を書き出す
-		var wa sync.WaitGroup
+		// StateSimulator の内容の書き出し要求を定期的に送信する。
+		// chがcloseされたとき、タイミング次第でブロックされてしまう可能性がある。
+		// そのため、このgoroutineの終了を待機しない。
+		ssWriteReq := make(chan interface{})
 		tick := time.NewTicker(1 * time.Second)
-		wa.Add(1)
+		defer tick.Stop()
 		go func() {
-			wa.Done()
+			defer close(ssWriteReq)
 			for range tick.C {
-				writeCurrentState(false)
+				ssWriteReq <- ss
 			}
 		}()
-		defer wa.Wait()
-		defer tick.Stop()
 
-		for rawobj := range ch {
+		for {
+			var rawobj interface{}
+			var ok bool
+			select {
+			case rawobj, ok = <-ch:
+			case rawobj, ok = <-ssWriteReq:
+			}
+			if !ok {
+				break
+			}
+
 			// lock獲得のオーバーヘッドを削減するため、チャンネルに次のitemがある場合は
 			// lockを開放せずに連続して処理する。
 			logobj.RawFuncLog(func(rawStore *storage.RawFuncLogStore) {
@@ -258,10 +284,18 @@ func getServerHandler(strg *storage.Storage, store *simulator.StateSimulatorStor
 						//}
 						ss.Next(*obj)
 						types.RawFuncLogPool.Put(obj)
+
+						if atomic.AddInt64(&flCount, 1) >= flCountMax {
+							// 多くの RawFuncLog をsimulatorに渡したため、大量のメモリを消費している。
+							// ファイルに書き出してメモリを開放させる。
+							writeCurrentState(false)
+						}
 					case *types.SymbolsData:
 						if err := logobj.SetSymbolsData(obj); err != nil {
 							log.Panicln("failed to append Symbols:", err.Error())
 						}
+					case *simulator.StateSimulator:
+						writeCurrentState(false)
 					default:
 						log.Panicf("unsupported type: %+v", rawobj)
 					}

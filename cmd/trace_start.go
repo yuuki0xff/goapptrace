@@ -32,14 +32,12 @@ var traceStartCmd = &cobra.Command{
 	Long: `Manage the tracing targets.
 It must be added tracing codes before processes started.
 `,
-	RunE: wrap(func(conf *config.Config, cmd *cobra.Command, args []string) error {
-		conf.WantSave()
-		return runTraceStart(conf, args)
-	}),
+	RunE: wrap(runTraceStart),
 }
 
-func runTraceStart(conf *config.Config, targets []string) error {
-	return conf.Targets.Walk(targets, func(t *config.Target) error {
+func runTraceStart(opt *handlerOpt) error {
+	targets := opt.Args
+	err := opt.Conf.Targets.Walk(targets, func(t *config.Target) error {
 		return t.WalkTraces(nil, func(fname string, trace *config.Trace, created bool) error {
 			if trace.HasTracingCode {
 				// TODO: start tracing
@@ -48,6 +46,12 @@ func runTraceStart(conf *config.Config, targets []string) error {
 			return nil
 		})
 	})
+	if err != nil {
+		opt.ErrLog.Println(err)
+		return errGeneral
+	}
+	opt.Conf.WantSave()
+	return nil
 }
 
 func init() {
