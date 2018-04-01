@@ -261,37 +261,9 @@ func (m *ServerHandlerMaker) worker(ch chan interface{}, id protocol.ConnID) {
 	// 現在の状態をファイルに書き出す。
 	// excludeRunning がtrueの場合、実行中のFuncLogは書き込まない。
 	// writing フラグがtrueの場合は、何もしない。
-	var writing int64
 	writeCurrentState := func(excludeRunning bool) {
-		if !atomic.CompareAndSwapInt64(&writing, 0, 1) {
-			// 他のgoroutineが書き込んでいるため、今回は書き込みを行わない
-			return
-		}
-		atomic.StoreInt64(&flCount, 0)
-		logobj.FuncLog(func(store *storage.FuncLogStore) {
-			for _, fl := range ss.FuncLogs(false) {
-				if excludeRunning && !fl.IsEnded() {
-					continue
-				}
-				err := store.SetNolock(fl)
-				if err != nil {
-					log.Panicln("ERROR: failed to append FuncLog during rotating:", err.Error())
-				}
-			}
-		})
-		logobj.Goroutine(func(store *storage.GoroutineStore) {
-			for _, g := range ss.Goroutines() {
-				err := store.SetNolock(g)
-				if err != nil {
-					log.Panicln("ERROR: failed to append Goroutine during rotating:", err.Error())
-				}
-			}
-		})
-		ss.Clear()
-		if !atomic.CompareAndSwapInt64(&writing, 1, 0) {
-			// writing フラグが立っていないのに書き込みを行ってしまった。
-			panic("bug")
-		}
+		m.writeSS(logobj, ss)
+		flCount = 0
 	}
 	// ログを閉じる前に、現在のStateSimulatorの状態を保存する。
 	defer writeCurrentState(false)
@@ -359,4 +331,27 @@ func (m *ServerHandlerMaker) worker(ch chan interface{}, id protocol.ConnID) {
 			rawobj = <-ch
 		}
 	}
+}
+
+// writeSS は、 StateSimulator の内容をファイルへ書き出す。
+// 書き込みには時間がかかる可能性がある。
+// 書き込み済みのレコードはメモリ上から削除するのため、メモリ解放が行える。
+func (m *ServerHandlerMaker) writeSS(logobj *storage.Log, ss *simulator.StateSimulator) {
+	logobj.FuncLog(func(store *storage.FuncLogStore) {
+		for _, fl := range ss.FuncLogs(false) {
+			err := store.SetNolock(fl)
+			if err != nil {
+				log.Panicln("ERROR: failed to append FuncLog during rotating:", err.Error())
+			}
+		}
+	})
+	logobj.Goroutine(func(store *storage.GoroutineStore) {
+		for _, g := range ss.Goroutines() {
+			err := store.SetNolock(g)
+			if err != nil {
+				log.Panicln("ERROR: failed to append Goroutine during rotating:", err.Error())
+			}
+		}
+	})
+	ss.Clear()
 }
