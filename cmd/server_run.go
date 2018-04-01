@@ -25,7 +25,6 @@ import (
 	"os"
 	"os/signal"
 	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -171,175 +170,183 @@ func init() {
 }
 
 func getServerHandler(strg *storage.Storage, store *simulator.StateSimulatorStore) protocol.ServerHandler {
-	// TODO: コードを綺麗にする
+	m := &ServerHandlerMaker{
+		Storage: strg,
+		SSStore: store,
+	}
+	return m.ServerHandler()
+}
+
+type ServerHandlerMaker struct {
+	Storage *storage.Storage
+	SSStore *simulator.StateSimulatorStore
+
+	initOnce sync.Once
+
+	// chanの追加、削除、close()するときはLock()を、chanへの送受信はRLock()をかける。
+	lock sync.RWMutex
 
 	// workerとの通信用。
 	// close()されたら、workerは終了するべき。
-	chMap := make(map[protocol.ConnID]chan interface{})
-	// chanの追加、削除、close()するときはLock()を、chanへの送受信はRLock()をかける。
-	var chMapLock sync.RWMutex
+	chMap map[protocol.ConnID]chan interface{}
+}
 
-	worker := func(ch chan interface{}, id protocol.ConnID) {
-		logobj, err := strg.New()
-		if err != nil {
-			log.Panicf("ERROR: Server: failed to a create Log object: err=%s", err.Error())
-		}
-		defer func() {
-			if err = logobj.Close(); err != nil {
-				log.Panicf("failed to close a Log(%s): connID=%d err=%s", logobj.ID, id, err.Error())
-			}
-			logobj.ReadOnly = true
-			if err = logobj.Open(); err != nil {
-				log.Panicf("failed to reopen a Log(%s): connID=%d err=%s", logobj.ID, id, err.Error())
-			}
-		}()
+func (m *ServerHandlerMaker) init() {
+	m.initOnce.Do(func() {
+		m.chMap = make(map[protocol.ConnID]chan interface{})
+	})
+}
 
-		ss := store.New(logobj.ID)
-		defer store.Delete(logobj.ID)
-
-		// 最後にファイルと同期してから受信した RawFuncLog の個数。
-		// flCount が flCountMax に達したら、ファイルに書き出す。
-		var flCount int64
-		const flCountMax = 1000000
-
-		// 現在の状態をファイルに書き出す。
-		// excludeRunning がtrueの場合、実行中のFuncLogは書き込まない。
-		// writing フラグがtrueの場合は、何もしない。
-		var writing int64
-		writeCurrentState := func(excludeRunning bool) {
-			if !atomic.CompareAndSwapInt64(&writing, 0, 1) {
-				// 他のgoroutineが書き込んでいるため、今回は書き込みを行わない
-				return
-			}
-			atomic.StoreInt64(&flCount, 0)
-			logobj.FuncLog(func(store *storage.FuncLogStore) {
-				for _, fl := range ss.FuncLogs(false) {
-					if excludeRunning && !fl.IsEnded() {
-						continue
-					}
-					err := store.SetNolock(fl)
-					if err != nil {
-						log.Panicln("ERROR: failed to append FuncLog during rotating:", err.Error())
-					}
-				}
-			})
-			logobj.Goroutine(func(store *storage.GoroutineStore) {
-				for _, g := range ss.Goroutines() {
-					err := store.SetNolock(g)
-					if err != nil {
-						log.Panicln("ERROR: failed to append Goroutine during rotating:", err.Error())
-					}
-				}
-			})
-			ss.Clear()
-			if !atomic.CompareAndSwapInt64(&writing, 1, 0) {
-				// writing フラグが立っていないのに書き込みを行ってしまった。
-				panic("bug")
-			}
-		}
-		// ログを閉じる前に、現在のStateSimulatorの状態を保存する。
-		defer writeCurrentState(false)
-
-		// StateSimulator の内容の書き出し要求を定期的に送信する。
-		// chがcloseされたとき、タイミング次第でブロックされてしまう可能性がある。
-		// そのため、このgoroutineの終了を待機しない。
-		ssWriteReq := make(chan interface{})
-		tick := time.NewTicker(1 * time.Second)
-		defer tick.Stop()
-		go func() {
-			defer close(ssWriteReq)
-			for range tick.C {
-				ssWriteReq <- ss
-			}
-		}()
-
-		for {
-			var rawobj interface{}
-			var ok bool
-			select {
-			case rawobj, ok = <-ch:
-			case rawobj, ok = <-ssWriteReq:
-			}
-			if !ok {
-				break
-			}
-
-			// lock獲得のオーバーヘッドを削減するため、チャンネルに次のitemがある場合は
-			// lockを開放せずに連続して処理する。
-			logobj.RawFuncLog(func(rawStore *storage.RawFuncLogStore) {
-				defer func() {
-					err = rawStore.FlushNolock()
-					if err != nil {
-						log.Panicln(err)
-					}
-				}()
-				for {
-					switch obj := rawobj.(type) {
-					case *types.RawFuncLog:
-						// NOTE: RawFuncLogが量がとても多いため、ストレージに書き込むと動作が遅くなってしまう。
-						//       そのため、ファイルに書き出すのは止めた。
-						//       コメントアウトすれば、デバッグするときに使えるかも?
-						//if err := rawStore.SetNolock(obj); err != nil {
-						//	log.Panicln("failed to append RawFuncLog:", err.Error())
-						//}
-						ss.Next(*obj)
-						types.RawFuncLogPool.Put(obj)
-
-						if atomic.AddInt64(&flCount, 1) >= flCountMax {
-							// 多くの RawFuncLog をsimulatorに渡したため、大量のメモリを消費している。
-							// ファイルに書き出してメモリを開放させる。
-							writeCurrentState(false)
-						}
-					case *types.SymbolsData:
-						if err := logobj.SetSymbolsData(obj); err != nil {
-							log.Panicln("failed to append Symbols:", err.Error())
-						}
-					case *simulator.StateSimulator:
-						writeCurrentState(false)
-					default:
-						log.Panicf("unsupported type: %+v", rawobj)
-					}
-
-					if len(ch) == 0 {
-						break
-					}
-					rawobj = <-ch
-				}
-			})
-		}
-	}
-
+func (m *ServerHandlerMaker) ServerHandler() protocol.ServerHandler {
+	m.init()
 	return protocol.ServerHandler{
 		Connected: func(id protocol.ConnID) {
 			log.Println("INFO: Server: connected")
 
 			ch := make(chan interface{}, DefaultReceiveBufferSize)
-			go worker(ch, id)
+			go m.worker(ch, id)
 
-			chMapLock.Lock()
-			chMap[id] = ch
-			chMapLock.Unlock()
+			m.lock.Lock()
+			m.chMap[id] = ch
+			m.lock.Unlock()
 		},
 		Disconnected: func(id protocol.ConnID) {
 			log.Println("INFO: Server: disconnected")
 
-			chMapLock.Lock()
-			close(chMap[id])
-			delete(chMap, id)
-			chMapLock.Unlock()
+			m.lock.Lock()
+			close(m.chMap[id])
+			delete(m.chMap, id)
+			m.lock.Unlock()
 		},
 		Error: func(id protocol.ConnID, err error) {
 			log.Printf("ERROR: Server: connID=%d err=%s", id, err.Error())
 		},
 		Symbols: func(id protocol.ConnID, s *types.SymbolsData) {
-			chMapLock.RLock()
-			chMap[id] <- s
-			chMapLock.RUnlock()
+			m.lock.RLock()
+			m.chMap[id] <- s
+			m.lock.RUnlock()
 		},
 		RawFuncLog: func(id protocol.ConnID, f *types.RawFuncLog) {
-			chMapLock.RLock()
-			chMap[id] <- f
-			chMapLock.RUnlock()
+			m.lock.RLock()
+			m.chMap[id] <- f
+			m.lock.RUnlock()
 		},
 	}
+}
+
+func (m *ServerHandlerMaker) worker(ch chan interface{}, id protocol.ConnID) {
+	logobj, err := m.Storage.New()
+	if err != nil {
+		log.Panicf("ERROR: Server: failed to a create Log object: err=%s", err.Error())
+	}
+	defer func() {
+		if err = logobj.Close(); err != nil {
+			log.Panicf("failed to close a Log(%s): connID=%d err=%s", logobj.ID, id, err.Error())
+		}
+		logobj.ReadOnly = true
+		if err = logobj.Open(); err != nil {
+			log.Panicf("failed to reopen a Log(%s): connID=%d err=%s", logobj.ID, id, err.Error())
+		}
+	}()
+
+	ss := m.SSStore.New(logobj.ID)
+	defer m.SSStore.Delete(logobj.ID)
+
+	// ログを閉じる前に、現在のStateSimulatorの状態を保存する。
+	defer m.writeSS(logobj, ss)
+
+	// 最後にファイルと同期してから受信した RawFuncLog の個数。
+	// flCount が flCountMax に達したら、ファイルに書き出す。
+	var flCount int64
+	const flCountMax = 1000000
+
+	// StateSimulator の内容の書き出し要求を定期的に送信する。
+	// chがcloseされたとき、タイミング次第でブロックされてしまう可能性がある。
+	// そのため、このgoroutineの終了を待機しない。
+	ssWriteReq := make(chan interface{})
+	tick := time.NewTicker(1 * time.Second)
+	defer tick.Stop()
+	go func() {
+		defer close(ssWriteReq)
+		for range tick.C {
+			ssWriteReq <- ss
+		}
+	}()
+
+	// main loop。chan経由で送られてくる要求を処理する。
+	// chanがcloseされたら、このループから脱出してworkerを終了させる。
+	//
+	// 処理の優先度
+	//   ch         - 最優先
+	//   ssWriteReq - 優先度低。アイドル時のみ処理する
+	for {
+		var rawobj interface{}
+		var ok bool
+		select {
+		case rawobj, ok = <-ch:
+		case rawobj, ok = <-ssWriteReq:
+		}
+		if !ok {
+			break
+		}
+
+		for {
+			switch obj := rawobj.(type) {
+			case *types.RawFuncLog:
+				// NOTE: RawFuncLogが量がとても多いため、ストレージに書き込むと動作が遅くなってしまう。
+				//       そのため、ファイルに書き出すのは止めた。
+				//       コメントアウトすれば、デバッグするときに使えるかも?
+				//if err := rawStore.SetNolock(obj); err != nil {
+				//	log.Panicln("failed to append RawFuncLog:", err.Error())
+				//}
+				ss.Next(*obj)
+				types.RawFuncLogPool.Put(obj)
+
+				flCount++
+				if flCount >= flCountMax {
+					// 多くの RawFuncLog をsimulatorに渡したため、大量のメモリを消費している。
+					// ファイルに書き出してメモリを開放させる。
+					m.writeSS(logobj, ss)
+					flCount = 0
+				}
+			case *types.SymbolsData:
+				if err := logobj.SetSymbolsData(obj); err != nil {
+					log.Panicln("failed to append Symbols:", err.Error())
+				}
+			case *simulator.StateSimulator:
+				m.writeSS(logobj, ss)
+				flCount = 0
+			default:
+				log.Panicf("unsupported type: %+v", rawobj)
+			}
+
+			if len(ch) == 0 {
+				break
+			}
+			rawobj = <-ch
+		}
+	}
+}
+
+// writeSS は、 StateSimulator の内容をファイルへ書き出す。
+// 書き込みには時間がかかる可能性がある。
+// 書き込み済みのレコードはメモリ上から削除するのため、メモリ解放が行える。
+func (m *ServerHandlerMaker) writeSS(logobj *storage.Log, ss *simulator.StateSimulator) {
+	logobj.FuncLog(func(store *storage.FuncLogStore) {
+		for _, fl := range ss.FuncLogs(false) {
+			err := store.SetNolock(fl)
+			if err != nil {
+				log.Panicln("ERROR: failed to append FuncLog during rotating:", err.Error())
+			}
+		}
+	})
+	logobj.Goroutine(func(store *storage.GoroutineStore) {
+		for _, g := range ss.Goroutines() {
+			err := store.SetNolock(g)
+			if err != nil {
+				log.Panicln("ERROR: failed to append Goroutine during rotating:", err.Error())
+			}
+		}
+	})
+	ss.Clear()
 }
