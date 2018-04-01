@@ -143,9 +143,9 @@ func (api APIv0) SetHandlers(router *mux.Router) {
 	v01.HandleFunc("/log/{log-id}/symbol/line/{pc}", api.goLine).Methods(http.MethodGet)
 
 	v01.HandleFunc("/tracers", api.tracers).Methods(http.MethodGet)
-	v01.HandleFunc("/tracer/{tracer-id}", api.tracer).Methods(http.MethodDelete)
-	v01.HandleFunc("/tracer/{tracer-id}/status", api.tracers).Methods(http.MethodGet)
-	v01.HandleFunc("/tracer/{tracer-id}/status", api.tracer).Methods(http.MethodPut)
+	v01.HandleFunc("/tracer/{tracer-id}", api.notImpl).Methods(http.MethodDelete)
+	v01.HandleFunc("/tracer/{tracer-id}/status", api.notImpl).Methods(http.MethodGet)
+	v01.HandleFunc("/tracer/{tracer-id}/status", api.notImpl).Methods(http.MethodPut)
 	v01.HandleFunc("/tracer/{tracer-id}/watch", api.notImpl).Methods(http.MethodGet)
 }
 func (api APIv0) serverError(w http.ResponseWriter, err error, msg string) {
@@ -877,11 +877,11 @@ func (api APIv0) tracers(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func (api APIv0) tracer(w http.ResponseWriter, r *http.Request) {
-	// TODO: これを実装する前に、どのトレーサが接続しているのか管理出来るようにする
+	// TODO: 現在の状態を返す
 	switch r.Method {
-	case http.MethodDelete:
 	case http.MethodGet:
 	case http.MethodPut:
+	case http.MethodDelete:
 	}
 }
 
