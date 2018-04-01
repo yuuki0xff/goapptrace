@@ -147,6 +147,9 @@ func (api APIv0) SetHandlers(router *mux.Router) {
 	v01.HandleFunc("/tracer/{tracer-id}/status", api.notImpl).Methods(http.MethodGet)
 	v01.HandleFunc("/tracer/{tracer-id}/status", api.notImpl).Methods(http.MethodPut)
 	v01.HandleFunc("/tracer/{tracer-id}/watch", api.notImpl).Methods(http.MethodGet)
+	v01.HandleFunc("/tracer/{tracer-id}/targets", api.tracerTargetsGet).Methods(http.MethodGet)
+	v01.HandleFunc("/tracer/{tracer-id}/targets", api.tracerTargetsPut).Methods(http.MethodPut)
+	v01.HandleFunc("/tracer/{tracer-id}/targets", api.tracerTargetsDel).Methods(http.MethodDelete)
 }
 func (api APIv0) serverError(w http.ResponseWriter, err error, msg string) {
 	api.Logger.Println(errors.Wrap(err, "failed to json.Marshal").Error())
@@ -871,10 +874,7 @@ func (api APIv0) tracers(w http.ResponseWriter, r *http.Request) {
 		api.serverError(w, err, "unknown error")
 		return
 	}
-	if err := json.NewEncoder(w).Encode(tracers); err != nil {
-		api.Logger.Println("write error:", err)
-		return
-	}
+	api.writeJson(w, tracers)
 }
 func (api APIv0) tracer(w http.ResponseWriter, r *http.Request) {
 	// TODO: 現在の状態を返す
@@ -882,6 +882,48 @@ func (api APIv0) tracer(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 	case http.MethodPut:
 	case http.MethodDelete:
+	}
+}
+func (api APIv0) tracerTargetsGet(w http.ResponseWriter, r *http.Request) {
+	t, ok := api.getTracer(w, r)
+	if !ok {
+		return
+	}
+	api.writeJson(w, t.Target)
+}
+func (api APIv0) tracerTargetsPut(w http.ResponseWriter, r *http.Request) {
+	var newTarget types.TraceTarget
+	if !api.readJson(r, &newTarget) {
+		return
+	}
+
+	// TODO: validate newTarget
+
+	id, ok := api.tracerID(w, r)
+	if !ok {
+		return
+	}
+	err := api.Storage.TracersStore().Update(id, func(tracer *types.Tracer) error {
+		tracer.Target = newTarget
+		return nil
+	})
+	if err != nil {
+		api.serverError(w, err, "unknown error")
+		return
+	}
+}
+func (api APIv0) tracerTargetsDel(w http.ResponseWriter, r *http.Request) {
+	id, ok := api.tracerID(w, r)
+	if !ok {
+		return
+	}
+	err := api.Storage.TracersStore().Update(id, func(tracer *types.Tracer) error {
+		tracer.Target = types.TraceTarget{}
+		return nil
+	})
+	if err != nil {
+		api.serverError(w, err, "unknown error")
+		return
 	}
 }
 
@@ -921,6 +963,48 @@ func (api APIv0) getLogPC(w http.ResponseWriter, r *http.Request) (logobj *stora
 	}
 	ok = true
 	return
+}
+func (api APIv0) tracerID(w http.ResponseWriter, r *http.Request) (id int, ok bool) {
+	strId := mux.Vars(r)["tracer-id"]
+	val, err := strconv.ParseInt(strId, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid tracer-id", http.StatusBadRequest)
+		return
+	}
+	id = int(val)
+	ok = true
+	return
+}
+
+func (api APIv0) getTracer(w http.ResponseWriter, r *http.Request) (t *types.Tracer, ok bool) {
+	var err error
+	id, ok2 := api.tracerID(w, r)
+	if !ok2 {
+		return
+	}
+
+	t, err = api.Storage.TracersStore().Get(id)
+	if err != nil {
+		api.serverError(w, err, "unknown error")
+		return
+	}
+	ok = true
+	return
+}
+
+func (api APIv0) readJson(r *http.Request, v interface{}) (ok bool) {
+	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
+		api.Logger.Println("read error:", err)
+		return
+	}
+	ok = true
+	return
+}
+func (api APIv0) writeJson(w io.Writer, v interface{}) {
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		api.Logger.Println("write error:", err)
+		return
+	}
 }
 
 func (api *APIv0) worker(parent context.Context, logobj *storage.Log) *APIWorker {
