@@ -14,6 +14,9 @@ type editTestCase struct {
 }
 
 func testEdit(t *testing.T, tc editTestCase) {
+	tc.Editor.dontUseRandom = "random"
+	tc.Editor.tmpl = newTestTemplate(TemplateData{})
+
 	outbytes, err := tc.Editor.edit("test.go", []byte(tc.In))
 	if err != nil {
 		t.Error(err)
@@ -83,18 +86,21 @@ package example
 import __goapptrace_tracer "github.com/yuuki0xff/goapptrace/tracer/logger"
 
 func ExportedFunc(a, b, c string) stirng {
-	__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
-	defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
+	/* startStop(ExportedFunc_random) */
 
 	return "ok"
 }
 
 func nonExportedFunc() string {
-	__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
-	defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
+	/* startStop(nonExportedFunc_random) */
 
 	return "ok"
-}`),
+}
+
+/* defineVar(ExportedFunc_random) */
+
+/* defineVar(nonExportedFunc_random) */
+`),
 	})
 }
 
@@ -119,15 +125,17 @@ package example
 import __goapptrace_tracer "github.com/yuuki0xff/goapptrace/tracer/logger"
 
 func ExportedFunc(a, b, c string) stirng {
-	__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
-	defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
+	/* startStop(ExportedFunc_random) */
 
 	return "ok"
 }
 
 func nonExportedFunc() string {
 	return "ok"
-}`),
+}
+
+/* defineVar(ExportedFunc_random) */
+`),
 	})
 }
 
@@ -163,47 +171,54 @@ package example
 import __goapptrace_tracer "github.com/yuuki0xff/goapptrace/tracer/logger"
 
 var ExportedVar = func() string {
-	__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
-	defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
+	/* startStop(anonymousFunc_random) */
 	return "ok"
 }
 var nonExportedVar = func() string {
-	__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
-	defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
+	/* startStop(anonymousFunc_random) */
 	return "ok"
 }
 
 func ExportedFunc() {
-	__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
-	defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
+	/* startStop(ExportedFunc_random) */
 
 	fn := func() string {
-		__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
-		defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
+		/* startStop(anonymousFunc_random) */
 
 		return "in function"
 	}
 
 	go func() string {
-		__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
-		defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
+		/* startStop(anonymousFunc_random) */
 
 		return "in go statement"
 	}()
 
 	caller(func() string {
-		__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
-		defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
+		/* startStop(anonymousFunc_random) */
 
 		go func() string {
-			__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
-			defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
+			/* startStop(anonymousFunc_random) */
 
 			return "nested"
 		}()
 		return "in call statement"
 	})
 }
+
+/* defineVar(anonymousFunc_random) */
+
+/* defineVar(anonymousFunc_random) */
+
+/* defineVar(ExportedFunc_random) */
+
+/* defineVar(anonymousFunc_random) */
+
+/* defineVar(anonymousFunc_random) */
+
+/* defineVar(anonymousFunc_random) */
+
+/* defineVar(anonymousFunc_random) */
 `),
 	})
 }
@@ -229,13 +244,13 @@ import __goapptrace_tracer "github.com/yuuki0xff/goapptrace/tracer/logger"
 import "fmt"
 
 func main() {
-	__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
-	defer __goapptrace_tracer.Close()
-	defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
+	/* startCloseStop(main_random) */
 
 	// comment
 	fmt.Println("Hello World!")
 }
+
+/* defineVar(main_random) */
 `),
 	})
 }
@@ -261,12 +276,13 @@ import __goapptrace_tracer "github.com/yuuki0xff/goapptrace/tracer/logger"
 import "fmt"
 
 func main() {
-	__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
-	defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
+	/* startStop(main_random) */
 
 	// comment
 	fmt.Println("Hello World!")
 }
+
+/* defineVar(main_random) */
 `),
 	})
 }
@@ -294,12 +310,13 @@ import "fmt"
 import "os"
 
 func bar() {
-	__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
-	defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
+	/* startStop(bar_random) */
 
 	fmt.Println("Hello World!")
-	__goapptrace_tracer.CloseAndExit(0)
+	closeAndExit(0)
 }
+
+/* defineVar(bar_random) */
 `),
 	})
 }
@@ -328,11 +345,12 @@ import __goapptrace_tracer "github.com/yuuki0xff/goapptrace/tracer/logger"
 import "os"
 
 func bar() {
-	__goapptrace_tracer_var__txid := __goapptrace_tracer.FuncStart()
-	defer __goapptrace_tracer.FuncEnd(__goapptrace_tracer_var__txid)
+	/* startStop(bar_random) */
 
-	__goapptrace_tracer.CloseAndExit(0)
+	closeAndExit(0)
 }
+
+/* defineVar(bar_random) */
 `),
 	})
 }

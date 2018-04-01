@@ -27,6 +27,9 @@ var (
 	initBuffer []*types.RawFuncLog
 	sender     Sender
 
+	// トレースが有効化されている場合、関数名に対応する値はtrueになる。
+	funcIsTracing = map[string]*bool{}
+
 	// 通常の環境で実行したときは、gid()はこの関数が返した値を返す。
 	// この変数が設定されていなければ、gid()はpanicする。
 	// Unit test実行時にダミーのGIDを返す目的で使用する。
