@@ -320,47 +320,37 @@ func (m *ServerHandlerMaker) worker(ch chan interface{}, id protocol.ConnID) {
 			break
 		}
 
-		// lock獲得のオーバーヘッドを削減するため、チャンネルに次のitemがある場合は
-		// lockを開放せずに連続して処理する。
-		logobj.RawFuncLog(func(rawStore *storage.RawFuncLogStore) {
-			defer func() {
-				err = rawStore.FlushNolock()
-				if err != nil {
-					log.Panicln(err)
-				}
-			}()
-			for {
-				switch obj := rawobj.(type) {
-				case *types.RawFuncLog:
-					// NOTE: RawFuncLogが量がとても多いため、ストレージに書き込むと動作が遅くなってしまう。
-					//       そのため、ファイルに書き出すのは止めた。
-					//       コメントアウトすれば、デバッグするときに使えるかも?
-					//if err := rawStore.SetNolock(obj); err != nil {
-					//	log.Panicln("failed to append RawFuncLog:", err.Error())
-					//}
-					ss.Next(*obj)
-					types.RawFuncLogPool.Put(obj)
+		for {
+			switch obj := rawobj.(type) {
+			case *types.RawFuncLog:
+				// NOTE: RawFuncLogが量がとても多いため、ストレージに書き込むと動作が遅くなってしまう。
+				//       そのため、ファイルに書き出すのは止めた。
+				//       コメントアウトすれば、デバッグするときに使えるかも?
+				//if err := rawStore.SetNolock(obj); err != nil {
+				//	log.Panicln("failed to append RawFuncLog:", err.Error())
+				//}
+				ss.Next(*obj)
+				types.RawFuncLogPool.Put(obj)
 
-					if atomic.AddInt64(&flCount, 1) >= flCountMax {
-						// 多くの RawFuncLog をsimulatorに渡したため、大量のメモリを消費している。
-						// ファイルに書き出してメモリを開放させる。
-						writeCurrentState(false)
-					}
-				case *types.SymbolsData:
-					if err := logobj.SetSymbolsData(obj); err != nil {
-						log.Panicln("failed to append Symbols:", err.Error())
-					}
-				case *simulator.StateSimulator:
+				if atomic.AddInt64(&flCount, 1) >= flCountMax {
+					// 多くの RawFuncLog をsimulatorに渡したため、大量のメモリを消費している。
+					// ファイルに書き出してメモリを開放させる。
 					writeCurrentState(false)
-				default:
-					log.Panicf("unsupported type: %+v", rawobj)
 				}
-
-				if len(ch) == 0 {
-					break
+			case *types.SymbolsData:
+				if err := logobj.SetSymbolsData(obj); err != nil {
+					log.Panicln("failed to append Symbols:", err.Error())
 				}
-				rawobj = <-ch
+			case *simulator.StateSimulator:
+				writeCurrentState(false)
+			default:
+				log.Panicf("unsupported type: %+v", rawobj)
 			}
-		})
+
+			if len(ch) == 0 {
+				break
+			}
+			rawobj = <-ch
+		}
 	}
 }
