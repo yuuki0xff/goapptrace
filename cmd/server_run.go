@@ -185,7 +185,7 @@ type ServerHandlerMaker struct {
 	initOnce sync.Once
 
 	// chanの追加、削除、close()するときはLock()を、chanへの送受信はRLock()をかける。
-	chMapLock sync.RWMutex
+	lock sync.RWMutex
 
 	// workerとの通信用。
 	// close()されたら、workerは終了するべき。
@@ -202,7 +202,7 @@ func (m *ServerHandlerMaker) ServerHandler() protocol.ServerHandler {
 	m.init()
 	// TODO: コードを綺麗にする
 	chMap := m.chMap
-	chMapLock := &m.chMapLock
+	chMapLock := &m.lock
 
 	worker := m.worker
 
