@@ -187,7 +187,7 @@ func TestServerConn_OnEvent_handshake(t *testing.T) {
 	var connected bool
 
 	handler := ConnHandler{
-		Connected: func(id ConnID) {
+		Connected: func() {
 			connected = true
 		},
 	}.SetDefault(mustNotCall)
@@ -233,10 +233,10 @@ func TestServerConn_OnEvent_receiveShutdownPacket(t *testing.T) {
 	var errorOccurred bool
 	var stopped bool
 	handler := ConnHandler{
-		Disconnected: func(id ConnID) {
+		Disconnected: func() {
 			disconnected = true
 		},
-		Error: func(id ConnID, err error) {
+		Error: func(err error) {
 			errorOccurred = true
 		},
 	}.SetDefault(mustNotCall)
