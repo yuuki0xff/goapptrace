@@ -1,8 +1,10 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"sync"
 
 	"github.com/yuuki0xff/goapptrace/tracer/types"
@@ -15,6 +17,8 @@ type TracersStore struct {
 	initOnce sync.Once
 	m        sync.RWMutex
 	tracers  []*types.Tracer
+	// TracersStore に保存された情報が更新された場合にcallbackされる関数
+	updateCallbacks map[int]func()
 }
 
 func (s *TracersStore) init() (err error) {
@@ -32,7 +36,12 @@ func (s *TracersStore) load() error {
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(js, &s.tracers)
+	err = json.Unmarshal(js, &s.tracers)
+	if err != nil {
+		return err
+	}
+	s.notify()
+	return nil
 }
 func (s *TracersStore) save() error {
 	js, err := json.Marshal(s.tracers)
@@ -48,6 +57,14 @@ func (s *TracersStore) lookupById(id int) int {
 		}
 	}
 	return -1
+}
+
+// notify は、Watch()で登録されたコールバック関数を非同期的に呼び出す。
+// TracersStore のデータが更新されたときに必ず呼び出すこと。
+func (s *TracersStore) notify() {
+	for _, fn := range s.updateCallbacks {
+		go fn()
+	}
 }
 func (s *TracersStore) Add() (*types.Tracer, error) {
 	s.m.Lock()
@@ -103,5 +120,30 @@ func (s *TracersStore) Update(id int, fn TracersStoreUpdateFn) error {
 	}
 	s.tracers[idx] = t
 
+	s.notify()
 	return s.save()
+}
+
+// データが更新されたときにコールバックされる関数を登録する。
+// callback()は、ctxが終了するまでこの関数は非同期的に呼び出される可能性がある。
+func (s *TracersStore) Watch(ctx context.Context, callback func()) {
+	var key int
+
+	s.m.Lock()
+	for {
+		key = rand.Int()
+		if _, ok := s.updateCallbacks[key]; ok {
+			continue
+		}
+		s.updateCallbacks[key] = callback
+		break
+	}
+	s.m.Unlock()
+
+	go func() {
+		<-ctx.Done()
+		s.m.Lock()
+		delete(s.updateCallbacks, key)
+		s.m.Unlock()
+	}()
 }
