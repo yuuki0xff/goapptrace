@@ -243,7 +243,6 @@ type StartTraceCmdPacket struct {
 	FuncName string
 }
 
-// TODO: handlerを実装する
 type StopTraceCmdPacket struct {
 	FuncName string
 }
