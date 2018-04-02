@@ -40,11 +40,15 @@ func (s *LogServerSender) Open() error {
 			StartTrace: func(pkt *protocol.StartTraceCmdPacket) {
 				if pkt.FuncName != "" {
 					EnableTrace(pkt.FuncName)
+				} else {
+					panic("FuncName MUST NOT empty")
 				}
 			},
 			StopTrace: func(pkt *protocol.StopTraceCmdPacket) {
 				if pkt.FuncName != "" {
 					DisableTrace(pkt.FuncName)
+				} else {
+					panic("FuncName MUST NOT empty")
 				}
 			},
 		},
