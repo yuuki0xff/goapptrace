@@ -20,9 +20,10 @@ const (
 // TCPコネクションを一意に識別するID
 type ConnID int64
 
-// サーバで発生したイベントのイベントハンドラ。
+// TCPコネクションで発生したイベントのハンドラ。
+// 1つのコネクションごとにハンドラが作成されるため、handlerの中でconnection localな変数を保持しても構わない。
 // 不要なフィールドはnilにすることが可能。
-type ServerHandler struct {
+type ConnHandler struct {
 	Connected    func()
 	Disconnected func()
 
@@ -33,7 +34,7 @@ type ServerHandler struct {
 }
 
 // SetDefault sets "fn" to all nil fields.
-func (sh ServerHandler) SetDefault(fn func(field string)) ServerHandler {
+func (sh ConnHandler) SetDefault(fn func(field string)) ConnHandler {
 	if sh.Connected == nil {
 		sh.Connected = func() {
 			fn("Connected")
@@ -77,7 +78,7 @@ func (sh ServerHandler) SetDefault(fn func(field string)) ServerHandler {
 type Server struct {
 	// "unix:///path/to/socket/file" or "tcp://host:port"
 	Addr       string
-	NewHandler func(id ConnID) *ServerHandler
+	NewHandler func(id ConnID) *ConnHandler
 
 	AppName      string
 	Secret       string
@@ -103,7 +104,7 @@ type Server struct {
 // Serverが管理しているコネクションの状態を管理と、イベントハンドラの呼び出しを行う。
 type ServerConn struct {
 	ID           ConnID
-	Handler      *ServerHandler
+	Handler      *ConnHandler
 	isNegotiated bool
 	sendHandler  func(conn *xtcp.Conn, packet xtcp.Packet)
 	stopHandler  func(conn *xtcp.Conn, mode xtcp.StopMode)

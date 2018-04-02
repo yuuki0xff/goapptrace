@@ -61,7 +61,7 @@ type serverConnTestCh struct {
 }
 type serverConnTest struct {
 	T       *testing.T
-	Handler *ServerHandler
+	Handler *ConnHandler
 	// ServerConn.isNegotiated field
 	IsNegotiated bool
 	// ServerFunc calls sc.OnEvent() to checks the server behavior.
@@ -186,7 +186,7 @@ func TestServerConn_OnEvent_handshake(t *testing.T) {
 	a := assert.New(t)
 	var connected bool
 
-	handler := ServerHandler{
+	handler := ConnHandler{
 		Connected: func(id ConnID) {
 			connected = true
 		},
@@ -212,7 +212,7 @@ func TestServerConn_OnEvent_handshake(t *testing.T) {
 func TestServerConn_OnEvent_receivePingPacket(t *testing.T) {
 	// PingPacketに対しては、何も反応してはいけない。
 	//a := assert.New(t)
-	handler := ServerHandler{}.SetDefault(mustNotCall)
+	handler := ConnHandler{}.SetDefault(mustNotCall)
 	sct := serverConnTest{
 		T:            t,
 		Handler:      &handler,
@@ -232,7 +232,7 @@ func TestServerConn_OnEvent_receiveShutdownPacket(t *testing.T) {
 	var disconnected bool
 	var errorOccurred bool
 	var stopped bool
-	handler := ServerHandler{
+	handler := ConnHandler{
 		Disconnected: func(id ConnID) {
 			disconnected = true
 		},

@@ -111,7 +111,7 @@ func runServerRun(opt *handlerOpt) error {
 	}
 	logSrv := protocol.Server{
 		Addr:       "tcp://" + logAddr,
-		NewHandler: m.NewServerHandler,
+		NewHandler: m.NewConnHandler,
 		AppName:    "TODO", // TODO
 		Secret:     "",     // TODO
 	}
@@ -195,9 +195,9 @@ func (m *ServerHandlerMaker) init() {
 	})
 }
 
-func (m *ServerHandlerMaker) NewServerHandler(id protocol.ConnID) *protocol.ServerHandler {
+func (m *ServerHandlerMaker) NewConnHandler(id protocol.ConnID) *protocol.ConnHandler {
 	m.init()
-	return &protocol.ServerHandler{
+	return &protocol.ConnHandler{
 		Connected: func() {
 			log.Println("INFO: Server: connected")
 
@@ -275,6 +275,7 @@ func (m *shmWorker) Run() {
 			log.Panicf("TracersStore.Get(TracerID=%d): %s", m.TracerID, err.Error())
 		}
 		// TODO: sends t to client.
+		_ = t
 	})
 
 	ss := m.SSStore.New(logobj.ID)
