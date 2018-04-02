@@ -176,7 +176,11 @@ func TestServer_getConnID(t *testing.T) {
 }
 func TestServer_getServerConn(t *testing.T) {
 	a := assert.New(t)
-	s := Server{}
+	s := Server{
+		NewHandler: func(id ConnID) *ConnHandler {
+			return nil
+		},
+	}
 	s.init()
 
 	a.Equal(s.getServerConn(ConnID(0)), s.getServerConn(ConnID(0)))
