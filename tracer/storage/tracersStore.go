@@ -131,7 +131,9 @@ func (s *TracersStore) Watch(ctx context.Context, callback func()) {
 
 	s.m.Lock()
 	for {
-		key = rand.Int()
+		// updateCallbacksのキーの重複を避けるために乱数を使用している。
+		// 乱数の品質は問わない(脆弱でも構わない)ため、gasのwarningを無視する。
+		key = rand.Int() // nolint: gas
 		if _, ok := s.updateCallbacks[key]; ok {
 			continue
 		}
