@@ -21,6 +21,7 @@
 package cmd
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
@@ -103,11 +104,16 @@ func runServerRun(opt *handlerOpt) error {
 	}()
 
 	// start Log Server
+
+	m := &ServerHandlerMaker{
+		Storage: &strg,
+		SSStore: &simulatorStore,
+	}
 	logSrv := protocol.Server{
-		Addr:    "tcp://" + logAddr,
-		Handler: getServerHandler(&strg, &simulatorStore),
-		AppName: "TODO", // TODO
-		Secret:  "",     // TODO
+		Addr:       "tcp://" + logAddr,
+		NewHandler: m.NewServerHandler,
+		AppName:    "TODO", // TODO
+		Secret:     "",     // TODO
 	}
 	if err := logSrv.Listen(); err != nil {
 		opt.ErrLog.Println("Failed to start the Log server:", err)
@@ -169,14 +175,6 @@ func init() {
 	serverRunCmd.Flags().StringP("listen-log", "P", "", "Address and port for Log Server")
 }
 
-func getServerHandler(strg *storage.Storage, store *simulator.StateSimulatorStore) protocol.ServerHandler {
-	m := &ServerHandlerMaker{
-		Storage: strg,
-		SSStore: store,
-	}
-	return m.ServerHandler()
-}
-
 type ServerHandlerMaker struct {
 	Storage *storage.Storage
 	SSStore *simulator.StateSimulatorStore
@@ -197,10 +195,10 @@ func (m *ServerHandlerMaker) init() {
 	})
 }
 
-func (m *ServerHandlerMaker) ServerHandler() protocol.ServerHandler {
+func (m *ServerHandlerMaker) NewServerHandler(id protocol.ConnID) *protocol.ServerHandler {
 	m.init()
-	return protocol.ServerHandler{
-		Connected: func(id protocol.ConnID) {
+	return &protocol.ServerHandler{
+		Connected: func() {
 			log.Println("INFO: Server: connected")
 
 			t, err := m.Storage.TracersStore().Add()
@@ -222,7 +220,7 @@ func (m *ServerHandlerMaker) ServerHandler() protocol.ServerHandler {
 			m.chMap[id] = ch
 			m.lock.Unlock()
 		},
-		Disconnected: func(id protocol.ConnID) {
+		Disconnected: func() {
 			log.Println("INFO: Server: disconnected")
 
 			m.lock.Lock()
@@ -230,15 +228,15 @@ func (m *ServerHandlerMaker) ServerHandler() protocol.ServerHandler {
 			delete(m.chMap, id)
 			m.lock.Unlock()
 		},
-		Error: func(id protocol.ConnID, err error) {
+		Error: func(err error) {
 			log.Printf("ERROR: Server: connID=%d err=%s", id, err.Error())
 		},
-		Symbols: func(id protocol.ConnID, s *types.SymbolsData) {
+		Symbols: func(s *types.SymbolsData) {
 			m.lock.RLock()
 			m.chMap[id] <- s
 			m.lock.RUnlock()
 		},
-		RawFuncLog: func(id protocol.ConnID, f *types.RawFuncLog) {
+		RawFuncLog: func(f *types.RawFuncLog) {
 			m.lock.RLock()
 			m.chMap[id] <- f
 			m.lock.RUnlock()
@@ -268,6 +266,16 @@ func (m *shmWorker) Run() {
 			log.Panicf("failed to reopen a Log(%s): connID=%d err=%s", logobj.ID, m.ConnID, err.Error())
 		}
 	}()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	m.Storage.TracersStore().Watch(ctx, func() {
+		t, err := m.Storage.TracersStore().Get(m.TracerID)
+		if err != nil {
+			log.Panicf("TracersStore.Get(TracerID=%d): %s", m.TracerID, err.Error())
+		}
+		// TODO: sends t to client.
+	})
 
 	ss := m.SSStore.New(logobj.ID)
 	defer m.SSStore.Delete(logobj.ID)

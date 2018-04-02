@@ -146,16 +146,18 @@ func startLogServer(t *testing.T, connected, disconnected *bool) *protocol.Serve
 	a := assert.New(t)
 	srv := &protocol.Server{
 		Addr: "",
-		Handler: protocol.ServerHandler{
-			Connected: func(id protocol.ConnID) {
-				*connected = true
-			},
-			Disconnected: func(id protocol.ConnID) {
-				*disconnected = true
-			},
-			Error: func(id protocol.ConnID, err error) {
-				t.Fatalf("An error occurred in LogServer: %s", err)
-			},
+		NewHandler: func(id protocol.ConnID) *protocol.ServerHandler {
+			return &protocol.ServerHandler{
+				Connected: func() {
+					*connected = true
+				},
+				Disconnected: func() {
+					*disconnected = true
+				},
+				Error: func(err error) {
+					t.Fatalf("An error occurred in LogServer: %s", err)
+				},
+			}
 		},
 		AppName: "goapptrace-logger-test",
 		Secret:  "secret",

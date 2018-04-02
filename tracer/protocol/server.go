@@ -23,39 +23,39 @@ type ConnID int64
 // サーバで発生したイベントのイベントハンドラ。
 // 不要なフィールドはnilにすることが可能。
 type ServerHandler struct {
-	Connected    func(id ConnID)
-	Disconnected func(id ConnID)
+	Connected    func()
+	Disconnected func()
 
-	Error func(id ConnID, err error)
+	Error func(err error)
 
-	Symbols    func(id ConnID, diff *types.SymbolsData)
-	RawFuncLog func(id ConnID, funclog *types.RawFuncLog)
+	Symbols    func(diff *types.SymbolsData)
+	RawFuncLog func(funclog *types.RawFuncLog)
 }
 
 // SetDefault sets "fn" to all nil fields.
 func (sh ServerHandler) SetDefault(fn func(field string)) ServerHandler {
 	if sh.Connected == nil {
-		sh.Connected = func(id ConnID) {
+		sh.Connected = func() {
 			fn("Connected")
 		}
 	}
 	if sh.Disconnected == nil {
-		sh.Disconnected = func(id ConnID) {
+		sh.Disconnected = func() {
 			fn("Disconnected")
 		}
 	}
 	if sh.Error == nil {
-		sh.Error = func(id ConnID, err error) {
+		sh.Error = func(err error) {
 			fn("Error")
 		}
 	}
 	if sh.Symbols == nil {
-		sh.Symbols = func(id ConnID, diff *types.SymbolsData) {
+		sh.Symbols = func(diff *types.SymbolsData) {
 			fn("Symbols")
 		}
 	}
 	if sh.RawFuncLog == nil {
-		sh.RawFuncLog = func(id ConnID, funclog *types.RawFuncLog) {
+		sh.RawFuncLog = func(funclog *types.RawFuncLog) {
 			fn("RawFuncLog")
 		}
 	}
@@ -76,8 +76,8 @@ func (sh ServerHandler) SetDefault(fn func(field string)) ServerHandler {
 //   srv.Wait()
 type Server struct {
 	// "unix:///path/to/socket/file" or "tcp://host:port"
-	Addr    string
-	Handler ServerHandler
+	Addr       string
+	NewHandler func(id ConnID) *ServerHandler
 
 	AppName      string
 	Secret       string
@@ -225,7 +225,7 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 
 			s.isNegotiated = true
 			if s.Handler.Connected != nil {
-				s.Handler.Connected(s.ID)
+				s.Handler.Connected()
 			}
 		} else {
 			switch pkt := p.(type) {
@@ -233,11 +233,11 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 				// do nothing
 			case *SymbolPacket:
 				if s.Handler.Symbols != nil {
-					s.Handler.Symbols(s.ID, &pkt.SymbolsData)
+					s.Handler.Symbols(&pkt.SymbolsData)
 				}
 			case *RawFuncLogPacket:
 				if s.Handler.RawFuncLog != nil {
-					s.Handler.RawFuncLog(s.ID, pkt.FuncLog)
+					s.Handler.RawFuncLog(pkt.FuncLog)
 				}
 			default:
 				s.error(fmt.Errorf("server receives an unexpected packet: %#v", pkt))
@@ -248,7 +248,7 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 	case xtcp.EventSend:
 	case xtcp.EventClosed:
 		if s.Handler.Disconnected != nil {
-			s.Handler.Disconnected(s.ID)
+			s.Handler.Disconnected()
 		}
 	}
 }
@@ -277,7 +277,7 @@ func (s *ServerConn) stop(conn *xtcp.Conn, mode xtcp.StopMode) {
 
 func (s *ServerConn) error(err error) {
 	if s.Handler.Error != nil {
-		s.Handler.Error(s.ID, err)
+		s.Handler.Error(err)
 	} else {
 		log.Println("ERROR: ", err)
 	}
@@ -307,7 +307,7 @@ func (s *Server) getServerConn(id ConnID) *ServerConn {
 
 	srvConn = &ServerConn{
 		ID:      id,
-		Handler: &s.Handler,
+		Handler: s.NewHandler(id),
 	}
 	s.connMap[id] = srvConn
 	return srvConn
