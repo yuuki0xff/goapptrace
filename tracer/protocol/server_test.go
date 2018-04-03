@@ -183,8 +183,8 @@ func TestServer_getServerConn(t *testing.T) {
 	}
 	s.init()
 
-	a.Equal(s.getServerConn(ConnID(0)), s.getServerConn(ConnID(0)))
-	a.NotEqual(s.getServerConn(ConnID(0)), s.getServerConn(ConnID(1)))
+	a.Equal(s.getServerConn(ConnID(0), nil), s.getServerConn(ConnID(0), nil))
+	a.NotEqual(s.getServerConn(ConnID(0), nil), s.getServerConn(ConnID(1), nil))
 }
 func TestServerConn_OnEvent_handshake(t *testing.T) {
 	a := assert.New(t)

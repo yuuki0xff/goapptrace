@@ -104,6 +104,7 @@ type Server struct {
 // Serverが管理しているコネクションの状態を管理と、イベントハンドラの呼び出しを行う。
 type ServerConn struct {
 	ID           ConnID
+	Conn         *xtcp.Conn
 	Handler      *ConnHandler
 	isNegotiated bool
 	sendHandler  func(conn *xtcp.Conn, packet xtcp.Packet)
@@ -189,7 +190,7 @@ func (s *Server) Wait() {
 
 func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 	connID := s.getConnID(conn)
-	sc := s.getServerConn(connID)
+	sc := s.getServerConn(connID, conn)
 	sc.OnEvent(et, conn, p)
 }
 
@@ -298,7 +299,7 @@ func (s *Server) getConnID(conn *xtcp.Conn) ConnID {
 	return id
 }
 
-func (s *Server) getServerConn(id ConnID) *ServerConn {
+func (s *Server) getServerConn(id ConnID, conn *xtcp.Conn) *ServerConn {
 	s.connMapLock.Lock()
 	defer s.connMapLock.Unlock()
 	srvConn, ok := s.connMap[id]
@@ -308,6 +309,7 @@ func (s *Server) getServerConn(id ConnID) *ServerConn {
 
 	srvConn = &ServerConn{
 		ID:      id,
+		Conn:    conn,
 		Handler: s.NewHandler(id),
 	}
 	s.connMap[id] = srvConn
