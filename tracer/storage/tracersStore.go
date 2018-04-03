@@ -18,7 +18,7 @@ type TracersStore struct {
 	m        sync.RWMutex
 	tracers  []*types.Tracer
 	// TracersStore に保存された情報が更新された場合にcallbackされる関数
-	updateCallbacks map[int]func()
+	updateCallbacks map[int]func(id int)
 }
 
 func (s *TracersStore) init() (err error) {
@@ -40,7 +40,9 @@ func (s *TracersStore) load() error {
 	if err != nil {
 		return err
 	}
-	s.notify()
+	for _, t := range s.tracers {
+		s.notify(t.ID)
+	}
 	return nil
 }
 func (s *TracersStore) save() error {
@@ -59,25 +61,26 @@ func (s *TracersStore) lookupById(id int) int {
 	return -1
 }
 
-// notify は、Watch()で登録されたコールバック関数を非同期的に呼び出す。
+// notify は、Watch()で登録されたコールバック関数を全て呼び出す。
 // TracersStore のデータが更新されたときに必ず呼び出すこと。
-func (s *TracersStore) notify() {
+func (s *TracersStore) notify(id int) {
 	for _, fn := range s.updateCallbacks {
-		go fn()
+		fn(id)
 	}
 }
 func (s *TracersStore) Add() (*types.Tracer, error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 
+	id := len(s.tracers)
 	t := &types.Tracer{
-		ID: len(s.tracers),
+		ID: id,
 	}
 	s.tracers = append(s.tracers, t)
 	if err := s.save(); err != nil {
 		return nil, err
 	}
-	s.notify()
+	s.notify(id)
 	return t, nil
 }
 func (s *TracersStore) Get(id int) (*types.Tracer, error) {
@@ -121,13 +124,15 @@ func (s *TracersStore) Update(id int, fn TracersStoreUpdateFn) error {
 	}
 	s.tracers[idx] = t
 
-	s.notify()
+	s.notify(id)
 	return s.save()
 }
 
-// データが更新されたときにコールバックされる関数を登録する。
-// callback()は、ctxが終了するまでこの関数は非同期的に呼び出される可能性がある。
-func (s *TracersStore) Watch(ctx context.Context, callback func()) {
+// データが更新されたときに、callbackを変更されたTracer IDを引数にして呼び出す。
+// この関数は、ctxが終了するまで制御を返さない。
+// callback内でTracersStoreへのアクセスを行うと、deadlockする。
+// イベントハンドラはブロッキング処理されるため、高速に処理できるようにすること。
+func (s *TracersStore) Watch(ctx context.Context, callback func(id int)) {
 	var key int
 
 	s.m.Lock()
@@ -143,10 +148,8 @@ func (s *TracersStore) Watch(ctx context.Context, callback func()) {
 	}
 	s.m.Unlock()
 
-	go func() {
-		<-ctx.Done()
-		s.m.Lock()
-		delete(s.updateCallbacks, key)
-		s.m.Unlock()
-	}()
+	<-ctx.Done()
+	s.m.Lock()
+	delete(s.updateCallbacks, key)
+	s.m.Unlock()
 }
