@@ -77,6 +77,7 @@ func (s *TracersStore) Add() (*types.Tracer, error) {
 	if err := s.save(); err != nil {
 		return nil, err
 	}
+	s.notify()
 	return t, nil
 }
 func (s *TracersStore) Get(id int) (*types.Tracer, error) {
