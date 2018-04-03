@@ -150,9 +150,9 @@ func (api APIv0) SetHandlers(router *mux.Router) {
 	v01.HandleFunc("/tracer/{tracer-id}/targets", api.tracerTargetsGet).Methods(http.MethodGet)
 	v01.HandleFunc("/tracer/{tracer-id}/targets", api.tracerTargetsPut).Methods(http.MethodPut)
 	v01.HandleFunc("/tracer/{tracer-id}/targets", api.tracerTargetsDel).Methods(http.MethodDelete)
-	v01.HandleFunc("/tracer/{tracer-id}/target/func/{func}", api.tracerTargetFuncGet).Methods(http.MethodGet)
-	v01.HandleFunc("/tracer/{tracer-id}/target/func/{func}", api.tracerTargetFuncPut).Methods(http.MethodPut)
-	v01.HandleFunc("/tracer/{tracer-id}/target/func/{func}", api.tracerTargetFuncDel).Methods(http.MethodDelete)
+	v01.HandleFunc("/tracer/{tracer-id}/target/func/{func:.*}", api.tracerTargetFuncGet).Methods(http.MethodGet)
+	v01.HandleFunc("/tracer/{tracer-id}/target/func/{func:.*}", api.tracerTargetFuncPut).Methods(http.MethodPut)
+	v01.HandleFunc("/tracer/{tracer-id}/target/func/{func:.*}", api.tracerTargetFuncDel).Methods(http.MethodDelete)
 }
 func (api APIv0) serverError(w http.ResponseWriter, err error, msg string) {
 	api.Logger.Println(errors.Wrap(err, "failed to json.Marshal").Error())
