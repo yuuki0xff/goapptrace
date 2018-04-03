@@ -21,7 +21,6 @@
 package cmd
 
 import (
-	"context"
 	"log"
 	"os"
 	"os/signal"
@@ -266,17 +265,6 @@ func (m *shmWorker) Run() {
 			log.Panicf("failed to reopen a Log(%s): connID=%d err=%s", logobj.ID, m.ConnID, err.Error())
 		}
 	}()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	m.Storage.TracersStore().Watch(ctx, func() {
-		t, err := m.Storage.TracersStore().Get(m.TracerID)
-		if err != nil {
-			log.Panicf("TracersStore.Get(TracerID=%d): %s", m.TracerID, err.Error())
-		}
-		// TODO: sends t to client.
-		_ = t
-	})
 
 	ss := m.SSStore.New(logobj.ID)
 	defer m.SSStore.Delete(logobj.ID)
