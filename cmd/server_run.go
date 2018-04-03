@@ -21,6 +21,7 @@
 package cmd
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
@@ -36,6 +37,7 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/simulator"
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
 	"github.com/yuuki0xff/goapptrace/tracer/types"
+	"github.com/yuuki0xff/xtcp"
 )
 
 const (
@@ -196,6 +198,7 @@ func (m *ServerHandlerMaker) init() {
 
 func (m *ServerHandlerMaker) NewConnHandler(id protocol.ConnID, conn protocol.PacketSender) *protocol.ConnHandler {
 	m.init()
+	var cancel context.CancelFunc
 	return &protocol.ConnHandler{
 		Connected: func() {
 			log.Println("INFO: Server: connected")
@@ -207,13 +210,23 @@ func (m *ServerHandlerMaker) NewConnHandler(id protocol.ConnID, conn protocol.Pa
 			}
 
 			ch := make(chan interface{}, DefaultReceiveBufferSize)
-			worker := &logWriteWorker{
+			lwWorker := &logWriteWorker{
 				ServerHandlerMaker: m,
 				Ch:                 ch,
 				ConnID:             id,
 				TracerID:           t.ID,
 			}
-			go worker.Run()
+			go lwWorker.Run()
+
+			tsWorker := &tracerSyncWorker{
+				TracerID: t.ID,
+				Log:      nil,
+				Storage:  m.Storage,
+				Sender:   conn,
+			}
+			var ctx context.Context
+			ctx, cancel = context.WithCancel(context.Background())
+			go tsWorker.Run(ctx)
 
 			m.lock.Lock()
 			m.chMap[id] = ch
@@ -226,6 +239,10 @@ func (m *ServerHandlerMaker) NewConnHandler(id protocol.ConnID, conn protocol.Pa
 			close(m.chMap[id])
 			delete(m.chMap, id)
 			m.lock.Unlock()
+
+			if cancel != nil {
+				cancel()
+			}
 		},
 		Error: func(err error) {
 			log.Printf("ERROR: Server: connID=%d err=%s", id, err.Error())
@@ -366,4 +383,70 @@ func (w *logWriteWorker) writeSS(logobj *storage.Log, ss *simulator.StateSimulat
 		}
 	})
 	ss.Clear()
+}
+
+type tracerSyncWorker struct {
+	TracerID int
+	Log      *storage.Log
+	Storage  *storage.Storage
+	Sender   protocol.PacketSender
+}
+
+func (w *tracerSyncWorker) Run(ctx context.Context) {
+	var wg sync.WaitGroup
+	pch := make(chan xtcp.Packet, 10)
+	tch := make(chan *types.Tracer, 10)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for p := range pch {
+			if err := w.Sender.Send(p); err != nil {
+				log.Println(err)
+			}
+		}
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer close(pch)
+		for tracer := range tch {
+			// tracerオブジェクトの設定内容を、client側に反映させる。
+			if err := w.Log.Symbols().Save(func(data types.SymbolsData) error {
+				for _, f := range data.Funcs {
+					var exists bool
+					for _, funcName := range tracer.Target.Funcs {
+						if f.Name == funcName {
+							exists = true
+							break
+						}
+					}
+
+					var p xtcp.Packet
+					if exists {
+						p = &protocol.StartTraceCmdPacket{
+							FuncName: f.Name,
+						}
+					} else {
+						p = &protocol.StopTraceCmdPacket{
+							FuncName: f.Name,
+						}
+					}
+					pch <- p
+				}
+				return nil
+			}); err != nil {
+				log.Println(err)
+			}
+		}
+	}()
+
+	w.Storage.TracersStore().Watch(ctx, func(tracer *types.Tracer) {
+		if w.TracerID != tracer.ID {
+			return
+		}
+		tch <- tracer
+	})
+	close(tch)
+	wg.Wait()
 }
