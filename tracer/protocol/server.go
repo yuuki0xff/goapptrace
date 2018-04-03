@@ -200,23 +200,23 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 			pkt, ok := p.(*ClientHelloPacket)
 			if !ok {
 				s.error(fmt.Errorf("negotiation failed: client sends an unexpected packet: %#v", p))
-				s.stop(conn, xtcp.StopImmediately)
+				s.stop(xtcp.StopImmediately)
 				return
 			}
 			if !isCompatibleVersion(pkt.ProtocolVersion) {
 				// 対応していないバージョンなら、切断する。
 				s.error(fmt.Errorf("negotiation failed: client version is not compatible"))
-				s.stop(conn, xtcp.StopImmediately)
+				s.stop(xtcp.StopImmediately)
 				return
 			}
 
 			packet := &ServerHelloPacket{
 				ProtocolVersion: ProtocolVersion,
 			}
-			err := s.send(conn, packet)
+			err := s.send(packet)
 			if err != nil {
 				s.error(err)
-				s.stop(conn, xtcp.StopImmediately)
+				s.stop(xtcp.StopImmediately)
 				return
 			}
 
@@ -238,7 +238,7 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 				}
 			default:
 				s.error(fmt.Errorf("server receives an unexpected packet: %#v", pkt))
-				s.stop(conn, xtcp.StopImmediately)
+				s.stop(xtcp.StopImmediately)
 				return
 			}
 		}
@@ -249,26 +249,26 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 		}
 	}
 }
-func (s *ServerConn) send(conn *xtcp.Conn, p xtcp.Packet) error {
+func (s *ServerConn) send(p xtcp.Packet) error {
 	if s.sendHandler == nil {
-		return conn.Send(p)
+		return s.Conn.Send(p)
 	} else {
 		// call the mock method.
-		s.sendHandler(conn, p)
+		s.sendHandler(s.Conn, p)
 		return nil
 	}
 }
 
-func (s *ServerConn) stop(conn *xtcp.Conn, mode xtcp.StopMode) {
+func (s *ServerConn) stop(mode xtcp.StopMode) {
 	if s.stopHandler == nil {
-		conn.Stop(mode)
+		s.Conn.Stop(mode)
 	} else {
 		// call the mock method.
-		s.stopHandler(conn, mode)
+		s.stopHandler(s.Conn, mode)
 		// "xtcp.EventClosed" event occurs after calling the conn.Stop().
 		// But the event is not occur when calling s.stopHandler().
 		// So we occurs the event here.
-		s.OnEvent(xtcp.EventClosed, conn, nil)
+		s.OnEvent(xtcp.EventClosed, s.Conn, nil)
 	}
 }
 
