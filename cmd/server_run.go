@@ -209,18 +209,24 @@ func (m *ServerHandlerMaker) NewConnHandler(id protocol.ConnID, conn protocol.Pa
 				return
 			}
 
+			logobj, err := m.Storage.New()
+			if err != nil {
+				log.Panicf("ERROR: Server: failed to a create Log object: err=%s", err.Error())
+			}
+
 			ch := make(chan interface{}, DefaultReceiveBufferSize)
 			lwWorker := &logWriteWorker{
 				ServerHandlerMaker: m,
 				Ch:                 ch,
 				ConnID:             id,
 				TracerID:           t.ID,
+				Log:                logobj,
 			}
 			go lwWorker.Run()
 
 			tsWorker := &tracerSyncWorker{
 				TracerID: t.ID,
-				Log:      nil,
+				Log:      logobj,
 				Storage:  m.Storage,
 				Sender:   conn,
 			}
@@ -266,19 +272,17 @@ type logWriteWorker struct {
 	Ch       chan interface{}
 	ConnID   protocol.ConnID
 	TracerID int
+	Log      *storage.Log
 }
 
 func (w *logWriteWorker) Run() {
-	logobj, err := w.Storage.New()
-	if err != nil {
-		log.Panicf("ERROR: Server: failed to a create Log object: err=%s", err.Error())
-	}
+	logobj := w.Log
 	defer func() {
-		if err = logobj.Close(); err != nil {
+		if err := logobj.Close(); err != nil {
 			log.Panicf("failed to close a Log(%s): connID=%d err=%s", logobj.ID, w.ConnID, err.Error())
 		}
 		logobj.ReadOnly = true
-		if err = logobj.Open(); err != nil {
+		if err := logobj.Open(); err != nil {
 			log.Panicf("failed to reopen a Log(%s): connID=%d err=%s", logobj.ID, w.ConnID, err.Error())
 		}
 	}()
