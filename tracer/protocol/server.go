@@ -20,6 +20,11 @@ const (
 // TCPコネクションを一意に識別するID
 type ConnID int64
 
+type PacketSender interface {
+	Send(p xtcp.Packet) error
+	Stop(mode xtcp.StopMode)
+}
+
 // TCPコネクションで発生したイベントのハンドラ。
 // 1つのコネクションごとにハンドラが作成されるため、handlerの中でconnection localな変数を保持しても構わない。
 // 不要なフィールドはnilにすることが可能。
@@ -78,7 +83,7 @@ func (sh ConnHandler) SetDefault(fn func(field string)) ConnHandler {
 type Server struct {
 	// "unix:///path/to/socket/file" or "tcp://host:port"
 	Addr       string
-	NewHandler func(id ConnID) *ConnHandler
+	NewHandler func(id ConnID, conn PacketSender) *ConnHandler
 
 	AppName      string
 	Secret       string
@@ -200,23 +205,23 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 			pkt, ok := p.(*ClientHelloPacket)
 			if !ok {
 				s.error(fmt.Errorf("negotiation failed: client sends an unexpected packet: %#v", p))
-				s.stop(xtcp.StopImmediately)
+				s.Stop(xtcp.StopImmediately)
 				return
 			}
 			if !isCompatibleVersion(pkt.ProtocolVersion) {
 				// 対応していないバージョンなら、切断する。
 				s.error(fmt.Errorf("negotiation failed: client version is not compatible"))
-				s.stop(xtcp.StopImmediately)
+				s.Stop(xtcp.StopImmediately)
 				return
 			}
 
 			packet := &ServerHelloPacket{
 				ProtocolVersion: ProtocolVersion,
 			}
-			err := s.send(packet)
+			err := s.Send(packet)
 			if err != nil {
 				s.error(err)
-				s.stop(xtcp.StopImmediately)
+				s.Stop(xtcp.StopImmediately)
 				return
 			}
 
@@ -238,7 +243,7 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 				}
 			default:
 				s.error(fmt.Errorf("server receives an unexpected packet: %#v", pkt))
-				s.stop(xtcp.StopImmediately)
+				s.Stop(xtcp.StopImmediately)
 				return
 			}
 		}
@@ -249,7 +254,7 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 		}
 	}
 }
-func (s *ServerConn) send(p xtcp.Packet) error {
+func (s *ServerConn) Send(p xtcp.Packet) error {
 	if s.sendHandler == nil {
 		return s.Conn.Send(p)
 	} else {
@@ -259,7 +264,7 @@ func (s *ServerConn) send(p xtcp.Packet) error {
 	}
 }
 
-func (s *ServerConn) stop(mode xtcp.StopMode) {
+func (s *ServerConn) Stop(mode xtcp.StopMode) {
 	if s.stopHandler == nil {
 		s.Conn.Stop(mode)
 	} else {
@@ -289,10 +294,10 @@ func (s *Server) getServerConn(conn *xtcp.Conn) *ServerConn {
 	}
 
 	srvConn = &ServerConn{
-		ID:      s.nextConnID,
-		Conn:    conn,
-		Handler: s.NewHandler(s.nextConnID),
+		ID:   s.nextConnID,
+		Conn: conn,
 	}
+	srvConn.Handler = s.NewHandler(s.nextConnID, srvConn)
 	s.connMap[conn] = srvConn
 	s.nextConnID++
 	return srvConn

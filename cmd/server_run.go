@@ -195,7 +195,7 @@ func (m *ServerHandlerMaker) init() {
 	})
 }
 
-func (m *ServerHandlerMaker) NewConnHandler(id protocol.ConnID) *protocol.ConnHandler {
+func (m *ServerHandlerMaker) NewConnHandler(id protocol.ConnID, conn protocol.PacketSender) *protocol.ConnHandler {
 	m.init()
 	return &protocol.ConnHandler{
 		Connected: func() {

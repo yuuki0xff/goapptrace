@@ -146,7 +146,7 @@ func startLogServer(t *testing.T, connected, disconnected *bool) *protocol.Serve
 	a := assert.New(t)
 	srv := &protocol.Server{
 		Addr: "",
-		NewHandler: func(id protocol.ConnID) *protocol.ConnHandler {
+		NewHandler: func(id protocol.ConnID, conn protocol.PacketSender) *protocol.ConnHandler {
 			return &protocol.ConnHandler{
 				Connected: func() {
 					*connected = true

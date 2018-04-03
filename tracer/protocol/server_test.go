@@ -166,7 +166,7 @@ func TestServer_Wait(t *testing.T) {
 func TestServer_getServerConn(t *testing.T) {
 	a := assert.New(t)
 	s := Server{
-		NewHandler: func(id ConnID) *ConnHandler {
+		NewHandler: func(id ConnID, conn PacketSender) *ConnHandler {
 			return nil
 		},
 	}
