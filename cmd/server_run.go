@@ -207,7 +207,7 @@ func (m *ServerHandlerMaker) NewConnHandler(id protocol.ConnID, conn protocol.Pa
 			}
 
 			ch := make(chan interface{}, DefaultReceiveBufferSize)
-			worker := &shmWorker{
+			worker := &logWriteWorker{
 				ServerHandlerMaker: m,
 				Ch:                 ch,
 				ConnID:             id,
@@ -243,15 +243,15 @@ func (m *ServerHandlerMaker) NewConnHandler(id protocol.ConnID, conn protocol.Pa
 	}
 }
 
-// shmWorker - ServerHandlerMaker worker
-type shmWorker struct {
+// logWriteWorker - ServerHandlerMaker worker
+type logWriteWorker struct {
 	*ServerHandlerMaker
 	Ch       chan interface{}
 	ConnID   protocol.ConnID
 	TracerID int
 }
 
-func (m *shmWorker) Run() {
+func (m *logWriteWorker) Run() {
 	logobj, err := m.Storage.New()
 	if err != nil {
 		log.Panicf("ERROR: Server: failed to a create Log object: err=%s", err.Error())
@@ -348,7 +348,7 @@ func (m *shmWorker) Run() {
 // writeSS は、 StateSimulator の内容をファイルへ書き出す。
 // 書き込みには時間がかかる可能性がある。
 // 書き込み済みのレコードはメモリ上から削除するのため、メモリ解放が行える。
-func (m *shmWorker) writeSS(logobj *storage.Log, ss *simulator.StateSimulator) {
+func (m *logWriteWorker) writeSS(logobj *storage.Log, ss *simulator.StateSimulator) {
 	logobj.FuncLog(func(store *storage.FuncLogStore) {
 		for _, fl := range ss.FuncLogs(false) {
 			err := store.SetNolock(fl)
