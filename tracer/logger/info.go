@@ -4,6 +4,7 @@ import (
 	"runtime"
 )
 
+var defaultIsTracing bool
 var pkgs []*PackageData
 
 type PackageData struct {
@@ -19,35 +20,48 @@ func AddPackage(data *PackageData) {
 	pkgs = append(pkgs, data)
 }
 
-func setIsTracingFlag(match func(config FuncConfig) bool, flag bool) {
-	for _, pkg := range pkgs {
-		for _, f := range pkg.Funcs {
-			if match(f) {
-				*f.IsTracing = flag
-				break
-			}
-		}
-	}
-}
-
 // EnableAll starts all functions of goapptrace.
 func EnableAll() {
-	setIsTracingFlag(func(FuncConfig) bool { return true }, true)
+	lock.Lock()
+	defer lock.Unlock()
+	for _, bp := range funcIsTracing {
+		*bp = true
+	}
+	defaultIsTracing = true
 }
 
 // DisableAll stops all functions of goapptrace until calls EnableAll() or StartFunc().
 func DisableAll() {
-	setIsTracingFlag(func(FuncConfig) bool { return true }, false)
+	lock.Lock()
+	defer lock.Unlock()
+	for _, bp := range funcIsTracing {
+		*bp = false
+	}
+	defaultIsTracing = false
 }
 
 // EnableTrace enables tracing of specify function.
 func EnableTrace(funcName string) {
-	setIsTracingFlag(func(config FuncConfig) bool { return config.Name == funcName }, true)
+	lock.Lock()
+	defer lock.Unlock()
+	if bp, ok := funcIsTracing[funcName]; ok {
+		*bp = true
+	} else {
+		bp = new(bool)
+		*bp = true
+		funcIsTracing[funcName] = bp
+	}
 }
 
 // DisableTrace disables tracing of specify function.
 func DisableTrace(funcName string) {
-	setIsTracingFlag(func(config FuncConfig) bool { return config.Name == funcName }, false)
+	lock.Lock()
+	defer lock.Unlock()
+	if bp, ok := funcIsTracing[funcName]; ok {
+		*bp = false
+	} else {
+		funcIsTracing[funcName] = new(bool)
+	}
 }
 
 func TracingFlag() *bool {
@@ -72,6 +86,7 @@ func TracingFlag() *bool {
 	}
 	if funcIsTracing[funcName] == nil {
 		funcIsTracing[funcName] = new(bool)
+		*funcIsTracing[funcName] = defaultIsTracing
 	}
 	return funcIsTracing[funcName]
 }
