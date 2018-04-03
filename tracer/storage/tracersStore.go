@@ -18,7 +18,7 @@ type TracersStore struct {
 	m        sync.RWMutex
 	tracers  []*types.Tracer
 	// TracersStore に保存された情報が更新された場合にcallbackされる関数
-	updateCallbacks map[int]func(id int)
+	updateCallbacks map[int]func(tracer *types.Tracer)
 }
 
 func (s *TracersStore) init() (err error) {
@@ -41,7 +41,7 @@ func (s *TracersStore) load() error {
 		return err
 	}
 	for _, t := range s.tracers {
-		s.notify(t.ID)
+		s.notify(t)
 	}
 	return nil
 }
@@ -63,9 +63,9 @@ func (s *TracersStore) lookupById(id int) int {
 
 // notify は、Watch()で登録されたコールバック関数を全て呼び出す。
 // TracersStore のデータが更新されたときに必ず呼び出すこと。
-func (s *TracersStore) notify(id int) {
+func (s *TracersStore) notify(tracer *types.Tracer) {
 	for _, fn := range s.updateCallbacks {
-		fn(id)
+		fn(tracer)
 	}
 }
 func (s *TracersStore) Add() (*types.Tracer, error) {
@@ -80,7 +80,7 @@ func (s *TracersStore) Add() (*types.Tracer, error) {
 	if err := s.save(); err != nil {
 		return nil, err
 	}
-	s.notify(id)
+	s.notify(t)
 	return t, nil
 }
 func (s *TracersStore) Get(id int) (*types.Tracer, error) {
@@ -124,7 +124,7 @@ func (s *TracersStore) Update(id int, fn TracersStoreUpdateFn) error {
 	}
 	s.tracers[idx] = t
 
-	s.notify(id)
+	s.notify(t)
 	return s.save()
 }
 
@@ -132,7 +132,7 @@ func (s *TracersStore) Update(id int, fn TracersStoreUpdateFn) error {
 // この関数は、ctxが終了するまで制御を返さない。
 // callback内でTracersStoreへのアクセスを行うと、deadlockする。
 // イベントハンドラはブロッキング処理されるため、高速に処理できるようにすること。
-func (s *TracersStore) Watch(ctx context.Context, callback func(id int)) {
+func (s *TracersStore) Watch(ctx context.Context, callback func(tracer *types.Tracer)) {
 	var key int
 
 	s.m.Lock()
