@@ -7,6 +7,10 @@ import (
 var defaultIsTracing bool
 var pkgs []*PackageData
 
+// トレースが有効化されている場合、関数名に対応する値はtrueになる。
+// アクセスする前に lock.Lock() を呼び出すこと。
+var funcIsTracingMap = map[string]*bool{}
+
 type PackageData struct {
 	Name  string
 	Funcs []FuncConfig
@@ -24,7 +28,7 @@ func AddPackage(data *PackageData) {
 func EnableAll() {
 	lock.Lock()
 	defer lock.Unlock()
-	for _, bp := range funcIsTracing {
+	for _, bp := range funcIsTracingMap {
 		*bp = true
 	}
 	defaultIsTracing = true
@@ -34,7 +38,7 @@ func EnableAll() {
 func DisableAll() {
 	lock.Lock()
 	defer lock.Unlock()
-	for _, bp := range funcIsTracing {
+	for _, bp := range funcIsTracingMap {
 		*bp = false
 	}
 	defaultIsTracing = false
@@ -44,12 +48,12 @@ func DisableAll() {
 func EnableTrace(funcName string) {
 	lock.Lock()
 	defer lock.Unlock()
-	if bp, ok := funcIsTracing[funcName]; ok {
+	if bp, ok := funcIsTracingMap[funcName]; ok {
 		*bp = true
 	} else {
 		bp = new(bool)
 		*bp = true
-		funcIsTracing[funcName] = bp
+		funcIsTracingMap[funcName] = bp
 	}
 }
 
@@ -57,10 +61,10 @@ func EnableTrace(funcName string) {
 func DisableTrace(funcName string) {
 	lock.Lock()
 	defer lock.Unlock()
-	if bp, ok := funcIsTracing[funcName]; ok {
+	if bp, ok := funcIsTracingMap[funcName]; ok {
 		*bp = false
 	} else {
-		funcIsTracing[funcName] = new(bool)
+		funcIsTracingMap[funcName] = new(bool)
 	}
 }
 
@@ -84,9 +88,9 @@ func TracingFlag() *bool {
 		}
 		funcName = funcObj.Name()
 	}
-	if funcIsTracing[funcName] == nil {
-		funcIsTracing[funcName] = new(bool)
-		*funcIsTracing[funcName] = defaultIsTracing
+	if funcIsTracingMap[funcName] == nil {
+		funcIsTracingMap[funcName] = new(bool)
+		*funcIsTracingMap[funcName] = defaultIsTracing
 	}
-	return funcIsTracing[funcName]
+	return funcIsTracingMap[funcName]
 }
