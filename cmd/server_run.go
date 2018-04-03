@@ -251,26 +251,26 @@ type logWriteWorker struct {
 	TracerID int
 }
 
-func (m *logWriteWorker) Run() {
-	logobj, err := m.Storage.New()
+func (w *logWriteWorker) Run() {
+	logobj, err := w.Storage.New()
 	if err != nil {
 		log.Panicf("ERROR: Server: failed to a create Log object: err=%s", err.Error())
 	}
 	defer func() {
 		if err = logobj.Close(); err != nil {
-			log.Panicf("failed to close a Log(%s): connID=%d err=%s", logobj.ID, m.ConnID, err.Error())
+			log.Panicf("failed to close a Log(%s): connID=%d err=%s", logobj.ID, w.ConnID, err.Error())
 		}
 		logobj.ReadOnly = true
 		if err = logobj.Open(); err != nil {
-			log.Panicf("failed to reopen a Log(%s): connID=%d err=%s", logobj.ID, m.ConnID, err.Error())
+			log.Panicf("failed to reopen a Log(%s): connID=%d err=%s", logobj.ID, w.ConnID, err.Error())
 		}
 	}()
 
-	ss := m.SSStore.New(logobj.ID)
-	defer m.SSStore.Delete(logobj.ID)
+	ss := w.SSStore.New(logobj.ID)
+	defer w.SSStore.Delete(logobj.ID)
 
 	// ログを閉じる前に、現在のStateSimulatorの状態を保存する。
-	defer m.writeSS(logobj, ss)
+	defer w.writeSS(logobj, ss)
 
 	// 最後にファイルと同期してから受信した RawFuncLog の個数。
 	// flCount が flCountMax に達したら、ファイルに書き出す。
@@ -300,7 +300,7 @@ func (m *logWriteWorker) Run() {
 		var rawobj interface{}
 		var ok bool
 		select {
-		case rawobj, ok = <-m.Ch:
+		case rawobj, ok = <-w.Ch:
 		case rawobj, ok = <-ssWriteReq:
 		}
 		if !ok {
@@ -323,7 +323,7 @@ func (m *logWriteWorker) Run() {
 				if flCount >= flCountMax {
 					// 多くの RawFuncLog をsimulatorに渡したため、大量のメモリを消費している。
 					// ファイルに書き出してメモリを開放させる。
-					m.writeSS(logobj, ss)
+					w.writeSS(logobj, ss)
 					flCount = 0
 				}
 			case *types.SymbolsData:
@@ -331,16 +331,16 @@ func (m *logWriteWorker) Run() {
 					log.Panicln("failed to append Symbols:", err.Error())
 				}
 			case *simulator.StateSimulator:
-				m.writeSS(logobj, ss)
+				w.writeSS(logobj, ss)
 				flCount = 0
 			default:
 				log.Panicf("unsupported type: %+v", rawobj)
 			}
 
-			if len(m.Ch) == 0 {
+			if len(w.Ch) == 0 {
 				break
 			}
-			rawobj = <-m.Ch
+			rawobj = <-w.Ch
 		}
 	}
 }
@@ -348,7 +348,7 @@ func (m *logWriteWorker) Run() {
 // writeSS は、 StateSimulator の内容をファイルへ書き出す。
 // 書き込みには時間がかかる可能性がある。
 // 書き込み済みのレコードはメモリ上から削除するのため、メモリ解放が行える。
-func (m *logWriteWorker) writeSS(logobj *storage.Log, ss *simulator.StateSimulator) {
+func (w *logWriteWorker) writeSS(logobj *storage.Log, ss *simulator.StateSimulator) {
 	logobj.FuncLog(func(store *storage.FuncLogStore) {
 		for _, fl := range ss.FuncLogs(false) {
 			err := store.SetNolock(fl)
