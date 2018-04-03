@@ -136,6 +136,9 @@ func (s *TracersStore) Watch(ctx context.Context, callback func(tracer *types.Tr
 	var key int
 
 	s.m.Lock()
+	if s.updateCallbacks == nil {
+		s.updateCallbacks = make(map[int]func(tracer *types.Tracer))
+	}
 	for {
 		// updateCallbacksのキーの重複を避けるために乱数を使用している。
 		// 乱数の品質は問わない(脆弱でも構わない)ため、gasのwarningを無視する。
