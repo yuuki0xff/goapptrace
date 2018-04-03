@@ -90,12 +90,9 @@ type Server struct {
 	initOnce sync.Once
 	stopOnce sync.Once
 
-	connIDMap  map[*xtcp.Conn]ConnID
-	nextConnID ConnID
-	connIDLock sync.RWMutex
-
-	connMap     map[ConnID]*ServerConn
+	connMap     map[*xtcp.Conn]*ServerConn
 	connMapLock sync.RWMutex
+	nextConnID  ConnID
 
 	opt     *xtcp.Options
 	xtcpsrv *xtcp.Server
@@ -117,8 +114,7 @@ func (s *Server) init() error {
 			s.PingInterval = DefaultPingInterval
 		}
 		s.BufferOpt.SetDefault()
-		s.connIDMap = map[*xtcp.Conn]ConnID{}
-		s.connMap = map[ConnID]*ServerConn{}
+		s.connMap = map[*xtcp.Conn]*ServerConn{}
 
 		prt := &Proto{}
 		s.opt = xtcp.NewOpts(s, prt)
@@ -189,8 +185,7 @@ func (s *Server) Wait() {
 }
 
 func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
-	connID := s.getConnID(conn)
-	sc := s.getServerConn(connID, conn)
+	sc := s.getServerConn(conn)
 	sc.OnEvent(et, conn, p)
 }
 
@@ -285,33 +280,20 @@ func (s *ServerConn) error(err error) {
 	}
 }
 
-func (s *Server) getConnID(conn *xtcp.Conn) ConnID {
-	s.connIDLock.Lock()
-	defer s.connIDLock.Unlock()
-	id, ok := s.connIDMap[conn]
-	if ok {
-		return id
-	}
-
-	id = s.nextConnID
-	s.connIDMap[conn] = id
-	s.nextConnID++
-	return id
-}
-
-func (s *Server) getServerConn(id ConnID, conn *xtcp.Conn) *ServerConn {
+func (s *Server) getServerConn(conn *xtcp.Conn) *ServerConn {
 	s.connMapLock.Lock()
 	defer s.connMapLock.Unlock()
-	srvConn, ok := s.connMap[id]
+	srvConn, ok := s.connMap[conn]
 	if ok {
 		return srvConn
 	}
 
 	srvConn = &ServerConn{
-		ID:      id,
+		ID:      s.nextConnID,
 		Conn:    conn,
-		Handler: s.NewHandler(id),
+		Handler: s.NewHandler(s.nextConnID),
 	}
-	s.connMap[id] = srvConn
+	s.connMap[conn] = srvConn
+	s.nextConnID++
 	return srvConn
 }

@@ -163,17 +163,6 @@ func TestServer_Wait(t *testing.T) {
 		}
 	})
 }
-func TestServer_getConnID(t *testing.T) {
-	a := assert.New(t)
-	s := Server{}
-	s.init()
-
-	c1 := &xtcp.Conn{}
-	c2 := &xtcp.Conn{}
-
-	a.Equal(ConnID(0), s.getConnID(c1))
-	a.Equal(ConnID(1), s.getConnID(c2))
-}
 func TestServer_getServerConn(t *testing.T) {
 	a := assert.New(t)
 	s := Server{
@@ -183,8 +172,10 @@ func TestServer_getServerConn(t *testing.T) {
 	}
 	s.init()
 
-	a.Equal(s.getServerConn(ConnID(0), nil), s.getServerConn(ConnID(0), nil))
-	a.NotEqual(s.getServerConn(ConnID(0), nil), s.getServerConn(ConnID(1), nil))
+	conn1 := &xtcp.Conn{}
+	conn2 := &xtcp.Conn{}
+	a.Equal(s.getServerConn(conn1), s.getServerConn(conn1))
+	a.NotEqual(s.getServerConn(conn1), s.getServerConn(conn2))
 }
 func TestServerConn_OnEvent_handshake(t *testing.T) {
 	a := assert.New(t)
