@@ -964,8 +964,16 @@ func (api APIv0) tracerTargetFuncDel(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	funcName := mux.Vars(r)["func"]
 	err := api.Storage.TracersStore().Update(id, func(tracer *types.Tracer) error {
-		tracer.Target.Funcs = nil
+		for i, name := range tracer.Target.Funcs {
+			if funcName == name {
+				left := tracer.Target.Funcs[:i]
+				right := tracer.Target.Funcs[i+1:]
+				tracer.Target.Funcs = append(left, right...)
+				break
+			}
+		}
 		return nil
 	})
 	if err != nil {
