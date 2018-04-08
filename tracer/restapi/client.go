@@ -442,7 +442,9 @@ func (c Client) put(url string, ro *grequests.RequestOptions) (*grequests.Respon
 		return nil, ErrConflict
 	default:
 		r.Close() // nolint: errcheck
-		return nil, errors.Wrapf(err, "PUT %s returned unexpected status code. expected 200 or 409, but %d", url, r.StatusCode)
+		return nil, errUnexpStatus(r, []int{
+			http.StatusOK,
+		})
 	}
 }
 func (c Client) putJSON(url string, ro *grequests.RequestOptions, data interface{}) error {
