@@ -1,10 +1,12 @@
 # Changelog
 
 ## v0.3.0-beta (Under development)
-* __New feature__: Enable or disable function call tracer without restarting.  (under development)
+* __Breaking change__: Redesigned the goapptrace command.
+* __New feature__: Added ability to change configuration of "function call tracer" without restarting.
 * __New feature__: Added local variable logger. (planned)
 * __Improvement__: Added a tutorial. (planned)
 * __Improvement__: Updated documentation. (planned)
+* __Bug fix__: Fixed build error when building with package path.
 
 ## v0.2.0-alpha (2018-04-01)
 * __New feature__: Added SQL query API and CLI.
