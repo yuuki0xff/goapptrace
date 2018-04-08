@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -44,7 +45,7 @@ func Execute() int {
 		return 74
 	default:
 		// Unknown error
-		log.Panicln(err)
+		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
 }
