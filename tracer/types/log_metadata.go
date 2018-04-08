@@ -19,7 +19,12 @@ type LogInfo struct {
 type LogMetadata struct {
 	// Timestamp of the last record
 	Timestamp time.Time `json:"timestamp"`
-
+	// Process ID
+	PID int64
+	// Host name
+	Host string
+	// Application name
+	AppName string
 	// The configuration of user interface
 	UI UIConfig `json:"ui"`
 }
