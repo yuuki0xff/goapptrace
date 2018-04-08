@@ -21,22 +21,45 @@
 package cmd
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
 )
 
 // traceStartCmd represents the start command
 var traceStartCmd = &cobra.Command{
-	Use:   "start",
+	Use:   "start <tracer-id> [<name>...]",
 	Short: "Start tracing of running process",
-	Long: `Manage the tracing targets.
-It must be added tracing codes before processes started.
-`,
-	RunE: wrap(runTraceStart),
+	Long:  `Start tracing to the specified function. If function name is not given, we traces to all functions.`,
+	RunE:  wrap(runTraceStart),
 }
 
 func runTraceStart(opt *handlerOpt) error {
-	// TODO: start tracing
-	panic("todo")
+	if len(opt.Args) == 0 {
+		opt.ErrLog.Println("missing tracer-id")
+		return errInvalidArgs
+	}
+	tracerID := opt.Args[1]
+	names := opt.Args[2:]
+
+	api, err := opt.Api(context.Background())
+	if err != nil {
+		opt.ErrLog.Println(err)
+		return errApiClient
+	}
+
+	if len(names) == 0 {
+		// TODO: idの統一を行わないと、symbolsが取得できない
+		panic("TODO")
+	} else {
+		for _, name := range names {
+			err = api.StartTrace(tracerID, name)
+			if err != nil {
+				opt.ErrLog.Println(err)
+				return errGeneral
+			}
+		}
+	}
 	return nil
 }
 

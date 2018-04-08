@@ -21,19 +21,49 @@
 package cmd
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
 )
 
 // traceStopCmd represents the stop command
 var traceStopCmd = &cobra.Command{
-	Use:   "stop",
+	Use:   "stop tracer-id [<name>...]",
 	Short: "Stop tracing of running processes",
+	Long:  `Stop tracing to the specified function. If function name is not given, we stops tracing to all functions.`,
 	RunE:  wrap(runTraceStop),
 }
 
 func runTraceStop(opt *handlerOpt) error {
-	// TODO: stop tracing
-	panic("todo")
+	if len(opt.Args) == 0 {
+		opt.ErrLog.Println("missing tracer-id")
+		return errInvalidArgs
+	}
+
+	tracerID := opt.Args[1]
+	names := opt.Args[2:]
+
+	api, err := opt.Api(context.Background())
+	if err != nil {
+		opt.ErrLog.Println(err)
+		return errApiClient
+	}
+
+	if len(names) == 0 {
+		err = api.UpdateTraceTargets(tracerID, []string{})
+		if err != nil {
+			opt.ErrLog.Println(err)
+			return errGeneral
+		}
+	} else {
+		for _, name := range names {
+			err = api.StopTrace(tracerID, name)
+			if err != nil {
+				opt.ErrLog.Println(err)
+				return errGeneral
+			}
+		}
+	}
 	return nil
 }
 

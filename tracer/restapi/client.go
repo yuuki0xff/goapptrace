@@ -359,6 +359,36 @@ func (c ClientWithCtx) Goroutines(logID string) (gl chan types.Goroutine, err er
 	return ch, nil
 }
 
+func (c ClientWithCtx) UpdateTraceTargets(tracerID string, names []string) error {
+	var targets types.TraceTarget
+	targets.Funcs = names
+
+	url := c.url("/tracer", tracerID, "targets")
+	ro := c.ro()
+	ro.JSON = targets
+	r, err := c.put(url, &ro)
+	if err != nil {
+		return err
+	}
+	return r.Close()
+}
+
+func (c ClientWithCtx) StartTrace(tracerID string, name string) error {
+	url := c.url("/tracer", tracerID, "target", "func", name)
+	ro := c.ro()
+	r, err := c.put(url, &ro)
+	if err != nil {
+		return err
+	}
+	return r.Close()
+}
+
+func (c ClientWithCtx) StopTrace(tracerID string, name string) error {
+	url := c.url("/tracer", tracerID, "target", "func", name)
+	ro := c.ro()
+	return c.delete(url, &ro)
+}
+
 func (c Client) get(url string, ro *grequests.RequestOptions) (*grequests.Response, error) {
 	r, err := wrapResp(c.s.Get(url, ro))
 	if err != nil {
