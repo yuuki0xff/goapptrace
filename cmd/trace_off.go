@@ -22,7 +22,6 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/yuuki0xff/goapptrace/config"
 )
 
 // traceOffCmd represents the off command
@@ -34,17 +33,8 @@ var traceOffCmd = &cobra.Command{
 }
 
 func runTraceOff(opt *handlerOpt) error {
-	targets := opt.Args
-	opt.Conf.WantSave()
-	return opt.Conf.Targets.Walk(targets, func(t *config.Target) error {
-		return t.WalkTraces(nil, func(fname string, trace *config.Trace, created bool) error {
-			// TODO: remove tracing code
-
-			trace.HasTracingCode = false
-			trace.IsTracing = false
-			return nil
-		})
-	})
+	// TODO: remove tracing code
+	panic("todo")
 }
 
 func init() {

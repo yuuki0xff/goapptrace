@@ -21,10 +21,7 @@
 package cmd
 
 import (
-	"strconv"
-
 	"github.com/spf13/cobra"
-	"github.com/yuuki0xff/goapptrace/config"
 )
 
 // traceStatusCmd represents the status command
@@ -35,28 +32,8 @@ var traceStatusCmd = &cobra.Command{
 }
 
 func runTraceStatus(opt *handlerOpt) error {
-	table := defaultTable(opt.Stdout)
-	table.SetHeader([]string{
-		"target",
-		"files/dirs",
-		"has tracing code",
-		"tracing",
-	})
-	if err := opt.Conf.Targets.Walk(nil, func(t *config.Target) error {
-		return t.WalkTraces(nil, func(fname string, trace *config.Trace, created bool) error {
-			table.Append([]string{
-				string(t.Name),
-				fname,
-				strconv.FormatBool(trace.HasTracingCode),
-				strconv.FormatBool(trace.IsTracing),
-			})
-			return nil
-		})
-	}); err != nil {
-		opt.ErrLog.Println(err)
-		return errGeneral
-	}
-	table.Render()
+	// TODO
+	panic("todo")
 	return nil
 }
 

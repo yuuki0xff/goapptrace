@@ -22,7 +22,6 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/yuuki0xff/goapptrace/config"
 )
 
 // traceStartCmd represents the start command
@@ -36,21 +35,8 @@ It must be added tracing codes before processes started.
 }
 
 func runTraceStart(opt *handlerOpt) error {
-	targets := opt.Args
-	err := opt.Conf.Targets.Walk(targets, func(t *config.Target) error {
-		return t.WalkTraces(nil, func(fname string, trace *config.Trace, created bool) error {
-			if trace.HasTracingCode {
-				// TODO: start tracing
-				trace.IsTracing = true
-			}
-			return nil
-		})
-	})
-	if err != nil {
-		opt.ErrLog.Println(err)
-		return errGeneral
-	}
-	opt.Conf.WantSave()
+	// TODO: start tracing
+	panic("todo")
 	return nil
 }
 

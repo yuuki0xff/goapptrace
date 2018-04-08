@@ -22,8 +22,6 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/yuuki0xff/goapptrace/config"
-	"github.com/yuuki0xff/goapptrace/tracer/srceditor"
 )
 
 // traceOnCmd represents the on command
@@ -34,50 +32,54 @@ var traceOnCmd = &cobra.Command{
 }
 
 func runTraceOn(opt *handlerOpt) error {
-	targets := opt.Args
-	exportedOnly, err := opt.Cmd.Flags().GetBool("exported")
-	if err != nil {
-		opt.ErrLog.Println(err)
-		return errInvalidArgs
-	}
-	prefix, err := opt.Cmd.Flags().GetString("prefix")
-	if err != nil {
-		opt.ErrLog.Println(err)
-		return errInvalidArgs
-	}
+	// TODO: add tracing code
+	panic("todo")
+	/*
+		targets := opt.Args
+		exportedOnly, err := opt.Cmd.Flags().GetBool("exported")
+		if err != nil {
+			opt.ErrLog.Println(err)
+			return errInvalidArgs
+		}
+		prefix, err := opt.Cmd.Flags().GetString("prefix")
+		if err != nil {
+			opt.ErrLog.Println(err)
+			return errInvalidArgs
+		}
 
-	err = opt.Conf.Targets.Walk(targets, func(t *config.Target) error {
-		return t.WalkTraces(t.Files, func(fname string, trace *config.Trace, created bool) error {
-			files, err := srceditor.FindFiles(fname)
-			if err != nil {
-				return err
-			}
-
-			editor := &srceditor.CodeEditor{
-				ExportedOnly: exportedOnly,
-				Prefix:       prefix,
-			}
-			for _, f := range files {
-				if err := editor.EditFileOverwrite(f); err != nil {
+		err = opt.Conf.Targets.Walk(targets, func(t *config.Target) error {
+			return t.WalkTraces(t.Files, func(fname string, trace *config.Trace, created bool) error {
+				files, err := srceditor.FindFiles(fname)
+				if err != nil {
 					return err
 				}
-			}
 
-			if created {
-				trace.HasTracingCode = true // TODO: currently always true
-				trace.IsTracing = true
-			} else {
-				trace.HasTracingCode = true
-			}
-			return nil
+				editor := &srceditor.CodeEditor{
+					ExportedOnly: exportedOnly,
+					Prefix:       prefix,
+				}
+				for _, f := range files {
+					if err := editor.EditFileOverwrite(f); err != nil {
+						return err
+					}
+				}
+
+				if created {
+					trace.HasTracingCode = true // TODO: currently always true
+					trace.IsTracing = true
+				} else {
+					trace.HasTracingCode = true
+				}
+				return nil
+			})
 		})
-	})
-	if err != nil {
-		opt.ErrLog.Println(err)
-		return errGeneral
-	}
-	opt.Conf.WantSave()
-	return nil
+		if err != nil {
+			opt.ErrLog.Println(err)
+			return errGeneral
+		}
+		opt.Conf.WantSave()
+		return nil
+	*/
 }
 
 func init() {

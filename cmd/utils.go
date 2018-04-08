@@ -257,18 +257,7 @@ func prepareRepo(tmpdir string, targets []string, conf *config.Config) (*builder
 	gopath := path.Join(tmpdir, "gopath")
 
 	ignoreFiles := map[string]bool{}
-	if err := conf.Targets.Walk(nil, func(t *config.Target) error {
-		for _, f := range t.Files {
-			if trace, ok := t.Trace[f]; ok {
-				if !trace.IsTracing {
-					ignoreFiles[f] = true
-				}
-			}
-		}
-		return nil
-	}); err != nil {
-		return nil, err
-	}
+	// TODO: initialize ignoreFiles from config.
 
 	b := &builder.RepoBuilder{
 		OrigGopath: os.Getenv("GOPATH"),

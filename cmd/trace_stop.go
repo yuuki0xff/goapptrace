@@ -22,7 +22,6 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/yuuki0xff/goapptrace/config"
 )
 
 // traceStopCmd represents the stop command
@@ -33,20 +32,8 @@ var traceStopCmd = &cobra.Command{
 }
 
 func runTraceStop(opt *handlerOpt) error {
-	targets := opt.Args
-	err := opt.Conf.Targets.Walk(targets, func(t *config.Target) error {
-		return t.WalkTraces(nil, func(fname string, trace *config.Trace, created bool) error {
-			// TODO: stop tracing
-
-			trace.IsTracing = false
-			return nil
-		})
-	})
-	if err != nil {
-		opt.ErrLog.Println(err)
-		return errGeneral
-	}
-	opt.Conf.WantSave()
+	// TODO: stop tracing
+	panic("todo")
 	return nil
 }
 
