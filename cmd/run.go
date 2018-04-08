@@ -110,7 +110,7 @@ func runArgs(flagset *pflag.FlagSet, files, cmdArgs []string) []string {
 // "go run"コマンドの実行前にセットするべき環境変数を返す
 func runEnv(srv restapi.ServerStatus, goroot, gopath string, files []string) []string {
 	env := buildEnv(goroot, gopath, files)
-	env = append(env, info.DEFAULT_LOGSRV_ENV+"="+srv.Addr)
+	env = append(env, info.DefaultLogsrvEnv+"="+srv.Addr)
 	return env
 }
 

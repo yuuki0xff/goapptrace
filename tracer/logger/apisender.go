@@ -17,16 +17,16 @@ type LogServerSender struct {
 
 // LogServerSenderが使用できる場合はtrueを返す。
 func CanUseLogServerSender() bool {
-	_, ok := os.LookupEnv(info.DEFAULT_LOGSRV_ENV)
+	_, ok := os.LookupEnv(info.DefaultLogsrvEnv)
 	return ok
 }
 
 // サーバとのセッションを確立する。
 // セッションが確立するまで処理をブロックする。
 func (s *LogServerSender) Open() error {
-	url, ok := os.LookupEnv(info.DEFAULT_LOGSRV_ENV)
+	url, ok := os.LookupEnv(info.DefaultLogsrvEnv)
 	if !ok {
-		return fmt.Errorf("not found %s environment value", info.DEFAULT_LOGSRV_ENV)
+		return fmt.Errorf("not found %s environment value", info.DefaultLogsrvEnv)
 	}
 
 	hostname, _ := os.Hostname()
@@ -54,7 +54,7 @@ func (s *LogServerSender) Open() error {
 			},
 		},
 		PID:     uint64(os.Getpid()),
-		AppName: os.Getenv(info.DEFAULT_APP_NAME_ENV),
+		AppName: os.Getenv(info.DefaultAppNameEnv),
 		Host:    hostname,
 		Secret:  "secret", // TODO
 	}

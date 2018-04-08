@@ -30,7 +30,7 @@ type Config struct {
 
 func NewConfig(dir string) *Config {
 	if dir == "" {
-		dir = info.DEFAULT_CONFIG_DIR
+		dir = info.DefaultConfigDir
 	}
 
 	return &Config{

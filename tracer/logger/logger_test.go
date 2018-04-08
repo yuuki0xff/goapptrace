@@ -34,17 +34,17 @@ func BenchmarkRuntimeCallers(b *testing.B) {
 
 func TestSetOutput_writeToFile_useDefaultPrefix(t *testing.T) {
 	a := assert.New(t)
-	os.Unsetenv(info.DEFAULT_LOGSRV_ENV)
-	os.Unsetenv(info.DEFAULT_LOGFILE_ENV)
+	os.Unsetenv(info.DefaultLogsrvEnv)
+	os.Unsetenv(info.DefaultLogfileEnv)
 
-	abspath, err := filepath.Abs(info.DEFAULT_LOGFILE_PREFIX)
+	abspath, err := filepath.Abs(info.DefaultLogfilePrefix)
 	a.NoError(err)
 	checkFileSender(t, abspath)
 }
 
 func TestSetOutput_writeToFile_usePrefix(t *testing.T) {
-	os.Unsetenv(info.DEFAULT_LOGSRV_ENV)
-	os.Setenv(info.DEFAULT_LOGFILE_ENV, "/tmp/.goapptrace-logger-test")
+	os.Unsetenv(info.DefaultLogsrvEnv)
+	os.Setenv(info.DefaultLogfileEnv, "/tmp/.goapptrace-logger-test")
 
 	checkFileSender(t, "/tmp/.goapptrace-logger-test.")
 }
@@ -54,13 +54,13 @@ func TestSetOutput_connectToLogServer(t *testing.T) {
 	var disconnected bool
 
 	srv := startLogServer(t, &connected, &disconnected)
-	os.Setenv(info.DEFAULT_LOGSRV_ENV, srv.ActualAddr())
+	os.Setenv(info.DefaultLogsrvEnv, srv.ActualAddr())
 	checkLogServerSender(t, &connected, &disconnected)
 }
 
 func TestRetrySender(t *testing.T) {
 	a := assert.New(t)
-	os.Setenv(info.DEFAULT_LOGFILE_ENV, "/tmp/.goapptrace-logger-test")
+	os.Setenv(info.DefaultLogfileEnv, "/tmp/.goapptrace-logger-test")
 	sender := &RetrySender{
 		Sender:        &FileSender{},
 		MaxRetry:      defaultMaxRetry,

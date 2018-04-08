@@ -17,7 +17,7 @@ func (ep *ExecProcess) Start(env []string) (*exec.Cmd, error) {
 	if len(args) == 0 {
 		args = []string{
 			// NOTE: filepath.Join() will strip of "./"
-			"." + string(filepath.Separator) + info.DEFAULT_EXE_NAME,
+			"." + string(filepath.Separator) + info.DefaultExeName,
 		}
 	}
 	return startCmd(args, env)
