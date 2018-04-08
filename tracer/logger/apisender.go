@@ -30,6 +30,10 @@ func (s *LogServerSender) Open() error {
 	}
 
 	hostname, _ := os.Hostname()
+	appname := os.Getenv(info.DefaultAppNameEnv)
+	if appname == "" {
+		appname = os.Args[0]
+	}
 	s.client = &protocol.Client{
 		Addr: url,
 		Handler: protocol.ClientHandler{
@@ -54,7 +58,7 @@ func (s *LogServerSender) Open() error {
 			},
 		},
 		PID:     uint64(os.Getpid()),
-		AppName: os.Getenv(info.DefaultAppNameEnv),
+		AppName: appname,
 		Host:    hostname,
 		Secret:  "secret", // TODO
 	}
