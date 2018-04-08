@@ -45,7 +45,9 @@ type Client struct {
 	Addr    string
 	Handler ClientHandler
 
+	PID          uint64
 	AppName      string
+	Host         string
 	Secret       string
 	PingInterval time.Duration
 	MaxRetries   int
@@ -210,7 +212,9 @@ func (c *Client) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
 	case xtcp.EventConnected:
 		// send client header packet
 		pkt := &ClientHelloPacket{
+			PID:             c.PID,
 			AppName:         c.AppName,
+			Host:            c.Host,
 			ClientSecret:    c.Secret,
 			ProtocolVersion: ProtocolVersion,
 		}

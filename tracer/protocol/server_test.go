@@ -182,7 +182,7 @@ func TestServerConn_OnEvent_handshake(t *testing.T) {
 	var connected bool
 
 	handler := ConnHandler{
-		Connected: func() {
+		Connected: func(*ClientHelloPacket) {
 			connected = true
 		},
 	}.SetDefault(mustNotCall)

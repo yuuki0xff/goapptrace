@@ -29,6 +29,7 @@ func (s *LogServerSender) Open() error {
 		return fmt.Errorf("not found %s environment value", info.DEFAULT_LOGSRV_ENV)
 	}
 
+	hostname, _ := os.Hostname()
 	s.client = &protocol.Client{
 		Addr: url,
 		Handler: protocol.ClientHandler{
@@ -52,7 +53,9 @@ func (s *LogServerSender) Open() error {
 				}
 			},
 		},
+		PID:     uint64(os.Getpid()),
 		AppName: os.Getenv(info.DEFAULT_APP_NAME_ENV),
+		Host:    hostname,
 		Secret:  "secret", // TODO
 	}
 	s.client.Init()

@@ -200,7 +200,7 @@ func (m *ServerHandlerMaker) NewConnHandler(id protocol.ConnID, conn protocol.Pa
 	m.init()
 	var cancel context.CancelFunc
 	return &protocol.ConnHandler{
-		Connected: func() {
+		Connected: func(pkt *protocol.ClientHelloPacket) {
 			log.Println("INFO: Server: connected")
 
 			t, err := m.Storage.TracersStore().Add()
@@ -212,6 +212,14 @@ func (m *ServerHandlerMaker) NewConnHandler(id protocol.ConnID, conn protocol.Pa
 			logobj, err := m.Storage.New()
 			if err != nil {
 				log.Panicf("ERROR: Server: failed to a create Log object: err=%s", err.Error())
+			}
+			info := logobj.LogInfo()
+			info.Metadata.PID = int64(pkt.PID)
+			info.Metadata.AppName = pkt.AppName
+			info.Metadata.Host = pkt.Host
+			err = logobj.UpdateMetadata(info.Version, &info.Metadata)
+			if err != nil {
+				log.Panicf("ERROR: Server(connID=%d): failed to update LogMetadata: %s", id, err.Error())
 			}
 
 			ch := make(chan interface{}, DefaultReceiveBufferSize)

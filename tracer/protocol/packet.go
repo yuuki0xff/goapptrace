@@ -175,7 +175,13 @@ func (p *fakePacket) Unmarshal(buf []byte) int64 {
 // HelloPacket
 
 type ClientHelloPacket struct {
-	AppName         string
+	// Process ID
+	// 本来はint64にするべきだと思うが、encoderがuint64にしか対応していないため、uint64にした。
+	PID uint64
+	// Application Name
+	AppName string
+	// トレーサが動いているHost name
+	Host            string
 	ClientSecret    string
 	ProtocolVersion string
 }
@@ -188,7 +194,9 @@ func (p ClientHelloPacket) String() string { return "<ClientHelloPacket>" }
 func (p ServerHelloPacket) String() string { return "<ServerHelloPacket>" }
 
 func (p *ClientHelloPacket) Marshal(buf []byte) int64 {
-	total := encoding.MarshalString(buf, p.AppName)
+	total := encoding.MarshalUint64(buf, p.PID)
+	total += encoding.MarshalString(buf[total:], p.AppName)
+	total += encoding.MarshalString(buf[total:], p.Host)
 	total += encoding.MarshalString(buf[total:], p.ClientSecret)
 	total += encoding.MarshalString(buf[total:], p.ProtocolVersion)
 	return total
@@ -197,7 +205,11 @@ func (p *ClientHelloPacket) Unmarshal(buf []byte) int64 {
 	var total int64
 	var n int64
 
-	p.AppName, n = encoding.UnmarshalString(buf)
+	p.PID, n = encoding.UnmarshalUint64(buf)
+	total += n
+	p.AppName, n = encoding.UnmarshalString(buf[total:])
+	total += n
+	p.Host, n = encoding.UnmarshalString(buf[total:])
 	total += n
 	p.ClientSecret, n = encoding.UnmarshalString(buf[total:])
 	total += n

@@ -29,7 +29,7 @@ type PacketSender interface {
 // 1つのコネクションごとにハンドラが作成されるため、handlerの中でconnection localな変数を保持しても構わない。
 // 不要なフィールドはnilにすることが可能。
 type ConnHandler struct {
-	Connected    func()
+	Connected    func(pkt *ClientHelloPacket)
 	Disconnected func()
 
 	Error func(err error)
@@ -41,7 +41,7 @@ type ConnHandler struct {
 // SetDefault sets "fn" to all nil fields.
 func (sh ConnHandler) SetDefault(fn func(field string)) ConnHandler {
 	if sh.Connected == nil {
-		sh.Connected = func() {
+		sh.Connected = func(pkt *ClientHelloPacket) {
 			fn("Connected")
 		}
 	}
@@ -202,23 +202,23 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 	case xtcp.EventRecv:
 		if !s.isNegotiated {
 			// check client header.
-			pkt, ok := p.(*ClientHelloPacket)
+			clientHello, ok := p.(*ClientHelloPacket)
 			if !ok {
 				s.error(fmt.Errorf("negotiation failed: client sends an unexpected packet: %#v", p))
 				s.Stop(xtcp.StopImmediately)
 				return
 			}
-			if !isCompatibleVersion(pkt.ProtocolVersion) {
+			if !isCompatibleVersion(clientHello.ProtocolVersion) {
 				// 対応していないバージョンなら、切断する。
 				s.error(fmt.Errorf("negotiation failed: client version is not compatible"))
 				s.Stop(xtcp.StopImmediately)
 				return
 			}
 
-			packet := &ServerHelloPacket{
+			srvHello := &ServerHelloPacket{
 				ProtocolVersion: ProtocolVersion,
 			}
-			err := s.Send(packet)
+			err := s.Send(srvHello)
 			if err != nil {
 				s.error(err)
 				s.Stop(xtcp.StopImmediately)
@@ -227,7 +227,7 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 
 			s.isNegotiated = true
 			if s.Handler.Connected != nil {
-				s.Handler.Connected()
+				s.Handler.Connected(clientHello)
 			}
 		} else {
 			switch pkt := p.(type) {

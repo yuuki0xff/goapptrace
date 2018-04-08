@@ -148,7 +148,7 @@ func startLogServer(t *testing.T, connected, disconnected *bool) *protocol.Serve
 		Addr: "",
 		NewHandler: func(id protocol.ConnID, conn protocol.PacketSender) *protocol.ConnHandler {
 			return &protocol.ConnHandler{
-				Connected: func() {
+				Connected: func(*protocol.ClientHelloPacket) {
 					*connected = true
 				},
 				Disconnected: func() {
