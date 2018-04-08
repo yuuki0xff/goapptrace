@@ -20,42 +20,48 @@ const (
 // TCPコネクションを一意に識別するID
 type ConnID int64
 
-// サーバで発生したイベントのイベントハンドラ。
+type PacketSender interface {
+	Send(p xtcp.Packet) error
+	Stop(mode xtcp.StopMode)
+}
+
+// TCPコネクションで発生したイベントのハンドラ。
+// 1つのコネクションごとにハンドラが作成されるため、handlerの中でconnection localな変数を保持しても構わない。
 // 不要なフィールドはnilにすることが可能。
-type ServerHandler struct {
-	Connected    func(id ConnID)
-	Disconnected func(id ConnID)
+type ConnHandler struct {
+	Connected    func()
+	Disconnected func()
 
-	Error func(id ConnID, err error)
+	Error func(err error)
 
-	Symbols    func(id ConnID, diff *types.SymbolsData)
-	RawFuncLog func(id ConnID, funclog *types.RawFuncLog)
+	Symbols    func(diff *types.SymbolsData)
+	RawFuncLog func(funclog *types.RawFuncLog)
 }
 
 // SetDefault sets "fn" to all nil fields.
-func (sh ServerHandler) SetDefault(fn func(field string)) ServerHandler {
+func (sh ConnHandler) SetDefault(fn func(field string)) ConnHandler {
 	if sh.Connected == nil {
-		sh.Connected = func(id ConnID) {
+		sh.Connected = func() {
 			fn("Connected")
 		}
 	}
 	if sh.Disconnected == nil {
-		sh.Disconnected = func(id ConnID) {
+		sh.Disconnected = func() {
 			fn("Disconnected")
 		}
 	}
 	if sh.Error == nil {
-		sh.Error = func(id ConnID, err error) {
+		sh.Error = func(err error) {
 			fn("Error")
 		}
 	}
 	if sh.Symbols == nil {
-		sh.Symbols = func(id ConnID, diff *types.SymbolsData) {
+		sh.Symbols = func(diff *types.SymbolsData) {
 			fn("Symbols")
 		}
 	}
 	if sh.RawFuncLog == nil {
-		sh.RawFuncLog = func(id ConnID, funclog *types.RawFuncLog) {
+		sh.RawFuncLog = func(funclog *types.RawFuncLog) {
 			fn("RawFuncLog")
 		}
 	}
@@ -76,8 +82,8 @@ func (sh ServerHandler) SetDefault(fn func(field string)) ServerHandler {
 //   srv.Wait()
 type Server struct {
 	// "unix:///path/to/socket/file" or "tcp://host:port"
-	Addr    string
-	Handler ServerHandler
+	Addr       string
+	NewHandler func(id ConnID, conn PacketSender) *ConnHandler
 
 	AppName      string
 	Secret       string
@@ -89,12 +95,9 @@ type Server struct {
 	initOnce sync.Once
 	stopOnce sync.Once
 
-	connIDMap  map[*xtcp.Conn]ConnID
-	nextConnID ConnID
-	connIDLock sync.RWMutex
-
-	connMap     map[ConnID]*ServerConn
+	connMap     map[*xtcp.Conn]*ServerConn
 	connMapLock sync.RWMutex
+	nextConnID  ConnID
 
 	opt     *xtcp.Options
 	xtcpsrv *xtcp.Server
@@ -103,7 +106,8 @@ type Server struct {
 // Serverが管理しているコネクションの状態を管理と、イベントハンドラの呼び出しを行う。
 type ServerConn struct {
 	ID           ConnID
-	Handler      *ServerHandler
+	Conn         *xtcp.Conn
+	Handler      *ConnHandler
 	isNegotiated bool
 	sendHandler  func(conn *xtcp.Conn, packet xtcp.Packet)
 	stopHandler  func(conn *xtcp.Conn, mode xtcp.StopMode)
@@ -115,8 +119,7 @@ func (s *Server) init() error {
 			s.PingInterval = DefaultPingInterval
 		}
 		s.BufferOpt.SetDefault()
-		s.connIDMap = map[*xtcp.Conn]ConnID{}
-		s.connMap = map[ConnID]*ServerConn{}
+		s.connMap = map[*xtcp.Conn]*ServerConn{}
 
 		prt := &Proto{}
 		s.opt = xtcp.NewOpts(s, prt)
@@ -187,8 +190,7 @@ func (s *Server) Wait() {
 }
 
 func (s *Server) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) {
-	connID := s.getConnID(conn)
-	sc := s.getServerConn(connID)
+	sc := s.getServerConn(conn)
 	sc.OnEvent(et, conn, p)
 }
 
@@ -203,29 +205,29 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 			pkt, ok := p.(*ClientHelloPacket)
 			if !ok {
 				s.error(fmt.Errorf("negotiation failed: client sends an unexpected packet: %#v", p))
-				s.stop(conn, xtcp.StopImmediately)
+				s.Stop(xtcp.StopImmediately)
 				return
 			}
 			if !isCompatibleVersion(pkt.ProtocolVersion) {
 				// 対応していないバージョンなら、切断する。
 				s.error(fmt.Errorf("negotiation failed: client version is not compatible"))
-				s.stop(conn, xtcp.StopImmediately)
+				s.Stop(xtcp.StopImmediately)
 				return
 			}
 
 			packet := &ServerHelloPacket{
 				ProtocolVersion: ProtocolVersion,
 			}
-			err := s.send(conn, packet)
+			err := s.Send(packet)
 			if err != nil {
 				s.error(err)
-				s.stop(conn, xtcp.StopImmediately)
+				s.Stop(xtcp.StopImmediately)
 				return
 			}
 
 			s.isNegotiated = true
 			if s.Handler.Connected != nil {
-				s.Handler.Connected(s.ID)
+				s.Handler.Connected()
 			}
 		} else {
 			switch pkt := p.(type) {
@@ -233,82 +235,70 @@ func (s *ServerConn) OnEvent(et xtcp.EventType, conn *xtcp.Conn, p xtcp.Packet) 
 				// do nothing
 			case *SymbolPacket:
 				if s.Handler.Symbols != nil {
-					s.Handler.Symbols(s.ID, &pkt.SymbolsData)
+					s.Handler.Symbols(&pkt.SymbolsData)
 				}
 			case *RawFuncLogPacket:
 				if s.Handler.RawFuncLog != nil {
-					s.Handler.RawFuncLog(s.ID, pkt.FuncLog)
+					s.Handler.RawFuncLog(pkt.FuncLog)
 				}
 			default:
 				s.error(fmt.Errorf("server receives an unexpected packet: %#v", pkt))
-				s.stop(conn, xtcp.StopImmediately)
+				s.Stop(xtcp.StopImmediately)
 				return
 			}
 		}
 	case xtcp.EventSend:
 	case xtcp.EventClosed:
 		if s.Handler.Disconnected != nil {
-			s.Handler.Disconnected(s.ID)
+			s.Handler.Disconnected()
 		}
 	}
 }
-func (s *ServerConn) send(conn *xtcp.Conn, p xtcp.Packet) error {
+func (s *ServerConn) Send(p xtcp.Packet) error {
 	if s.sendHandler == nil {
-		return conn.Send(p)
+		return s.Conn.Send(p)
 	} else {
 		// call the mock method.
-		s.sendHandler(conn, p)
+		s.sendHandler(s.Conn, p)
 		return nil
 	}
 }
 
-func (s *ServerConn) stop(conn *xtcp.Conn, mode xtcp.StopMode) {
+func (s *ServerConn) Stop(mode xtcp.StopMode) {
 	if s.stopHandler == nil {
-		conn.Stop(mode)
+		s.Conn.Stop(mode)
 	} else {
 		// call the mock method.
-		s.stopHandler(conn, mode)
+		s.stopHandler(s.Conn, mode)
 		// "xtcp.EventClosed" event occurs after calling the conn.Stop().
 		// But the event is not occur when calling s.stopHandler().
 		// So we occurs the event here.
-		s.OnEvent(xtcp.EventClosed, conn, nil)
+		s.OnEvent(xtcp.EventClosed, s.Conn, nil)
 	}
 }
 
 func (s *ServerConn) error(err error) {
 	if s.Handler.Error != nil {
-		s.Handler.Error(s.ID, err)
+		s.Handler.Error(err)
 	} else {
 		log.Println("ERROR: ", err)
 	}
 }
 
-func (s *Server) getConnID(conn *xtcp.Conn) ConnID {
-	s.connIDLock.Lock()
-	defer s.connIDLock.Unlock()
-	id, ok := s.connIDMap[conn]
-	if ok {
-		return id
-	}
-
-	id = s.nextConnID
-	s.connIDMap[conn] = id
-	s.nextConnID++
-	return id
-}
-
-func (s *Server) getServerConn(id ConnID) *ServerConn {
+func (s *Server) getServerConn(conn *xtcp.Conn) *ServerConn {
 	s.connMapLock.Lock()
 	defer s.connMapLock.Unlock()
-	srvConn, ok := s.connMap[id]
+	srvConn, ok := s.connMap[conn]
 	if ok {
 		return srvConn
 	}
 
 	srvConn = &ServerConn{
-		ID:      id,
-		Handler: &s.Handler,
+		ID:   s.nextConnID,
+		Conn: conn,
 	}
-	s.connMap[id] = srvConn
+	srvConn.Handler = s.NewHandler(s.nextConnID, srvConn)
+	s.connMap[conn] = srvConn
+	s.nextConnID++
 	return srvConn
 }

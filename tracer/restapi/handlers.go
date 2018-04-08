@@ -143,10 +143,16 @@ func (api APIv0) SetHandlers(router *mux.Router) {
 	v01.HandleFunc("/log/{log-id}/symbol/line/{pc}", api.goLine).Methods(http.MethodGet)
 
 	v01.HandleFunc("/tracers", api.tracers).Methods(http.MethodGet)
-	v01.HandleFunc("/tracer/{tracer-id}", api.tracer).Methods(http.MethodDelete)
-	v01.HandleFunc("/tracer/{tracer-id}/status", api.tracers).Methods(http.MethodGet)
-	v01.HandleFunc("/tracer/{tracer-id}/status", api.tracer).Methods(http.MethodPut)
+	v01.HandleFunc("/tracer/{tracer-id}", api.notImpl).Methods(http.MethodDelete)
+	v01.HandleFunc("/tracer/{tracer-id}/status", api.notImpl).Methods(http.MethodGet)
+	v01.HandleFunc("/tracer/{tracer-id}/status", api.notImpl).Methods(http.MethodPut)
 	v01.HandleFunc("/tracer/{tracer-id}/watch", api.notImpl).Methods(http.MethodGet)
+	v01.HandleFunc("/tracer/{tracer-id}/targets", api.tracerTargetsGet).Methods(http.MethodGet)
+	v01.HandleFunc("/tracer/{tracer-id}/targets", api.tracerTargetsPut).Methods(http.MethodPut)
+	v01.HandleFunc("/tracer/{tracer-id}/targets", api.tracerTargetsDel).Methods(http.MethodDelete)
+	v01.HandleFunc("/tracer/{tracer-id}/target/func/{func:.*}", api.tracerTargetFuncGet).Methods(http.MethodGet)
+	v01.HandleFunc("/tracer/{tracer-id}/target/func/{func:.*}", api.tracerTargetFuncPut).Methods(http.MethodPut)
+	v01.HandleFunc("/tracer/{tracer-id}/target/func/{func:.*}", api.tracerTargetFuncDel).Methods(http.MethodDelete)
 }
 func (api APIv0) serverError(w http.ResponseWriter, err error, msg string) {
 	api.Logger.Println(errors.Wrap(err, "failed to json.Marshal").Error())
@@ -866,14 +872,113 @@ func (api APIv0) goLine(w http.ResponseWriter, r *http.Request) {
 	api.writeObj(w, l)
 }
 func (api APIv0) tracers(w http.ResponseWriter, r *http.Request) {
-	// TODO: これを実装する前に、どのトレーサが接続しているのか管理出来るようにする
+	tracers, err := api.Storage.TracersStore().GetAll()
+	if err != nil {
+		api.serverError(w, err, "unknown error")
+		return
+	}
+	api.writeJson(w, tracers)
 }
 func (api APIv0) tracer(w http.ResponseWriter, r *http.Request) {
-	// TODO: これを実装する前に、どのトレーサが接続しているのか管理出来るようにする
+	// TODO: 現在の状態を返す
 	switch r.Method {
-	case http.MethodDelete:
 	case http.MethodGet:
 	case http.MethodPut:
+	case http.MethodDelete:
+	}
+}
+func (api APIv0) tracerTargetsGet(w http.ResponseWriter, r *http.Request) {
+	t, ok := api.getTracer(w, r)
+	if !ok {
+		return
+	}
+	api.writeJson(w, t.Target)
+}
+func (api APIv0) tracerTargetsPut(w http.ResponseWriter, r *http.Request) {
+	var newTarget types.TraceTarget
+	if !api.readJson(r, &newTarget) {
+		return
+	}
+
+	// TODO: validate newTarget
+
+	id, ok := api.getTracerID(w, r)
+	if !ok {
+		return
+	}
+	err := api.Storage.TracersStore().Update(id, func(tracer *types.Tracer) error {
+		tracer.Target = newTarget
+		return nil
+	})
+	if err != nil {
+		api.serverError(w, err, "unknown error")
+		return
+	}
+}
+func (api APIv0) tracerTargetsDel(w http.ResponseWriter, r *http.Request) {
+	id, ok := api.getTracerID(w, r)
+	if !ok {
+		return
+	}
+	err := api.Storage.TracersStore().Update(id, func(tracer *types.Tracer) error {
+		tracer.Target = types.TraceTarget{}
+		return nil
+	})
+	if err != nil {
+		api.serverError(w, err, "unknown error")
+		return
+	}
+}
+
+func (api APIv0) tracerTargetFuncGet(w http.ResponseWriter, r *http.Request) {
+	t, ok := api.getTracer(w, r)
+	if !ok {
+		return
+	}
+	funcName := mux.Vars(r)["func"]
+	if t.Target.ContainsFunc(funcName) {
+		w.WriteHeader(http.StatusOK)
+	} else {
+		w.WriteHeader(http.StatusNotFound)
+	}
+}
+func (api APIv0) tracerTargetFuncPut(w http.ResponseWriter, r *http.Request) {
+	id, ok := api.getTracerID(w, r)
+	if !ok {
+		return
+	}
+	funcName := mux.Vars(r)["func"]
+	err := api.Storage.TracersStore().Update(id, func(tracer *types.Tracer) error {
+		if !tracer.Target.ContainsFunc(funcName) {
+			tracer.Target.Funcs = append(tracer.Target.Funcs, funcName)
+		}
+		return nil
+	})
+	if err != nil {
+		api.serverError(w, err, "unknown error")
+		return
+	}
+}
+func (api APIv0) tracerTargetFuncDel(w http.ResponseWriter, r *http.Request) {
+	id, ok := api.getTracerID(w, r)
+	if !ok {
+		return
+	}
+	funcName := mux.Vars(r)["func"]
+	err := api.Storage.TracersStore().Update(id, func(tracer *types.Tracer) error {
+		for i, name := range tracer.Target.Funcs {
+			if funcName == name {
+				left := tracer.Target.Funcs[:i]
+				right := tracer.Target.Funcs[i+1:]
+				tracer.Target.Funcs = append(left, right...)
+				break
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		api.serverError(w, err, "unknown error")
+		return
 	}
 }
 
@@ -913,6 +1018,48 @@ func (api APIv0) getLogPC(w http.ResponseWriter, r *http.Request) (logobj *stora
 	}
 	ok = true
 	return
+}
+func (api APIv0) getTracerID(w http.ResponseWriter, r *http.Request) (id int, ok bool) {
+	strId := mux.Vars(r)["tracer-id"]
+	val, err := strconv.ParseInt(strId, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid tracer-id", http.StatusBadRequest)
+		return
+	}
+	id = int(val)
+	ok = true
+	return
+}
+
+func (api APIv0) getTracer(w http.ResponseWriter, r *http.Request) (t *types.Tracer, ok bool) {
+	var err error
+	id, ok2 := api.getTracerID(w, r)
+	if !ok2 {
+		return
+	}
+
+	t, err = api.Storage.TracersStore().Get(id)
+	if err != nil {
+		api.serverError(w, err, "unknown error")
+		return
+	}
+	ok = true
+	return
+}
+
+func (api APIv0) readJson(r *http.Request, v interface{}) (ok bool) {
+	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
+		api.Logger.Println("read error:", err)
+		return
+	}
+	ok = true
+	return
+}
+func (api APIv0) writeJson(w io.Writer, v interface{}) {
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		api.Logger.Println("write error:", err)
+		return
+	}
 }
 
 func (api *APIv0) worker(parent context.Context, logobj *storage.Log) *APIWorker {

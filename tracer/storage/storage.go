@@ -19,6 +19,7 @@ type Storage struct {
 
 	lock  sync.RWMutex
 	files map[LogID]*Log
+	ts    *TracersStore
 }
 
 // 初期化を行う。使用前に必ず実行すること。
@@ -120,4 +121,20 @@ func (s *Storage) New() (*Log, error) {
 	}
 
 	return s.log(id, true)
+}
+
+func (s *Storage) TracersStore() *TracersStore {
+	// TODO: readOnlyに対応させる
+	if s.ts == nil {
+		s.lock.Lock()
+		defer s.lock.Unlock()
+		s.ts = &TracersStore{
+			File: s.Root.TracersFile(),
+		}
+		return s.ts
+	} else {
+		s.lock.RLock()
+		defer s.lock.RUnlock()
+		return s.ts
+	}
 }

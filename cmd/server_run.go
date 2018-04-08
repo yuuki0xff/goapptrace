@@ -21,6 +21,7 @@
 package cmd
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
@@ -36,6 +37,7 @@ import (
 	"github.com/yuuki0xff/goapptrace/tracer/simulator"
 	"github.com/yuuki0xff/goapptrace/tracer/storage"
 	"github.com/yuuki0xff/goapptrace/tracer/types"
+	"github.com/yuuki0xff/xtcp"
 )
 
 const (
@@ -103,11 +105,16 @@ func runServerRun(opt *handlerOpt) error {
 	}()
 
 	// start Log Server
+
+	m := &ServerHandlerMaker{
+		Storage: &strg,
+		SSStore: &simulatorStore,
+	}
 	logSrv := protocol.Server{
-		Addr:    "tcp://" + logAddr,
-		Handler: getServerHandler(&strg, &simulatorStore),
-		AppName: "TODO", // TODO
-		Secret:  "",     // TODO
+		Addr:       "tcp://" + logAddr,
+		NewHandler: m.NewConnHandler,
+		AppName:    "TODO", // TODO
+		Secret:     "",     // TODO
 	}
 	if err := logSrv.Listen(); err != nil {
 		opt.ErrLog.Println("Failed to start the Log server:", err)
@@ -169,14 +176,6 @@ func init() {
 	serverRunCmd.Flags().StringP("listen-log", "P", "", "Address and port for Log Server")
 }
 
-func getServerHandler(strg *storage.Storage, store *simulator.StateSimulatorStore) protocol.ServerHandler {
-	m := &ServerHandlerMaker{
-		Storage: strg,
-		SSStore: store,
-	}
-	return m.ServerHandler()
-}
-
 type ServerHandlerMaker struct {
 	Storage *storage.Storage
 	SSStore *simulator.StateSimulatorStore
@@ -197,36 +196,69 @@ func (m *ServerHandlerMaker) init() {
 	})
 }
 
-func (m *ServerHandlerMaker) ServerHandler() protocol.ServerHandler {
+func (m *ServerHandlerMaker) NewConnHandler(id protocol.ConnID, conn protocol.PacketSender) *protocol.ConnHandler {
 	m.init()
-	return protocol.ServerHandler{
-		Connected: func(id protocol.ConnID) {
+	var cancel context.CancelFunc
+	return &protocol.ConnHandler{
+		Connected: func() {
 			log.Println("INFO: Server: connected")
 
+			t, err := m.Storage.TracersStore().Add()
+			if err != nil {
+				log.Printf("ERROR: Server(connID=%d): %s", id, err.Error())
+				return
+			}
+
+			logobj, err := m.Storage.New()
+			if err != nil {
+				log.Panicf("ERROR: Server: failed to a create Log object: err=%s", err.Error())
+			}
+
 			ch := make(chan interface{}, DefaultReceiveBufferSize)
-			go m.worker(ch, id)
+			lwWorker := &logWriteWorker{
+				ServerHandlerMaker: m,
+				Ch:                 ch,
+				ConnID:             id,
+				TracerID:           t.ID,
+				Log:                logobj,
+			}
+			go lwWorker.Run()
+
+			tsWorker := &tracerSyncWorker{
+				TracerID: t.ID,
+				Log:      logobj,
+				Storage:  m.Storage,
+				Sender:   conn,
+			}
+			var ctx context.Context
+			ctx, cancel = context.WithCancel(context.Background())
+			go tsWorker.Run(ctx)
 
 			m.lock.Lock()
 			m.chMap[id] = ch
 			m.lock.Unlock()
 		},
-		Disconnected: func(id protocol.ConnID) {
+		Disconnected: func() {
 			log.Println("INFO: Server: disconnected")
 
 			m.lock.Lock()
 			close(m.chMap[id])
 			delete(m.chMap, id)
 			m.lock.Unlock()
+
+			if cancel != nil {
+				cancel()
+			}
 		},
-		Error: func(id protocol.ConnID, err error) {
+		Error: func(err error) {
 			log.Printf("ERROR: Server: connID=%d err=%s", id, err.Error())
 		},
-		Symbols: func(id protocol.ConnID, s *types.SymbolsData) {
+		Symbols: func(s *types.SymbolsData) {
 			m.lock.RLock()
 			m.chMap[id] <- s
 			m.lock.RUnlock()
 		},
-		RawFuncLog: func(id protocol.ConnID, f *types.RawFuncLog) {
+		RawFuncLog: func(f *types.RawFuncLog) {
 			m.lock.RLock()
 			m.chMap[id] <- f
 			m.lock.RUnlock()
@@ -234,26 +266,32 @@ func (m *ServerHandlerMaker) ServerHandler() protocol.ServerHandler {
 	}
 }
 
-func (m *ServerHandlerMaker) worker(ch chan interface{}, id protocol.ConnID) {
-	logobj, err := m.Storage.New()
-	if err != nil {
-		log.Panicf("ERROR: Server: failed to a create Log object: err=%s", err.Error())
-	}
+// logWriteWorker - ServerHandlerMaker worker
+type logWriteWorker struct {
+	*ServerHandlerMaker
+	Ch       chan interface{}
+	ConnID   protocol.ConnID
+	TracerID int
+	Log      *storage.Log
+}
+
+func (w *logWriteWorker) Run() {
+	logobj := w.Log
 	defer func() {
-		if err = logobj.Close(); err != nil {
-			log.Panicf("failed to close a Log(%s): connID=%d err=%s", logobj.ID, id, err.Error())
+		if err := logobj.Close(); err != nil {
+			log.Panicf("failed to close a Log(%s): connID=%d err=%s", logobj.ID, w.ConnID, err.Error())
 		}
 		logobj.ReadOnly = true
-		if err = logobj.Open(); err != nil {
-			log.Panicf("failed to reopen a Log(%s): connID=%d err=%s", logobj.ID, id, err.Error())
+		if err := logobj.Open(); err != nil {
+			log.Panicf("failed to reopen a Log(%s): connID=%d err=%s", logobj.ID, w.ConnID, err.Error())
 		}
 	}()
 
-	ss := m.SSStore.New(logobj.ID)
-	defer m.SSStore.Delete(logobj.ID)
+	ss := w.SSStore.New(logobj.ID)
+	defer w.SSStore.Delete(logobj.ID)
 
 	// ログを閉じる前に、現在のStateSimulatorの状態を保存する。
-	defer m.writeSS(logobj, ss)
+	defer w.writeSS(logobj, ss)
 
 	// 最後にファイルと同期してから受信した RawFuncLog の個数。
 	// flCount が flCountMax に達したら、ファイルに書き出す。
@@ -283,7 +321,7 @@ func (m *ServerHandlerMaker) worker(ch chan interface{}, id protocol.ConnID) {
 		var rawobj interface{}
 		var ok bool
 		select {
-		case rawobj, ok = <-ch:
+		case rawobj, ok = <-w.Ch:
 		case rawobj, ok = <-ssWriteReq:
 		}
 		if !ok {
@@ -306,7 +344,7 @@ func (m *ServerHandlerMaker) worker(ch chan interface{}, id protocol.ConnID) {
 				if flCount >= flCountMax {
 					// 多くの RawFuncLog をsimulatorに渡したため、大量のメモリを消費している。
 					// ファイルに書き出してメモリを開放させる。
-					m.writeSS(logobj, ss)
+					w.writeSS(logobj, ss)
 					flCount = 0
 				}
 			case *types.SymbolsData:
@@ -314,16 +352,16 @@ func (m *ServerHandlerMaker) worker(ch chan interface{}, id protocol.ConnID) {
 					log.Panicln("failed to append Symbols:", err.Error())
 				}
 			case *simulator.StateSimulator:
-				m.writeSS(logobj, ss)
+				w.writeSS(logobj, ss)
 				flCount = 0
 			default:
 				log.Panicf("unsupported type: %+v", rawobj)
 			}
 
-			if len(ch) == 0 {
+			if len(w.Ch) == 0 {
 				break
 			}
-			rawobj = <-ch
+			rawobj = <-w.Ch
 		}
 	}
 }
@@ -331,7 +369,7 @@ func (m *ServerHandlerMaker) worker(ch chan interface{}, id protocol.ConnID) {
 // writeSS は、 StateSimulator の内容をファイルへ書き出す。
 // 書き込みには時間がかかる可能性がある。
 // 書き込み済みのレコードはメモリ上から削除するのため、メモリ解放が行える。
-func (m *ServerHandlerMaker) writeSS(logobj *storage.Log, ss *simulator.StateSimulator) {
+func (w *logWriteWorker) writeSS(logobj *storage.Log, ss *simulator.StateSimulator) {
 	logobj.FuncLog(func(store *storage.FuncLogStore) {
 		for _, fl := range ss.FuncLogs(false) {
 			err := store.SetNolock(fl)
@@ -349,4 +387,70 @@ func (m *ServerHandlerMaker) writeSS(logobj *storage.Log, ss *simulator.StateSim
 		}
 	})
 	ss.Clear()
+}
+
+type tracerSyncWorker struct {
+	TracerID int
+	Log      *storage.Log
+	Storage  *storage.Storage
+	Sender   protocol.PacketSender
+}
+
+func (w *tracerSyncWorker) Run(ctx context.Context) {
+	var wg sync.WaitGroup
+	pch := make(chan xtcp.Packet, 10)
+	tch := make(chan *types.Tracer, 10)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for p := range pch {
+			if err := w.Sender.Send(p); err != nil {
+				log.Println(err)
+			}
+		}
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer close(pch)
+		for tracer := range tch {
+			// tracerオブジェクトの設定内容を、client側に反映させる。
+			if err := w.Log.Symbols().Save(func(data types.SymbolsData) error {
+				for _, f := range data.Funcs {
+					var exists bool
+					for _, funcName := range tracer.Target.Funcs {
+						if f.Name == funcName {
+							exists = true
+							break
+						}
+					}
+
+					var p xtcp.Packet
+					if exists {
+						p = &protocol.StartTraceCmdPacket{
+							FuncName: f.Name,
+						}
+					} else {
+						p = &protocol.StopTraceCmdPacket{
+							FuncName: f.Name,
+						}
+					}
+					pch <- p
+				}
+				return nil
+			}); err != nil {
+				log.Println(err)
+			}
+		}
+	}()
+
+	w.Storage.TracersStore().Watch(ctx, func(tracer *types.Tracer) {
+		if w.TracerID != tracer.ID {
+			return
+		}
+		tch <- tracer
+	})
+	close(tch)
+	wg.Wait()
 }

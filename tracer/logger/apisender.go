@@ -38,10 +38,18 @@ func (s *LogServerSender) Open() error {
 				fmt.Println("s.client ERROR:", err.Error())
 			},
 			StartTrace: func(pkt *protocol.StartTraceCmdPacket) {
-				// TODO
+				if pkt.FuncName != "" {
+					EnableTrace(pkt.FuncName)
+				} else {
+					panic("FuncName MUST NOT empty")
+				}
 			},
-			StopTrace: func(args *protocol.StopTraceCmdPacket) {
-				// TODO
+			StopTrace: func(pkt *protocol.StopTraceCmdPacket) {
+				if pkt.FuncName != "" {
+					DisableTrace(pkt.FuncName)
+				} else {
+					panic("FuncName MUST NOT empty")
+				}
 			},
 		},
 		AppName: os.Getenv(info.DEFAULT_APP_NAME_ENV),

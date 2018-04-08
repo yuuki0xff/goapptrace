@@ -21,6 +21,11 @@ func TestDirLayout_InfoFile(t *testing.T) {
 	a.Equal(File("/tmp/.goapptrace/logs/info.json"), dr.InfoFile())
 }
 
+func TestDirLayout_TracersFile(t *testing.T) {
+	a := assert.New(t)
+	a.Equal(File("/tmp/.goapptrace/logs/tracers.json"), dr.TracersFile())
+}
+
 func TestDirLayout_MetaDir(t *testing.T) {
 	a := assert.New(t)
 	a.Equal("/tmp/.goapptrace/logs/meta", dr.MetaDir())
