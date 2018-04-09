@@ -28,7 +28,8 @@ import (
 
 // traceStopCmd represents the stop command
 var traceStopCmd = &cobra.Command{
-	Use:   "stop <log-id> [<name>...]",
+	Use: "stop <log-id> [<name>...]",
+	DisableFlagsInUseLine: true,
 	Short: "Stop tracing of running processes",
 	Long:  `Stop tracing to the specified function. If function name is not given, we stops tracing to all functions.`,
 	RunE:  wrap(runTraceStop),

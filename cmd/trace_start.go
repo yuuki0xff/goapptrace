@@ -29,7 +29,8 @@ import (
 
 // traceStartCmd represents the start command
 var traceStartCmd = &cobra.Command{
-	Use:   "start <log-id> [<name>...]",
+	Use: "start <log-id> [<name>...]",
+	DisableFlagsInUseLine: true,
 	Short: "Start tracing of running process",
 	Long:  `Start tracing to the specified function. If function name is not given, we traces to all functions.`,
 	RunE:  wrap(runTraceStart),

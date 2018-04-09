@@ -32,7 +32,8 @@ import (
 
 // traceLsCmd represents the traceLs command
 var traceLsCmd = &cobra.Command{
-	Use:   "ls <log-id>",
+	Use: "ls <log-id>",
+	DisableFlagsInUseLine: true,
 	Short: "List functions",
 	RunE:  wrap(runTraceLs),
 }
