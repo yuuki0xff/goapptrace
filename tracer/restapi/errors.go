@@ -46,7 +46,8 @@ func errUnexpStatus(res *grequests.Response, expected []int) error {
 		exp += strconv.FormatInt(int64(expected[i]), 10)
 	}
 
-	return fmt.Errorf("%s %s returned unexpected status code. expected %s, but %d",
+	return fmt.Errorf("%s %s returned unexpected status code. expected %s, but %d\nserver message: %s",
 		method, url,
-		exp, actual)
+		exp, actual,
+		res.String())
 }
