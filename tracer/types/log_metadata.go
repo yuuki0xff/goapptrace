@@ -20,11 +20,11 @@ type LogMetadata struct {
 	// Timestamp of the last record
 	Timestamp time.Time `json:"timestamp"`
 	// Process ID
-	PID int64
+	PID int64 `json:"pid"`
 	// Host name
-	Host string
+	Host string `json:"host"`
 	// Application name
-	AppName string
+	AppName string `json:"app-name"`
 	// The configuration of user interface
 	UI UIConfig `json:"ui"`
 }
