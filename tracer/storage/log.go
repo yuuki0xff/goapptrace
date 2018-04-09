@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"sync"
 	"time"
@@ -58,6 +59,12 @@ type Log struct {
 	funcLog      FuncLogStore
 	rawFuncLog   RawFuncLogStore
 	goroutineLog GoroutineStore
+
+	// metadataを更新したときにcallbackされる。
+	// このマップにアクセスするために必ずlockすること。
+	// key: 乱数。コールバック関数の追加削除を高速に行うため。
+	// value: コールバック関数
+	updateCB map[int]func(info *types.LogInfo)
 }
 
 type LogStatus uint8
@@ -360,6 +367,14 @@ func (l *Log) UpdateMetadata(currentVer int, metadata *types.LogMetadata) error 
 	}
 	l.Version++
 	l.Metadata = metadata
+
+	// calls event handlers.
+	info := l.logInfoNolock()
+	if l.updateCB != nil {
+		for _, cb := range l.updateCB {
+			cb(&info)
+		}
+	}
 	return nil
 }
 
@@ -367,6 +382,9 @@ func (l *Log) UpdateMetadata(currentVer int, metadata *types.LogMetadata) error 
 func (l *Log) LogInfo() types.LogInfo {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
+	return l.logInfoNolock()
+}
+func (l *Log) logInfoNolock() types.LogInfo {
 	return types.LogInfo{
 		ID:          l.ID.Hex(),
 		Version:     l.Version,
@@ -374,6 +392,30 @@ func (l *Log) LogInfo() types.LogInfo {
 		MaxFileSize: l.MaxFileSize,
 		ReadOnly:    l.ReadOnly,
 	}
+}
+
+func (l *Log) Watch(ctx context.Context, fn func(info *types.LogInfo)) {
+	var key int
+	// register an event handler.
+	l.lock.Lock()
+	if l.updateCB == nil {
+		l.updateCB = map[int]func(info *types.LogInfo){}
+	}
+	for {
+		key = rand.Int()
+		if _, ok := l.updateCB[key]; ok {
+			continue
+		}
+		l.updateCB[key] = fn
+		break
+	}
+	l.lock.Unlock()
+
+	<-ctx.Done()
+	// unregister an event handler.
+	l.lock.Lock()
+	delete(l.updateCB, key)
+	l.lock.Unlock()
 }
 
 // タイムスタンプを定期的に更新する

@@ -48,6 +48,8 @@ type RouterArgs struct {
 type APIv0 struct {
 	RouterArgs
 	Logger *log.Logger
+	// ログのmetadataが更新されたときに発生するイベント。
+	logMetadataEvent map[string]map[int]func(metadata *types.LogMetadata)
 }
 
 // APIのレスポンスの生成を支援するworker。
@@ -122,7 +124,7 @@ func (api APIv0) SetHandlers(router *mux.Router) {
 	v01.HandleFunc("/log/{log-id}", api.log).Methods(http.MethodGet)
 	v01.HandleFunc("/log/{log-id}", api.log).Methods(http.MethodPut).
 		Queries("version", "{version:[0-9]+}")
-	v01.HandleFunc("/log/{log-id}/watch", api.notImpl).Methods(http.MethodGet).
+	v01.HandleFunc("/log/{log-id}/watch", api.logWatch).Methods(http.MethodGet).
 		Queries(
 			"version", "{version:[0-9]+}",
 			"timeout", "{timeout:[0-9]+}",
@@ -301,12 +303,61 @@ func (api APIv0) log(w http.ResponseWriter, r *http.Request) {
 
 		// 更新に成功。
 		// 新しい状態を返す。
-		js, err = json.Marshal(logobj.Metadata)
+		js, err = json.Marshal(meta)
 		if err != nil {
 			api.serverError(w, err, "failed to json.Marshal()")
 			return
 		}
 		api.write(w, js)
+	}
+}
+
+func (api APIv0) logWatch(w http.ResponseWriter, r *http.Request) {
+	logobj, ok := api.getLog(w, r)
+	if !ok {
+		return
+	}
+
+	strVer := r.URL.Query().Get("version")
+	if strVer == "" {
+		http.Error(w, "missing \"version\" parameter", http.StatusBadRequest)
+		return
+	}
+	version, err := strconv.ParseInt(strVer, 10, 64)
+	if err != nil {
+		http.Error(w, "\"version\" parameter MUST be integer type", http.StatusBadRequest)
+		return
+	}
+
+	strTimeout := r.URL.Query().Get("timeout")
+	if strTimeout == "" {
+		http.Error(w, "missing \"timeout\" parameter", http.StatusBadRequest)
+		return
+	}
+	timeout, err := strconv.ParseInt(strTimeout, 10, 64)
+	if err != nil {
+		http.Error(w, "\"timeout\" parameter MUST be integer type", http.StatusBadRequest)
+		return
+	}
+
+	// register the event handlers.
+	var wrote bool
+	ctx, cancel := context.WithTimeout(r.Context(), time.Duration(timeout)*time.Second)
+	defer cancel()
+	logobj.Watch(ctx, func(info *types.LogInfo) {
+		if info.Version <= int(version) {
+			// 指定したバージョンよりも古いものに更新された場合は無視する。
+			// 念の為チェックしているものの、このような状況は発生する可能性はあるのか？
+			return
+		}
+		wrote = true
+		api.writeJson(w, info.Metadata)
+		cancel()
+	})
+
+	if !wrote {
+		// metadataの更新するイベントが発生する前にタイムアウトした。
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
