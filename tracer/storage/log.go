@@ -60,11 +60,13 @@ type Log struct {
 	rawFuncLog   RawFuncLogStore
 	goroutineLog GoroutineStore
 
-	// metadataを更新したときにcallbackされる。
-	// このマップにアクセスするために必ずlockすること。
-	// key: 乱数。コールバック関数の追加削除を高速に行うため。
-	// value: コールバック関数
-	updateCB map[int]func(info *types.LogInfo)
+	// LogInfoが更新されたことを通知する
+	event logEvent
+}
+
+type logEvent struct {
+	lock      sync.RWMutex
+	callbacks map[int]func(info *types.LogInfo)
 }
 
 type LogStatus uint8
@@ -370,11 +372,7 @@ func (l *Log) UpdateMetadata(currentVer int, metadata *types.LogMetadata) error 
 
 	// calls event handlers.
 	info := l.logInfoNolock()
-	if l.updateCB != nil {
-		for _, cb := range l.updateCB {
-			cb(&info)
-		}
-	}
+	l.event.Notify(&info)
 	return nil
 }
 
@@ -394,28 +392,10 @@ func (l *Log) logInfoNolock() types.LogInfo {
 	}
 }
 
+// LogInfoが更新されたときに、fnを呼び出す。
+// fnの引数は、更新後のLogInfoが渡される。渡されたデータは書き換えてはいけない。
 func (l *Log) Watch(ctx context.Context, fn func(info *types.LogInfo)) {
-	var key int
-	// register an event handler.
-	l.lock.Lock()
-	if l.updateCB == nil {
-		l.updateCB = map[int]func(info *types.LogInfo){}
-	}
-	for {
-		key = rand.Int()
-		if _, ok := l.updateCB[key]; ok {
-			continue
-		}
-		l.updateCB[key] = fn
-		break
-	}
-	l.lock.Unlock()
-
-	<-ctx.Done()
-	// unregister an event handler.
-	l.lock.Lock()
-	delete(l.updateCB, key)
-	l.lock.Unlock()
+	l.event.Watch(ctx, fn)
 }
 
 // タイムスタンプを定期的に更新する
@@ -468,4 +448,56 @@ func (l *Log) symbolsStore() SymbolsStore {
 		File:     l.Root.SymbolFile(l.ID),
 		ReadOnly: l.ReadOnly,
 	}
+}
+
+// notify は、Watch()で登録されたコールバック関数を全て呼び出す。
+// TracersStore のデータが更新されたときに必ず呼び出すこと。
+func (le *logEvent) Notify(info *types.LogInfo) {
+	le.lock.Lock()
+	defer le.lock.Unlock()
+	for _, fn := range le.callbacks {
+		fn(info)
+	}
+}
+
+// LogInfoが更新されたときにfnを呼び出す。
+// ctxは
+func (le *logEvent) Watch(ctx context.Context, fn func(info *types.LogInfo)) {
+	key := le.register(fn)
+	<-ctx.Done()
+	le.unregister(key)
+}
+
+// fnをコールバック関数として登録して、キーを返す。
+// keyはコールバック関数の登録解除するときに使用する。
+func (le *logEvent) register(fn func(info *types.LogInfo)) int {
+	le.lock.Lock()
+	defer le.lock.Unlock()
+
+	if le.callbacks == nil {
+		le.callbacks = map[int]func(info *types.LogInfo){}
+	}
+	for {
+		// callbacks のキーの重複を避けるために乱数を使用している。
+		// 乱数の品質は問わない(脆弱でも構わない)ため、gasのwarningを無視する。
+		key := rand.Int() // nolint: gas
+		if _, ok := le.callbacks[key]; ok {
+			continue
+		}
+		le.callbacks[key] = fn
+		return key
+	}
+}
+
+// keyに対応するコールバック関数の登録を解除する。
+// これ以降は、指定したコールバック関数が呼び出されることはない。
+// keyは、register()が返した値。
+func (le *logEvent) unregister(key int) {
+	le.lock.Lock()
+	defer le.lock.Unlock()
+
+	if le.callbacks == nil {
+		return
+	}
+	delete(le.callbacks, key)
 }
