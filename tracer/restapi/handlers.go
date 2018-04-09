@@ -47,8 +47,6 @@ type RouterArgs struct {
 type APIv0 struct {
 	RouterArgs
 	Logger *log.Logger
-	// ログのmetadataが更新されたときに発生するイベント。
-	logMetadataEvent map[string]map[int]func(metadata *types.LogMetadata)
 }
 
 // APIのレスポンスの生成を支援するworker。
