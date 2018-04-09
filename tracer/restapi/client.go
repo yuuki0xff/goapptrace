@@ -158,7 +158,7 @@ func (c ClientWithCtx) RemoveLog(id string) error {
 func (c ClientWithCtx) LogInfo(id string) (res types.LogInfo, err error) {
 	url := c.url("/log", id)
 	ro := c.ro()
-	err = c.getJSON(url, &ro, res)
+	err = c.getJSON(url, &ro, &res)
 	return
 }
 
