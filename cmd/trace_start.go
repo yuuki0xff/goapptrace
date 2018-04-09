@@ -28,7 +28,7 @@ import (
 
 // traceStartCmd represents the start command
 var traceStartCmd = &cobra.Command{
-	Use:   "start <tracer-id> [<name>...]",
+	Use:   "start <log-id> [<name>...]",
 	Short: "Start tracing of running process",
 	Long:  `Start tracing to the specified function. If function name is not given, we traces to all functions.`,
 	RunE:  wrap(runTraceStart),
@@ -39,7 +39,7 @@ func runTraceStart(opt *handlerOpt) error {
 		opt.ErrLog.Println("missing tracer-id")
 		return errInvalidArgs
 	}
-	tracerID := opt.Args[1]
+	logID := opt.Args[1]
 	names := opt.Args[2:]
 
 	api, err := opt.Api(context.Background())
@@ -53,7 +53,7 @@ func runTraceStart(opt *handlerOpt) error {
 		panic("TODO")
 	} else {
 		for _, name := range names {
-			err = api.StartTrace(tracerID, name)
+			err = api.StartTrace(logID, name)
 			if err != nil {
 				opt.ErrLog.Println(err)
 				return errGeneral

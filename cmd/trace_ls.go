@@ -32,7 +32,7 @@ import (
 
 // traceLsCmd represents the traceLs command
 var traceLsCmd = &cobra.Command{
-	Use:   "ls <log-id>", // TODO: idを統一する
+	Use:   "ls <log-id>",
 	Short: "List functions",
 	RunE:  wrap(runTraceLs),
 }
@@ -42,15 +42,14 @@ func runTraceLs(opt *handlerOpt) error {
 		opt.ErrLog.Println("missing tracer-id")
 		return errInvalidArgs
 	}
-	// TODO: idを統一する
-	tracerID := opt.Args[0]
+	logID := opt.Args[0]
 
 	api, err := opt.Api(context.Background())
 	if err != nil {
 		opt.ErrLog.Println(err)
 		return errApiClient
 	}
-	sym, err := api.Symbols(tracerID)
+	sym, err := api.Symbols(logID)
 	if err != nil {
 		opt.ErrLog.Println(err)
 		return errGeneral

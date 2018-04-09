@@ -28,7 +28,7 @@ import (
 
 // traceStopCmd represents the stop command
 var traceStopCmd = &cobra.Command{
-	Use:   "stop tracer-id [<name>...]",
+	Use:   "stop <log-id> [<name>...]",
 	Short: "Stop tracing of running processes",
 	Long:  `Stop tracing to the specified function. If function name is not given, we stops tracing to all functions.`,
 	RunE:  wrap(runTraceStop),
@@ -40,7 +40,7 @@ func runTraceStop(opt *handlerOpt) error {
 		return errInvalidArgs
 	}
 
-	tracerID := opt.Args[1]
+	logID := opt.Args[1]
 	names := opt.Args[2:]
 
 	api, err := opt.Api(context.Background())
@@ -50,14 +50,14 @@ func runTraceStop(opt *handlerOpt) error {
 	}
 
 	if len(names) == 0 {
-		err = api.UpdateTraceTargets(tracerID, []string{})
+		err = api.UpdateTraceTargets(logID, []string{})
 		if err != nil {
 			opt.ErrLog.Println(err)
 			return errGeneral
 		}
 	} else {
 		for _, name := range names {
-			err = api.StopTrace(tracerID, name)
+			err = api.StopTrace(logID, name)
 			if err != nil {
 				opt.ErrLog.Println(err)
 				return errGeneral
