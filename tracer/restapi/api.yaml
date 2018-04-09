@@ -98,6 +98,19 @@ definitions:
         format: int64
         example: 5900
         description: Last update time
+      pid:
+        type: integer
+        format: int64
+        example: 2000
+        description: Process ID
+      host:
+        type: string
+        example: laptop
+        description: Host name
+      app-name:
+        type: string
+        example: hello-world
+        description: Application name
       ui:
         type: object
         description: User interface settings
