@@ -164,14 +164,11 @@ func (c ClientWithCtx) LogInfo(id string) (res types.LogInfo, err error) {
 
 // UpdateLogInfo updates the log status.
 // If update operation conflicts, it returns ErrConflict.
-func (c ClientWithCtx) UpdateLogInfo(id string, old types.LogInfo) (new types.LogInfo, err error) {
+func (c ClientWithCtx) UpdateLogInfo(id string, new types.LogInfo) (updated types.LogInfo, err error) {
 	url := c.url("/log", id)
-	ro := &grequests.RequestOptions{
-		Params: map[string]string{
-			"version": strconv.Itoa(old.Version),
-		},
-	}
-	err = c.putJSON(url, ro, &new)
+	ro := c.ro()
+	ro.JSON = new
+	err = c.putJSON(url, &ro, &updated)
 	return
 }
 
