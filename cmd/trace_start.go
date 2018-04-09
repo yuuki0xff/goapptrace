@@ -24,6 +24,7 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 // traceStartCmd represents the start command
@@ -49,8 +50,35 @@ func runTraceStart(opt *handlerOpt) error {
 	}
 
 	if len(names) == 0 {
-		// TODO: idの統一を行わないと、symbolsが取得できない
-		panic("TODO")
+		sym, err := api.Symbols(logID)
+		if err != nil {
+			opt.ErrLog.Println(err)
+			return errGeneral
+		}
+		info, err := api.LogInfo(logID)
+		if err != nil {
+			opt.ErrLog.Println(err)
+			return errGeneral
+		}
+
+		// 全ての関数名を取得して、トレース対象として登録する。
+		err = sym.Save(func(data types.SymbolsData) error {
+			var names []string
+			for _, f := range data.Funcs {
+				names = append(names, f.Name)
+			}
+			info.Metadata.TraceTarget.Funcs = names
+			return nil
+		})
+		if err != nil {
+			opt.ErrLog.Println(err)
+			return errGeneral
+		}
+		_, err = api.UpdateLogInfo(logID, info)
+		if err != nil {
+			opt.ErrLog.Println(err)
+			return errGeneral
+		}
 	} else {
 		for _, name := range names {
 			err = api.StartTrace(logID, name)
