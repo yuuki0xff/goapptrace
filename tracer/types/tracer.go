@@ -11,7 +11,7 @@ func (t Tracer) Copy(to *Tracer) {
 }
 
 type TraceTarget struct {
-	Funcs []string
+	Funcs []string `json:"funcs"`
 }
 
 func (t TraceTarget) Copy(to *TraceTarget) {

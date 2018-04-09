@@ -25,6 +25,8 @@ type LogMetadata struct {
 	Host string `json:"host"`
 	// Application name
 	AppName string `json:"app-name"`
+	// List of currently enabled tracing targets.
+	TraceTarget TraceTarget `json:"trace-target"`
 	// The configuration of user interface
 	UI UIConfig `json:"ui"`
 }

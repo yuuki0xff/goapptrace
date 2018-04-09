@@ -111,6 +111,19 @@ definitions:
         type: string
         example: hello-world
         description: Application name
+      trace-target:
+        type: object
+        description: Tracing targets
+        properties:
+          funcs:
+            type: array
+            description: List of currently enabled tracing targets
+            items:
+              type: string
+            example:
+              - main.main
+              - fmt.Println
+              - rand.Int
       ui:
         type: object
         description: User interface settings
