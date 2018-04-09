@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"math"
 	"net/http"
@@ -257,42 +256,19 @@ func (api APIv0) log(w http.ResponseWriter, r *http.Request) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	case http.MethodGet:
-		js, err := json.Marshal(logobj.Metadata)
-		if err != nil {
-			api.serverError(w, err, "failed to json.Marshal()")
-			return
-		}
-		api.write(w, js)
+		api.writeJson(w, logobj.LogInfo())
 	case http.MethodPut:
-		js, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			api.serverError(w, err, "failed to read from request body")
+		info := types.LogInfo{}
+		if !api.readJson(r, &info) {
 			return
 		}
 
-		meta := &types.LogMetadata{}
-		if err = json.Unmarshal(js, meta); err != nil {
-			http.Error(w, "invalid json", http.StatusBadRequest)
-			return
-		}
-
-		currentVer, err := strconv.Atoi(r.URL.Query().Get("version"))
-		if err != nil {
-			http.Error(w, "invalid version number", http.StatusBadRequest)
-			return
-		}
-
-		if err = logobj.UpdateMetadata(currentVer, meta); err != nil {
+		if err := logobj.UpdateMetadata(info.Version, &info.Metadata); err != nil {
 			if err == storage.ErrConflict {
 				// バージョン番号が異なるため、Metadataを更新できない。
 				// 現在の状態を返す。
-				js, err = json.Marshal(logobj.Metadata)
-				if err != nil {
-					api.serverError(w, err, "failed to json.Marshal()")
-					return
-				}
 				w.WriteHeader(http.StatusConflict)
-				api.write(w, js)
+				api.writeJson(w, logobj.LogInfo())
 				return
 			} else {
 				// よく分からんエラー
@@ -303,12 +279,9 @@ func (api APIv0) log(w http.ResponseWriter, r *http.Request) {
 
 		// 更新に成功。
 		// 新しい状態を返す。
-		js, err = json.Marshal(meta)
-		if err != nil {
-			api.serverError(w, err, "failed to json.Marshal()")
-			return
-		}
-		api.write(w, js)
+		w.WriteHeader(http.StatusOK)
+		api.writeJson(w, logobj.LogInfo())
+		return
 	}
 }
 

@@ -480,11 +480,6 @@ paths:
     put:
       description: Updates current status of a server.
       parameters:
-        - name: version
-          in: query
-          description: Old status version.
-          required: true
-          type: integer
         - name: status
           in: body
           description: New status.
