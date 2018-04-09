@@ -39,8 +39,8 @@ func runTraceStart(opt *handlerOpt) error {
 		opt.ErrLog.Println("missing tracer-id")
 		return errInvalidArgs
 	}
-	logID := opt.Args[1]
-	names := opt.Args[2:]
+	logID := opt.Args[0]
+	names := opt.Args[1:]
 
 	api, err := opt.Api(context.Background())
 	if err != nil {

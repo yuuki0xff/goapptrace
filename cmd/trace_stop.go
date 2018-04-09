@@ -40,8 +40,8 @@ func runTraceStop(opt *handlerOpt) error {
 		return errInvalidArgs
 	}
 
-	logID := opt.Args[1]
-	names := opt.Args[2:]
+	logID := opt.Args[0]
+	names := opt.Args[1:]
 
 	api, err := opt.Api(context.Background())
 	if err != nil {
