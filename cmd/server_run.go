@@ -203,12 +203,6 @@ func (m *ServerHandlerMaker) NewConnHandler(id protocol.ConnID, conn protocol.Pa
 		Connected: func(pkt *protocol.ClientHelloPacket) {
 			log.Println("INFO: Server: connected")
 
-			t, err := m.Storage.TracersStore().Add()
-			if err != nil {
-				log.Printf("ERROR: Server(connID=%d): %s", id, err.Error())
-				return
-			}
-
 			logobj, err := m.Storage.New()
 			if err != nil {
 				log.Panicf("ERROR: Server: failed to a create Log object: err=%s", err.Error())
@@ -227,16 +221,14 @@ func (m *ServerHandlerMaker) NewConnHandler(id protocol.ConnID, conn protocol.Pa
 				ServerHandlerMaker: m,
 				Ch:                 ch,
 				ConnID:             id,
-				TracerID:           t.ID,
 				Log:                logobj,
 			}
 			go lwWorker.Run()
 
 			tsWorker := &tracerSyncWorker{
-				TracerID: t.ID,
-				Log:      logobj,
-				Storage:  m.Storage,
-				Sender:   conn,
+				Log:     logobj,
+				Storage: m.Storage,
+				Sender:  conn,
 			}
 			var ctx context.Context
 			ctx, cancel = context.WithCancel(context.Background())
@@ -277,10 +269,9 @@ func (m *ServerHandlerMaker) NewConnHandler(id protocol.ConnID, conn protocol.Pa
 // logWriteWorker - ServerHandlerMaker worker
 type logWriteWorker struct {
 	*ServerHandlerMaker
-	Ch       chan interface{}
-	ConnID   protocol.ConnID
-	TracerID int
-	Log      *storage.Log
+	Ch     chan interface{}
+	ConnID protocol.ConnID
+	Log    *storage.Log
 }
 
 func (w *logWriteWorker) Run() {
@@ -398,16 +389,15 @@ func (w *logWriteWorker) writeSS(logobj *storage.Log, ss *simulator.StateSimulat
 }
 
 type tracerSyncWorker struct {
-	TracerID int
-	Log      *storage.Log
-	Storage  *storage.Storage
-	Sender   protocol.PacketSender
+	Log     *storage.Log
+	Storage *storage.Storage
+	Sender  protocol.PacketSender
 }
 
 func (w *tracerSyncWorker) Run(ctx context.Context) {
 	var wg sync.WaitGroup
 	pch := make(chan xtcp.Packet, 10)
-	tch := make(chan *types.Tracer, 10)
+	ich := make(chan *types.LogInfo, 10)
 
 	wg.Add(1)
 	go func() {
@@ -422,12 +412,12 @@ func (w *tracerSyncWorker) Run(ctx context.Context) {
 	go func() {
 		defer wg.Done()
 		defer close(pch)
-		for tracer := range tch {
+		for info := range ich {
 			// tracerオブジェクトの設定内容を、client側に反映させる。
 			if err := w.Log.Symbols().Save(func(data types.SymbolsData) error {
 				for _, f := range data.Funcs {
 					var exists bool
-					for _, funcName := range tracer.Target.Funcs {
+					for _, funcName := range info.Metadata.TraceTarget.Funcs {
 						if f.Name == funcName {
 							exists = true
 							break
@@ -453,12 +443,9 @@ func (w *tracerSyncWorker) Run(ctx context.Context) {
 		}
 	}()
 
-	w.Storage.TracersStore().Watch(ctx, func(tracer *types.Tracer) {
-		if w.TracerID != tracer.ID {
-			return
-		}
-		tch <- tracer
+	w.Log.Watch(ctx, func(info *types.LogInfo) {
+		ich <- info
 	})
-	close(tch)
+	close(ich)
 	wg.Wait()
 }
