@@ -75,7 +75,7 @@ func runTraceStart(opt *handlerOpt) error {
 			opt.ErrLog.Println(err)
 			return errGeneral
 		}
-		_, err = api.UpdateLogInfo(logID, info)
+		_, err = api.SetLogInfo(logID, info)
 		if err != nil {
 			opt.ErrLog.Println(err)
 			return errGeneral

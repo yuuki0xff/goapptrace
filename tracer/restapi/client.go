@@ -162,9 +162,9 @@ func (c ClientWithCtx) LogInfo(id string) (res types.LogInfo, err error) {
 	return
 }
 
-// UpdateLogInfo updates the log status.
+// SetLogInfo updates the log status.
 // If update operation conflicts, it returns ErrConflict.
-func (c ClientWithCtx) UpdateLogInfo(id string, new types.LogInfo) (updated types.LogInfo, err error) {
+func (c ClientWithCtx) SetLogInfo(id string, new types.LogInfo) (updated types.LogInfo, err error) {
 	url := c.url("/log", id)
 	ro := c.ro()
 	ro.JSON = new
