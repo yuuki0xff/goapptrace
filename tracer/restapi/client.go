@@ -172,6 +172,37 @@ func (c ClientWithCtx) SetLogInfo(id string, new types.LogInfo) (updated types.L
 	return
 }
 
+// UpdateLogInfo updates the log status.
+// When update operation is conflicted, it retries N times.
+//
+// fn() takes the latest LogInfo and update it.
+// fn() MUST be re-executable because it may be called many times by the API client.
+func (c ClientWithCtx) UpdateLogInfo(id string, tries int, fn func(info *types.LogInfo) error) (types.LogInfo, error) {
+	for i := 0; i < tries; i++ {
+		// get latest LogInfo
+		info, err := c.LogInfo(id)
+		if err != nil {
+			return types.LogInfo{}, err
+		}
+
+		// update LogInfo
+		if err := fn(&info); err != nil {
+			return types.LogInfo{}, err
+		}
+
+		// set updated LogInfo
+		newInfo, err := c.SetLogInfo(id, info)
+		if err == ErrConflict {
+			continue
+		} else if err != nil {
+			return types.LogInfo{}, err
+		} else {
+			return newInfo, nil
+		}
+	}
+	return types.LogInfo{}, ErrConflict
+}
+
 // SearchRaw execute a SQL query and returns result by CSV format.
 func (c *ClientWithCtx) SearchRaw(id string, query string) (io.ReadCloser, error) {
 	url := c.url("/log", id, "search.csv")
@@ -354,36 +385,6 @@ func (c ClientWithCtx) Goroutines(logID string) (gl chan types.Goroutine, err er
 		}
 	}()
 	return ch, nil
-}
-
-func (c ClientWithCtx) UpdateTraceTargets(tracerID string, names []string) error {
-	var targets types.TraceTarget
-	targets.Funcs = names
-
-	url := c.url("/tracer", tracerID, "targets")
-	ro := c.ro()
-	ro.JSON = targets
-	r, err := c.put(url, &ro)
-	if err != nil {
-		return err
-	}
-	return r.Close()
-}
-
-func (c ClientWithCtx) StartTrace(tracerID string, name string) error {
-	url := c.url("/tracer", tracerID, "target", "func", name)
-	ro := c.ro()
-	r, err := c.put(url, &ro)
-	if err != nil {
-		return err
-	}
-	return r.Close()
-}
-
-func (c ClientWithCtx) StopTrace(tracerID string, name string) error {
-	url := c.url("/tracer", tracerID, "target", "func", name)
-	ro := c.ro()
-	return c.delete(url, &ro)
 }
 
 func (c Client) get(url string, ro *grequests.RequestOptions) (*grequests.Response, error) {

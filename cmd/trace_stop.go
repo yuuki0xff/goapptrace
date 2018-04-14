@@ -23,7 +23,9 @@ package cmd
 import (
 	"context"
 
+	"github.com/deckarep/golang-set"
 	"github.com/spf13/cobra"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 // traceStopCmd represents the stop command
@@ -50,20 +52,30 @@ func runTraceStop(opt *handlerOpt) error {
 		return errApiClient
 	}
 
-	if len(names) == 0 {
-		err = api.UpdateTraceTargets(logID, []string{})
-		if err != nil {
-			opt.ErrLog.Println(err)
-			return errGeneral
-		}
-	} else {
-		for _, name := range names {
-			err = api.StopTrace(logID, name)
-			if err != nil {
-				opt.ErrLog.Println(err)
-				return errGeneral
+	_, err = api.UpdateLogInfo(logID, 10, func(info *types.LogInfo) error {
+		if len(names) == 0 {
+			info.Metadata.TraceTarget.Funcs = []string{}
+			return nil
+		} else {
+			namesSet := mapset.NewSet()
+			for _, name := range names {
+				namesSet.Add(name)
 			}
+
+			newFuncs := make([]string, 0, len(info.Metadata.TraceTarget.Funcs))
+			for _, f := range info.Metadata.TraceTarget.Funcs {
+				if namesSet.Contains(f) {
+					continue
+				}
+				newFuncs = append(newFuncs, f)
+			}
+			info.Metadata.TraceTarget.Funcs = newFuncs
+			return nil
 		}
+	})
+	if err != nil {
+		opt.ErrLog.Println(err)
+		return errGeneral
 	}
 	return nil
 }

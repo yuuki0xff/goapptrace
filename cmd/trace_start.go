@@ -50,44 +50,33 @@ func runTraceStart(opt *handlerOpt) error {
 		return errApiClient
 	}
 
+	var symbols *types.Symbols
 	if len(names) == 0 {
-		sym, err := api.Symbols(logID)
+		symbols, err = api.Symbols(logID)
 		if err != nil {
 			opt.ErrLog.Println(err)
 			return errGeneral
 		}
-		info, err := api.LogInfo(logID)
-		if err != nil {
-			opt.ErrLog.Println(err)
-			return errGeneral
-		}
+	}
 
-		// 全ての関数名を取得して、トレース対象として登録する。
-		err = sym.Save(func(data types.SymbolsData) error {
-			var names []string
-			for _, f := range data.Funcs {
-				names = append(names, f.Name)
-			}
-			info.Metadata.TraceTarget.Funcs = names
+	_, err = api.UpdateLogInfo(logID, 10, func(info *types.LogInfo) error {
+		if len(names) == 0 {
+			return symbols.Save(func(data types.SymbolsData) error {
+				var names []string
+				for _, f := range data.Funcs {
+					names = append(names, f.Name)
+				}
+				info.Metadata.TraceTarget.Funcs = names
+				return nil
+			})
+		} else {
+			info.Metadata.TraceTarget.Funcs = append(info.Metadata.TraceTarget.Funcs, names...)
 			return nil
-		})
-		if err != nil {
-			opt.ErrLog.Println(err)
-			return errGeneral
 		}
-		_, err = api.SetLogInfo(logID, info)
-		if err != nil {
-			opt.ErrLog.Println(err)
-			return errGeneral
-		}
-	} else {
-		for _, name := range names {
-			err = api.StartTrace(logID, name)
-			if err != nil {
-				opt.ErrLog.Println(err)
-				return errGeneral
-			}
-		}
+	})
+	if err != nil {
+		opt.ErrLog.Println(err)
+		return errGeneral
 	}
 	return nil
 }

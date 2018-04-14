@@ -23,9 +23,10 @@ package cmd
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
+	"strconv"
 
+	"github.com/deckarep/golang-set"
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
@@ -34,7 +35,7 @@ import (
 var traceLsCmd = &cobra.Command{
 	Use: "ls <log-id>",
 	DisableFlagsInUseLine: true,
-	Short: "List functions",
+	Short: "List all functions",
 	RunE:  wrap(runTraceLs),
 }
 
@@ -55,21 +56,37 @@ func runTraceLs(opt *handlerOpt) error {
 		opt.ErrLog.Println(err)
 		return errGeneral
 	}
+	info, err := api.LogInfo(logID)
+	if err != nil {
+		opt.ErrLog.Println(err)
+		return errGeneral
+	}
+
+	enabledFuncs := mapset.NewSet()
+	for _, f := range info.Metadata.TraceTarget.Funcs {
+		enabledFuncs.Add(f)
+	}
 
 	var buf bytes.Buffer
-	var data types.SymbolsData
-	err = sym.Save(func(data_tmp types.SymbolsData) error {
-		data = data_tmp
+	tbl := defaultTable(&buf)
+	tbl.SetHeader([]string{
+		"name",
+		"status",
+	})
+	err = sym.Save(func(data types.SymbolsData) error {
+		for _, f := range data.Funcs {
+			tbl.Append([]string{
+				f.Name,
+				strconv.FormatBool(enabledFuncs.Contains(f.Name)),
+			})
+		}
 		return nil
 	})
 	if err != nil {
 		opt.ErrLog.Println(err)
 		return errGeneral
 	}
-
-	for _, f := range data.Funcs {
-		fmt.Fprintln(&buf, f.Name)
-	}
+	tbl.Render()
 
 	_, err = io.Copy(opt.Stdout, &buf)
 	if err != nil {
