@@ -158,21 +158,49 @@ func (c ClientWithCtx) RemoveLog(id string) error {
 func (c ClientWithCtx) LogInfo(id string) (res types.LogInfo, err error) {
 	url := c.url("/log", id)
 	ro := c.ro()
-	err = c.getJSON(url, &ro, res)
+	err = c.getJSON(url, &ro, &res)
+	return
+}
+
+// SetLogInfo updates the log status.
+// If update operation conflicts, it returns ErrConflict.
+func (c ClientWithCtx) SetLogInfo(id string, new types.LogInfo) (updated types.LogInfo, err error) {
+	url := c.url("/log", id)
+	ro := c.ro()
+	ro.JSON = new
+	err = c.putJSON(url, &ro, &updated)
 	return
 }
 
 // UpdateLogInfo updates the log status.
-// If update operation conflicts, it returns ErrConflict.
-func (c ClientWithCtx) UpdateLogInfo(id string, old types.LogInfo) (new types.LogInfo, err error) {
-	url := c.url("/log", id)
-	ro := &grequests.RequestOptions{
-		Params: map[string]string{
-			"version": strconv.Itoa(old.Version),
-		},
+// When update operation is conflicted, it retries N times.
+//
+// fn() takes the latest LogInfo and update it.
+// fn() MUST be re-executable because it may be called many times by the API client.
+func (c ClientWithCtx) UpdateLogInfo(id string, tries int, fn func(info *types.LogInfo) error) (types.LogInfo, error) {
+	for i := 0; i < tries; i++ {
+		// get latest LogInfo
+		info, err := c.LogInfo(id)
+		if err != nil {
+			return types.LogInfo{}, err
+		}
+
+		// update LogInfo
+		if err := fn(&info); err != nil {
+			return types.LogInfo{}, err
+		}
+
+		// set updated LogInfo
+		newInfo, err := c.SetLogInfo(id, info)
+		if err == ErrConflict {
+			continue
+		} else if err != nil {
+			return types.LogInfo{}, err
+		} else {
+			return newInfo, nil
+		}
 	}
-	err = c.putJSON(url, ro, &new)
-	return
+	return types.LogInfo{}, ErrConflict
 }
 
 // SearchRaw execute a SQL query and returns result by CSV format.
@@ -412,7 +440,9 @@ func (c Client) put(url string, ro *grequests.RequestOptions) (*grequests.Respon
 		return nil, ErrConflict
 	default:
 		r.Close() // nolint: errcheck
-		return nil, errors.Wrapf(err, "PUT %s returned unexpected status code. expected 200 or 409, but %d", url, r.StatusCode)
+		return nil, errUnexpStatus(r, []int{
+			http.StatusOK,
+		})
 	}
 }
 func (c Client) putJSON(url string, ro *grequests.RequestOptions, data interface{}) error {

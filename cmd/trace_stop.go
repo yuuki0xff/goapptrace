@@ -21,32 +21,62 @@
 package cmd
 
 import (
+	"context"
+
+	"github.com/deckarep/golang-set"
 	"github.com/spf13/cobra"
-	"github.com/yuuki0xff/goapptrace/config"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 // traceStopCmd represents the stop command
 var traceStopCmd = &cobra.Command{
-	Use:   "stop",
+	Use: "stop <log-id> [<name>...]",
+	DisableFlagsInUseLine: true,
 	Short: "Stop tracing of running processes",
+	Long:  `Stop tracing to the specified function. If function name is not given, we stops tracing to all functions.`,
 	RunE:  wrap(runTraceStop),
 }
 
 func runTraceStop(opt *handlerOpt) error {
-	targets := opt.Args
-	err := opt.Conf.Targets.Walk(targets, func(t *config.Target) error {
-		return t.WalkTraces(nil, func(fname string, trace *config.Trace, created bool) error {
-			// TODO: stop tracing
+	if len(opt.Args) == 0 {
+		opt.ErrLog.Println("missing tracer-id")
+		return errInvalidArgs
+	}
 
-			trace.IsTracing = false
+	logID := opt.Args[0]
+	names := opt.Args[1:]
+
+	api, err := opt.Api(context.Background())
+	if err != nil {
+		opt.ErrLog.Println(err)
+		return errApiClient
+	}
+
+	_, err = api.UpdateLogInfo(logID, 10, func(info *types.LogInfo) error {
+		if len(names) == 0 {
+			info.Metadata.TraceTarget.Funcs = []string{}
 			return nil
-		})
+		} else {
+			namesSet := mapset.NewSet()
+			for _, name := range names {
+				namesSet.Add(name)
+			}
+
+			newFuncs := make([]string, 0, len(info.Metadata.TraceTarget.Funcs))
+			for _, f := range info.Metadata.TraceTarget.Funcs {
+				if namesSet.Contains(f) {
+					continue
+				}
+				newFuncs = append(newFuncs, f)
+			}
+			info.Metadata.TraceTarget.Funcs = newFuncs
+			return nil
+		}
 	})
 	if err != nil {
 		opt.ErrLog.Println(err)
 		return errGeneral
 	}
-	opt.Conf.WantSave()
 	return nil
 }
 

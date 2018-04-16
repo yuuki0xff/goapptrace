@@ -17,18 +17,23 @@ type LogServerSender struct {
 
 // LogServerSenderが使用できる場合はtrueを返す。
 func CanUseLogServerSender() bool {
-	_, ok := os.LookupEnv(info.DEFAULT_LOGSRV_ENV)
+	_, ok := os.LookupEnv(info.DefaultLogsrvEnv)
 	return ok
 }
 
 // サーバとのセッションを確立する。
 // セッションが確立するまで処理をブロックする。
 func (s *LogServerSender) Open() error {
-	url, ok := os.LookupEnv(info.DEFAULT_LOGSRV_ENV)
+	url, ok := os.LookupEnv(info.DefaultLogsrvEnv)
 	if !ok {
-		return fmt.Errorf("not found %s environment value", info.DEFAULT_LOGSRV_ENV)
+		return fmt.Errorf("not found %s environment value", info.DefaultLogsrvEnv)
 	}
 
+	hostname, _ := os.Hostname()
+	appname := os.Getenv(info.DefaultAppNameEnv)
+	if appname == "" {
+		appname = os.Args[0]
+	}
 	s.client = &protocol.Client{
 		Addr: url,
 		Handler: protocol.ClientHandler{
@@ -37,10 +42,24 @@ func (s *LogServerSender) Open() error {
 			Error: func(err error) {
 				fmt.Println("s.client ERROR:", err.Error())
 			},
-			StartTrace: func(args *protocol.StartTraceCmdPacket) {},
-			StopTrace:  func(args *protocol.StopTraceCmdPacket) {},
+			StartTrace: func(pkt *protocol.StartTraceCmdPacket) {
+				if pkt.FuncName != "" {
+					EnableTrace(pkt.FuncName)
+				} else {
+					panic("FuncName MUST NOT empty")
+				}
+			},
+			StopTrace: func(pkt *protocol.StopTraceCmdPacket) {
+				if pkt.FuncName != "" {
+					DisableTrace(pkt.FuncName)
+				} else {
+					panic("FuncName MUST NOT empty")
+				}
+			},
 		},
-		AppName: os.Getenv(info.DEFAULT_APP_NAME_ENV),
+		PID:     uint64(os.Getpid()),
+		AppName: appname,
+		Host:    hostname,
 		Secret:  "secret", // TODO
 	}
 	s.client.Init()

@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -88,6 +90,10 @@ func (d DirLayout) Init() error {
 // infoファイルを返す
 func (d DirLayout) InfoFile() File {
 	return File(path.Join(d.Root, "info.json"))
+}
+
+func (d DirLayout) TracersFile() File {
+	return File(path.Join(d.Root, "tracers.json"))
 }
 
 // メタデータファイルが格納されるディレクトリのパスを返す。
@@ -195,6 +201,10 @@ func (f File) OpenAppendOnly() (FileWriter, error) {
 	return file, errors.Wrapf(err, "cannot open %s for appending: %s", string(f))
 }
 
+func (f File) RenameTo(to File) error {
+	return os.Rename(string(f), string(to))
+}
+
 // ファイルから全て読み込み、[]byteを返す。
 func (f File) ReadAll() ([]byte, error) {
 	file, err := f.OpenReadOnly()
@@ -204,6 +214,19 @@ func (f File) ReadAll() ([]byte, error) {
 	return ioutil.ReadAll(file)
 }
 
+// ファイルにdataを書き込む。書き込みはatomicに行われる。
+func (f File) WriteAll(data []byte) error {
+	newf := f.new()
+	err := ioutil.WriteFile(string(newf), data, 0600)
+	if err != nil {
+		return err
+	}
+	return newf.RenameTo(f)
+}
+
 func (f File) openFile(name string, flag int) (*os.File, error) {
 	return os.OpenFile(name, flag, config.DefaultFilePerm)
+}
+func (f File) new() File {
+	return File(string(f) + ".new." + strconv.FormatUint(rand.Uint64(), 10))
 }

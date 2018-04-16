@@ -55,9 +55,9 @@ func (f *FileSender) SendLog(raw *types.RawFuncLog) error {
 // returns absolute path of log file.
 func (f *FileSender) logFilePath() string {
 	pid := os.Getpid()
-	prefix, ok := os.LookupEnv(info.DEFAULT_LOGFILE_ENV)
+	prefix, ok := os.LookupEnv(info.DefaultLogfileEnv)
 	if !ok {
-		prefix = info.DEFAULT_LOGFILE_PREFIX
+		prefix = info.DefaultLogfilePrefix
 	}
 	relativePath := fmt.Sprintf("%s.%d.log.gz", prefix, pid)
 	absPath, err := filepath.Abs(relativePath)

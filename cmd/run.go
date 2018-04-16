@@ -30,6 +30,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"github.com/yuuki0xff/goapptrace/info"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 )
 
@@ -109,7 +110,7 @@ func runArgs(flagset *pflag.FlagSet, files, cmdArgs []string) []string {
 // "go run"コマンドの実行前にセットするべき環境変数を返す
 func runEnv(srv restapi.ServerStatus, goroot, gopath string, files []string) []string {
 	env := buildEnv(goroot, gopath, files)
-	env = append(env, procRunEnv(srv)...)
+	env = append(env, info.DefaultLogsrvEnv+"="+srv.Addr)
 	return env
 }
 

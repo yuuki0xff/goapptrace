@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"math"
 	"net/http"
@@ -120,9 +119,8 @@ func (api APIv0) SetHandlers(router *mux.Router) {
 	v01.HandleFunc("/logs", api.logs).Methods(http.MethodGet)
 	v01.HandleFunc("/log/{log-id}", api.log).Methods(http.MethodDelete)
 	v01.HandleFunc("/log/{log-id}", api.log).Methods(http.MethodGet)
-	v01.HandleFunc("/log/{log-id}", api.log).Methods(http.MethodPut).
-		Queries("version", "{version:[0-9]+}")
-	v01.HandleFunc("/log/{log-id}/watch", api.notImpl).Methods(http.MethodGet).
+	v01.HandleFunc("/log/{log-id}", api.log).Methods(http.MethodPut)
+	v01.HandleFunc("/log/{log-id}/watch", api.logWatch).Methods(http.MethodGet).
 		Queries(
 			"version", "{version:[0-9]+}",
 			"timeout", "{timeout:[0-9]+}",
@@ -141,12 +139,6 @@ func (api APIv0) SetHandlers(router *mux.Router) {
 	v01.HandleFunc("/log/{log-id}/symbol/module/{pc}", api.goModule).Methods(http.MethodGet)
 	v01.HandleFunc("/log/{log-id}/symbol/func/{pc}", api.goFunc).Methods(http.MethodGet)
 	v01.HandleFunc("/log/{log-id}/symbol/line/{pc}", api.goLine).Methods(http.MethodGet)
-
-	v01.HandleFunc("/tracers", api.tracers).Methods(http.MethodGet)
-	v01.HandleFunc("/tracer/{tracer-id}", api.tracer).Methods(http.MethodDelete)
-	v01.HandleFunc("/tracer/{tracer-id}/status", api.tracers).Methods(http.MethodGet)
-	v01.HandleFunc("/tracer/{tracer-id}/status", api.tracer).Methods(http.MethodPut)
-	v01.HandleFunc("/tracer/{tracer-id}/watch", api.notImpl).Methods(http.MethodGet)
 }
 func (api APIv0) serverError(w http.ResponseWriter, err error, msg string) {
 	api.Logger.Println(errors.Wrap(err, "failed to json.Marshal").Error())
@@ -249,42 +241,19 @@ func (api APIv0) log(w http.ResponseWriter, r *http.Request) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	case http.MethodGet:
-		js, err := json.Marshal(logobj.Metadata)
-		if err != nil {
-			api.serverError(w, err, "failed to json.Marshal()")
-			return
-		}
-		api.write(w, js)
+		api.writeJson(w, logobj.LogInfo())
 	case http.MethodPut:
-		js, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			api.serverError(w, err, "failed to read from request body")
+		info := types.LogInfo{}
+		if !api.readJson(r, &info) {
 			return
 		}
 
-		meta := &types.LogMetadata{}
-		if err = json.Unmarshal(js, meta); err != nil {
-			http.Error(w, "invalid json", http.StatusBadRequest)
-			return
-		}
-
-		currentVer, err := strconv.Atoi(r.URL.Query().Get("version"))
-		if err != nil {
-			http.Error(w, "invalid version number", http.StatusBadRequest)
-			return
-		}
-
-		if err = logobj.UpdateMetadata(currentVer, meta); err != nil {
+		if err := logobj.UpdateMetadata(info.Version, &info.Metadata); err != nil {
 			if err == storage.ErrConflict {
 				// バージョン番号が異なるため、Metadataを更新できない。
 				// 現在の状態を返す。
-				js, err = json.Marshal(logobj.Metadata)
-				if err != nil {
-					api.serverError(w, err, "failed to json.Marshal()")
-					return
-				}
 				w.WriteHeader(http.StatusConflict)
-				api.write(w, js)
+				api.writeJson(w, logobj.LogInfo())
 				return
 			} else {
 				// よく分からんエラー
@@ -295,12 +264,58 @@ func (api APIv0) log(w http.ResponseWriter, r *http.Request) {
 
 		// 更新に成功。
 		// 新しい状態を返す。
-		js, err = json.Marshal(logobj.Metadata)
-		if err != nil {
-			api.serverError(w, err, "failed to json.Marshal()")
+		w.WriteHeader(http.StatusOK)
+		api.writeJson(w, logobj.LogInfo())
+		return
+	}
+}
+
+func (api APIv0) logWatch(w http.ResponseWriter, r *http.Request) {
+	logobj, ok := api.getLog(w, r)
+	if !ok {
+		return
+	}
+
+	strVer := r.URL.Query().Get("version")
+	if strVer == "" {
+		http.Error(w, "missing \"version\" parameter", http.StatusBadRequest)
+		return
+	}
+	version, err := strconv.ParseInt(strVer, 10, 64)
+	if err != nil {
+		http.Error(w, "\"version\" parameter MUST be integer type", http.StatusBadRequest)
+		return
+	}
+
+	strTimeout := r.URL.Query().Get("timeout")
+	if strTimeout == "" {
+		http.Error(w, "missing \"timeout\" parameter", http.StatusBadRequest)
+		return
+	}
+	timeout, err := strconv.ParseInt(strTimeout, 10, 64)
+	if err != nil {
+		http.Error(w, "\"timeout\" parameter MUST be integer type", http.StatusBadRequest)
+		return
+	}
+
+	// register the event handlers.
+	var wrote bool
+	ctx, cancel := context.WithTimeout(r.Context(), time.Duration(timeout)*time.Second)
+	defer cancel()
+	logobj.Watch(ctx, func(info *types.LogInfo) {
+		if info.Version <= int(version) {
+			// 指定したバージョンよりも古いものに更新された場合は無視する。
+			// 念の為チェックしているものの、このような状況は発生する可能性はあるのか？
 			return
 		}
-		api.write(w, js)
+		wrote = true
+		api.writeJson(w, info.Metadata)
+		cancel()
+	})
+
+	if !wrote {
+		// metadataの更新するイベントが発生する前にタイムアウトした。
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
@@ -865,17 +880,6 @@ func (api APIv0) goLine(w http.ResponseWriter, r *http.Request) {
 	}
 	api.writeObj(w, l)
 }
-func (api APIv0) tracers(w http.ResponseWriter, r *http.Request) {
-	// TODO: これを実装する前に、どのトレーサが接続しているのか管理出来るようにする
-}
-func (api APIv0) tracer(w http.ResponseWriter, r *http.Request) {
-	// TODO: これを実装する前に、どのトレーサが接続しているのか管理出来るようにする
-	switch r.Method {
-	case http.MethodDelete:
-	case http.MethodGet:
-	case http.MethodPut:
-	}
-}
 
 func (api APIv0) notImpl(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "not implemented", http.StatusInternalServerError)
@@ -913,6 +917,21 @@ func (api APIv0) getLogPC(w http.ResponseWriter, r *http.Request) (logobj *stora
 	}
 	ok = true
 	return
+}
+
+func (api APIv0) readJson(r *http.Request, v interface{}) (ok bool) {
+	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
+		api.Logger.Println("read error:", err)
+		return
+	}
+	ok = true
+	return
+}
+func (api APIv0) writeJson(w io.Writer, v interface{}) {
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		api.Logger.Println("write error:", err)
+		return
+	}
 }
 
 func (api *APIv0) worker(parent context.Context, logobj *storage.Log) *APIWorker {

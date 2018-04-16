@@ -97,7 +97,7 @@ func BenchmarkMarshalUint64(b *testing.B) {
 	val := uint64(10)
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		marshalUint64(buf, val)
+		MarshalUint64(buf, val)
 	}
 	b.StopTimer()
 }
@@ -105,7 +105,7 @@ func BenchmarkUnmarshalUint64(b *testing.B) {
 	buf := []byte{0, 0, 0, 0, 0, 0, 0, 0xa}
 	b.ResetTimer()
 	for i := b.N; i > 0; i-- {
-		unmarshalUint64(buf)
+		UnmarshalUint64(buf)
 	}
 	b.StopTimer()
 }
@@ -228,7 +228,7 @@ func TestMarshalUint64(t *testing.T) {
 	a := assert.New(t)
 	test := func(val uint64, b []byte) {
 		buf := make([]byte, DefaultMaxSmallPacketSize)
-		n := marshalUint64(buf, val)
+		n := MarshalUint64(buf, val)
 		buf = buf[:n]
 
 		a.Len(buf, 8)
@@ -242,7 +242,7 @@ func TestMarshalUint64(t *testing.T) {
 func TestUnmarshalUint64(t *testing.T) {
 	a := assert.New(t)
 	test := func(expected uint64, b []byte) {
-		actual, _ := unmarshalUint64(b)
+		actual, _ := UnmarshalUint64(b)
 		a.Equal(expected, actual)
 	}
 

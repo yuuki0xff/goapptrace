@@ -16,11 +16,11 @@ func unmarshalBool(buf []byte) (bool, int64) { // nolint
 	return buf[0] != 0, 1
 }
 
-func marshalUint64(buf []byte, val uint64) int64 {
+func MarshalUint64(buf []byte, val uint64) int64 {
 	binary.BigEndian.PutUint64(buf[:8], val)
 	return 8
 }
-func unmarshalUint64(buf []byte) (uint64, int64) {
+func UnmarshalUint64(buf []byte) (uint64, int64) {
 	return binary.BigEndian.Uint64(buf[:8]), 8
 }
 
@@ -40,12 +40,12 @@ func UnmarshalUint8(buf []byte) (uint8, int64) {
 }
 
 func MarshalString(buf []byte, str string) int64 {
-	total := marshalUint64(buf, uint64(len(str)))
+	total := MarshalUint64(buf, uint64(len(str)))
 	total += int64(copy(buf[total:], []byte(str)))
 	return total
 }
 func UnmarshalString(buf []byte) (string, int64) {
-	length, n := unmarshalUint64(buf)
+	length, n := UnmarshalUint64(buf)
 	buf = buf[n:]
 	return string(buf[:length]), n + int64(length)
 }
@@ -56,7 +56,7 @@ func sizeString(str string) int64 {
 func marshalStringSlice(buf []byte, strs []string) int64 {
 	var total int64
 
-	n := marshalUint64(buf[total:], uint64(len(strs)))
+	n := MarshalUint64(buf[total:], uint64(len(strs)))
 	total += n
 	for i := range strs {
 		n = MarshalString(buf[total:], strs[i])
@@ -66,7 +66,7 @@ func marshalStringSlice(buf []byte, strs []string) int64 {
 }
 func unmarshalStringSlice(buf []byte) ([]string, int64) {
 	var total int64
-	length, n := unmarshalUint64(buf)
+	length, n := UnmarshalUint64(buf)
 	total += n
 
 	strs := make([]string, length)
@@ -86,31 +86,31 @@ func sizeStringSlice(strs []string) int64 {
 
 //go:nosplit
 func MarshalUintptr(buf []byte, ptr uintptr) int64 {
-	return marshalUint64(buf, uint64(ptr))
+	return MarshalUint64(buf, uint64(ptr))
 }
 
 //go:nosplit
 func UnmarshalUintptr(buf []byte) (uintptr, int64) {
-	ptr, n := unmarshalUint64(buf)
+	ptr, n := UnmarshalUint64(buf)
 	return uintptr(ptr), n
 }
 
 func marshalUintptrSlice(buf []byte, slice []uintptr) int64 {
-	total := marshalUint64(buf, uint64(len(slice)))
+	total := MarshalUint64(buf, uint64(len(slice)))
 	for i := range slice {
-		total += marshalUint64(buf[total:], uint64(slice[i]))
+		total += MarshalUint64(buf[total:], uint64(slice[i]))
 	}
 	return total
 }
 func unmarshalUintptrSlice(buf []byte, slicep *[]uintptr) int64 {
 	var total int64
-	length, n := unmarshalUint64(buf)
+	length, n := UnmarshalUint64(buf)
 	total += n
 
 	*slicep = (*slicep)[:length]
 	s := *slicep
 	for i := range s {
-		ptr, n := unmarshalUint64(buf[total:])
+		ptr, n := UnmarshalUint64(buf[total:])
 		s[i] = uintptr(ptr)
 		total += n
 	}

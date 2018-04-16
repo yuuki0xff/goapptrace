@@ -128,7 +128,7 @@ func sizeGoModule(mod types.GoModule) int64 {
 func marshalGoModuleSlice(buf []byte, mods []types.GoModule) int64 {
 	var total int64
 
-	n := marshalUint64(buf[total:], uint64(len(mods)))
+	n := MarshalUint64(buf[total:], uint64(len(mods)))
 	total += n
 	for i := range mods {
 		n = marshalGoModule(buf[total:], mods[i])
@@ -138,7 +138,7 @@ func marshalGoModuleSlice(buf []byte, mods []types.GoModule) int64 {
 }
 func unmarshalGoModuleSlice(buf []byte) ([]types.GoModule, int64) {
 	var total int64
-	length, n := unmarshalUint64(buf)
+	length, n := UnmarshalUint64(buf)
 	total += n
 
 	mods := make([]types.GoModule, length)
@@ -159,7 +159,7 @@ func sizeGoModuleSlice(mods []types.GoModule) int64 {
 func marshalGoFunc(buf []byte, s types.GoFunc) int64 {
 	var total int64
 	total += MarshalString(buf[total:], s.Name)
-	total += marshalUint64(buf[total:], uint64(s.Entry))
+	total += MarshalUint64(buf[total:], uint64(s.Entry))
 	return total
 }
 func unmarshalGoFunc(buf []byte) (types.GoFunc, int64) {
@@ -170,7 +170,7 @@ func unmarshalGoFunc(buf []byte) (types.GoFunc, int64) {
 	total += n
 	s.Name, n = UnmarshalString(buf[total:])
 	total += n
-	ptr, n := unmarshalUint64(buf[total:])
+	ptr, n := UnmarshalUint64(buf[total:])
 	total += n
 	s.Entry = uintptr(ptr)
 	return s, total
@@ -184,7 +184,7 @@ func sizeGoFunc(fn types.GoFunc) int64 {
 func marshalGoFuncSlice(buf []byte, funcs []types.GoFunc) int64 {
 	var total int64
 
-	n := marshalUint64(buf[total:], uint64(len(funcs)))
+	n := MarshalUint64(buf[total:], uint64(len(funcs)))
 	total += n
 	for i := range funcs {
 		n = marshalGoFunc(buf[total:], funcs[i])
@@ -195,7 +195,7 @@ func marshalGoFuncSlice(buf []byte, funcs []types.GoFunc) int64 {
 func unmarshalGoFuncSlice(buf []byte) ([]types.GoFunc, int64) {
 	var total int64
 
-	length, n := unmarshalUint64(buf)
+	length, n := UnmarshalUint64(buf)
 	total += n
 
 	funcs := make([]types.GoFunc, length)
@@ -241,7 +241,7 @@ func sizeGoLine(line types.GoLine) int64 {
 }
 
 func marshalGoLineSlice(buf []byte, line []types.GoLine) int64 {
-	total := marshalUint64(buf, uint64(len(line)))
+	total := MarshalUint64(buf, uint64(len(line)))
 	for i := range line {
 		total += marshalGoLine(buf[total:], line[i])
 	}
@@ -249,7 +249,7 @@ func marshalGoLineSlice(buf []byte, line []types.GoLine) int64 {
 }
 func unmarshalGoLineSlice(buf []byte) ([]types.GoLine, int64) {
 	var total int64
-	length, n := unmarshalUint64(buf)
+	length, n := UnmarshalUint64(buf)
 	total += n
 
 	line := make([]types.GoLine, length)

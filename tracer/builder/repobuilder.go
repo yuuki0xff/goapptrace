@@ -122,6 +122,42 @@ func (b *RepoBuilder) EditFiles(gofiles []string) error {
 		}
 	}
 
+	if err := b.editCopyPackages(&ignoreImper, &imper); err != nil {
+		return err
+	}
+
+	return b.applyPatches()
+}
+
+// 指定されたパッケージとその依存に、トレース用コードを追加する。
+func (b *RepoBuilder) EditPackages(pkgs []string) error {
+	imper := RecursiveImporter{
+		IgnorePkgs: b.IgnorePkgs,
+	}
+	for _, pkg := range pkgs {
+		if err := imper.ImportFromPkg(pkg); err != nil {
+			return err
+		}
+	}
+
+	ignoreImper := RecursiveImporter{}
+	for pkg := range b.IgnorePkgs {
+		if err := ignoreImper.ImportFromPkg(pkg); err != nil {
+			return err
+		}
+	}
+
+	if err := b.editCopyPackages(&ignoreImper, &imper); err != nil {
+		return err
+	}
+
+	return b.applyPatches()
+}
+
+// imperに含まれるパッケージを編集、またはコピーする。
+// ignoreImperにマッチするパッケージはトレース用のコードの追加を行わず、単純にコピーする。
+// それ以外のパッケージは、トレース用のコードを追加する。
+func (b *RepoBuilder) editCopyPackages(ignoreImper, imper *RecursiveImporter) error {
 	for imppath, pkg := range imper.Pkgs() {
 		if ignoreImper.Pkgs()[imppath] != nil {
 			// 循環インポートを防ぐために、b.IgnorePkgsが依存しているパッケージは編集しない。
@@ -153,39 +189,7 @@ func (b *RepoBuilder) EditFiles(gofiles []string) error {
 			return err
 		}
 	}
-
-	return b.applyPatches()
-}
-
-// 指定されたパッケージとその依存に、トレース用コードを追加する。
-func (b *RepoBuilder) EditPackages(pkgs []string) error {
-	imper := RecursiveImporter{
-		IgnorePkgs: b.IgnorePkgs,
-	}
-	for _, pkg := range pkgs {
-		if err := imper.ImportFromPkg(pkg); err != nil {
-			return err
-		}
-	}
-
-	ignoreImper := RecursiveImporter{}
-	for pkg := range b.IgnorePkgs {
-		if err := ignoreImper.ImportFromPkg(pkg); err != nil {
-			return err
-		}
-	}
-
-	for imppath, pkg := range imper.Pkgs() {
-		if ignoreImper.Pkgs()[imppath] != nil {
-			// 循環インポートを防ぐために、b.IgnorePkgsが依存しているパッケージは編集しない。
-			continue
-		}
-		if err := b.editPackage(pkg); err != nil {
-			return err
-		}
-	}
-
-	return b.applyPatches()
+	return nil
 }
 
 // 指定したパッケージにトレース用コードを追加する。

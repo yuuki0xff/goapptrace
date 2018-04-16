@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -174,7 +175,13 @@ func (p *fakePacket) Unmarshal(buf []byte) int64 {
 // HelloPacket
 
 type ClientHelloPacket struct {
-	AppName         string
+	// Process ID
+	// 本来はint64にするべきだと思うが、encoderがuint64にしか対応していないため、uint64にした。
+	PID uint64
+	// Application Name
+	AppName string
+	// トレーサが動いているHost name
+	Host            string
 	ClientSecret    string
 	ProtocolVersion string
 }
@@ -187,7 +194,9 @@ func (p ClientHelloPacket) String() string { return "<ClientHelloPacket>" }
 func (p ServerHelloPacket) String() string { return "<ServerHelloPacket>" }
 
 func (p *ClientHelloPacket) Marshal(buf []byte) int64 {
-	total := encoding.MarshalString(buf, p.AppName)
+	total := encoding.MarshalUint64(buf, p.PID)
+	total += encoding.MarshalString(buf[total:], p.AppName)
+	total += encoding.MarshalString(buf[total:], p.Host)
 	total += encoding.MarshalString(buf[total:], p.ClientSecret)
 	total += encoding.MarshalString(buf[total:], p.ProtocolVersion)
 	return total
@@ -196,7 +205,11 @@ func (p *ClientHelloPacket) Unmarshal(buf []byte) int64 {
 	var total int64
 	var n int64
 
-	p.AppName, n = encoding.UnmarshalString(buf)
+	p.PID, n = encoding.UnmarshalUint64(buf)
+	total += n
+	p.AppName, n = encoding.UnmarshalString(buf[total:])
+	total += n
+	p.Host, n = encoding.UnmarshalString(buf[total:])
 	total += n
 	p.ClientSecret, n = encoding.UnmarshalString(buf[total:])
 	total += n
@@ -239,12 +252,11 @@ type PingPacket struct{}
 type ShutdownPacket struct{}
 
 type StartTraceCmdPacket struct {
-	FuncEntry  uintptr
-	ModuleName string
+	FuncName string
 }
+
 type StopTraceCmdPacket struct {
-	FuncEntry  uintptr
-	ModuleName string
+	FuncName string
 }
 
 type SymbolPacket struct {
@@ -275,35 +287,11 @@ func (p *PingPacket) Unmarshal(buf []byte) int64 { return 0 }
 func (p *ShutdownPacket) Marshal(buf []byte) int64   { return 0 }
 func (p *ShutdownPacket) Unmarshal(buf []byte) int64 { return 0 }
 
-func (p *StartTraceCmdPacket) Marshal(buf []byte) int64 {
-	total := encoding.MarshalUintptr(buf, p.FuncEntry)
-	total += encoding.MarshalString(buf[total:], p.ModuleName)
-	return total
-}
-func (p *StartTraceCmdPacket) Unmarshal(buf []byte) int64 {
-	var total int64
-	var n int64
-	p.FuncEntry, n = encoding.UnmarshalUintptr(buf)
-	total += n
-	p.ModuleName, n = encoding.UnmarshalString(buf[total:])
-	total += n
-	return total
-}
+func (p *StartTraceCmdPacket) Marshal(buf []byte) int64   { return slowMarshal(buf, p) }
+func (p *StartTraceCmdPacket) Unmarshal(buf []byte) int64 { return slowUnmarshal(buf, p) }
 
-func (p *StopTraceCmdPacket) Marshal(buf []byte) int64 {
-	total := encoding.MarshalUintptr(buf, p.FuncEntry)
-	total += encoding.MarshalString(buf[total:], p.ModuleName)
-	return total
-}
-func (p *StopTraceCmdPacket) Unmarshal(buf []byte) int64 {
-	var total int64
-	var n int64
-	p.FuncEntry, n = encoding.UnmarshalUintptr(buf)
-	total += n
-	p.ModuleName, n = encoding.UnmarshalString(buf)
-	total += n
-	return total
-}
+func (p *StopTraceCmdPacket) Marshal(buf []byte) int64   { return slowMarshal(buf, p) }
+func (p *StopTraceCmdPacket) Unmarshal(buf []byte) int64 { return slowUnmarshal(buf, p) }
 
 func (p *SymbolPacket) Marshal(buf []byte) int64 {
 	return encoding.MarshalSymbolsData(&p.SymbolsData, buf)
@@ -325,4 +313,28 @@ func (p *RawFuncLogPacket) Unmarshal(buf []byte) int64 {
 	n = encoding.UnmarshalRawFuncLog(buf, fl)
 	p.FuncLog = fl
 	return n
+}
+
+// slowMarshal encodes v and save into buf.
+func slowMarshal(buf []byte, v interface{}) int64 {
+	js, err := json.Marshal(v)
+	if err != nil {
+		log.Panicln(err)
+	}
+	total := encoding.MarshalUint64(buf, uint64(len(js)))
+	total += int64(copy(buf[total:], js))
+	return total
+}
+
+// slowUnmarshal decodes v from buf.
+func slowUnmarshal(buf []byte, v interface{}) int64 {
+	var total int64
+	length, n := encoding.UnmarshalUint64(buf)
+	total += n
+	err := json.Unmarshal(buf[total:total+int64(length)], v)
+	if err != nil {
+		log.Panicln(err)
+	}
+	total += int64(length)
+	return total
 }

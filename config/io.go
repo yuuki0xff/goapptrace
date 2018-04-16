@@ -19,18 +19,18 @@ const (
 
 // Directory Layout
 //   $dir/targets.json        - includes target, trace, build
+//   $dir/servers.json        - list of server address.
 //   $dir/logs/               - managed under tracer.storage
 
 type Config struct {
 	dir      string
-	Targets  Targets
 	Servers  Servers
 	wantSave bool
 }
 
 func NewConfig(dir string) *Config {
 	if dir == "" {
-		dir = info.DEFAULT_CONFIG_DIR
+		dir = info.DefaultConfigDir
 	}
 
 	return &Config{
@@ -39,13 +39,6 @@ func NewConfig(dir string) *Config {
 }
 
 func (c *Config) Load() error {
-	if _, err := os.Stat(c.targetsPath()); os.IsNotExist(err) {
-		c.Targets = *NewTargets()
-	} else {
-		if err := readFromJsonFile(c.targetsPath(), &c.Targets); err != nil {
-			return err
-		}
-	}
 	if _, err := os.Stat(c.serversPath()); os.IsNotExist(err) {
 		c.Servers = *NewServers()
 	} else {
@@ -66,9 +59,6 @@ func (c *Config) Save() error {
 			return err
 		}
 	}
-	if err := writeToJsonFile(c.targetsPath(), c.Targets); err != nil {
-		return err
-	}
 	return writeToJsonFile(c.serversPath(), c.Servers)
 }
 
@@ -79,9 +69,6 @@ func (c *Config) SaveIfWant() error {
 	return nil
 }
 
-func (c Config) targetsPath() string {
-	return path.Join(c.dir, "targets.json")
-}
 func (c Config) serversPath() string {
 	return path.Join(c.dir, "servers.json")
 }

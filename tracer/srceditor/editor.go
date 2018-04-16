@@ -1,11 +1,13 @@
 package srceditor
 
 import (
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"path"
 )
@@ -18,7 +20,13 @@ type CodeEditor struct {
 	// import名や変数名につけるprefix。既存の変数などと名前が衝突しないようにするために設定する。
 	Prefix string
 
+	// コード編を出力するテンプレートを指定する。
+	// nilの場合、 CodeEditor.init()で初期化される。
 	tmpl *Template
+
+	// unit test用のオプション。このオプションを指定すると、CodeEditor.random()が常に指定した文字列を返すようになる。
+	// unit testの実行中に、実行結果が常に同じにようにするために使用することを想定している。
+	dontUseRandom string
 }
 
 // inFileにトレース用コードを追加し、outFileに書き出す。
@@ -152,15 +160,29 @@ func (ce *CodeEditor) edit(fname string, src []byte) ([]byte, error) {
 				return true
 			}
 			wantImport = true
+			data := struct {
+				EscapedFuncName string
+			}{
+				// function name + hex random number
+				// init関数は、同じパッケージ内に同名の関数を複数定義できる。このような場合に
+				// flagの変数名が重複してしまう問題を回避するため、乱数を末尾に追加する。
+				EscapedFuncName: node.Name.Name + "_" + ce.random(),
+			}
+			// define flags to enable/disable tracing each function.
+			nl.Add(&InsertNode{
+				Pos: f.End(),
+				Src: ce.tmpl.render("defineFuncTracingFlag", data),
+			})
+
 			if pkgName == "main" && node.Name.Name == "main" {
 				nl.Add(&InsertNode{
 					Pos: node.Body.Lbrace + 1, // "{"の直後に挿入
-					Src: ce.tmpl.render("funcStartCloseStopStmt", nil),
+					Src: ce.tmpl.render("funcStartCloseStopStmt", data),
 				})
 			} else {
 				nl.Add(&InsertNode{
 					Pos: node.Body.Lbrace + 1, // "{"の直後に挿入
-					Src: ce.tmpl.render("funcStartStopStmt", nil),
+					Src: ce.tmpl.render("funcStartStopStmt", data),
 				})
 			}
 		case *ast.FuncLit:
@@ -169,9 +191,19 @@ func (ce *CodeEditor) edit(fname string, src []byte) ([]byte, error) {
 				return true
 			}
 			wantImport = true
+			data := struct {
+				EscapedFuncName string
+			}{
+				// 匿名の関数には、仮の名前としてランダムな文字列を指定する。
+				EscapedFuncName: "anonymousFunc_" + ce.random(),
+			}
+			nl.Add(&InsertNode{
+				Pos: f.End(),
+				Src: ce.tmpl.render("defineFuncTracingFlag", data),
+			})
 			nl.Add(&InsertNode{
 				Pos: node.Body.Lbrace + 1, // "{"の直後に挿入
-				Src: ce.tmpl.render("funcStartStopStmt", nil),
+				Src: ce.tmpl.render("funcStartStopStmt", data),
 			})
 		case *ast.CallExpr:
 			selNode, ok := node.Fun.(*ast.SelectorExpr)
@@ -192,7 +224,7 @@ func (ce *CodeEditor) edit(fname string, src []byte) ([]byte, error) {
 				})
 				nl.Add(&InsertNode{
 					Pos: b.End(),
-					Src: ce.tmpl.render("closeAndExit", node),
+					Src: ce.tmpl.render("closeAndExit", nil),
 				})
 			}
 		}
@@ -208,4 +240,10 @@ func (ce *CodeEditor) edit(fname string, src []byte) ([]byte, error) {
 	}
 
 	return nl.Format()
+}
+func (ce *CodeEditor) random() string {
+	if ce.dontUseRandom != "" {
+		return ce.dontUseRandom
+	}
+	return fmt.Sprintf("%016x%016x", rand.Int63(), rand.Int63())
 }

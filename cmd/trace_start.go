@@ -21,36 +21,63 @@
 package cmd
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
-	"github.com/yuuki0xff/goapptrace/config"
+	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
 
 // traceStartCmd represents the start command
 var traceStartCmd = &cobra.Command{
-	Use:   "start",
+	Use: "start <log-id> [<name>...]",
+	DisableFlagsInUseLine: true,
 	Short: "Start tracing of running process",
-	Long: `Manage the tracing targets.
-It must be added tracing codes before processes started.
-`,
-	RunE: wrap(runTraceStart),
+	Long:  `Start tracing to the specified function. If function name is not given, we traces to all functions.`,
+	RunE:  wrap(runTraceStart),
 }
 
 func runTraceStart(opt *handlerOpt) error {
-	targets := opt.Args
-	err := opt.Conf.Targets.Walk(targets, func(t *config.Target) error {
-		return t.WalkTraces(nil, func(fname string, trace *config.Trace, created bool) error {
-			if trace.HasTracingCode {
-				// TODO: start tracing
-				trace.IsTracing = true
-			}
+	if len(opt.Args) == 0 {
+		opt.ErrLog.Println("missing tracer-id")
+		return errInvalidArgs
+	}
+	logID := opt.Args[0]
+	names := opt.Args[1:]
+
+	api, err := opt.Api(context.Background())
+	if err != nil {
+		opt.ErrLog.Println(err)
+		return errApiClient
+	}
+
+	var symbols *types.Symbols
+	if len(names) == 0 {
+		symbols, err = api.Symbols(logID)
+		if err != nil {
+			opt.ErrLog.Println(err)
+			return errGeneral
+		}
+	}
+
+	_, err = api.UpdateLogInfo(logID, 10, func(info *types.LogInfo) error {
+		if len(names) == 0 {
+			return symbols.Save(func(data types.SymbolsData) error {
+				var names []string
+				for _, f := range data.Funcs {
+					names = append(names, f.Name)
+				}
+				info.Metadata.TraceTarget.Funcs = names
+				return nil
+			})
+		} else {
+			info.Metadata.TraceTarget.Funcs = append(info.Metadata.TraceTarget.Funcs, names...)
 			return nil
-		})
+		}
 	})
 	if err != nil {
 		opt.ErrLog.Println(err)
 		return errGeneral
 	}
-	opt.Conf.WantSave()
 	return nil
 }
 

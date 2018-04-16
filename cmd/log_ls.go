@@ -22,6 +22,7 @@ package cmd
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/spf13/cobra"
 )
@@ -48,12 +49,15 @@ func runLogLs(opt *handlerOpt) error {
 
 	tbl := defaultTable(opt.Stdout)
 	tbl.SetHeader([]string{
-		"ID", "Time",
+		"ID", "AppName", "Time", "PID", "Host",
 	})
 	for i := range logs {
 		tbl.Append([]string{
 			logs[i].ID,
+			logs[i].Metadata.AppName,
 			logs[i].Metadata.Timestamp.String(),
+			strconv.FormatInt(logs[i].Metadata.PID, 10),
+			logs[i].Metadata.Host,
 		})
 	}
 	tbl.Render()

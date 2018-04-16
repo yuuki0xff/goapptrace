@@ -61,7 +61,7 @@ type serverConnTestCh struct {
 }
 type serverConnTest struct {
 	T       *testing.T
-	Handler *ServerHandler
+	Handler *ConnHandler
 	// ServerConn.isNegotiated field
 	IsNegotiated bool
 	// ServerFunc calls sc.OnEvent() to checks the server behavior.
@@ -163,31 +163,26 @@ func TestServer_Wait(t *testing.T) {
 		}
 	})
 }
-func TestServer_getConnID(t *testing.T) {
-	a := assert.New(t)
-	s := Server{}
-	s.init()
-
-	c1 := &xtcp.Conn{}
-	c2 := &xtcp.Conn{}
-
-	a.Equal(ConnID(0), s.getConnID(c1))
-	a.Equal(ConnID(1), s.getConnID(c2))
-}
 func TestServer_getServerConn(t *testing.T) {
 	a := assert.New(t)
-	s := Server{}
+	s := Server{
+		NewHandler: func(id ConnID, conn PacketSender) *ConnHandler {
+			return nil
+		},
+	}
 	s.init()
 
-	a.Equal(s.getServerConn(ConnID(0)), s.getServerConn(ConnID(0)))
-	a.NotEqual(s.getServerConn(ConnID(0)), s.getServerConn(ConnID(1)))
+	conn1 := &xtcp.Conn{}
+	conn2 := &xtcp.Conn{}
+	a.Equal(s.getServerConn(conn1), s.getServerConn(conn1))
+	a.NotEqual(s.getServerConn(conn1), s.getServerConn(conn2))
 }
 func TestServerConn_OnEvent_handshake(t *testing.T) {
 	a := assert.New(t)
 	var connected bool
 
-	handler := ServerHandler{
-		Connected: func(id ConnID) {
+	handler := ConnHandler{
+		Connected: func(*ClientHelloPacket) {
 			connected = true
 		},
 	}.SetDefault(mustNotCall)
@@ -212,7 +207,7 @@ func TestServerConn_OnEvent_handshake(t *testing.T) {
 func TestServerConn_OnEvent_receivePingPacket(t *testing.T) {
 	// PingPacketに対しては、何も反応してはいけない。
 	//a := assert.New(t)
-	handler := ServerHandler{}.SetDefault(mustNotCall)
+	handler := ConnHandler{}.SetDefault(mustNotCall)
 	sct := serverConnTest{
 		T:            t,
 		Handler:      &handler,
@@ -232,11 +227,11 @@ func TestServerConn_OnEvent_receiveShutdownPacket(t *testing.T) {
 	var disconnected bool
 	var errorOccurred bool
 	var stopped bool
-	handler := ServerHandler{
-		Disconnected: func(id ConnID) {
+	handler := ConnHandler{
+		Disconnected: func() {
 			disconnected = true
 		},
-		Error: func(id ConnID, err error) {
+		Error: func(err error) {
 			errorOccurred = true
 		},
 	}.SetDefault(mustNotCall)

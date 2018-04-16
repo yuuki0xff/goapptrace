@@ -124,7 +124,7 @@ func buildEnv(goroot, gopath string, files []string) (env []string) {
 		appName = arr[len(arr)-1]
 	}
 
-	env = append(env, info.DEFAULT_APP_NAME_ENV+"="+appName)
+	env = append(env, info.DefaultAppNameEnv+"="+appName)
 	env = append(env, "GOROOT="+goroot)
 	env = append(env, "GOPATH="+gopath)
 	return env
