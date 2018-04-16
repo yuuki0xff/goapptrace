@@ -1,12 +1,14 @@
 # Changelog
 
-## v0.3.0-beta (Under development)
+## v0.4.0-beta (Under development)
+* __New feature__: Added local variable logger. (planned)
+
+## v0.3.0-beta (2018-04-16)
 * __Breaking change__: Redesigned the goapptrace command.
 * __Breaking change__: Removed the tracer API.
 * __New feature__: Added ability to change configuration of "function call tracer" without restarting.
-* __New feature__: Added local variable logger. (planned)
-* __Improvement__: Added a tutorial. (planned)
-* __Improvement__: Updated documentation. (planned)
+* __Improvement__: Added a tutorial.
+* __Improvement__: Updated documentation.
 * __Improvement__: Implemented "/log/{log-id}/watch" API.
 * __Bug fix__: Fixed build error when building with package path.
 * __Bug fix__: Fixed bug that "/log/{log-id}" API returns wrong data format
