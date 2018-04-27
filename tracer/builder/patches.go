@@ -68,8 +68,8 @@ func IterateSymbols(
 			if *rawfn == (_func{}) {
 				log.Fatal("invalid functab")
 			} else if rawfn.entry != 0 && rawfn.nameoff != 0 && rawfn.args == 0 && rawfn.pcsp == 0 && rawfn.pcfile == 0 && rawfn.pcln == 0 && rawfn.npcdata == 0 && rawfn.nfuncdata == 0 {
-				funcname := funcname(fi)
-				if len(funcname) >= 7 && funcname[len(funcname)-7:] == "(.text)" {
+				fname := funcname(fi)
+				if len(fname) >= 7 && fname[len(fname)-7:] == "(.text)" {
 					// TODO: What is this functab??  What is this for??
 					// next functab seems the cgo function. Also, this and next functab seem to have the same entry point.
 
@@ -83,7 +83,7 @@ func IterateSymbols(
 						log.Println("   next ftab.entry=", datap.ftab[fidx+1].entry)
 						log.Fatal("mismatch entry point")
 					}
-				} else if len(funcname) >= 5 && funcname[:5] == "_cgo_" {
+				} else if len(fname) >= 5 && fname[:5] == "_cgo_" {
 					// cgo function
 				} else {
 					// it is probably the built-in function
@@ -110,9 +110,9 @@ func IterateSymbols(
 				log.Fatal("mismatch length")
 			}
 
-			funcname := funcname(fi)
-			log.Println(hex(rawfn.entry), " func: name=", funcname)
-			addFunc(rawfn.entry, funcname)
+			fname := funcname(fi)
+			log.Println(hex(rawfn.entry), " func: name=", fname)
+			addFunc(rawfn.entry, fname)
 
 			for i := range pclns {
 				pc := pclns[i]
@@ -125,7 +125,7 @@ func IterateSymbols(
 					log.Println("assert: file=", file)
 					log.Println("assert: line =", line)
 					log.Println("        line2=", line2)
-					log.Println("assert: funcname=", funcname)
+					log.Println("assert: funcname=", fname)
 					log.Println("  funcobj.Name()=", funcobj.Name())
 					log.Fatal("mismatch line number")
 				}
@@ -144,7 +144,7 @@ func IterateSymbols(
 						log.Println("        f   =", f, " (untrusted infomation)")
 						log.Println("assert: line=", line)
 						log.Println("        l   =", l)
-						log.Println("assert: funcname=", funcname)
+						log.Println("assert: funcname=", fname)
 						log.Println("  funcobj.Name()=", funcobj.Name())
 
 						if file != f {
@@ -153,7 +153,7 @@ func IterateSymbols(
 						if int(lines[i]) != l {
 							log.Fatal("mismatch line number")
 						}
-						if funcname != funcobj.Name() {
+						if fname != funcobj.Name() {
 							log.Fatal("mismatch func name")
 						}
 					}
