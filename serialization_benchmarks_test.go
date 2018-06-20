@@ -407,20 +407,14 @@ func (s *FlatBufferSerializer) Marshal(o interface{}) []byte {
 
 	builder.Reset()
 
-	name := builder.CreateString(a.Name)
-	phone := builder.CreateString(a.Phone)
-
 	FlatBufferAStart(builder)
-	FlatBufferAAddName(builder, name)
-	FlatBufferAAddPhone(builder, phone)
-	FlatBufferAAddBirthDay(builder, a.BirthDay.UnixNano())
-	FlatBufferAAddSiblings(builder, int32(a.Siblings))
-	var spouse byte
-	if a.Spouse {
-		spouse = byte(1)
-	}
-	FlatBufferAAddSpouse(builder, spouse)
-	FlatBufferAAddMoney(builder, a.Money)
+	FlatBufferAAddID(builder, a.ID)
+	FlatBufferAAddTag(builder, a.Tag)
+	FlatBufferAAddTimestamp(builder, a.Timestamp)
+	offset := FlatBufferAStartFramesVector(builder, len(a.Frames))
+	FlatBufferAAddFrames(builder, offset)
+	FlatBufferAAddGID(builder, a.GID)
+	FlatBufferAAddTxID(builder, a.TxID)
 	builder.Finish(FlatBufferAEnd(builder))
 	return builder.Bytes[builder.Head():]
 }
@@ -429,12 +423,15 @@ func (s *FlatBufferSerializer) Unmarshal(d []byte, i interface{}) error {
 	a := i.(*A)
 	o := FlatBufferA{}
 	o.Init(d, flatbuffers.GetUOffsetT(d))
-	a.Name = string(o.Name())
-	a.BirthDay = time.Unix(o.BirthDay(), 0)
-	a.Phone = string(o.Phone())
-	a.Siblings = int(o.Siblings())
-	a.Spouse = o.Spouse() == byte(1)
-	a.Money = o.Money()
+	a.ID = o.ID()
+	a.Tag = o.Tag()
+	a.Timestamp = o.Timestamp()
+	a.Frames = make([]uint64, o.FramesLength())
+	for _, i := range a.Frames {
+		a.Frames[i] = o.Frames(int(i))
+	}
+	a.GID = o.GID()
+	a.TxID = o.TxID()
 	return nil
 }
 
