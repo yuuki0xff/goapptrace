@@ -10,8 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"zombiezen.com/go/capnproto2"
-
 	"github.com/DeDiS/protobuf"
 	"github.com/Sereal/Sereal/Go/sereal"
 	"github.com/alecthomas/binary"
@@ -23,6 +21,7 @@ import (
 	"github.com/tinylib/msgp/msgp"
 	"gopkg.in/mgo.v2/bson"
 	vmihailenco "gopkg.in/vmihailenco/msgpack.v2"
+	"zombiezen.com/go/capnproto2"
 )
 
 var (
