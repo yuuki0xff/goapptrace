@@ -1,10 +1,10 @@
 package goserbench;
 
 message ProtoBufA {
-  required string name = 1;
-  required int64 birthDay = 2;
-  required string phone = 3;
-  required int32 siblings = 4;
-  required bool spouse = 5;
-  required double money = 6;
+	required int64    ID        = 1 [(gogoproto.nullable) = false];
+	required uint8    Tag       = 2 [(gogoproto.nullable) = false];
+	required int64    Timestamp = 3 [(gogoproto.nullable) = false];
+	required []uint64 Frames    = 4 [(gogoproto.nullable) = false];
+	required int64    GID       = 5 [(gogoproto.nullable) = false];
+	required uint64   TxID      = 6 [(gogoproto.nullable) = false];
 }

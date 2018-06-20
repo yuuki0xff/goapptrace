@@ -5,10 +5,10 @@ $Go.import("github.com/alecthomas/go_serialization_benchmarks");
 @0xe18e32ede031d499;
 
 struct Capnp2A {
-  name     @0   :Text;
-  birthDay @1   :Int64;
-  phone    @2   :Text;
-  siblings @3   :Int32;
-  spouse   @4   :Bool;
-  money    @5   :Float64;
+	ID        @0 :Int64;
+	Tag       @1 :Uint8;
+	Timestamp @2 :Int64;
+	Frames    @3 :List(Uint64);
+	GID       @4 :Int64;
+	TxID      @5 :Uint64;
 }

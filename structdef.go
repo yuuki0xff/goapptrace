@@ -7,10 +7,10 @@ import (
 //go:generate msgp -o msgp_gen.go -io=false -tests=false
 //easyjson:json
 type A struct {
-	Name     string
-	BirthDay time.Time
-	Phone    string
-	Siblings int
-	Spouse   bool
-	Money    float64
+	ID        int64
+	Tag       uint8
+	Timestamp int64
+	Frames    []uint64
+	GID       int64
+	TxID      uint64
 }

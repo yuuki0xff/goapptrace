@@ -1,10 +1,10 @@
 namespace flatbuffersmodels;
 
 table FlatBufferA {
-	name:string;
-	birthDay:long;
-	phone:string;
-	siblings:int;
-	spouse:bool;
-	money:double;
+	ID        :long;
+	Tag       :ubyte;
+	Timestamp :long;
+	Frames    :[ulong];
+	GID       :long;
+	TxID      :ulong;
 }
