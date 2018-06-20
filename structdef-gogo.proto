@@ -1,3 +1,4 @@
+syntax = "proto2";
 package goserbench;
 
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
@@ -6,11 +7,11 @@ option (gogoproto.unmarshaler_all) = true;
 option (gogoproto.sizer_all) = true;
 option (gogoproto.marshaler_all) = true;
 
-type GogoProtoBufA struct {
+message GogoProtoBufA {
 	required int64    ID        = 1 [(gogoproto.nullable) = false];
-	required uint8    Tag       = 2 [(gogoproto.nullable) = false];
+	required uint64   Tag       = 2 [(gogoproto.nullable) = false];
 	required int64    Timestamp = 3 [(gogoproto.nullable) = false];
-	required []uint64 Frames    = 4 [(gogoproto.nullable) = false];
+	repeated uint64   Frames    = 4;
 	required int64    GID       = 5 [(gogoproto.nullable) = false];
 	required uint64   TxID      = 6 [(gogoproto.nullable) = false];
 }
