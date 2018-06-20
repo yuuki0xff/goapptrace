@@ -34,7 +34,7 @@ structdef.pb.go: structdef.proto
 	protoc --go_out=. structdef.proto
 
 structdef.capnp2.go: structdef.capnp2
-	go get zombiezen.com/go/capnproto2 # conflicts with go-capnproto
+	go get zombiezen.com/go/capnproto2/capnpc-go # conflicts with go-capnproto
 	capnp compile -I${GOPATH}/src -ogo structdef.capnp2
 
 structdef.capnp.go: structdef.capnp
