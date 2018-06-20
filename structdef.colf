@@ -1,10 +1,11 @@
 package goserbench
 
+// 数値の配列を作れないため、このコーデックは利用できない
 type ColferA struct {
 	ID        int64
 	Tag       uint8
 	Timestamp int64
-	Frames    []uint64
+	// Frames    []uint64
 	GID       int64
 	TxID      uint64
 }
