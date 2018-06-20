@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -550,12 +551,12 @@ func (s *HproseSerializer) Marshal(o interface{}) []byte {
 	writer := s.writer
 	buf := writer.Stream.(*bytes.Buffer)
 	l := buf.Len()
-	writer.WriteString(a.Name)
-	writer.WriteTime(a.BirthDay)
-	writer.WriteString(a.Phone)
-	writer.WriteInt64(int64(a.Siblings))
-	writer.WriteBool(a.Spouse)
-	writer.WriteFloat64(a.Money)
+	writer.WriteInt64(a.ID)
+	writer.WriteUint64(uint64(a.Tag))
+	writer.WriteInt64(a.Timestamp)
+	// TODO: frames
+	writer.WriteInt64(a.GID)
+	writer.WriteUint64(a.TxID)
 	return buf.Bytes()[l:]
 }
 
@@ -563,12 +564,13 @@ func (s *HproseSerializer) Unmarshal(d []byte, i interface{}) error {
 	o := i.(*A)
 	reader := s.reader
 	reader.Stream = &hprose.BytesReader{d, 0}
-	o.Name, _ = reader.ReadString()
-	o.BirthDay, _ = reader.ReadDateTime()
-	o.Phone, _ = reader.ReadString()
-	o.Siblings, _ = reader.ReadInt()
-	o.Spouse, _ = reader.ReadBool()
-	o.Money, _ = reader.ReadFloat64()
+	o.ID, _ = reader.ReadInt64()
+	tag, _ := reader.ReadUint64()
+	o.Tag = uint8(tag)
+	o.Timestamp, _ = reader.ReadInt64()
+	// TODO: frames
+	o.GID, _ = reader.ReadInt64()
+	o.TxID, _ = reader.ReadUint64()
 	return nil
 }
 
