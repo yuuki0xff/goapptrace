@@ -7,9 +7,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"reflect"
 	"testing"
-	"time"
 
 	"github.com/DeDiS/protobuf"
 	"github.com/Sereal/Sereal/Go/sereal"
