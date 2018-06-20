@@ -13,61 +13,34 @@ var (
 )
 
 type GencodeA struct {
-	Name     string
-	BirthDay time.Time
-	Phone    string
-	Siblings int64
-	Spouse   bool
-	Money    float64
+	ID        int64
+	Tag       uint8
+	Timestamp int64
+	Frames    []uint64
+	GID       int64
+	TxID      uint64
 }
 
 func (d *GencodeA) Size() (s uint64) {
 
 	{
-		l := uint64(len(d.Name))
+		l := uint64(len(d.Frames))
 
 		{
 
 			t := l
 			for t >= 0x80 {
-				t <<= 7
+				t >>= 7
 				s++
 			}
 			s++
 
 		}
-		s += l
-	}
-	{
-		l := uint64(len(d.Phone))
 
-		{
-
-			t := l
-			for t >= 0x80 {
-				t <<= 7
-				s++
-			}
-			s++
-
-		}
-		s += l
-	}
-	{
-
-		t := uint64(d.Siblings)
-		t <<= 1
-		if d.Siblings < 0 {
-			t = ^t
-		}
-		for t >= 0x80 {
-			t <<= 7
-			s++
-		}
-		s++
+		s += 8 * l
 
 	}
-	s += 24
+	s += 33
 	return
 }
 func (d *GencodeA) Marshal(buf []byte) ([]byte, error) {
@@ -82,124 +55,148 @@ func (d *GencodeA) Marshal(buf []byte) ([]byte, error) {
 	i := uint64(0)
 
 	{
-		l := uint64(len(d.Name))
+
+		buf[0+0] = byte(d.ID >> 0)
+
+		buf[1+0] = byte(d.ID >> 8)
+
+		buf[2+0] = byte(d.ID >> 16)
+
+		buf[3+0] = byte(d.ID >> 24)
+
+		buf[4+0] = byte(d.ID >> 32)
+
+		buf[5+0] = byte(d.ID >> 40)
+
+		buf[6+0] = byte(d.ID >> 48)
+
+		buf[7+0] = byte(d.ID >> 56)
+
+	}
+	{
+
+		buf[0+8] = byte(d.Tag >> 0)
+
+	}
+	{
+
+		buf[0+9] = byte(d.Timestamp >> 0)
+
+		buf[1+9] = byte(d.Timestamp >> 8)
+
+		buf[2+9] = byte(d.Timestamp >> 16)
+
+		buf[3+9] = byte(d.Timestamp >> 24)
+
+		buf[4+9] = byte(d.Timestamp >> 32)
+
+		buf[5+9] = byte(d.Timestamp >> 40)
+
+		buf[6+9] = byte(d.Timestamp >> 48)
+
+		buf[7+9] = byte(d.Timestamp >> 56)
+
+	}
+	{
+		l := uint64(len(d.Frames))
 
 		{
 
 			t := uint64(l)
 
 			for t >= 0x80 {
-				buf[i+0] = byte(t) | 0x80
+				buf[i+17] = byte(t) | 0x80
 				t >>= 7
 				i++
 			}
-			buf[i+0] = byte(t)
+			buf[i+17] = byte(t)
 			i++
 
 		}
-		copy(buf[i+0:], d.Name)
-		i += l
-	}
-	{
-		b, err := d.BirthDay.MarshalBinary()
-		if err != nil {
-			return nil, err
-		}
-		copy(buf[i+0:], b)
-	}
-	{
-		l := uint64(len(d.Phone))
+		for k0 := range d.Frames {
 
-		{
+			{
 
-			t := uint64(l)
+				buf[i+0+17] = byte(d.Frames[k0] >> 0)
 
-			for t >= 0x80 {
-				buf[i+15] = byte(t) | 0x80
-				t >>= 7
-				i++
+				buf[i+1+17] = byte(d.Frames[k0] >> 8)
+
+				buf[i+2+17] = byte(d.Frames[k0] >> 16)
+
+				buf[i+3+17] = byte(d.Frames[k0] >> 24)
+
+				buf[i+4+17] = byte(d.Frames[k0] >> 32)
+
+				buf[i+5+17] = byte(d.Frames[k0] >> 40)
+
+				buf[i+6+17] = byte(d.Frames[k0] >> 48)
+
+				buf[i+7+17] = byte(d.Frames[k0] >> 56)
+
 			}
-			buf[i+15] = byte(t)
-			i++
 
-		}
-		copy(buf[i+15:], d.Phone)
-		i += l
-	}
-	{
+			i += 8
 
-		t := uint64(d.Siblings)
-
-		t <<= 1
-		if d.Siblings < 0 {
-			t = ^t
-		}
-
-		for t >= 0x80 {
-			buf[i+15] = byte(t) | 0x80
-			t >>= 7
-			i++
-		}
-		buf[i+15] = byte(t)
-		i++
-
-	}
-	{
-		if d.Spouse {
-			buf[i+15] = 1
-		} else {
-			buf[i+15] = 0
 		}
 	}
 	{
 
-		v := *(*uint64)(unsafe.Pointer(&(d.Money)))
+		buf[i+0+17] = byte(d.GID >> 0)
 
-		buf[i+0+16] = byte(v >> 0)
+		buf[i+1+17] = byte(d.GID >> 8)
 
-		buf[i+1+16] = byte(v >> 8)
+		buf[i+2+17] = byte(d.GID >> 16)
 
-		buf[i+2+16] = byte(v >> 16)
+		buf[i+3+17] = byte(d.GID >> 24)
 
-		buf[i+3+16] = byte(v >> 24)
+		buf[i+4+17] = byte(d.GID >> 32)
 
-		buf[i+4+16] = byte(v >> 32)
+		buf[i+5+17] = byte(d.GID >> 40)
 
-		buf[i+5+16] = byte(v >> 40)
+		buf[i+6+17] = byte(d.GID >> 48)
 
-		buf[i+6+16] = byte(v >> 48)
-
-		buf[i+7+16] = byte(v >> 56)
+		buf[i+7+17] = byte(d.GID >> 56)
 
 	}
-	return buf[:i+24], nil
+	{
+
+		buf[i+0+25] = byte(d.TxID >> 0)
+
+		buf[i+1+25] = byte(d.TxID >> 8)
+
+		buf[i+2+25] = byte(d.TxID >> 16)
+
+		buf[i+3+25] = byte(d.TxID >> 24)
+
+		buf[i+4+25] = byte(d.TxID >> 32)
+
+		buf[i+5+25] = byte(d.TxID >> 40)
+
+		buf[i+6+25] = byte(d.TxID >> 48)
+
+		buf[i+7+25] = byte(d.TxID >> 56)
+
+	}
+	return buf[:i+33], nil
 }
 
 func (d *GencodeA) Unmarshal(buf []byte) (uint64, error) {
 	i := uint64(0)
 
 	{
-		l := uint64(0)
 
-		{
+		d.ID = 0 | (int64(buf[i+0+0]) << 0) | (int64(buf[i+1+0]) << 8) | (int64(buf[i+2+0]) << 16) | (int64(buf[i+3+0]) << 24) | (int64(buf[i+4+0]) << 32) | (int64(buf[i+5+0]) << 40) | (int64(buf[i+6+0]) << 48) | (int64(buf[i+7+0]) << 56)
 
-			bs := uint8(7)
-			t := uint64(buf[i+0] & 0x7F)
-			for buf[i+0]&0x80 == 0x80 {
-				i++
-				t |= uint64(buf[i+0]&0x7F) << bs
-				bs += 7
-			}
-			i++
-
-			l = t
-
-		}
-		d.Name = string(buf[i+0 : i+0+l])
-		i += l
 	}
 	{
-		d.BirthDay.UnmarshalBinary(buf[i+0 : i+0+15])
+
+		d.Tag = 0 | (uint8(buf[i+0+8]) << 0)
+
+	}
+	{
+
+		d.Timestamp = 0 | (int64(buf[i+0+9]) << 0) | (int64(buf[i+1+9]) << 8) | (int64(buf[i+2+9]) << 16) | (int64(buf[i+3+9]) << 24) | (int64(buf[i+4+9]) << 32) | (int64(buf[i+5+9]) << 40) | (int64(buf[i+6+9]) << 48) | (int64(buf[i+7+9]) << 56)
+
 	}
 	{
 		l := uint64(0)
@@ -207,10 +204,10 @@ func (d *GencodeA) Unmarshal(buf []byte) (uint64, error) {
 		{
 
 			bs := uint8(7)
-			t := uint64(buf[i+15] & 0x7F)
-			for buf[i+15]&0x80 == 0x80 {
+			t := uint64(buf[i+17] & 0x7F)
+			for buf[i+17]&0x80 == 0x80 {
 				i++
-				t |= uint64(buf[i+15]&0x7F) << bs
+				t |= uint64(buf[i+17]&0x7F) << bs
 				bs += 7
 			}
 			i++
@@ -218,34 +215,32 @@ func (d *GencodeA) Unmarshal(buf []byte) (uint64, error) {
 			l = t
 
 		}
-		d.Phone = string(buf[i+15 : i+15+l])
-		i += l
-	}
-	{
-
-		bs := uint8(7)
-		t := uint64(buf[i+15] & 0x7F)
-		for buf[i+15]&0x80 == 0x80 {
-			i++
-			t |= uint64(buf[i+15]&0x7F) << bs
-			bs += 7
+		if uint64(cap(d.Frames)) >= l {
+			d.Frames = d.Frames[:l]
+		} else {
+			d.Frames = make([]uint64, l)
 		}
-		i++
+		for k0 := range d.Frames {
 
-		d.Siblings = int64(t >> 1)
-		if t&1 != 0 {
-			d.Siblings = ^d.Siblings
+			{
+
+				d.Frames[k0] = 0 | (uint64(buf[i+0+17]) << 0) | (uint64(buf[i+1+17]) << 8) | (uint64(buf[i+2+17]) << 16) | (uint64(buf[i+3+17]) << 24) | (uint64(buf[i+4+17]) << 32) | (uint64(buf[i+5+17]) << 40) | (uint64(buf[i+6+17]) << 48) | (uint64(buf[i+7+17]) << 56)
+
+			}
+
+			i += 8
+
 		}
-
-	}
-	{
-		d.Spouse = buf[i+15] == 1
 	}
 	{
 
-		v := 0 | (uint64(buf[i+0+16]) << 0) | (uint64(buf[i+1+16]) << 8) | (uint64(buf[i+2+16]) << 16) | (uint64(buf[i+3+16]) << 24) | (uint64(buf[i+4+16]) << 32) | (uint64(buf[i+5+16]) << 40) | (uint64(buf[i+6+16]) << 48) | (uint64(buf[i+7+16]) << 56)
-		d.Money = *(*float64)(unsafe.Pointer(&v))
+		d.GID = 0 | (int64(buf[i+0+17]) << 0) | (int64(buf[i+1+17]) << 8) | (int64(buf[i+2+17]) << 16) | (int64(buf[i+3+17]) << 24) | (int64(buf[i+4+17]) << 32) | (int64(buf[i+5+17]) << 40) | (int64(buf[i+6+17]) << 48) | (int64(buf[i+7+17]) << 56)
 
 	}
-	return i + 24, nil
+	{
+
+		d.TxID = 0 | (uint64(buf[i+0+25]) << 0) | (uint64(buf[i+1+25]) << 8) | (uint64(buf[i+2+25]) << 16) | (uint64(buf[i+3+25]) << 24) | (uint64(buf[i+4+25]) << 32) | (uint64(buf[i+5+25]) << 40) | (uint64(buf[i+6+25]) << 48) | (uint64(buf[i+7+25]) << 56)
+
+	}
+	return i + 33, nil
 }

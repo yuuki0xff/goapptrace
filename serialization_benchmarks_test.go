@@ -448,13 +448,13 @@ func (s *FlatBufferSerializer) String() string {
 	return "FlatBuffer"
 }
 
-func BenchmarkFlatBuffersMarshal(b *testing.B) {
-	benchMarshal(b, &FlatBufferSerializer{flatbuffers.NewBuilder(0)})
-}
-
-func BenchmarkFlatBuffersUnmarshal(b *testing.B) {
-	benchUnmarshal(b, &FlatBufferSerializer{flatbuffers.NewBuilder(0)})
-}
+//func BenchmarkFlatBuffersMarshal(b *testing.B) {
+//	benchMarshal(b, &FlatBufferSerializer{flatbuffers.NewBuilder(0)})
+//}
+//
+//func BenchmarkFlatBuffersUnmarshal(b *testing.B) {
+//	benchUnmarshal(b, &FlatBufferSerializer{flatbuffers.NewBuilder(0)})
+//}
 
 // github.com/glycerine/go-capnproto
 

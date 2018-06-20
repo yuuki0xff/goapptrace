@@ -8,29 +8,26 @@ import (
 	"encoding/json"
 	C "github.com/glycerine/go-capnproto"
 	"io"
-	"math"
 )
 
 type CapnpA C.Struct
 
-func NewCapnpA(s *C.Segment) CapnpA      { return CapnpA(s.NewStruct(24, 2)) }
-func NewRootCapnpA(s *C.Segment) CapnpA  { return CapnpA(s.NewRootStruct(24, 2)) }
-func AutoNewCapnpA(s *C.Segment) CapnpA  { return CapnpA(s.NewStructAR(24, 2)) }
-func ReadRootCapnpA(s *C.Segment) CapnpA { return CapnpA(s.Root(0).ToStruct()) }
-func (s CapnpA) Name() string            { return C.Struct(s).GetObject(0).ToText() }
-func (s CapnpA) NameBytes() []byte       { return C.Struct(s).GetObject(0).ToDataTrimLastByte() }
-func (s CapnpA) SetName(v string)        { C.Struct(s).SetObject(0, s.Segment.NewText(v)) }
-func (s CapnpA) BirthDay() int64         { return int64(C.Struct(s).Get64(0)) }
-func (s CapnpA) SetBirthDay(v int64)     { C.Struct(s).Set64(0, uint64(v)) }
-func (s CapnpA) Phone() string           { return C.Struct(s).GetObject(1).ToText() }
-func (s CapnpA) PhoneBytes() []byte      { return C.Struct(s).GetObject(1).ToDataTrimLastByte() }
-func (s CapnpA) SetPhone(v string)       { C.Struct(s).SetObject(1, s.Segment.NewText(v)) }
-func (s CapnpA) Siblings() int32         { return int32(C.Struct(s).Get32(8)) }
-func (s CapnpA) SetSiblings(v int32)     { C.Struct(s).Set32(8, uint32(v)) }
-func (s CapnpA) Spouse() bool            { return C.Struct(s).Get1(96) }
-func (s CapnpA) SetSpouse(v bool)        { C.Struct(s).Set1(96, v) }
-func (s CapnpA) Money() float64          { return math.Float64frombits(C.Struct(s).Get64(16)) }
-func (s CapnpA) SetMoney(v float64)      { C.Struct(s).Set64(16, math.Float64bits(v)) }
+func NewCapnpA(s *C.Segment) CapnpA       { return CapnpA(s.NewStruct(40, 1)) }
+func NewRootCapnpA(s *C.Segment) CapnpA   { return CapnpA(s.NewRootStruct(40, 1)) }
+func AutoNewCapnpA(s *C.Segment) CapnpA   { return CapnpA(s.NewStructAR(40, 1)) }
+func ReadRootCapnpA(s *C.Segment) CapnpA  { return CapnpA(s.Root(0).ToStruct()) }
+func (s CapnpA) Id() int64                { return int64(C.Struct(s).Get64(0)) }
+func (s CapnpA) SetId(v int64)            { C.Struct(s).Set64(0, uint64(v)) }
+func (s CapnpA) Tag() uint8               { return C.Struct(s).Get8(8) }
+func (s CapnpA) SetTag(v uint8)           { C.Struct(s).Set8(8, v) }
+func (s CapnpA) Timestamp() int64         { return int64(C.Struct(s).Get64(16)) }
+func (s CapnpA) SetTimestamp(v int64)     { C.Struct(s).Set64(16, uint64(v)) }
+func (s CapnpA) Frames() C.UInt64List     { return C.UInt64List(C.Struct(s).GetObject(0)) }
+func (s CapnpA) SetFrames(v C.UInt64List) { C.Struct(s).SetObject(0, C.Object(v)) }
+func (s CapnpA) Gid() int64               { return int64(C.Struct(s).Get64(24)) }
+func (s CapnpA) SetGid(v int64)           { C.Struct(s).Set64(24, uint64(v)) }
+func (s CapnpA) Txid() uint64             { return C.Struct(s).Get64(32) }
+func (s CapnpA) SetTxid(v uint64)         { C.Struct(s).Set64(32, v) }
 func (s CapnpA) WriteJSON(w io.Writer) error {
 	b := bufio.NewWriter(w)
 	var err error
@@ -40,12 +37,12 @@ func (s CapnpA) WriteJSON(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	_, err = b.WriteString("\"name\":")
+	_, err = b.WriteString("\"id\":")
 	if err != nil {
 		return err
 	}
 	{
-		s := s.Name()
+		s := s.Id()
 		buf, err = json.Marshal(s)
 		if err != nil {
 			return err
@@ -59,12 +56,12 @@ func (s CapnpA) WriteJSON(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	_, err = b.WriteString("\"birthDay\":")
+	_, err = b.WriteString("\"tag\":")
 	if err != nil {
 		return err
 	}
 	{
-		s := s.BirthDay()
+		s := s.Tag()
 		buf, err = json.Marshal(s)
 		if err != nil {
 			return err
@@ -78,12 +75,12 @@ func (s CapnpA) WriteJSON(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	_, err = b.WriteString("\"phone\":")
+	_, err = b.WriteString("\"timestamp\":")
 	if err != nil {
 		return err
 	}
 	{
-		s := s.Phone()
+		s := s.Timestamp()
 		buf, err = json.Marshal(s)
 		if err != nil {
 			return err
@@ -97,12 +94,49 @@ func (s CapnpA) WriteJSON(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	_, err = b.WriteString("\"siblings\":")
+	_, err = b.WriteString("\"frames\":")
 	if err != nil {
 		return err
 	}
 	{
-		s := s.Siblings()
+		s := s.Frames()
+		{
+			err = b.WriteByte('[')
+			if err != nil {
+				return err
+			}
+			for i, s := range s.ToArray() {
+				if i != 0 {
+					_, err = b.WriteString(", ")
+				}
+				if err != nil {
+					return err
+				}
+				buf, err = json.Marshal(s)
+				if err != nil {
+					return err
+				}
+				_, err = b.Write(buf)
+				if err != nil {
+					return err
+				}
+			}
+			err = b.WriteByte(']')
+		}
+		if err != nil {
+			return err
+		}
+	}
+	err = b.WriteByte(',')
+	if err != nil {
+		return err
+	}
+	_, err = b.WriteString("\"gid\":")
+	if err != nil {
+		return err
+	}
+	{
+		s := s.Gid()
 		buf, err = json.Marshal(s)
 		if err != nil {
 			return err
@@ -116,31 +150,12 @@ func (s CapnpA) WriteJSON(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	_, err = b.WriteString("\"spouse\":")
+	_, err = b.WriteString("\"txid\":")
 	if err != nil {
 		return err
 	}
 	{
-		s := s.Spouse()
-		buf, err = json.Marshal(s)
-		if err != nil {
-			return err
-		}
-		_, err = b.Write(buf)
-		if err != nil {
-			return err
-		}
-	}
-	err = b.WriteByte(',')
-	if err != nil {
-		return err
-	}
-	_, err = b.WriteString("\"money\":")
-	if err != nil {
-		return err
-	}
-	{
-		s := s.Money()
+		s := s.Txid()
 		buf, err = json.Marshal(s)
 		if err != nil {
 			return err
@@ -171,12 +186,12 @@ func (s CapnpA) WriteCapLit(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	_, err = b.WriteString("name = ")
+	_, err = b.WriteString("id = ")
 	if err != nil {
 		return err
 	}
 	{
-		s := s.Name()
+		s := s.Id()
 		buf, err = json.Marshal(s)
 		if err != nil {
 			return err
@@ -190,12 +205,12 @@ func (s CapnpA) WriteCapLit(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	_, err = b.WriteString("birthDay = ")
+	_, err = b.WriteString("tag = ")
 	if err != nil {
 		return err
 	}
 	{
-		s := s.BirthDay()
+		s := s.Tag()
 		buf, err = json.Marshal(s)
 		if err != nil {
 			return err
@@ -209,12 +224,12 @@ func (s CapnpA) WriteCapLit(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	_, err = b.WriteString("phone = ")
+	_, err = b.WriteString("timestamp = ")
 	if err != nil {
 		return err
 	}
 	{
-		s := s.Phone()
+		s := s.Timestamp()
 		buf, err = json.Marshal(s)
 		if err != nil {
 			return err
@@ -228,12 +243,49 @@ func (s CapnpA) WriteCapLit(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	_, err = b.WriteString("siblings = ")
+	_, err = b.WriteString("frames = ")
 	if err != nil {
 		return err
 	}
 	{
-		s := s.Siblings()
+		s := s.Frames()
+		{
+			err = b.WriteByte('[')
+			if err != nil {
+				return err
+			}
+			for i, s := range s.ToArray() {
+				if i != 0 {
+					_, err = b.WriteString(", ")
+				}
+				if err != nil {
+					return err
+				}
+				buf, err = json.Marshal(s)
+				if err != nil {
+					return err
+				}
+				_, err = b.Write(buf)
+				if err != nil {
+					return err
+				}
+			}
+			err = b.WriteByte(']')
+		}
+		if err != nil {
+			return err
+		}
+	}
+	_, err = b.WriteString(", ")
+	if err != nil {
+		return err
+	}
+	_, err = b.WriteString("gid = ")
+	if err != nil {
+		return err
+	}
+	{
+		s := s.Gid()
 		buf, err = json.Marshal(s)
 		if err != nil {
 			return err
@@ -247,31 +299,12 @@ func (s CapnpA) WriteCapLit(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	_, err = b.WriteString("spouse = ")
+	_, err = b.WriteString("txid = ")
 	if err != nil {
 		return err
 	}
 	{
-		s := s.Spouse()
-		buf, err = json.Marshal(s)
-		if err != nil {
-			return err
-		}
-		_, err = b.Write(buf)
-		if err != nil {
-			return err
-		}
-	}
-	_, err = b.WriteString(", ")
-	if err != nil {
-		return err
-	}
-	_, err = b.WriteString("money = ")
-	if err != nil {
-		return err
-	}
-	{
-		s := s.Money()
+		s := s.Txid()
 		buf, err = json.Marshal(s)
 		if err != nil {
 			return err
@@ -297,7 +330,7 @@ func (s CapnpA) MarshalCapLit() ([]byte, error) {
 type CapnpA_List C.PointerList
 
 func NewCapnpAList(s *C.Segment, sz int) CapnpA_List {
-	return CapnpA_List(s.NewCompositeList(24, 2, sz))
+	return CapnpA_List(s.NewCompositeList(40, 1, sz))
 }
 func (s CapnpA_List) Len() int        { return C.PointerList(s).Len() }
 func (s CapnpA_List) At(i int) CapnpA { return CapnpA(C.PointerList(s).At(i).ToStruct()) }

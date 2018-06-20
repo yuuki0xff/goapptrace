@@ -15,42 +15,48 @@ XDRA Structure:
  0                   1                   2                   3
  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                                                               |
++                         ID (64 bits)                          +
+|                                                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                 24 zero bits                  |      Tag      |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                                                               |
++                      Timestamp (64 bits)                      +
+|                                                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                       Number of Frames                        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 /                                                               /
-\                  Name (length + padded data)                  \
+|                                                               |
++                       Frames (64 bits)                        +
+|                                                               |
 /                                                               /
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                                                               |
-+                      Birth Day (64 bits)                      +
++                         GID (64 bits)                         +
 |                                                               |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-/                                                               /
-\                 Phone (length + padded data)                  \
-/                                                               /
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                           Siblings                            |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                      Spouse (V=0 or 1)                      |V|
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                                                               |
-+                        Money (64 bits)                        +
++                        Tx ID (64 bits)                        +
 |                                                               |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 
 struct XDRA {
-	string Name<>;
-	hyper BirthDay;
-	string Phone<>;
-	int Siblings;
-	bool Spouse;
-	unsigned hyper Money;
+	hyper ID;
+	unsigned int Tag;
+	hyper Timestamp;
+	unsigned hyper Frames<>;
+	hyper GID;
+	unsigned hyper TxID;
 }
 
 */
 
 func (o XDRA) XDRSize() int {
-	return 4 + len(o.Name) + xdr.Padding(len(o.Name)) + 8 +
-		4 + len(o.Phone) + xdr.Padding(len(o.Phone)) + 4 + 4 + 8
+	return 8 + 4 + 8 +
+		4 + len(o.Frames)*8 + 8 + 8
 }
 
 func (o XDRA) MarshalXDR() ([]byte, error) {
@@ -68,12 +74,15 @@ func (o XDRA) MustMarshalXDR() []byte {
 }
 
 func (o XDRA) MarshalXDRInto(m *xdr.Marshaller) error {
-	m.MarshalString(o.Name)
-	m.MarshalUint64(uint64(o.BirthDay))
-	m.MarshalString(o.Phone)
-	m.MarshalUint32(uint32(o.Siblings))
-	m.MarshalBool(o.Spouse)
-	m.MarshalUint64(o.Money)
+	m.MarshalUint64(uint64(o.ID))
+	m.MarshalUint8(o.Tag)
+	m.MarshalUint64(uint64(o.Timestamp))
+	m.MarshalUint32(uint32(len(o.Frames)))
+	for i := range o.Frames {
+		m.MarshalUint64(o.Frames[i])
+	}
+	m.MarshalUint64(uint64(o.GID))
+	m.MarshalUint64(o.TxID)
 	return m.Error
 }
 
@@ -82,11 +91,25 @@ func (o *XDRA) UnmarshalXDR(bs []byte) error {
 	return o.UnmarshalXDRFrom(u)
 }
 func (o *XDRA) UnmarshalXDRFrom(u *xdr.Unmarshaller) error {
-	o.Name = u.UnmarshalString()
-	o.BirthDay = int64(u.UnmarshalUint64())
-	o.Phone = u.UnmarshalString()
-	o.Siblings = int32(u.UnmarshalUint32())
-	o.Spouse = u.UnmarshalBool()
-	o.Money = u.UnmarshalUint64()
+	o.ID = int64(u.UnmarshalUint64())
+	o.Tag = u.UnmarshalUint8()
+	o.Timestamp = int64(u.UnmarshalUint64())
+	_FramesSize := int(u.UnmarshalUint32())
+	if _FramesSize < 0 {
+		return xdr.ElementSizeExceeded("Frames", _FramesSize, 0)
+	} else if _FramesSize == 0 {
+		o.Frames = nil
+	} else {
+		if _FramesSize <= len(o.Frames) {
+			o.Frames = o.Frames[:_FramesSize]
+		} else {
+			o.Frames = make([]uint64, _FramesSize)
+		}
+		for i := range o.Frames {
+			o.Frames[i] = u.UnmarshalUint64()
+		}
+	}
+	o.GID = int64(u.UnmarshalUint64())
+	o.TxID = u.UnmarshalUint64()
 	return u.Error
 }

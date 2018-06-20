@@ -13,61 +13,34 @@ var (
 )
 
 type GencodeUnsafeA struct {
-	Name     string
-	BirthDay int64
-	Phone    string
-	Siblings int64
-	Spouse   bool
-	Money    float64
+	ID        int64
+	Tag       uint8
+	Timestamp int64
+	Frames    []uint64
+	GID       int64
+	TxID      uint64
 }
 
 func (d *GencodeUnsafeA) Size() (s uint64) {
 
 	{
-		l := uint64(len(d.Name))
+		l := uint64(len(d.Frames))
 
 		{
 
 			t := l
 			for t >= 0x80 {
-				t <<= 7
+				t >>= 7
 				s++
 			}
 			s++
 
 		}
-		s += l
-	}
-	{
-		l := uint64(len(d.Phone))
 
-		{
-
-			t := l
-			for t >= 0x80 {
-				t <<= 7
-				s++
-			}
-			s++
-
-		}
-		s += l
-	}
-	{
-
-		t := uint64(d.Siblings)
-		t <<= 1
-		if d.Siblings < 0 {
-			t = ^t
-		}
-		for t >= 0x80 {
-			t <<= 7
-			s++
-		}
-		s++
+		s += 8 * l
 
 	}
-	s += 17
+	s += 33
 	return
 }
 func (d *GencodeUnsafeA) Marshal(buf []byte) ([]byte, error) {
@@ -82,107 +55,77 @@ func (d *GencodeUnsafeA) Marshal(buf []byte) ([]byte, error) {
 	i := uint64(0)
 
 	{
-		l := uint64(len(d.Name))
+
+		*(*int64)(unsafe.Pointer(&buf[0])) = d.ID
+
+	}
+	{
+
+		*(*uint8)(unsafe.Pointer(&buf[8])) = d.Tag
+
+	}
+	{
+
+		*(*int64)(unsafe.Pointer(&buf[9])) = d.Timestamp
+
+	}
+	{
+		l := uint64(len(d.Frames))
 
 		{
 
 			t := uint64(l)
 
 			for t >= 0x80 {
-				buf[i+0] = byte(t) | 0x80
+				buf[i+17] = byte(t) | 0x80
 				t >>= 7
 				i++
 			}
-			buf[i+0] = byte(t)
+			buf[i+17] = byte(t)
 			i++
 
 		}
-		copy(buf[i+0:], d.Name)
-		i += l
-	}
-	{
+		for k0 := range d.Frames {
 
-		*(*int64)(unsafe.Pointer(&buf[i+0])) = d.BirthDay
+			{
 
-	}
-	{
-		l := uint64(len(d.Phone))
+				*(*uint64)(unsafe.Pointer(&buf[i+17])) = d.Frames[k0]
 
-		{
-
-			t := uint64(l)
-
-			for t >= 0x80 {
-				buf[i+8] = byte(t) | 0x80
-				t >>= 7
-				i++
 			}
-			buf[i+8] = byte(t)
-			i++
 
-		}
-		copy(buf[i+8:], d.Phone)
-		i += l
-	}
-	{
+			i += 8
 
-		t := uint64(d.Siblings)
-
-		t <<= 1
-		if d.Siblings < 0 {
-			t = ^t
-		}
-
-		for t >= 0x80 {
-			buf[i+8] = byte(t) | 0x80
-			t >>= 7
-			i++
-		}
-		buf[i+8] = byte(t)
-		i++
-
-	}
-	{
-		if d.Spouse {
-			buf[i+8] = 1
-		} else {
-			buf[i+8] = 0
 		}
 	}
 	{
 
-		*(*float64)(unsafe.Pointer(&buf[i+9])) = d.Money
+		*(*int64)(unsafe.Pointer(&buf[i+17])) = d.GID
 
 	}
-	return buf[:i+17], nil
+	{
+
+		*(*uint64)(unsafe.Pointer(&buf[i+25])) = d.TxID
+
+	}
+	return buf[:i+33], nil
 }
 
 func (d *GencodeUnsafeA) Unmarshal(buf []byte) (uint64, error) {
 	i := uint64(0)
 
 	{
-		l := uint64(0)
 
-		{
+		d.ID = *(*int64)(unsafe.Pointer(&buf[i+0]))
 
-			bs := uint8(7)
-			t := uint64(buf[i+0] & 0x7F)
-			for buf[i+0]&0x80 == 0x80 {
-				i++
-				t |= uint64(buf[i+0]&0x7F) << bs
-				bs += 7
-			}
-			i++
-
-			l = t
-
-		}
-		d.Name = string(buf[i+0 : i+0+l])
-		i += l
 	}
 	{
 
-		d.BirthDay = *(*int64)(unsafe.Pointer(&buf[i+0]))
+		d.Tag = *(*uint8)(unsafe.Pointer(&buf[i+8]))
+
+	}
+	{
+
+		d.Timestamp = *(*int64)(unsafe.Pointer(&buf[i+9]))
 
 	}
 	{
@@ -191,10 +134,10 @@ func (d *GencodeUnsafeA) Unmarshal(buf []byte) (uint64, error) {
 		{
 
 			bs := uint8(7)
-			t := uint64(buf[i+8] & 0x7F)
-			for buf[i+8]&0x80 == 0x80 {
+			t := uint64(buf[i+17] & 0x7F)
+			for buf[i+17]&0x80 == 0x80 {
 				i++
-				t |= uint64(buf[i+8]&0x7F) << bs
+				t |= uint64(buf[i+17]&0x7F) << bs
 				bs += 7
 			}
 			i++
@@ -202,33 +145,32 @@ func (d *GencodeUnsafeA) Unmarshal(buf []byte) (uint64, error) {
 			l = t
 
 		}
-		d.Phone = string(buf[i+8 : i+8+l])
-		i += l
-	}
-	{
-
-		bs := uint8(7)
-		t := uint64(buf[i+8] & 0x7F)
-		for buf[i+8]&0x80 == 0x80 {
-			i++
-			t |= uint64(buf[i+8]&0x7F) << bs
-			bs += 7
+		if uint64(cap(d.Frames)) >= l {
+			d.Frames = d.Frames[:l]
+		} else {
+			d.Frames = make([]uint64, l)
 		}
-		i++
+		for k0 := range d.Frames {
 
-		d.Siblings = int64(t >> 1)
-		if t&1 != 0 {
-			d.Siblings = ^d.Siblings
+			{
+
+				d.Frames[k0] = *(*uint64)(unsafe.Pointer(&buf[i+17]))
+
+			}
+
+			i += 8
+
 		}
-
-	}
-	{
-		d.Spouse = buf[i+8] == 1
 	}
 	{
 
-		d.Money = *(*float64)(unsafe.Pointer(&buf[i+9]))
+		d.GID = *(*int64)(unsafe.Pointer(&buf[i+17]))
 
 	}
-	return i + 17, nil
+	{
+
+		d.TxID = *(*uint64)(unsafe.Pointer(&buf[i+25]))
+
+	}
+	return i + 33, nil
 }
