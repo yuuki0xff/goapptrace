@@ -12,7 +12,7 @@ FlatBufferA.go: flatbuffers-structdef.fbs
 	flatc -g flatbuffers-structdef.fbs
 	mv flatbuffersmodels/FlatBufferA.go FlatBufferA.go
 	rmdir flatbuffersmodels
-	sed -i '' 's/flatbuffersmodels/goserbench/' FlatBufferA.go
+	sed -i 's/flatbuffersmodels/goserbench/' FlatBufferA.go
 
 msgp_gen.go: structdef.go
 	go generate
