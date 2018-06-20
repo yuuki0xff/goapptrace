@@ -1,7 +1,19 @@
 # This is necessary due to the use of two conflicting generator commands for capnproto
 .NOTPARALLEL:
 
-all: FlatBufferA.go msgp_gen.go structdef-gogo.pb.go structdef.pb.go structdef.capnp.go structdef.capnp2.go gencode.schema.gen.go gencode-unsafe.schema.gen.go structdefxdr_generated.go
+GENERATED=\
+	FlatBufferA.go \
+	msgp_gen.go \
+	structdef-gogo.pb.go \
+	structdef.pb.go \
+	structdef.capnp.go \
+	structdef.capnp2.go \
+	gencode.schema.gen.go \
+	gencode-unsafe.schema.gen.go \
+	structdef_easyjson.go \
+	structdefxdr_generated.go
+
+all: $(GENERATED)
 
 FlatBufferA.go: flatbuffers-structdef.fbs
 	flatc -g flatbuffers-structdef.fbs
@@ -40,7 +52,7 @@ structdefxdr_generated.go: structdefxdr.go
 
 .PHONY: clean
 clean:
-	rm -f FlatBufferA.go msgp_gen.go structdef-gogo.pb.go structdef.pb.go structdef.capnp.go structdef.capnp2.go gencode.schema.gen.go gencode-unsafe.schema.gen.go structdefxdr_generated.go
+	rm -f $(GENERATED)
 
 .PHONY: install
 install:
