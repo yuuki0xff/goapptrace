@@ -5,7 +5,6 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
-	"math"
 	"math/rand"
 	"os"
 	"testing"
