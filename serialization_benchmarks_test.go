@@ -59,6 +59,18 @@ func generate() []*A {
 	return a
 }
 
+func compareUint64(a, b []uint64) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 type Serializer interface {
 	Marshal(o interface{}) []byte
 	Unmarshal(d []byte, o interface{}) error
@@ -637,7 +649,7 @@ func generateProto() []*ProtoBufA {
 	for i := 0; i < 1000; i++ {
 		a = append(a, &ProtoBufA{
 			ID:        proto.Int64(int64(rand.Intn(1000000))),
-			Tag:       proto.Uint64(uint8(rand.Intn(256))),
+			Tag:       proto.Uint64(uint64(rand.Intn(256))),
 			Timestamp: proto.Int64(int64(rand.Intn(1000000))),
 			Frames: []uint64{
 				uint64(rand.Intn(1000000)),
@@ -685,7 +697,12 @@ func BenchmarkGoprotobufUnmarshal(b *testing.B) {
 		// Validate unmarshalled data.
 		if validate != "" {
 			i := data[n]
-			correct := *i == *o
+			correct := *i.ID == *o.ID &&
+				*i.Tag == *o.Tag &&
+				*i.Timestamp == *o.Timestamp &&
+				compareUint64(i.Frames, o.Frames) &&
+				*i.GID == *o.GID &&
+				*i.TxID == *o.TxID
 			if !correct {
 				b.Fatalf("unmarshaled object differed:\n%v\n%v", i, o)
 			}
@@ -700,7 +717,7 @@ func generateGogoProto() []*GogoProtoBufA {
 	for i := 0; i < 1000; i++ {
 		a = append(a, &GogoProtoBufA{
 			ID:        int64(rand.Intn(1000000)),
-			Tag:       uint8(rand.Intn(256)),
+			Tag:       uint64(rand.Intn(256)),
 			Timestamp: int64(rand.Intn(1000000)),
 			Frames: []uint64{
 				uint64(rand.Intn(1000000)),
