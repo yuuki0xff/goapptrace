@@ -43,12 +43,21 @@ func generate() []*A {
 	a := make([]*A, 0, 1000)
 	for i := 0; i < 1000; i++ {
 		a = append(a, &A{
-			Name:     randString(16),
-			BirthDay: time.Now(),
-			Phone:    randString(10),
-			Siblings: rand.Intn(5),
-			Spouse:   rand.Intn(2) == 1,
-			Money:    rand.Float64(),
+			ID:        int64(rand.Intn(1000000)),
+			Tag:       uint8(rand.Intn(256)),
+			Timestamp: int64(rand.Intn(1000000)),
+			Frames: []uint64{
+				uint64(rand.Intn(1000000)),
+				uint64(rand.Intn(1000000)),
+				uint64(rand.Intn(1000000)),
+				uint64(rand.Intn(1000000)),
+				uint64(rand.Intn(1000000)),
+				uint64(rand.Intn(1000000)),
+				uint64(rand.Intn(1000000)),
+				uint64(rand.Intn(1000000)),
+			},
+			GID:  int64(rand.Intn(1000000)),
+			TxID: uint64(rand.Intn(1000000)),
 		})
 	}
 	return a
@@ -116,7 +125,7 @@ func benchUnmarshal(b *testing.B, s Serializer) {
 		// Validate unmarshalled data.
 		if validate != "" {
 			i := data[n]
-			correct := o.Name == i.Name && o.Phone == i.Phone && o.Siblings == i.Siblings && o.Spouse == i.Spouse && o.Money == i.Money && o.BirthDay.String() == i.BirthDay.String() //&& cmpTags(o.Tags, i.Tags) && cmpAliases(o.Aliases, i.Aliases)
+			correct := i == o
 			if !correct {
 				b.Fatalf("unmarshaled object differed:\n%v\n%v", i, o)
 			}
