@@ -1,4 +1,4 @@
-type RawFuncLog struct {
+struct RawFuncLog {
 	ID        int64
 	Tag       uint8
 	Timestamp int64
