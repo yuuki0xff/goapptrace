@@ -1,4 +1,4 @@
-struct RawFuncLog {
+struct GencodeA {
 	ID        int64
 	Tag       uint8
 	Timestamp int64
