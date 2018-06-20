@@ -65,63 +65,48 @@ type A struct {
 
 ## Results
 
-2017-09-28 Results with Go 1.9 on a 2.3 GHz Intel Core i7 (MacBook Pro Retina 15-inch, Late 2013):
+2018-06-20 Results with Go 1.10.3 on a Intel Core i7-7700 CPU @ 3.60GHz:
 
 ```
-benchmark                                   iter              time/iter         bytes alloc    allocs
----------                                   ----              ---------         -----------    ------
-BenchmarkMsgpMarshal-8                      10000000           178 ns/op         128 B/op       1 allocs/op
-BenchmarkMsgpUnmarshal-8                     5000000           338 ns/op         112 B/op       3 allocs/op
-BenchmarkVmihailencoMsgpackMarshal-8         1000000          1864 ns/op         368 B/op       6 allocs/op
-BenchmarkVmihailencoMsgpackUnmarshal-8       1000000          1972 ns/op         383 B/op      13 allocs/op
-BenchmarkJsonMarshal-8                        500000          2980 ns/op        1223 B/op       9 allocs/op
-BenchmarkJsonUnmarshal-8                      500000          3120 ns/op         463 B/op       7 allocs/op
-BenchmarkEasyJsonMarshal-8                   1000000          1288 ns/op         784 B/op       5 allocs/op
-BenchmarkEasyJsonUnmarshal-8                 1000000          1330 ns/op         159 B/op       4 allocs/op
-BenchmarkBsonMarshal-8                       1000000          1415 ns/op         392 B/op      10 allocs/op
-BenchmarkBsonUnmarshal-8                     1000000          1996 ns/op         244 B/op      19 allocs/op
-BenchmarkGobMarshal-8                        1000000          1009 ns/op          48 B/op       2 allocs/op
-BenchmarkGobUnmarshal-8                      1000000          1032 ns/op         112 B/op       3 allocs/op
-BenchmarkXdrMarshal-8                        1000000          1716 ns/op         392 B/op      19 allocs/op
-BenchmarkXdrUnmarshal-8                      1000000          1455 ns/op         224 B/op      11 allocs/op
-BenchmarkUgorjiCodecMsgpackMarshal-8         1000000          2148 ns/op        2721 B/op       7 allocs/op
-BenchmarkUgorjiCodecMsgpackUnmarshal-8       1000000          2156 ns/op        3136 B/op       6 allocs/op
-BenchmarkUgorjiCodecBincMarshal-8            1000000          2172 ns/op        2753 B/op       7 allocs/op
-BenchmarkUgorjiCodecBincUnmarshal-8           500000          2322 ns/op        3296 B/op       9 allocs/op
-BenchmarkSerealMarshal-8                      500000          2753 ns/op         912 B/op      21 allocs/op
-BenchmarkSerealUnmarshal-8                    500000          3069 ns/op        1008 B/op      34 allocs/op
-BenchmarkBinaryMarshal-8                     1000000          1306 ns/op         246 B/op      14 allocs/op
-BenchmarkBinaryUnmarshal-8                   1000000          1497 ns/op         336 B/op      22 allocs/op
-BenchmarkFlatBuffersMarshal-8                5000000           389 ns/op           0 B/op       0 allocs/op
-BenchmarkFlatBuffersUnmarshal-8              5000000           252 ns/op         112 B/op       3 allocs/op
-BenchmarkCapNProtoMarshal-8                  3000000           521 ns/op          56 B/op       2 allocs/op
-BenchmarkCapNProtoUnmarshal-8                3000000           432 ns/op         200 B/op       6 allocs/op
-BenchmarkCapNProto2Marshal-8                 2000000           757 ns/op         244 B/op       3 allocs/op
-BenchmarkCapNProto2Unmarshal-8               2000000           937 ns/op         320 B/op       6 allocs/op
-BenchmarkHproseMarshal-8                     2000000           887 ns/op         332 B/op       8 allocs/op
-BenchmarkHproseUnmarshal-8                   1000000          1012 ns/op         319 B/op      10 allocs/op
-BenchmarkProtobufMarshal-8                   2000000           901 ns/op         200 B/op       7 allocs/op
-BenchmarkProtobufUnmarshal-8                 2000000           692 ns/op         192 B/op      10 allocs/op
-BenchmarkGoprotobufMarshal-8                 3000000           506 ns/op         312 B/op       4 allocs/op
-BenchmarkGoprotobufUnmarshal-8               2000000           691 ns/op         432 B/op       9 allocs/op
-BenchmarkGogoprotobufMarshal-8              10000000           152 ns/op          64 B/op       1 allocs/op
-BenchmarkGogoprotobufUnmarshal-8            10000000           221 ns/op          96 B/op       3 allocs/op
-BenchmarkColferMarshal-8                    10000000           137 ns/op          64 B/op       1 allocs/op
-BenchmarkColferUnmarshal-8                  10000000           183 ns/op         112 B/op       3 allocs/op
-BenchmarkGencodeMarshal-8                   10000000           166 ns/op          80 B/op       2 allocs/op
-BenchmarkGencodeUnmarshal-8                 10000000           181 ns/op         112 B/op       3 allocs/op
-BenchmarkGencodeUnsafeMarshal-8             20000000           104 ns/op          48 B/op       1 allocs/op
-BenchmarkGencodeUnsafeUnmarshal-8           10000000           144 ns/op          96 B/op       3 allocs/op
-BenchmarkXDR2Marshal-8                      10000000           168 ns/op          64 B/op       1 allocs/op
-BenchmarkXDR2Unmarshal-8                    10000000           143 ns/op          32 B/op       2 allocs/op
-BenchmarkGoAvroMarshal-8                      500000          2403 ns/op        1030 B/op      31 allocs/op
-BenchmarkGoAvroUnmarshal-8                    200000          5876 ns/op        3437 B/op      87 allocs/op
-BenchmarkGoAvro2TextMarshal-8                 500000          2797 ns/op        1326 B/op      20 allocs/op
-BenchmarkGoAvro2TextUnmarshal-8               500000          2665 ns/op         807 B/op      34 allocs/op
-BenchmarkGoAvro2BinaryMarshal-8              2000000           922 ns/op         510 B/op      11 allocs/op
-BenchmarkGoAvro2BinaryUnmarshal-8            2000000           989 ns/op         576 B/op      13 allocs/op
+goos: linux
+goarch: amd64
+pkg: bitbucket.org/yuuki0xff/goapptrace-codec-benchmarks
+BenchmarkMsgpMarshal-8                          10000000               226 ns/op             160 B/op          1 allocs/op
+BenchmarkMsgpUnmarshal-8                         5000000               296 ns/op             128 B/op          2 allocs/op
+BenchmarkVmihailencoMsgpackMarshal-8              500000              2204 ns/op             336 B/op          5 allocs/op
+BenchmarkVmihailencoMsgpackUnmarshal-8            500000              2808 ns/op             512 B/op         15 allocs/op
+BenchmarkJsonMarshal-8                           1000000              2450 ns/op            1160 B/op          9 allocs/op
+BenchmarkJsonUnmarshal-8                          500000              2275 ns/op             464 B/op          7 allocs/op
+BenchmarkEasyJsonMarshal-8                       2000000               919 ns/op             720 B/op          4 allocs/op
+BenchmarkEasyJsonUnmarshal-8                     2000000               880 ns/op             128 B/op          2 allocs/op
+BenchmarkBsonMarshal-8                           1000000              1972 ns/op             712 B/op         20 allocs/op
+BenchmarkBsonUnmarshal-8                          500000              2803 ns/op             447 B/op         43 allocs/op
+BenchmarkGobMarshal-8                            2000000               724 ns/op              32 B/op          1 allocs/op
+BenchmarkGobUnmarshal-8                          2000000               838 ns/op             192 B/op          4 allocs/op
+BenchmarkXdrMarshal-8                            1000000              1370 ns/op             408 B/op         26 allocs/op
+BenchmarkXdrUnmarshal-8                          2000000               965 ns/op             208 B/op          9 allocs/op
+BenchmarkSerealMarshal-8                          500000              2819 ns/op            1072 B/op         33 allocs/op
+BenchmarkSerealUnmarshal-8                        500000              2182 ns/op             864 B/op         26 allocs/op
+BenchmarkBinaryMarshal-8                         1000000              1779 ns/op             488 B/op         28 allocs/op
+BenchmarkBinaryUnmarshal-8                       1000000              1845 ns/op             384 B/op         25 allocs/op
+BenchmarkCapNProtoMarshal-8                      3000000               439 ns/op              56 B/op          2 allocs/op
+BenchmarkCapNProtoUnmarshal-8                    3000000               552 ns/op             272 B/op          8 allocs/op
+BenchmarkCapNProto2Marshal-8                     2000000               650 ns/op             276 B/op          3 allocs/op
+BenchmarkCapNProto2Unmarshal-8                   2000000               923 ns/op             392 B/op          8 allocs/op
+BenchmarkHproseMarshal-8                        10000000               207 ns/op             117 B/op          0 allocs/op
+BenchmarkHproseUnmarshal-8                       5000000               280 ns/op              96 B/op          2 allocs/op
+BenchmarkProtobufMarshal-8                       2000000               886 ns/op             280 B/op         10 allocs/op
+BenchmarkProtobufUnmarshal-8                    10000000               211 ns/op              64 B/op          1 allocs/op
+BenchmarkGoprotobufMarshal-8                     2000000               572 ns/op             328 B/op          5 allocs/op
+BenchmarkGoprotobufUnmarshal-8                   2000000               842 ns/op             488 B/op          8 allocs/op
+BenchmarkGogoprotobufMarshal-8                  10000000               180 ns/op              63 B/op          1 allocs/op
+BenchmarkGogoprotobufUnmarshal-8                 5000000               324 ns/op             184 B/op          5 allocs/op
+BenchmarkGencodeMarshal-8                       10000000               169 ns/op             112 B/op          1 allocs/op
+BenchmarkGencodeUnmarshal-8                     10000000               171 ns/op             128 B/op          2 allocs/op
+BenchmarkGencodeUnsafeMarshal-8                 10000000               115 ns/op             112 B/op          1 allocs/op
+BenchmarkGencodeUnsafeUnmarshal-8               10000000               142 ns/op             128 B/op          2 allocs/op
 PASS
-ok      github.com/alecthomas/go_serialization_benchmarks   91.733s
+ok      bitbucket.org/yuuki0xff/goapptrace-codec-benchmarks     67.344s
 ```
 
 ## Issues
