@@ -457,12 +457,16 @@ func (x *CapNProtoSerializer) Marshal(o interface{}) []byte {
 	a := o.(*A)
 	s := capn.NewBuffer(x.buf)
 	c := NewRootCapnpA(s)
-	c.SetName(a.Name)
-	c.SetBirthDay(a.BirthDay.UnixNano())
-	c.SetPhone(a.Phone)
-	c.SetSiblings(int32(a.Siblings))
-	c.SetSpouse(a.Spouse)
-	c.SetMoney(a.Money)
+	c.SetId(a.ID)
+	c.SetTag(a.Tag)
+	c.SetTimestamp(a.Timestamp)
+	frames := s.NewUInt64List(len(a.Frames))
+	for i, v := range a.Frames {
+		frames.Set(i, v)
+	}
+	c.SetFrames(frames)
+	c.SetGid(a.GID)
+	c.SetTxid(a.TxID)
 	x.out.Reset()
 	s.WriteTo(x.out)
 	x.buf = []byte(s.Data)[:0]
@@ -473,12 +477,15 @@ func (x *CapNProtoSerializer) Unmarshal(d []byte, i interface{}) error {
 	a := i.(*A)
 	s, _, _ := capn.ReadFromMemoryZeroCopy(d)
 	o := ReadRootCapnpA(s)
-	a.Name = string(o.NameBytes())
-	a.BirthDay = time.Unix(o.BirthDay(), 0)
-	a.Phone = string(o.PhoneBytes())
-	a.Siblings = int(o.Siblings())
-	a.Spouse = o.Spouse()
-	a.Money = o.Money()
+	a.ID = o.Id()
+	a.Tag = o.Tag()
+	a.Timestamp = o.Timestamp()
+	frames := o.Frames()
+	for i := 0; i < frames.Len(); i++ {
+		a.Frames = append(a.Frames, frames.At(i))
+	}
+	a.GID = o.Gid()
+	a.TxID = o.Txid()
 	return nil
 }
 
@@ -504,12 +511,17 @@ func (x *CapNProto2Serializer) Marshal(o interface{}) []byte {
 	a := o.(*A)
 	m, s, _ := capnp.NewMessage(x.arena)
 	c, _ := NewRootCapnp2A(s)
-	c.SetName(a.Name)
-	c.SetBirthDay(a.BirthDay.UnixNano())
-	c.SetPhone(a.Phone)
-	c.SetSiblings(int32(a.Siblings))
-	c.SetSpouse(a.Spouse)
-	c.SetMoney(a.Money)
+	c.SetId(a.ID)
+	c.SetTag(a.Tag)
+	c.SetTimestamp(a.Timestamp)
+
+	frames, _ := capnp.NewUInt64List(s, int32(len(a.Frames)))
+	for i, v := range a.Frames {
+		frames.Set(i, v)
+	}
+	c.SetFrames(frames)
+	c.SetGid(a.GID)
+	c.SetTxid(a.TxID)
 	b, _ := m.Marshal()
 	return b
 }
@@ -518,12 +530,15 @@ func (x *CapNProto2Serializer) Unmarshal(d []byte, i interface{}) error {
 	a := i.(*A)
 	m, _ := capnp.Unmarshal(d)
 	o, _ := ReadRootCapnp2A(m)
-	a.Name, _ = o.Name()
-	a.BirthDay = time.Unix(o.BirthDay(), 0)
-	a.Phone, _ = o.Phone()
-	a.Siblings = int(o.Siblings())
-	a.Spouse = o.Spouse()
-	a.Money = o.Money()
+	a.ID = o.Id()
+	a.Tag = o.Tag()
+	a.Timestamp = o.Timestamp()
+	frames, _ := o.Frames()
+	for i := 0; i < frames.Len(); i++ {
+		a.Frames = append(a.Frames, frames.At(i))
+	}
+	a.GID = o.Gid()
+	a.TxID = o.Txid()
 	return nil
 }
 
