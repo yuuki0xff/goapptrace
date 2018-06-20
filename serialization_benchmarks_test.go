@@ -22,7 +22,6 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 	"github.com/hprose/hprose-go"
 	"github.com/tinylib/msgp/msgp"
-	"github.com/ugorji/go/codec"
 	"gopkg.in/mgo.v2/bson"
 	vmihailenco "gopkg.in/vmihailenco/msgpack.v2"
 )
@@ -343,58 +342,6 @@ func BenchmarkXdrMarshal(b *testing.B) {
 
 func BenchmarkXdrUnmarshal(b *testing.B) {
 	benchUnmarshal(b, XdrSerializer{})
-}
-
-// github.com/ugorji/go/codec
-
-type UgorjiCodecSerializer struct {
-	name string
-	h    codec.Handle
-}
-
-func NewUgorjiCodecSerializer(name string, h codec.Handle) *UgorjiCodecSerializer {
-	return &UgorjiCodecSerializer{
-		name: name,
-		h:    h,
-	}
-}
-
-func (u *UgorjiCodecSerializer) Marshal(o interface{}) []byte {
-	var bs []byte
-	codec.NewEncoderBytes(&bs, u.h).Encode(o)
-	return bs
-}
-
-func (u *UgorjiCodecSerializer) Unmarshal(d []byte, o interface{}) error {
-	return codec.NewDecoderBytes(d, u.h).Decode(o)
-}
-
-func (u *UgorjiCodecSerializer) String() string {
-	return "ugorjicodec-" + u.name
-}
-
-func BenchmarkUgorjiCodecMsgpackMarshal(b *testing.B) {
-	s := NewUgorjiCodecSerializer("msgpack", &codec.MsgpackHandle{})
-	benchMarshal(b, s)
-}
-
-func BenchmarkUgorjiCodecMsgpackUnmarshal(b *testing.B) {
-	s := NewUgorjiCodecSerializer("msgpack", &codec.MsgpackHandle{})
-	benchUnmarshal(b, s)
-}
-
-func BenchmarkUgorjiCodecBincMarshal(b *testing.B) {
-	h := &codec.BincHandle{}
-	h.AsSymbols = codec.AsSymbolNone
-	s := NewUgorjiCodecSerializer("binc", h)
-	benchMarshal(b, s)
-}
-
-func BenchmarkUgorjiCodecBincUnmarshal(b *testing.B) {
-	h := &codec.BincHandle{}
-	h.AsSymbols = codec.AsSymbolNone
-	s := NewUgorjiCodecSerializer("binc", h)
-	benchUnmarshal(b, s)
 }
 
 // github.com/Sereal/Sereal/Go/sereal
@@ -939,32 +886,4 @@ func BenchmarkXDR2Unmarshal(b *testing.B) {
 			}
 		}
 	}
-}
-
-// gopkg.in/linkedin/goavro.v1
-
-func BenchmarkGoAvroMarshal(b *testing.B) {
-	benchMarshal(b, NewAvroA())
-}
-
-func BenchmarkGoAvroUnmarshal(b *testing.B) {
-	benchUnmarshal(b, NewAvroA())
-}
-
-// github.com/linkedin/goavro
-
-func BenchmarkGoAvro2TextMarshal(b *testing.B) {
-	benchMarshal(b, NewAvro2Txt())
-}
-
-func BenchmarkGoAvro2TextUnmarshal(b *testing.B) {
-	benchUnmarshal(b, NewAvro2Txt())
-}
-
-func BenchmarkGoAvro2BinaryMarshal(b *testing.B) {
-	benchMarshal(b, NewAvro2Bin())
-}
-
-func BenchmarkGoAvro2BinaryUnmarshal(b *testing.B) {
-	benchUnmarshal(b, NewAvro2Bin())
 }
