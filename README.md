@@ -53,12 +53,12 @@ The data being serialized is the following structure with randomly generated val
 
 ```go
 type A struct {
-    Name     string
-    BirthDay time.Time
-    Phone    string
-    Siblings int
-    Spouse   bool
-    Money    float64
+	ID        int64
+	Tag       uint8
+	Timestamp int64
+	Frames    []uint64
+	GID       int64
+	TxID      uint64
 }
 ```
 
