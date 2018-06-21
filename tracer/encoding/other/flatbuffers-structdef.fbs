@@ -1,0 +1,10 @@
+namespace flatbuffersmodels;
+
+table FlatBufferA {
+	ID        :long;
+	Tag       :ubyte;
+	Timestamp :long;
+	Frames    :[ulong];
+	GID       :long;
+	TxID      :ulong;
+}

@@ -1,0 +1,8 @@
+struct GencodeA {
+	ID        int64
+	Tag       uint8
+	Timestamp int64
+	Frames    []uint64
+	GID       int64
+	TxID      uint64
+}
