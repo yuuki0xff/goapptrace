@@ -7,7 +7,7 @@ import (
 
 const (
 	AppName = "goapptrace"
-	Version = "0.0.1"
+	Version = "0.4.0-beta"
 
 	DefaultConfigDir     = "./.goapptrace"
 	DefaultLogfileEnv    = "GOAPPTRACE_LOG"
