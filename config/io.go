@@ -21,23 +21,24 @@ const (
 )
 
 type Config struct {
-	// TODO
-	// Deprecated: APIサーバの管理機能を削除をするため、このフィールドはもうじき削除する。
-	Servers Servers
-
 	// Path to config directory.
 	dir string
 	// API server address.
-	server   string
-	wantSave bool
+	apiServer string
+	// Log server address.
+	logServer string
+	wantSave  bool
 }
 
-func NewConfig(dir string, server string) *Config {
+func NewConfig(dir, apiServer, logServer string) *Config {
 	if dir == "" {
 		dir = info.DefaultConfigDir
 	}
-	if server == "" {
-		server = DefaultApiServerAddr
+	if apiServer == "" {
+		apiServer = DefaultApiServerAddr
+	}
+	if logServer == "" {
+		logServer = DefaultLogServerAddr
 	}
 
 	dir, err := homedir.Expand(dir)
@@ -45,19 +46,13 @@ func NewConfig(dir string, server string) *Config {
 		log.Panic(err)
 	}
 	return &Config{
-		dir:    dir,
-		server: server,
+		dir:       dir,
+		apiServer: apiServer,
+		logServer: logServer,
 	}
 }
 
 func (c *Config) Load() error {
-	if _, err := os.Stat(c.serversPath()); os.IsNotExist(err) {
-		c.Servers = *NewServers()
-	} else {
-		if err := readFromJsonFile(c.serversPath(), &c.Servers); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
@@ -71,7 +66,7 @@ func (c *Config) Save() error {
 			return err
 		}
 	}
-	return writeToJsonFile(c.serversPath(), c.Servers)
+	return nil
 }
 
 func (c *Config) SaveIfWant() error {
@@ -81,12 +76,12 @@ func (c *Config) SaveIfWant() error {
 	return nil
 }
 
-func (c Config) serversPath() string {
-	return path.Join(c.dir, "servers.json")
+func (c Config) ApiServer() string {
+	return c.apiServer
 }
 
-func (c Config) Server() string {
-	return c.server
+func (c Config) LogServer() string {
+	return c.logServer
 }
 
 func (c Config) LogsDir() string {

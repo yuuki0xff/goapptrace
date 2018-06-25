@@ -30,7 +30,6 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/httpserver"
 	"github.com/yuuki0xff/goapptrace/tracer/protocol"
 	"github.com/yuuki0xff/goapptrace/tracer/restapi"
@@ -54,19 +53,8 @@ var serverRunCmd = &cobra.Command{
 }
 
 func runServerRun(opt *handlerOpt) error {
-	apiAddr, _ := opt.Cmd.Flags().GetString("listen-api")
-	logAddr, _ := opt.Cmd.Flags().GetString("listen-log")
-
-	if len(opt.Conf.Servers.ApiServer) > 0 {
-		// API server SHOULD one instance.
-		opt.ErrLog.Println("API server is already running")
-		return errGeneral
-	}
-	if len(opt.Conf.Servers.LogServer) > 0 {
-		// Log server SHOULD one instance.
-		opt.ErrLog.Println("Log server is already running")
-		return errGeneral
-	}
+	apiAddr := opt.Conf.ApiServer()
+	logAddr := opt.Conf.LogServer()
 
 	strg := storage.Storage{
 		Root: storage.DirLayout{
@@ -77,14 +65,6 @@ func runServerRun(opt *handlerOpt) error {
 		opt.ErrLog.Println("Failed to initialize the storage:", err)
 		return errGeneral
 	}
-
-	if apiAddr == "" {
-		apiAddr = config.DefaultApiServerAddr
-	}
-	if logAddr == "" {
-		logAddr = config.DefaultLogServerAddr
-	}
-
 	simulatorStore := simulator.StateSimulatorStore{}
 
 	// start API Server
@@ -128,35 +108,10 @@ func runServerRun(opt *handlerOpt) error {
 		}
 	}()
 
-	// add servers to config, and save
-	opt.Conf.Servers.ApiServer[1] = &config.ApiServerConfig{
-		ServerID: 1,
-		Version:  1,
-		Addr:     apiSrv.Url(),
-	}
-	opt.Conf.Servers.LogServer[1] = &config.LogServerConfig{
-		ServerID: 1,
-		Version:  1,
-		Addr:     logSrv.ActualAddr(),
-	}
-	opt.Conf.WantSave()
-	if err := opt.Conf.Save(); err != nil {
-		opt.ErrLog.Println("Cannot write to the config file:", err)
-		return errGeneral
-	}
-
 	// wait until a signal is received
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGHUP, syscall.SIGTERM)
 	<-sigCh
-
-	// remove servers from config
-	opt.Conf.Servers = *config.NewServers()
-	opt.Conf.WantSave()
-	if err := opt.Conf.Save(); err != nil {
-		opt.ErrLog.Println("Cannot write to the config file:", err)
-		return errGeneral
-	}
 	return nil
 }
 

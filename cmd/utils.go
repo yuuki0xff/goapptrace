@@ -109,7 +109,7 @@ func wrap(fn func(*handlerOpt) error) cobraHandler {
 }
 
 func getConfig() (*config.Config, error) {
-	c := config.NewConfig(cfgDir, srvAddr)
+	c := config.NewConfig(cfgDir, apiSrvAddr, logSrvAddr)
 	err := c.Load()
 	if err != nil {
 		return nil, err
@@ -171,7 +171,7 @@ func mergeFlagNames(a, b map[string]bool) map[string]bool {
 
 func getAPIClient(conf *config.Config) (*restapi.Client, error) {
 	api := &restapi.Client{
-		BaseUrl: conf.Server(),
+		BaseUrl: conf.ApiServer(),
 	}
 	if err := api.Init(); err != nil {
 		return nil, errors.Wrap(err, "failed to initialize an API client")
