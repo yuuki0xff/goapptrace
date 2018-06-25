@@ -460,13 +460,13 @@ paths:
           schema:
             $ref: '#/definitions/log-list'
   '/log/{log-id}':
+    parameters:
+      - name: log-id
+        in: path
+        required: true
+        type: integer
     delete:
       description: Delete a log file.
-      parameters:
-        - name: log-id
-          in: path
-          required: true
-          type: integer
       responses:
         '204':
           description: OK
@@ -529,12 +529,15 @@ paths:
       produces:
         - text/csv
       parameters:
+        - name: log-id
+          in: path
+          required: true
+          type: integer
         - name: sql
           in: path
           description: A SQL statement. This parameter allows only the SELECT statement.
           required: true
           type: string
-          example: 'SELECT * FROM calls'
       responses:
         '200':
           description: Success
