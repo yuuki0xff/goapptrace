@@ -3,9 +3,11 @@ package config
 import (
 	"encoding/json"
 	"io/ioutil"
+	"log"
 	"os"
 	"path"
 
+	"github.com/mitchellh/go-homedir"
 	"github.com/yuuki0xff/goapptrace/info"
 )
 
@@ -29,6 +31,10 @@ func NewConfig(dir string) *Config {
 		dir = info.DefaultConfigDir
 	}
 
+	dir, err := homedir.Expand(dir)
+	if err != nil {
+		log.Panic(err)
+	}
 	return &Config{
 		dir: dir,
 	}

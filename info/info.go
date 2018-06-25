@@ -9,7 +9,7 @@ const (
 	AppName = "goapptrace"
 	Version = "0.4.0-beta"
 
-	DefaultConfigDir     = "./.goapptrace"
+	DefaultConfigDir     = "~/goapptrace"
 	DefaultLogfileEnv    = "GOAPPTRACE_LOG"
 	DefaultLogfilePrefix = "./goapptrace"
 	DefaultLogsrvEnv     = "GOAPPTRACE_SERVER"
