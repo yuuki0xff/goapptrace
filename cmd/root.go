@@ -33,6 +33,9 @@ var cfgDir string
 // API server address.
 var apiSrvAddr string
 
+// Log server address.
+var logSrvAddr string
+
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
 	Use:   "cmd",
@@ -54,6 +57,7 @@ func init() {
 	// will be global for your application.
 	RootCmd.PersistentFlags().StringVar(&cfgDir, "config", info.DefaultConfigDir, "config dir")
 	RootCmd.PersistentFlags().StringVar(&apiSrvAddr, "api-server", config.DefaultApiServerAddr, "REST API server address")
+	RootCmd.PersistentFlags().StringVar(&logSrvAddr, "log-server", config.DefaultLogServerAddr, "Log server address")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
