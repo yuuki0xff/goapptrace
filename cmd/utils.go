@@ -81,8 +81,8 @@ func (opt *handlerOpt) ApiWithCancel(ctx context.Context) (api restapi.ClientWit
 	return
 }
 
-func (opt *handlerOpt) LogServer() (srv restapi.ServerStatus, err error) {
-	return getLogServer(opt.Conf)
+func (opt *handlerOpt) LogServer() string {
+	return opt.Conf.LogServer()
 }
 
 func wrap(fn func(*handlerOpt) error) cobraHandler {
@@ -274,21 +274,4 @@ func prepareRepo(tmpdir string, targets []string, conf *config.Config) (*builder
 		return nil, err
 	}
 	return b, nil
-}
-
-func getLogServer(conf *config.Config) (srv restapi.ServerStatus, err error) {
-	apiNoctx, err := getAPIClient(conf)
-	if err != nil {
-		return
-	}
-	// TODO: ctxを外部から渡す。
-	api := apiNoctx.WithCtx(context.Background())
-	srvs, err := api.Servers()
-	if err != nil {
-		return
-	}
-	for _, srv = range srvs {
-		return
-	}
-	return srv, errors.New("log servers is not running")
 }

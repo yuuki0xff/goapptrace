@@ -31,7 +31,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/yuuki0xff/goapptrace/info"
-	"github.com/yuuki0xff/goapptrace/tracer/restapi"
 )
 
 var runFlags = mergeFlagNames(sharedFlagNames(), map[string]bool{
@@ -50,12 +49,6 @@ Arguments are compatible with "go run". See "go run --help" to get more informat
 }
 
 func runRun(opt *handlerOpt) error {
-	srv, err := opt.LogServer()
-	if err != nil {
-		opt.ErrLog.Println(err)
-		return errGeneral
-	}
-
 	targets := opt.Args
 	files, cmdArgs := separateGofilesAndArgs(targets)
 	if len(files) == 0 {
@@ -94,7 +87,8 @@ func runRun(opt *handlerOpt) error {
 	runCmd.Stdout = opt.Stdout
 	runCmd.Stderr = opt.Stderr
 	// 実行用の環境変数を追加しなきゃ鳴らない
-	runCmd.Env = append(os.Environ(), runEnv(srv, b.Goroot, b.Gopath, files)...)
+	logSrvAddr := opt.LogServer()
+	runCmd.Env = append(os.Environ(), runEnv(logSrvAddr, b.Goroot, b.Gopath, files)...)
 	return runCmd.Run()
 }
 
@@ -108,9 +102,9 @@ func runArgs(flagset *pflag.FlagSet, files, cmdArgs []string) []string {
 }
 
 // "go run"コマンドの実行前にセットするべき環境変数を返す
-func runEnv(srv restapi.ServerStatus, goroot, gopath string, files []string) []string {
+func runEnv(logSrvAddr, goroot, gopath string, files []string) []string {
 	env := buildEnv(goroot, gopath, files)
-	env = append(env, info.DefaultLogsrvEnv+"="+srv.Addr)
+	env = append(env, info.DefaultLogsrvEnv+"="+logSrvAddr)
 	return env
 }
 
