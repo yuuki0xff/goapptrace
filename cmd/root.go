@@ -27,8 +27,8 @@ import (
 	"github.com/yuuki0xff/goapptrace/info"
 )
 
-// Path to config directory.
-var cfgDir string
+// Path to config and log directory.
+var storageDir string
 
 // API server address.
 var apiSrvAddr string
@@ -55,7 +55,7 @@ func init() {
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
-	RootCmd.PersistentFlags().StringVar(&cfgDir, "config", info.DefaultConfigDir, "config dir")
+	RootCmd.PersistentFlags().StringVar(&storageDir, "storage", info.DefaultStorageDir, "Path to log directory")
 	RootCmd.PersistentFlags().StringVar(&apiSrvAddr, "api-server", config.DefaultApiServerAddr, "REST API server address")
 	RootCmd.PersistentFlags().StringVar(&logSrvAddr, "log-server", config.DefaultLogServerAddr, "Log server address")
 

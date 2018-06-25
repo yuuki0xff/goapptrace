@@ -21,7 +21,7 @@ const (
 )
 
 type Config struct {
-	// Path to config directory.
+	// Path to config and log directory.
 	dir string
 	// API server address.
 	apiServer string
@@ -32,7 +32,7 @@ type Config struct {
 
 func NewConfig(dir, apiServer, logServer string) *Config {
 	if dir == "" {
-		dir = info.DefaultConfigDir
+		dir = info.DefaultStorageDir
 	}
 	if apiServer == "" {
 		apiServer = DefaultApiServerAddr

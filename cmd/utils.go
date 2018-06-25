@@ -109,7 +109,7 @@ func wrap(fn func(*handlerOpt) error) cobraHandler {
 }
 
 func getConfig() (*config.Config, error) {
-	c := config.NewConfig(cfgDir, apiSrvAddr, logSrvAddr)
+	c := config.NewConfig(storageDir, apiSrvAddr, logSrvAddr)
 	err := c.Load()
 	if err != nil {
 		return nil, err
