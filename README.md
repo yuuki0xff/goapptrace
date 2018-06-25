@@ -16,8 +16,9 @@ The goapptrace consists of server and client. You should start the goapptrace se
 ```bash
 $ goapptrace server run &
 ```
-NOTE: The goapptrace server creates `.goapptrace` directory under current working directory, and stores all log files in it.
-It might grow to be very large size.
+*NOTE*: The goapptrace server creates `~/goapptrace` directory, and stores all log files in it.
+Log files might grow very large.
+You can change log storage location by --config argument.
 
 ### 2. Start application with goapptrace
 If target application can be run with `go run` command, we recommnd using `goapptrace run` command.
