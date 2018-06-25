@@ -23,6 +23,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/yuuki0xff/goapptrace/info"
 )
 
 var cfgDir string
@@ -46,7 +47,7 @@ func init() {
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
-	RootCmd.PersistentFlags().StringVar(&cfgDir, "config", "", "config dir (default is ./.goapptrace)")
+	RootCmd.PersistentFlags().StringVar(&cfgDir, "config", info.DefaultConfigDir, "config dir")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
