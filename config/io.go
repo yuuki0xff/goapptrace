@@ -85,6 +85,10 @@ func (c Config) serversPath() string {
 	return path.Join(c.dir, "servers.json")
 }
 
+func (c Config) Server() string {
+	return c.server
+}
+
 func (c Config) LogsDir() string {
 	return path.Join(c.dir, "logs")
 }
