@@ -23,10 +23,15 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/yuuki0xff/goapptrace/config"
 	"github.com/yuuki0xff/goapptrace/info"
 )
 
+// Path to config directory.
 var cfgDir string
+
+// API server address.
+var srvAddr string
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
@@ -48,6 +53,7 @@ func init() {
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 	RootCmd.PersistentFlags().StringVar(&cfgDir, "config", info.DefaultConfigDir, "config dir")
+	RootCmd.PersistentFlags().StringVar(&srvAddr, "server", config.DefaultApiServerAddr, "Server address")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
