@@ -123,18 +123,6 @@ func (c *ClientWithCtx) Symbols(logID string) (s *types.Symbols, err error) {
 	return
 }
 
-// Servers returns Log server list.
-func (c ClientWithCtx) Servers() ([]ServerStatus, error) {
-	var res Servers
-	url := c.url("/servers")
-	ro := c.ro()
-	err := c.getJSON(url, &ro, &res)
-	if err != nil {
-		return nil, err
-	}
-	return res.Servers, nil
-}
-
 // Logs returns a list of log status.
 func (c ClientWithCtx) Logs() ([]types.LogInfo, error) {
 	var res Logs
