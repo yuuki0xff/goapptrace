@@ -15,42 +15,6 @@ consumes:
 produces:
   - application/json
 definitions:
-  server-list:
-    description: List of log server statuses.
-    type: object
-    required:
-      - servers
-    properties:
-      servers:
-        type: array
-        items:
-          $ref: '#/definitions/server'
-  server:
-    description: Status of a log server.
-    type: object
-    required:
-      - server-id
-      - version
-      - address
-    properties:
-      server-id:
-        type: integer
-        format: int64
-        minimum: 1
-        example: 10
-      version:
-        description: >-
-          Version of the status. API server should increase version field value
-          when this status was updated.
-        type: integer
-        format: int64
-        minimum: 1
-        example: 128
-      address:
-        description: Host and port.
-        type: string
-        pattern: '^[a-zA-Z0-9\-]+:\d+$'
-        example: 'localhost:9000'
   log-list:
     description: List of log file statuses.
     type: object
@@ -378,79 +342,6 @@ definitions:
         example: 15
         description: The log is being written events that have occurred on this tracer.
 paths:
-  /servers:
-    get:
-      description: Returns list of log servers.
-      responses:
-        '200':
-          description: OK
-          schema:
-            $ref: '#/definitions/server-list'
-  '/server/{server-id}/status':
-    parameters:
-      - name: server-id
-        in: path
-        required: true
-        type: integer
-    get:
-      description: Returns current status of a server.
-      responses:
-        '200':
-          description: OK
-          schema:
-            $ref: '#/definitions/server'
-    put:
-      description: Updates current status of a server.
-      parameters:
-        - name: version
-          in: query
-          description: Old status version.
-          required: true
-          type: integer
-        - name: status
-          in: body
-          description: New status.
-          required: true
-          schema:
-            $ref: '#/definitions/server'
-      responses:
-        '200':
-          description: Successed to update status.
-          schema:
-            $ref: '#/definitions/server'
-        '409':
-          description: >-
-            Failed to update status because of conflict. The API Server returns
-            latest status. The API client had better retry to update status.
-          schema:
-            $ref: '#/definitions/server'
-  '/server/{server-id}/watch':
-    get:
-      description: >-
-        Long-polling API for status update notification. This API will be
-        waiting for the status to change or timeout.
-      parameters:
-        - name: server-id
-          in: path
-          required: true
-          type: integer
-        - name: version
-          in: query
-          description: Status version.
-          required: true
-          type: integer
-        - name: timeout
-          in: query
-          description: The unit is seconds.
-          required: true
-          type: integer
-      responses:
-        '200':
-          description: Notify of status change.
-          schema:
-            $ref: '#/definitions/server'
-        '204':
-          description: Notify that this status was not changed until timeout.
   /logs:
     get:
       description: Returns all logs list.

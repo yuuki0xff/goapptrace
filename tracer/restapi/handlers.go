@@ -106,16 +106,6 @@ func NewRouter(args RouterArgs) *mux.Router {
 
 func (api APIv0) SetHandlers(router *mux.Router) {
 	v01 := router.PathPrefix("/api/v0.1").Subrouter()
-	v01.HandleFunc("/servers", api.servers).Methods(http.MethodGet)
-	v01.HandleFunc("/server/{server-id}/status", api.serverStatus).Methods(http.MethodGet)
-	v01.HandleFunc("/server/{server-id}/status", api.serverStatus).Methods(http.MethodPut).
-		Queries("version", "{version:[0-9]+}")
-	v01.HandleFunc("/server/{server-id}/watch", api.notImpl).Methods(http.MethodGet).
-		Queries(
-			"version", "{version:[0-9]+}",
-			"timeout", "{timeout:[0-9]+}",
-		)
-
 	v01.HandleFunc("/logs", api.logs).Methods(http.MethodGet)
 	v01.HandleFunc("/log/{log-id}", api.log).Methods(http.MethodDelete)
 	v01.HandleFunc("/log/{log-id}", api.log).Methods(http.MethodGet)
@@ -157,51 +147,6 @@ func (api APIv0) writeObj(w http.ResponseWriter, obj interface{}) {
 		return
 	}
 	api.write(w, js)
-}
-
-// TODO: テストを書く
-func (api APIv0) servers(w http.ResponseWriter, r *http.Request) {
-	srvList := make([]ServerStatus, 0, len(api.Config.Servers.LogServer))
-	for _, srv := range api.Config.Servers.LogServer {
-		srvList = append(srvList, ServerStatus(*srv))
-	}
-
-	js, err := json.Marshal(Servers{
-		Servers: srvList,
-	})
-	if err != nil {
-		api.serverError(w, err, "failed to json.Marshal")
-		return
-	}
-	api.write(w, js)
-}
-
-// TODO: テストを書く
-func (api APIv0) serverStatus(w http.ResponseWriter, r *http.Request) {
-	strId := mux.Vars(r)["server-id"]
-	id, err := strconv.Atoi(strId)
-	if err != nil {
-		http.Error(w, "server-id is invalid", http.StatusBadRequest)
-		return
-	}
-
-	switch r.Method {
-	case http.MethodGet:
-		srv, ok := api.Config.Servers.LogServer[config.ServerID(id)]
-		if !ok {
-			http.Error(w, "server not found", http.StatusNotFound)
-			return
-		}
-		js, err := json.Marshal(srv)
-		if err != nil {
-			api.serverError(w, err, "failed to json.Marshal")
-			return
-		}
-		api.write(w, js)
-	case http.MethodPut:
-		// TODO: impl
-		api.notImpl(w, r)
-	}
 }
 
 // TODO: テストを書く
