@@ -21,8 +21,9 @@ const (
 )
 
 type Config struct {
-	dir      string
 	Servers  Servers
+	// Path to config directory.
+	dir      string
 	wantSave bool
 }
 
