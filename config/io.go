@@ -21,15 +21,23 @@ const (
 )
 
 type Config struct {
-	Servers  Servers
+	// TODO
+	// Deprecated: APIサーバの管理機能を削除をするため、このフィールドはもうじき削除する。
+	Servers Servers
+
 	// Path to config directory.
-	dir      string
+	dir string
+	// API server address.
+	server   string
 	wantSave bool
 }
 
-func NewConfig(dir string) *Config {
+func NewConfig(dir string, server string) *Config {
 	if dir == "" {
 		dir = info.DefaultConfigDir
+	}
+	if server == "" {
+		server = DefaultApiServerAddr
 	}
 
 	dir, err := homedir.Expand(dir)
@@ -37,7 +45,8 @@ func NewConfig(dir string) *Config {
 		log.Panic(err)
 	}
 	return &Config{
-		dir: dir,
+		dir:    dir,
+		server: server,
 	}
 }
 
