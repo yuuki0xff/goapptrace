@@ -10,17 +10,13 @@ import (
 )
 
 const (
-	// goapptraceによって作成されたディレクトリとファイルの、デフォルトのパーミッション
-	DefaultDirPerm  = 0700
+	// goapptraceによって作成されたディレクトリのデフォルトのパーミッション
+	DefaultDirPerm = 0700
+	// goapptraceによって作成されたファイルのデフォルトのパーミッション
 	DefaultFilePerm = 0600
-
+	// configファイルのデフォルトのパーミッション
 	ConfigFilePerm = 0666
 )
-
-// Directory Layout
-//   $dir/targets.json        - includes target, trace, build
-//   $dir/servers.json        - list of server address.
-//   $dir/logs/               - managed under tracer.storage
 
 type Config struct {
 	dir      string
