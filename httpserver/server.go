@@ -2,11 +2,17 @@ package httpserver
 
 import (
 	"context"
+	"errors"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
+)
+
+var (
+	InvalidProtocolError = errors.New("invalid protocol")
 )
 
 // 任意のタイミングで終了可能なサーバ。
@@ -20,6 +26,7 @@ import (
 //   }
 //   err := srv.Wait()
 type HttpServer struct {
+	url    string
 	server *http.Server
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -27,12 +34,12 @@ type HttpServer struct {
 	errch  chan error
 }
 
-func NewHttpServer(addr string, router http.Handler) *HttpServer {
+func NewHttpServer(url string, router http.Handler) *HttpServer {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &HttpServer{
+		url: url,
 		server: &http.Server{
-			Addr:    addr,
 			Handler: router,
 		},
 		ctx:    ctx,
@@ -60,18 +67,15 @@ func (srv *HttpServer) Start() error {
 
 	var listener net.Listener
 	var err error
-	if srv.server.Addr == "" {
-		// find available port, and listen
-		listener, err = net.Listen("tcp", "127.0.0.1:0")
-		if err != nil {
-			return err
-		}
-		srv.server.Addr = listener.Addr().String()
-	} else {
+	switch {
+	case strings.HasPrefix(srv.url, "http://"):
+		srv.server.Addr = strings.TrimPrefix(srv.url, "http://")
 		listener, err = net.Listen("tcp", srv.server.Addr)
 		if err != nil {
 			return err
 		}
+	default:
+		return InvalidProtocolError
 	}
 
 	go func() {

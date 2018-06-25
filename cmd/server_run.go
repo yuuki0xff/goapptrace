@@ -91,7 +91,7 @@ func runServerRun(opt *handlerOpt) error {
 		SSStore: &simulatorStore,
 	}
 	logSrv := protocol.Server{
-		Addr:       "tcp://" + logAddr,
+		Addr:       logAddr,
 		NewHandler: m.NewConnHandler,
 		AppName:    "TODO", // TODO
 		Secret:     "",     // TODO

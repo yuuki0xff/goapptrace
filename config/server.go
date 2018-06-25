@@ -1,8 +1,8 @@
 package config
 
 const (
-	DefaultLogServerAddr = "localhost:8600"
-	DefaultApiServerAddr = "localhost:8700"
+	DefaultLogServerAddr = "tcp://localhost:8600"
+	DefaultApiServerAddr = "http://localhost:8700"
 )
 
 type ServerID int64
