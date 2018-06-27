@@ -69,7 +69,7 @@ func (vm *LogRecordVM) fetch() (
 	symbols *types.Symbols,
 	err error,
 ) {
-	records = make([]types.FuncLog, 0, 10000)
+	records = make([]types.FuncLog, 0, fetchRecords)
 	ch, eg := vm.Client.SearchFuncLogs(vm.LogID, restapi.SearchFuncLogParams{
 		Limit:     fetchRecords,
 		SortKey:   restapi.SortByEndTime,
