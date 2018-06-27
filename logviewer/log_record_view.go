@@ -13,7 +13,6 @@ import (
 )
 
 const (
-	fetchRecords    = 1000
 	maxTableRecords = 1000
 )
 
@@ -69,9 +68,13 @@ func (vm *LogRecordVM) fetch() (
 	symbols *types.Symbols,
 	err error,
 ) {
-	records = make([]types.FuncLog, 0, fetchRecords)
+	// 1画面分を表示するのに十分な行数は`vm.View().Widget().Size().Y`。
+	// ターミナルサイズのリサイズしたときの動きをスムーズにするため、2画面分取得しておく。
+	count := int64(vm.View().Widget().Size().Y * 2)
+	records = make([]types.FuncLog, 0, count)
+
 	ch, eg := vm.Client.SearchFuncLogs(vm.LogID, restapi.SearchFuncLogParams{
-		Limit:     fetchRecords,
+		Limit:     count,
 		SortKey:   restapi.SortByEndTime,
 		SortOrder: restapi.DescendingSortOrder,
 	})
