@@ -23,7 +23,6 @@ package cmd
 import (
 	"context"
 
-	"github.com/deckarep/golang-set"
 	"github.com/spf13/cobra"
 	"github.com/yuuki0xff/goapptrace/tracer/types"
 )
@@ -46,29 +45,50 @@ func runTraceStop(opt *handlerOpt) error {
 	logID := opt.Args[0]
 	names := opt.Args[1:]
 
+	isRegexp, err := opt.Cmd.Flags().GetBool("regexp")
+	if err != nil {
+		// 失敗してはいけない
+		opt.ErrLog.Panicln(err)
+	}
+
 	api, err := opt.Api(context.Background())
 	if err != nil {
 		opt.ErrLog.Println(err)
 		return errApiClient
 	}
 
+	tp := tracePattern{
+		LogID:    logID,
+		Api:      api,
+		Names:    names,
+		IsRegexp: isRegexp,
+		Opt:      opt,
+	}
+	tp.Matcher()
+
+	matcher, err := tp.Matcher()
+	if err != nil {
+		opt.ErrLog.Println(err)
+		return errGeneral
+	}
+
 	_, err = api.UpdateLogInfo(logID, 10, func(info *types.LogInfo) error {
-		if len(names) == 0 {
+		if !isRegexp && len(names) == 0 {
+			// トレースを全て停止
 			info.Metadata.TraceTarget.Funcs = []string{}
 			return nil
 		} else {
-			namesSet := mapset.NewSet()
-			for _, name := range names {
-				namesSet.Add(name)
-			}
-
+			oldFuncs := info.Metadata.TraceTarget.Funcs
 			newFuncs := make([]string, 0, len(info.Metadata.TraceTarget.Funcs))
-			for _, f := range info.Metadata.TraceTarget.Funcs {
-				if namesSet.Contains(f) {
+
+			for _, f := range oldFuncs {
+				if matcher(f) {
+					// マッチしたので、トレース対象から除外
 					continue
 				}
 				newFuncs = append(newFuncs, f)
 			}
+
 			info.Metadata.TraceTarget.Funcs = newFuncs
 			return nil
 		}
@@ -92,4 +112,5 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// traceStopCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	traceStopCmd.Flags().BoolP("regexp", "e", false, "Interpret <name> as an regular expression")
 }

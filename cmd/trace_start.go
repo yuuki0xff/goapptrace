@@ -41,8 +41,15 @@ func runTraceStart(opt *handlerOpt) error {
 		opt.ErrLog.Println("missing log-id")
 		return errInvalidArgs
 	}
+
 	logID := opt.Args[0]
 	names := opt.Args[1:]
+
+	isRegexp, err := opt.Cmd.Flags().GetBool("regexp")
+	if err != nil {
+		// 失敗してはいけない
+		opt.ErrLog.Panicln(err)
+	}
 
 	api, err := opt.Api(context.Background())
 	if err != nil {
@@ -50,29 +57,33 @@ func runTraceStart(opt *handlerOpt) error {
 		return errApiClient
 	}
 
-	var symbols *types.Symbols
-	if len(names) == 0 {
-		symbols, err = api.Symbols(logID)
-		if err != nil {
-			opt.ErrLog.Println(err)
-			return errGeneral
-		}
+	tp := tracePattern{
+		LogID:    logID,
+		Api:      api,
+		Names:    names,
+		IsRegexp: isRegexp,
+		Opt:      opt,
+	}
+	tp.Matcher()
+
+	sn, err := tp.SymbolNames()
+	if err != nil {
+		opt.ErrLog.Println(err)
+		return errApiClient
+	}
+	matcher, err := tp.Matcher()
+	if err != nil {
+		opt.ErrLog.Println(err)
+		return errGeneral
 	}
 
 	_, err = api.UpdateLogInfo(logID, 10, func(info *types.LogInfo) error {
-		if len(names) == 0 {
-			return symbols.Save(func(data types.SymbolsData) error {
-				var names []string
-				for _, f := range data.Funcs {
-					names = append(names, f.Name)
-				}
-				info.Metadata.TraceTarget.Funcs = names
-				return nil
-			})
-		} else {
-			info.Metadata.TraceTarget.Funcs = append(info.Metadata.TraceTarget.Funcs, names...)
-			return nil
+		for _, s := range sn {
+			if matcher(s) {
+				info.Metadata.TraceTarget.Funcs = append(info.Metadata.TraceTarget.Funcs, s)
+			}
 		}
+		return nil
 	})
 	if err != nil {
 		opt.ErrLog.Println(err)
@@ -93,4 +104,5 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// traceStartCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	traceStartCmd.Flags().BoolP("regexp", "e", false, "Interpret <name> as an regular expression")
 }
