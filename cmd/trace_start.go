@@ -38,7 +38,7 @@ var traceStartCmd = &cobra.Command{
 
 func runTraceStart(opt *handlerOpt) error {
 	if len(opt.Args) == 0 {
-		opt.ErrLog.Println("missing tracer-id")
+		opt.ErrLog.Println("missing log-id")
 		return errInvalidArgs
 	}
 	logID := opt.Args[0]
