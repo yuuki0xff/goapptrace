@@ -1,7 +1,23 @@
+# Usage:
+#   make            - Build the goapptrace.
+#   make install    - Install goapptrace on your system.
+#   make test       - Run linters and unit tests.
+#   make build-deps - Install dependencies for build and test.
+#   make help       - Print this message.
+#
+# Advanced:
+#   make format          - Format source codes.
+#   make check-formatted -
+#   make release         -
+
+
 .PHONEY: all build-deps build build-debug format check-formatted test release
 SHELL=/bin/bash
 
 all: build
+
+help:
+	@ sed '/^$$/Q; s/^# \?//;' Makefile
 
 build-deps:
 	go get -u golang.org/x/tools/cmd/goimports
