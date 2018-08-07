@@ -62,7 +62,9 @@ check-formatted:
 	)
 
 test: check-formatted
-	gometalinter -D golint -D gocyclo -D maligned --exclude "${GOROOT}" --enable-gc ./...
+	gometalinter -D golint -D gocyclo -D maligned \
+		--exclude "${GOROOT}|tracer/encoding/other/" \
+		--enable-gc ./...
 	go test ./...
 
 release: test build
